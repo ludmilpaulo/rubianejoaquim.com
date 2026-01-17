@@ -2,8 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Transforme a sua relação com o dinheiro',
-  description: 'Cursos práticos e mentoria personalizada em educação financeira. Aprenda a gerir, investir e alcançar a sua liberdade financeira.',
+  title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim',
+  description: 'Cursos e mentoria em educação financeira com Rubiane Joaquim. Aprenda a poupar, investir e alcançar liberdade financeira. Formação em Portugal.',
 }
 
 export default function Home() {
@@ -75,12 +75,12 @@ export default function Home() {
                 <span className="text-primary-600 font-semibold text-sm uppercase tracking-wide">Sobre</span>
               </div>
               <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Quem é a <span className="gradient-text">Erica</span>?
+                Quem é a <span className="gradient-text">Rubiane</span>?
               </h2>
               <div className="space-y-4 text-lg text-gray-600 leading-relaxed">
                 <p>
-                  Especialista em educação financeira com <strong className="text-gray-900">anos de experiência</strong> a ajudar pessoas 
-                  a alcançarem os seus objetivos financeiros.
+Especialista em educação financeira com <strong className="text-gray-900">anos de experiência</strong>, Rubiane Joaquim ajuda pessoas 
+                a alcançarem os seus objetivos financeiros.
                 </p>
                 <p>
                   A minha missão é <strong className="text-gray-900">democratizar o conhecimento financeiro</strong> e tornar a gestão 
@@ -110,7 +110,7 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 font-medium">Foto da Erica</p>
+                  <p className="text-gray-500 font-medium">Foto da Rubiane</p>
                 </div>
               </div>
               <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary-600/10 rounded-full blur-2xl"></div>

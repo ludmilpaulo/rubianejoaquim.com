@@ -1,4 +1,4 @@
-# Guia de Setup - Erica Educação Financeira
+# Guia de Setup - Rubiane Joaquim Educação Financeira
 
 ## Pré-requisitos
 

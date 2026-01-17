@@ -1,5 +1,5 @@
 """
-Django settings for Erica Educação Financeira project.
+Django settings for Rubiane Joaquim Educação Financeira project.
 """
 
 from pathlib import Path

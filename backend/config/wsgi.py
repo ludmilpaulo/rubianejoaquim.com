@@ -1,5 +1,5 @@
 """
-WSGI config for Erica Educação Financeira project.
+WSGI config for Rubiane Joaquim Educação Financeira project.
 """
 
 import os

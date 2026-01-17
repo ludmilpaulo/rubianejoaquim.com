@@ -1,5 +1,5 @@
 """
-URL configuration for Erica Educação Financeira project.
+URL configuration for Rubiane Joaquim Educação Financeira project.
 """
 from django.contrib import admin
 from django.urls import path, include

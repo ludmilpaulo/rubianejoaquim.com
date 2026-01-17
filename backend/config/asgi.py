@@ -1,5 +1,5 @@
 """
-ASGI config for Erica Educação Financeira project.
+ASGI config for Rubiane Joaquim Educação Financeira project.
 """
 
 import os

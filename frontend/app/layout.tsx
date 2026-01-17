@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import WhatsAppButton from '@/components/WhatsAppButton'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -12,45 +13,66 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Erica Educação Financeira | Cursos e Mentoria em Educação Financeira',
-    template: '%s | Erica Educação Financeira'
+    default: 'Rubiane Joaquim | Educação Financeira — Cursos e Mentoria em Portugal',
+    template: '%s | Rubiane Joaquim Educação Financeira'
   },
-  description: 'Transforme a sua relação com o dinheiro através de cursos práticos e mentoria personalizada em educação financeira. Aprenda a gerir, investir e alcançar a sua liberdade financeira.',
-  keywords: ['educação financeira', 'cursos financeiros', 'mentoria financeira', 'gestão de dinheiro', 'investimentos', 'liberdade financeira', 'Portugal'],
-  authors: [{ name: 'Erica Educação Financeira' }],
-  creator: 'Erica Educação Financeira',
-  publisher: 'Erica Educação Financeira',
+  description: 'Rubiane Joaquim, especialista em educação financeira. Cursos online e mentoria personalizada para poupar, investir e alcançar liberdade financeira. Formação em literacia financeira em Portugal.',
+  keywords: [
+    'Rubiane Joaquim',
+    'educação financeira',
+    'curso educação financeira Portugal',
+    'mentoria financeira pessoal',
+    'literacia financeira',
+    'como poupar dinheiro',
+    'investir para iniciantes',
+    'gestão de dinheiro',
+    'liberdade financeira',
+    'cursos financeiros online',
+    'mentoria investimentos',
+    'poupança e investimento',
+    'finanças pessoais Portugal',
+  ],
+  authors: [{ name: 'Rubiane Joaquim', url: process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com' }],
+  creator: 'Rubiane Joaquim',
+  publisher: 'Rubiane Joaquim',
+  applicationName: 'Rubiane Joaquim Educação Financeira',
+  referrer: 'origin-when-cross-origin',
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'),
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     type: 'website',
     locale: 'pt_PT',
     url: '/',
-    siteName: 'Erica Educação Financeira',
-    title: 'Erica Educação Financeira | Cursos e Mentoria em Educação Financeira',
-    description: 'Transforme a sua relação com o dinheiro através de cursos práticos e mentoria personalizada em educação financeira.',
+    siteName: 'Rubiane Joaquim Educação Financeira',
+    title: 'Rubiane Joaquim | Educação Financeira — Cursos e Mentoria em Portugal',
+    description: 'Cursos online e mentoria em educação financeira com Rubiane Joaquim. Aprenda a poupar, investir e alcançar a sua liberdade financeira. Formação profissional em Portugal.',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Erica Educação Financeira',
+        alt: 'Rubiane Joaquim — Educação Financeira, Cursos e Mentoria em Portugal',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Erica Educação Financeira | Cursos e Mentoria em Educação Financeira',
-    description: 'Transforme a sua relação com o dinheiro através de cursos práticos e mentoria personalizada em educação financeira.',
+    title: 'Rubiane Joaquim | Educação Financeira — Cursos e Mentoria em Portugal',
+    description: 'Cursos online e mentoria em educação financeira. Poupar, investir e liberdade financeira. Formação com Rubiane Joaquim em Portugal.',
     images: ['/og-image.jpg'],
+    creator: '@rubianejoaquim',
   },
   robots: {
     index: true,
     follow: true,
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
@@ -60,9 +82,10 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    // google: 'your-google-verification-code',
+    // google: 'your-google-search-console-code',
     // yandex: 'your-yandex-verification-code',
   },
+  category: 'education',
 }
 
 export default function RootLayout({
@@ -78,19 +101,43 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',
-              '@type': 'EducationalOrganization',
-              name: 'Erica Educação Financeira',
-              description: 'Cursos e mentoria em educação financeira',
-              url: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-              logo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/logo.png`,
-              sameAs: [
-                // Add social media links here
+              '@graph': [
+                {
+                  '@type': 'EducationalOrganization',
+                  '@id': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/#organization`,
+                  name: 'Rubiane Joaquim Educação Financeira',
+                  description: 'Cursos online e mentoria em educação financeira. Formação em literacia financeira, poupança, investimentos e liberdade financeira em Portugal.',
+                  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com',
+                  logo: { '@type': 'ImageObject', url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/logo.png` },
+                  sameAs: [],
+                  contactPoint: {
+                    '@type': 'ContactPoint',
+                    contactType: 'Customer Service',
+                    email: 'contacto@rubianejoaquim.com',
+                    telephone: '+244 944 905246',
+                    url: 'https://wa.me/244944905246',
+                    availableLanguage: 'Portuguese',
+                    areaServed: ['PT', 'AO'],
+                  },
+                },
+                {
+                  '@type': 'Person',
+                  '@id': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/#person`,
+                  name: 'Rubiane Joaquim',
+                  jobTitle: 'Especialista em Educação Financeira',
+                  worksFor: { '@id': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/#organization` },
+                },
+                {
+                  '@type': 'WebSite',
+                  '@id': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/#website`,
+                  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com',
+                  name: 'Rubiane Joaquim Educação Financeira',
+                  description: 'Cursos e mentoria em educação financeira em Portugal. Rubiane Joaquim.',
+                  publisher: { '@id': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/#organization` },
+                  inLanguage: 'pt-PT',
+                  potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://rubianejoaquim.com'}/cursos?q={search_term_string}` }, 'query-input': 'required name=search_term_string' },
+                },
               ],
-              contactPoint: {
-                '@type': 'ContactPoint',
-                contactType: 'Customer Service',
-                email: 'contacto@ericaeducacao.com',
-              },
             }),
           }}
         />
@@ -101,6 +148,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
+        <WhatsAppButton />
       </body>
     </html>
   )

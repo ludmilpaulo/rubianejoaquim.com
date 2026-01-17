@@ -1,4 +1,4 @@
-# Erica Educação Financeira - MVP
+# Rubiane Joaquim Educação Financeira - MVP
 
 Plataforma de cursos e mentoria em educação financeira.
 
