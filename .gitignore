@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Python
+backend/venv/
+backend/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Django
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+backend/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
