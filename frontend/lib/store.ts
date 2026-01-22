@@ -9,6 +9,9 @@ interface User {
   first_name?: string
   last_name?: string
   phone?: string
+  is_staff?: boolean
+  is_superuser?: boolean
+  is_admin?: boolean
 }
 
 interface AuthState {
@@ -33,7 +36,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       Cookies.set('token', token, { expires: 30 })
       set({ user, token })
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Erro ao fazer login')
+      const errorMessage = error.response?.data?.email?.[0] || 
+                          error.response?.data?.password?.[0] ||
+                          error.response?.data?.non_field_errors?.[0] ||
+                          error.response?.data?.error ||
+                          error.message ||
+                          'Erro ao fazer login'
+      throw new Error(errorMessage)
     }
   },
 

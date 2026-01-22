@@ -24,6 +24,41 @@ interface Lesson {
   } | null
 }
 
+// Função para converter URLs do YouTube para formato embed
+function getYouTubeEmbedUrl(url: string): string {
+  if (!url) return ''
+  
+  // Se já é um URL de embed, retorna como está
+  if (url.includes('youtube.com/embed/') || url.includes('youtube-nocookie.com/embed/')) {
+    return url
+  }
+  
+  // Extrair ID do vídeo de diferentes formatos do YouTube
+  let videoId = ''
+  
+  // Formato: https://www.youtube.com/watch?v=VIDEO_ID ou https://youtu.be/VIDEO_ID
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube-nocookie\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/.*[?&]v=([^&\n?#]+)/,
+  ]
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match && match[1]) {
+      videoId = match[1]
+      break
+    }
+  }
+  
+  // Se não encontrou o ID, retorna a URL original (pode ser outro tipo de vídeo)
+  if (!videoId) {
+    return url
+  }
+  
+  // Retornar URL de embed com parâmetros de privacidade
+  return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`
+}
+
 export default function AulaPage() {
   const params = useParams()
   const { user } = useAuthStore()
@@ -89,14 +124,17 @@ export default function AulaPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           {/* Video Player */}
-          <div className="bg-black rounded-lg overflow-hidden mb-6" style={{ aspectRatio: '16/9' }}>
-            <iframe
-              src={lesson.video_url}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
+          {lesson.video_url && (
+            <div className="bg-black rounded-lg overflow-hidden mb-6" style={{ aspectRatio: '16/9' }}>
+              <iframe
+                src={getYouTubeEmbedUrl(lesson.video_url)}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={lesson.title}
+              />
+            </div>
+          )}
 
           {/* Content */}
           {lesson.content && (

@@ -3,11 +3,21 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Course, Lesson, Enrollment, PaymentProof, Progress
+from django.db.models import Q
+from .models import (
+    Course, Lesson, Enrollment, PaymentProof, Progress,
+    LessonQuiz, FinalExam, Question, Choice,
+    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
+    LessonQuizQuestion, FinalExamQuestion
+)
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, LessonSerializer,
-    EnrollmentSerializer, PaymentProofSerializer, ProgressSerializer
+    EnrollmentSerializer, PaymentProofSerializer, ProgressSerializer,
+    LessonQuizSerializer, FinalExamSerializer, QuestionSerializer,
+    UserQuizAnswerSerializer, UserExamAnswerSerializer,
+    QuizResultSerializer, ExamResultSerializer
 )
+from django.utils import timezone
 
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -144,3 +154,224 @@ class ProgressViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return Progress.objects.filter(user=self.request.user)
+
+
+# Quiz and Exam Views for Students
+class LessonQuizViewSet(viewsets.ReadOnlyModelViewSet):
+    """Visualização de quizzes de aulas para alunos"""
+    serializer_class = LessonQuizSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        """Garantir que o contexto da request está disponível"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def get_queryset(self):
+        # Alunos só veem quizzes de aulas que têm acesso
+        user = self.request.user
+        lessons_with_access = Lesson.objects.filter(
+            Q(is_free=True) |
+            Q(course__enrollments__user=user, course__enrollments__status='active')
+        ).distinct()
+        return LessonQuiz.objects.filter(lesson__in=lessons_with_access, is_active=True)
+
+    @action(detail=True, methods=['post'], url_path='submit')
+    def submit_quiz(self, request, pk=None):
+        """Submeter respostas do quiz"""
+        quiz = self.get_object()
+        user = request.user
+
+        # Verificar acesso
+        if not (quiz.lesson.is_free or 
+                Enrollment.objects.filter(user=user, course=quiz.lesson.course, status='active').exists()):
+            return Response(
+                {'error': 'Não tem acesso a este quiz.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Verificar se já existe resultado
+        existing_result = QuizResult.objects.filter(user=user, quiz=quiz).first()
+        if existing_result:
+            return Response(
+                {'error': 'Já completou este quiz.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        answers_data = request.data.get('answers', [])  # Lista de {question_id, choice_id}
+
+        # Salvar respostas
+        total_questions = quiz.questions.count()
+        correct_answers = 0
+
+        for answer_data in answers_data:
+            question_id = answer_data.get('question_id')
+            choice_id = answer_data.get('choice_id')
+
+            try:
+                question = Question.objects.get(id=question_id)
+                choice = Choice.objects.get(id=choice_id, question=question)
+                
+                # Verificar se a pergunta pertence ao quiz
+                if not quiz.questions.filter(question=question).exists():
+                    continue
+
+                is_correct = choice.is_correct
+                if is_correct:
+                    correct_answers += 1
+
+                UserQuizAnswer.objects.create(
+                    user=user,
+                    quiz=quiz,
+                    question=question,
+                    selected_choice=choice,
+                    is_correct=is_correct
+                )
+            except (Question.DoesNotExist, Choice.DoesNotExist):
+                continue
+
+        # Calcular pontuação
+        total_points = sum(qq.points for qq in quiz.questions.all())
+        user_answers = UserQuizAnswer.objects.filter(user=user, quiz=quiz)
+        earned_points = 0
+        for answer in user_answers:
+            if answer.is_correct:
+                try:
+                    qq = quiz.questions.get(question=answer.question)
+                    earned_points += qq.points
+                except LessonQuizQuestion.DoesNotExist:
+                    pass
+        score = (earned_points / total_points * 100) if total_points > 0 else 0
+        passed = score >= quiz.passing_score
+
+        # Criar resultado
+        result = QuizResult.objects.create(
+            user=user,
+            quiz=quiz,
+            score=score,
+            total_questions=total_questions,
+            correct_answers=correct_answers,
+            passed=passed,
+            completed_at=timezone.now()
+        )
+
+        serializer = QuizResultSerializer(result)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class FinalExamViewSet(viewsets.ReadOnlyModelViewSet):
+    """Visualização de exames finais para alunos"""
+    serializer_class = FinalExamSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        """Garantir que o contexto da request está disponível"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def get_queryset(self):
+        # Alunos só veem exames de cursos que têm acesso
+        user = self.request.user
+        courses_with_access = Course.objects.filter(
+            enrollments__user=user,
+            enrollments__status='active'
+        ).distinct()
+        return FinalExam.objects.filter(course__in=courses_with_access, is_active=True)
+
+    @action(detail=True, methods=['post'], url_path='submit')
+    def submit_exam(self, request, pk=None):
+        """Submeter respostas do exame final"""
+        exam = self.get_object()
+        user = request.user
+
+        # Verificar acesso
+        if not Enrollment.objects.filter(user=user, course=exam.course, status='active').exists():
+            return Response(
+                {'error': 'Não tem acesso a este exame.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Verificar número de tentativas
+        existing_results = ExamResult.objects.filter(user=user, exam=exam)
+        attempt_number = existing_results.count() + 1
+
+        if attempt_number > exam.max_attempts:
+            return Response(
+                {'error': f'Número máximo de tentativas ({exam.max_attempts}) excedido.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        answers_data = request.data.get('answers', [])
+
+        # Limpar respostas anteriores desta tentativa (se houver)
+        # Na prática, cada tentativa cria um novo ExamResult
+
+        # Salvar respostas
+        total_questions = exam.questions.count()
+        correct_answers = 0
+
+        for answer_data in answers_data:
+            question_id = answer_data.get('question_id')
+            choice_id = answer_data.get('choice_id')
+
+            try:
+                question = Question.objects.get(id=question_id)
+                choice = Choice.objects.get(id=choice_id, question=question)
+                
+                # Verificar se a pergunta pertence ao exame
+                if not exam.questions.filter(question=question).exists():
+                    continue
+
+                is_correct = choice.is_correct
+                if is_correct:
+                    correct_answers += 1
+
+                UserExamAnswer.objects.create(
+                    user=user,
+                    exam=exam,
+                    question=question,
+                    selected_choice=choice,
+                    is_correct=is_correct
+                )
+            except (Question.DoesNotExist, Choice.DoesNotExist):
+                continue
+
+        # Calcular pontuação
+        total_points = sum(eq.points for eq in exam.questions.all())
+        user_answers = UserExamAnswer.objects.filter(user=user, exam=exam)
+        earned_points = 0
+        for answer in user_answers:
+            if answer.is_correct:
+                try:
+                    eq = exam.questions.get(question=answer.question)
+                    earned_points += eq.points
+                except FinalExamQuestion.DoesNotExist:
+                    pass
+        score = (earned_points / total_points * 100) if total_points > 0 else 0
+        passed = score >= exam.passing_score
+
+        # Criar resultado
+        result = ExamResult.objects.create(
+            user=user,
+            exam=exam,
+            attempt_number=attempt_number,
+            score=score,
+            total_questions=total_questions,
+            correct_answers=correct_answers,
+            passed=passed,
+            completed_at=timezone.now()
+        )
+
+        serializer = ExamResultSerializer(result)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='my-results')
+    def my_results(self, request, pk=None):
+        """Ver resultados do aluno neste exame"""
+        exam = self.get_object()
+        user = request.user
+        results = ExamResult.objects.filter(user=user, exam=exam).order_by('-completed_at')
+        serializer = ExamResultSerializer(results, many=True)
+        return Response(serializer.data)

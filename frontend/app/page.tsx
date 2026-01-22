@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import RubianeImage from '@/components/RubianeImage'
 
 export const metadata: Metadata = {
   title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim',
@@ -103,15 +104,8 @@ Especialista em educação financeira com <strong className="text-gray-900">anos
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center shadow-2xl hover-lift">
-                <div className="text-center p-8">
-                  <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-primary-300 flex items-center justify-center">
-                    <svg className="w-16 h-16 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-500 font-medium">Foto da Rubiane</p>
-                </div>
+              <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl hover-lift bg-gradient-to-br from-primary-100 to-primary-200">
+                <RubianeImage />
               </div>
               <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary-600/10 rounded-full blur-2xl"></div>
             </div>

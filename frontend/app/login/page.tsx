@@ -6,7 +6,7 @@ import { useAuthStore } from '@/lib/store'
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, register } = useAuthStore()
+  const { login, register, user } = useAuthStore()
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -28,6 +28,13 @@ export default function LoginPage() {
     try {
       if (isLogin) {
         await login(formData.email, formData.password)
+        // Get updated user after login
+        const updatedUser = useAuthStore.getState().user
+        if (updatedUser?.is_admin) {
+          router.push('/admin')
+        } else {
+          router.push('/area-do-aluno')
+        }
       } else {
         if (formData.password !== formData.password_confirm) {
           setError('As palavras-passe não coincidem')
@@ -43,8 +50,9 @@ export default function LoginPage() {
           last_name: formData.last_name || undefined,
           phone: formData.phone || undefined,
         })
+        // Students always go to student area
+        router.push('/area-do-aluno')
       }
-      router.push('/area-do-aluno')
     } catch (err: any) {
       setError(err.message || 'Erro ao fazer login/registro')
     } finally {
@@ -109,13 +117,14 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
+              Email ou Username
             </label>
             <input
-              type="email"
+              type="text"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="email@exemplo.com ou username"
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
             />
           </div>

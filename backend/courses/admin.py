@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Course, Lesson, LessonAttachment, Enrollment, PaymentProof, Progress
+from .models import (
+    Course, Lesson, LessonAttachment, Enrollment, PaymentProof, Progress,
+    Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
+    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult
+)
 
 
 @admin.register(Course)
@@ -71,3 +75,61 @@ class ProgressAdmin(admin.ModelAdmin):
     list_display = ['user', 'lesson', 'completed', 'updated_at']
     list_filter = ['completed', 'updated_at']
     search_fields = ['user__email', 'lesson__title']
+
+
+class ChoiceInline(admin.TabularInline):
+    model = Choice
+    extra = 2
+    fields = ['choice_text', 'is_correct', 'order']
+
+
+@admin.register(Question)
+class QuestionAdmin(admin.ModelAdmin):
+    list_display = ['question_text', 'order', 'created_at']
+    search_fields = ['question_text']
+    inlines = [ChoiceInline]
+    ordering = ['order', 'created_at']
+
+
+class LessonQuizQuestionInline(admin.TabularInline):
+    model = LessonQuizQuestion
+    extra = 1
+    fields = ['question', 'points', 'order']
+
+
+@admin.register(LessonQuiz)
+class LessonQuizAdmin(admin.ModelAdmin):
+    list_display = ['lesson', 'title', 'passing_score', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['lesson__title', 'title']
+    inlines = [LessonQuizQuestionInline]
+
+
+class FinalExamQuestionInline(admin.TabularInline):
+    model = FinalExamQuestion
+    extra = 1
+    fields = ['question', 'points', 'order']
+
+
+@admin.register(FinalExam)
+class FinalExamAdmin(admin.ModelAdmin):
+    list_display = ['course', 'title', 'passing_score', 'max_attempts', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['course__title', 'title']
+    inlines = [FinalExamQuestionInline]
+
+
+@admin.register(QuizResult)
+class QuizResultAdmin(admin.ModelAdmin):
+    list_display = ['user', 'quiz', 'score', 'passed', 'completed_at']
+    list_filter = ['passed', 'completed_at']
+    search_fields = ['user__email', 'quiz__lesson__title']
+    readonly_fields = ['score', 'total_questions', 'correct_answers', 'passed']
+
+
+@admin.register(ExamResult)
+class ExamResultAdmin(admin.ModelAdmin):
+    list_display = ['user', 'exam', 'attempt_number', 'score', 'passed', 'completed_at']
+    list_filter = ['passed', 'completed_at']
+    search_fields = ['user__email', 'exam__course__title']
+    readonly_fields = ['score', 'total_questions', 'correct_answers', 'passed']
