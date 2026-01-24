@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { mentorshipApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/currency'
 import { useRouter } from 'next/navigation'
 
 interface MentorshipPackage {
@@ -158,7 +159,7 @@ export default function MentoriaPage() {
                   <div>Sessões: {pkg.sessions}</div>
                 </div>
                 <div className="text-2xl font-bold text-primary-600 mb-4">
-                  {parseFloat(pkg.price).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                  {formatCurrency(pkg.price)}
                 </div>
                 <button
                   onClick={() => {

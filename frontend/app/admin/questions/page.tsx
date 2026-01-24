@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
-import { adminApi } from '@/lib/api'
+import { adminApi, coursesApi } from '@/lib/api'
 import Link from 'next/link'
 
 interface Choice {
@@ -13,18 +13,37 @@ interface Choice {
   order: number
 }
 
+interface Course {
+  id: number
+  title: string
+}
+
+interface Lesson {
+  id: number
+  title: string
+  course: number
+}
+
 interface Question {
   id: number
   question_text: string
   explanation: string
   choices: Choice[]
   order: number
+  course?: number
+  course_id?: number
+  course_title?: string
+  lesson?: number
+  lesson_id?: number
+  lesson_title?: string
 }
 
 export default function AdminQuestionsPage() {
   const router = useRouter()
   const { user } = useAuthStore()
   const [questions, setQuestions] = useState<Question[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
+  const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -32,6 +51,8 @@ export default function AdminQuestionsPage() {
     question_text: '',
     explanation: '',
     order: 0,
+    course: '' as string | number,
+    lesson: '' as string | number,
   })
   const [choices, setChoices] = useState<Choice[]>([
     { choice_text: '', is_correct: false, order: 0 },
@@ -47,7 +68,18 @@ export default function AdminQuestionsPage() {
     }
 
     fetchQuestions()
+    fetchCourses()
   }, [user, router])
+
+  useEffect(() => {
+    // Quando curso mudar, buscar lições desse curso
+    if (formData.course) {
+      fetchLessons(Number(formData.course))
+    } else {
+      setLessons([])
+      setFormData(prev => ({ ...prev, lesson: '' }))
+    }
+  }, [formData.course])
 
   const fetchQuestions = async () => {
     try {
@@ -58,6 +90,27 @@ export default function AdminQuestionsPage() {
       console.error('Error fetching questions:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCourses = async () => {
+    try {
+      const response = await adminApi.courses.list()
+      const data = response.data.results || response.data
+      setCourses(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching courses:', error)
+    }
+  }
+
+  const fetchLessons = async (courseId: number) => {
+    try {
+      const response = await adminApi.lessons.list(courseId)
+      const data = response.data.results || response.data
+      setLessons(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching lessons:', error)
+      setLessons([])
     }
   }
 
@@ -89,6 +142,16 @@ export default function AdminQuestionsPage() {
       return
     }
 
+    if (!formData.course) {
+      alert('Selecione um curso')
+      return
+    }
+
+    if (!formData.lesson) {
+      alert('Selecione uma lição')
+      return
+    }
+
     const correctChoices = choices.filter(c => c.is_correct)
     if (correctChoices.length === 0) {
       alert('Selecione pelo menos uma resposta correta')
@@ -102,15 +165,17 @@ export default function AdminQuestionsPage() {
 
     try {
       // Criar pergunta
-      const questionData = {
+      const questionData: any = {
         question_text: formData.question_text,
         explanation: formData.explanation,
         order: formData.order,
+        course: Number(formData.course),
+        lesson: Number(formData.lesson),
       }
 
       let questionId: number
       if (editingQuestion) {
-        await adminApi.questions.update(editingQuestion.id, questionData)
+        const response = await adminApi.questions.update(editingQuestion.id, questionData)
         questionId = editingQuestion.id
         // Deletar choices antigas e criar novas
         if (editingQuestion.choices) {
@@ -131,17 +196,28 @@ export default function AdminQuestionsPage() {
 
       // Criar choices
       for (const choice of choices.filter(c => c.choice_text.trim())) {
-        await adminApi.choices.create({
-          question: questionId,
-          choice_text: choice.choice_text,
-          is_correct: choice.is_correct,
-          order: choice.order,
-        })
+        try {
+          await adminApi.choices.create({
+            question: questionId,
+            choice_text: choice.choice_text,
+            is_correct: choice.is_correct,
+            order: choice.order,
+          })
+        } catch (choiceError: any) {
+          console.error('Erro ao criar choice:', choiceError)
+          console.error('Dados da choice:', {
+            question: questionId,
+            choice_text: choice.choice_text,
+            is_correct: choice.is_correct,
+            order: choice.order,
+          })
+          throw choiceError // Re-throw para ser capturado pelo catch externo
+        }
       }
 
       setShowForm(false)
       setEditingQuestion(null)
-      setFormData({ question_text: '', explanation: '', order: 0 })
+      setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '' })
       setChoices([
         { choice_text: '', is_correct: false, order: 0 },
         { choice_text: '', is_correct: false, order: 1 },
@@ -150,7 +226,16 @@ export default function AdminQuestionsPage() {
       ])
       fetchQuestions()
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao salvar pergunta')
+      console.error('Error saving question:', error)
+      console.error('Error response:', error.response?.data)
+      const errorMsg = error.response?.data?.error || 
+                      error.response?.data?.question_text?.[0] ||
+                      error.response?.data?.course?.[0] ||
+                      error.response?.data?.lesson?.[0] ||
+                      error.response?.data?.non_field_errors?.[0] ||
+                      error.message ||
+                      'Erro ao salvar pergunta'
+      alert(`Erro: ${errorMsg}\n\nDetalhes completos no console.`)
     }
   }
 
@@ -160,6 +245,8 @@ export default function AdminQuestionsPage() {
       question_text: question.question_text,
       explanation: question.explanation || '',
       order: question.order,
+      course: question.course || question.course_id || '',
+      lesson: question.lesson || question.lesson_id || '',
     })
     setChoices(question.choices.length > 0 ? question.choices : [
       { choice_text: '', is_correct: false, order: 0 },
@@ -167,6 +254,10 @@ export default function AdminQuestionsPage() {
       { choice_text: '', is_correct: false, order: 2 },
       { choice_text: '', is_correct: false, order: 3 },
     ])
+    // Buscar lições do curso selecionado
+    if (question.course || question.course_id) {
+      fetchLessons(Number(question.course || question.course_id))
+    }
     setShowForm(true)
   }
 
@@ -201,7 +292,8 @@ export default function AdminQuestionsPage() {
             onClick={() => {
               setShowForm(true)
               setEditingQuestion(null)
-              setFormData({ question_text: '', explanation: '', order: 0 })
+              setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '' })
+              setLessons([])
               setChoices([
                 { choice_text: '', is_correct: false, order: 0 },
                 { choice_text: '', is_correct: false, order: 1 },
@@ -221,6 +313,47 @@ export default function AdminQuestionsPage() {
               {editingQuestion ? 'Editar Pergunta' : 'Nova Pergunta'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Curso *
+                  </label>
+                  <select
+                    required
+                    value={formData.course}
+                    onChange={(e) => setFormData({ ...formData, course: e.target.value, lesson: '' })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  >
+                    <option value="">Selecione um curso</option>
+                    {courses.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Lição *
+                  </label>
+                  <select
+                    required
+                    value={formData.lesson}
+                    onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
+                    disabled={!formData.course}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{formData.course ? 'Selecione uma lição' : 'Selecione um curso primeiro'}</option>
+                    {lessons.map((lesson) => (
+                      <option key={lesson.id} value={lesson.id}>
+                        {lesson.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Texto da Pergunta *
@@ -332,6 +465,18 @@ export default function AdminQuestionsPage() {
                 <div key={question.id} className="p-6 hover:bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {question.course_title && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            {question.course_title}
+                          </span>
+                        )}
+                        {question.lesson_title && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            {question.lesson_title}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {question.question_text}
                       </h3>

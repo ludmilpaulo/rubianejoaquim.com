@@ -23,11 +23,13 @@ export default api
 
 // Auth
 export const authApi = {
-  register: (data: { email: string; username: string; password: string; password_confirm: string; first_name?: string; last_name?: string; phone?: string }) =>
+  register: (data: { email: string; username: string; password: string; password_confirm: string; first_name?: string; last_name?: string; phone?: string; referral_code?: string }) =>
     api.post('/auth/register/', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login/', data),
   me: () => api.get('/auth/me/'),
+  updateProfile: (data: { first_name?: string; last_name?: string; phone?: string; address?: string; email?: string }) =>
+    api.put('/auth/profile/', data),
 }
 
 // Courses
@@ -45,12 +47,26 @@ export const coursesApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  getQuizResults: (enrollmentId: number) => api.get(`/course/enrollment/${enrollmentId}/quiz-results/`),
+  retakeCourse: (enrollmentId: number) => api.post(`/course/enrollment/${enrollmentId}/retake-course/`),
 }
 
 // Lessons
 export const lessonsApi = {
   get: (id: number) => api.get(`/course/lesson/${id}/`),
+  list: (courseId?: number) => {
+    const params = courseId ? { course: courseId } : {}
+    return api.get('/course/lesson/', { params })
+  },
   markCompleted: (id: number) => api.post(`/course/lesson/${id}/mark-completed/`),
+}
+
+// Lesson Quizzes (for students)
+export const lessonQuizzesApi = {
+  getByLesson: (lessonId: number) => api.get(`/course/lesson-quiz/by-lesson/${lessonId}/`),
+  get: (id: number) => api.get(`/course/lesson-quiz/${id}/`),
+  submit: (id: number, answers: Array<{ question_id: number; choice_id: number }>) =>
+    api.post(`/course/lesson-quiz/${id}/submit/`, { answers }),
 }
 
 // Mentorship

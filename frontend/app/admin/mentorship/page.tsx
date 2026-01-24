@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import { adminApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils/currency'
 
 interface MentorshipRequest {
   id: number
@@ -199,7 +200,7 @@ export default function AdminMentorshipPage() {
                     </h3>
                     <p className="text-sm text-gray-600">{request.user.email}</p>
                     <p className="text-sm font-medium text-gray-900 mt-2">
-                      Pacote: {request.package.title} - {parseFloat(request.package.price).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                      Pacote: {request.package.title} - {formatCurrency(request.package.price)}
                     </p>
                   </div>
                   <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(request.status)}`}>

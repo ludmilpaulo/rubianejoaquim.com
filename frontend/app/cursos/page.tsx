@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { coursesApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils/currency'
 
 interface Course {
   id: number
@@ -101,7 +102,7 @@ export default function CursosPage() {
                 <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100">
                   <div>
                     <span className="text-3xl font-bold text-primary-600">
-                      {parseFloat(course.price).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                      {formatCurrency(course.price)}
                     </span>
                   </div>
                   <div className="text-right">

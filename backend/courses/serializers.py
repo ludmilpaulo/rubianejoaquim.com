@@ -27,6 +27,7 @@ class LessonAttachmentSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     attachments = LessonAttachmentSerializer(many=True, read_only=True)
     progress = serializers.SerializerMethodField()
+    course = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
@@ -35,6 +36,15 @@ class LessonSerializer(serializers.ModelSerializer):
             'content', 'is_free', 'order', 'attachments', 'progress', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def get_course(self, obj):
+        """Retorna informações básicas do curso"""
+        return {
+            'id': obj.course.id,
+            'title': obj.course.title,
+            'slug': obj.course.slug,
+            'price': str(obj.course.price),
+        }
 
     def get_progress(self, obj):
         request = self.context.get('request')
@@ -180,10 +190,11 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     course = CourseSerializer(read_only=True)
     user = serializers.SerializerMethodField()
     payment_proof = serializers.SerializerMethodField()
+    progress = serializers.SerializerMethodField()
 
     class Meta:
         model = Enrollment
-        fields = ['id', 'user', 'course', 'status', 'enrolled_at', 'activated_at', 'payment_proof']
+        fields = ['id', 'user', 'course', 'status', 'enrolled_at', 'activated_at', 'payment_proof', 'progress']
 
     def get_user(self, obj):
         from accounts.serializers import UserSerializer
@@ -200,6 +211,36 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             }
         except PaymentProof.DoesNotExist:
             return None
+
+    def get_progress(self, obj):
+        """Calcula o progresso do curso"""
+        if obj.status != 'active':
+            return None
+        
+        user = obj.user
+        course = obj.course
+        total_lessons = course.lessons.count()
+        
+        if total_lessons == 0:
+            return {
+                'completed_lessons': 0,
+                'total_lessons': 0,
+                'percentage': 0
+            }
+        
+        completed_lessons = Progress.objects.filter(
+            user=user,
+            lesson__course=course,
+            completed=True
+        ).count()
+        
+        percentage = round((completed_lessons / total_lessons) * 100, 1)
+        
+        return {
+            'completed_lessons': completed_lessons,
+            'total_lessons': total_lessons,
+            'percentage': percentage
+        }
 
 
 class PaymentProofSerializer(serializers.ModelSerializer):
@@ -233,24 +274,29 @@ class ProgressSerializer(serializers.ModelSerializer):
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
-        fields = ['id', 'choice_text', 'is_correct', 'order']
-        read_only_fields = ['is_correct']  # Admin can set, students can't see
+        fields = ['id', 'question', 'choice_text', 'is_correct', 'order']
 
     def to_representation(self, instance):
         """Esconder is_correct para alunos (não-admin)"""
         representation = super().to_representation(instance)
         request = self.context.get('request')
-        if request and not (request.user.is_staff or request.user.is_superuser):
-            representation.pop('is_correct', None)
+        # Só esconder se não for admin e se request existir
+        if request and hasattr(request, 'user'):
+            if not (request.user.is_staff or request.user.is_superuser):
+                representation.pop('is_correct', None)
         return representation
 
 
 class QuestionSerializer(serializers.ModelSerializer):
     choices = ChoiceSerializer(many=True, read_only=True)
+    course_id = serializers.IntegerField(source='course.id', read_only=True)
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    lesson_id = serializers.IntegerField(source='lesson.id', read_only=True)
+    lesson_title = serializers.CharField(source='lesson.title', read_only=True)
 
     class Meta:
         model = Question
-        fields = ['id', 'question_text', 'explanation', 'choices', 'order']
+        fields = ['id', 'course', 'course_id', 'course_title', 'lesson', 'lesson_id', 'lesson_title', 'question_text', 'explanation', 'choices', 'order', 'created_at', 'updated_at']
 
 
 class LessonQuizQuestionSerializer(serializers.ModelSerializer):

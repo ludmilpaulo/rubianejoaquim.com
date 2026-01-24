@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import login
 from .models import User
-from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
+from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserUpdateSerializer
 
 
 class RegisterView(generics.CreateAPIView):
@@ -17,6 +17,17 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Verificar se há código de referência
+        referral_code = request.data.get('referral_code')
+        if referral_code:
+            try:
+                referrer = User.objects.get(referral_code=referral_code)
+                user.referred_by = referrer
+                user.save()
+            except User.DoesNotExist:
+                pass  # Ignorar código inválido
+        
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             'user': UserSerializer(user).data,
@@ -44,3 +55,14 @@ def login_view(request):
 def me_view(request):
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    """Atualizar perfil do usuário"""
+    serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(UserSerializer(request.user).data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

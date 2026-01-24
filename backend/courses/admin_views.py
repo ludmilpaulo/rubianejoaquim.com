@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from django.utils import timezone
 from django.utils.text import slugify
+from .utils import send_enrollment_approval_email
 from .models import (
     Course, Lesson, Enrollment, PaymentProof, Progress, LessonAttachment,
     Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
@@ -271,6 +272,13 @@ class AdminEnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.activated_at = timezone.now()
         enrollment.save()
         
+        # Enviar email de aprovação
+        try:
+            send_enrollment_approval_email(enrollment)
+        except Exception as e:
+            # Não falhar a aprovação se o email falhar
+            print(f"Erro ao enviar email de aprovação: {e}")
+        
         serializer = self.get_serializer(enrollment)
         return Response(serializer.data)
     
@@ -346,6 +354,13 @@ class AdminPaymentProofViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.status = 'active'
         enrollment.activated_at = timezone.now()
         enrollment.save()
+        
+        # Enviar email de aprovação
+        try:
+            send_enrollment_approval_email(enrollment)
+        except Exception as e:
+            # Não falhar a aprovação se o email falhar
+            print(f"Erro ao enviar email de aprovação: {e}")
         
         serializer = self.get_serializer(proof)
         return Response(serializer.data)
@@ -452,6 +467,12 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
     serializer_class = QuestionSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_serializer_context(self):
+        """Garantir que o contexto da request está disponível"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def check_admin(self):
         if not (self.request.user.is_staff or self.request.user.is_superuser):
             return Response(
@@ -491,6 +512,12 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
     serializer_class = ChoiceSerializer
     permission_classes = [IsAuthenticated]
     
+    def get_serializer_context(self):
+        """Garantir que o contexto da request está disponível"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
     def check_admin(self):
         if not (self.request.user.is_staff or self.request.user.is_superuser):
             return Response(
@@ -515,7 +542,17 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
-        return super().create(request, *args, **kwargs)
+        try:
+            return super().create(request, *args, **kwargs)
+        except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            print(f"Erro ao criar choice: {e}")
+            print(error_trace)
+            return Response(
+                {'error': f'Erro ao criar choice: {str(e)}', 'details': error_trace},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     def update(self, request, *args, **kwargs):
         check = self.check_admin()

@@ -9,6 +9,8 @@ interface User {
   first_name?: string
   last_name?: string
   phone?: string
+  address?: string
+  referral_code?: string
   is_staff?: boolean
   is_superuser?: boolean
   is_admin?: boolean

@@ -91,6 +91,110 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Enrollment.objects.filter(user=self.request.user)
 
+    @action(detail=True, methods=['get'], url_path='quiz-results')
+    def quiz_results(self, request, pk=None):
+        """Obter todos os resultados de quiz de um curso e calcular a média"""
+        enrollment = self.get_object()
+        course = enrollment.course
+        user = request.user
+
+        # Buscar todos os quizzes do curso
+        lessons = course.lessons.all()
+        quiz_results = []
+        total_score = 0
+        total_quizzes = 0
+
+        for lesson in lessons:
+            try:
+                quiz = LessonQuiz.objects.get(lesson=lesson, is_active=True)
+                # Buscar resultado do quiz
+                result = QuizResult.objects.filter(user=user, quiz=quiz).first()
+                if result:
+                    quiz_results.append({
+                        'lesson_id': lesson.id,
+                        'lesson_title': lesson.title,
+                        'quiz_id': quiz.id,
+                        'quiz_title': quiz.title,
+                        'score': float(result.score),
+                        'passed': result.passed,
+                        'total_questions': result.total_questions,
+                        'correct_answers': result.correct_answers,
+                        'passing_score': quiz.passing_score,
+                        'completed_at': result.completed_at.isoformat() if result.completed_at else None,
+                    })
+                    total_score += float(result.score)
+                    total_quizzes += 1
+                else:
+                    # Quiz existe mas ainda não foi feito
+                    quiz_results.append({
+                        'lesson_id': lesson.id,
+                        'lesson_title': lesson.title,
+                        'quiz_id': quiz.id,
+                        'quiz_title': quiz.title,
+                        'score': None,
+                        'passed': False,
+                        'total_questions': quiz.questions.count(),
+                        'correct_answers': 0,
+                        'passing_score': quiz.passing_score,
+                        'completed_at': None,
+                    })
+            except LessonQuiz.DoesNotExist:
+                # Aula não tem quiz
+                pass
+
+        # Calcular média
+        average_score = (total_score / total_quizzes) if total_quizzes > 0 else 0
+        
+        # Determinar se passou (média >= 70% por padrão, ou pode ser configurável)
+        passing_average = 70  # Pode ser configurável no futuro
+        course_passed = average_score >= passing_average
+
+        return Response({
+            'course_id': course.id,
+            'course_title': course.title,
+            'quiz_results': quiz_results,
+            'total_quizzes': total_quizzes,
+            'completed_quizzes': len([r for r in quiz_results if r['score'] is not None]),
+            'average_score': round(average_score, 2),
+            'passing_average': passing_average,
+            'course_passed': course_passed,
+            'enrollment_status': enrollment.status,
+        })
+
+    @action(detail=True, methods=['post'], url_path='retake-course')
+    def retake_course(self, request, pk=None):
+        """Permitir refazer o curso (resetar progresso e resultados de quiz)"""
+        enrollment = self.get_object()
+        course = enrollment.course
+        user = request.user
+
+        # Resetar progresso das aulas
+        Progress.objects.filter(user=user, lesson__course=course).delete()
+        
+        # Resetar resultados de quiz
+        lessons = course.lessons.all()
+        for lesson in lessons:
+            try:
+                quiz = LessonQuiz.objects.get(lesson=lesson)
+                QuizResult.objects.filter(user=user, quiz=quiz).delete()
+                UserQuizAnswer.objects.filter(user=user, quiz=quiz).delete()
+            except LessonQuiz.DoesNotExist:
+                pass
+
+        # Resetar resultado do exame final se existir
+        try:
+            final_exam = course.final_exam
+            if final_exam:
+                ExamResult.objects.filter(user=user, exam=final_exam).delete()
+                UserExamAnswer.objects.filter(user=user, exam=final_exam).delete()
+        except FinalExam.DoesNotExist:
+            pass
+
+        return Response({
+            'message': 'Curso resetado com sucesso. Você pode começar novamente.',
+            'course_id': course.id,
+        })
+
     def create(self, request, *args, **kwargs):
         """Criar enrollment (inscrição)"""
         course_id = request.data.get('course_id')
@@ -177,6 +281,68 @@ class LessonQuizViewSet(viewsets.ReadOnlyModelViewSet):
         ).distinct()
         return LessonQuiz.objects.filter(lesson__in=lessons_with_access, is_active=True)
 
+    @action(detail=False, methods=['get'], url_path='by-lesson/(?P<lesson_id>[^/.]+)')
+    def by_lesson(self, request, lesson_id=None):
+        """Buscar quiz de uma lição específica"""
+        try:
+            lesson = Lesson.objects.get(id=lesson_id)
+            user = request.user
+            
+            # Verificar acesso
+            has_access = lesson.is_free
+            if not has_access:
+                has_access = Enrollment.objects.filter(
+                    user=user, course=lesson.course, status='active'
+                ).exists()
+            
+            if not has_access:
+                return Response(
+                    {'error': 'Não tem acesso a esta aula.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            try:
+                quiz = LessonQuiz.objects.get(lesson=lesson, is_active=True)
+                # Prefetch related para otimizar queries e garantir que choices sejam carregadas
+                quiz = LessonQuiz.objects.prefetch_related(
+                    'questions__question__choices'
+                ).get(id=quiz.id)
+                
+                # Verificar se já existe resultado anterior
+                previous_result = QuizResult.objects.filter(user=user, quiz=quiz).first()
+                
+                # Usar get_serializer para garantir que o contexto seja passado
+                serializer = self.get_serializer(quiz, context={'request': request})
+                data = serializer.data
+                
+                # Adicionar informações do resultado anterior se existir
+                if previous_result:
+                    data['previous_result'] = {
+                        'score': float(previous_result.score),
+                        'passed': previous_result.passed,
+                        'correct_answers': previous_result.correct_answers,
+                        'total_questions': previous_result.total_questions,
+                        'completed_at': previous_result.completed_at.isoformat() if previous_result.completed_at else None,
+                    }
+                
+                return Response(data)
+            except LessonQuiz.DoesNotExist:
+                # Verificar se existe quiz inativo para debug
+                inactive_quiz = LessonQuiz.objects.filter(lesson=lesson, is_active=False).first()
+                debug_info = {
+                    'message': 'Nenhum quiz ativo encontrado para esta aula',
+                    'lesson_id': lesson.id,
+                    'lesson_title': lesson.title,
+                    'has_inactive_quiz': inactive_quiz is not None,
+                    'inactive_quiz_id': inactive_quiz.id if inactive_quiz else None
+                }
+                return Response({'quiz': None, 'debug': debug_info})
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Aula não encontrada.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
     @action(detail=True, methods=['post'], url_path='submit')
     def submit_quiz(self, request, pk=None):
         """Submeter respostas do quiz"""
@@ -191,13 +357,12 @@ class LessonQuizViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Verificar se já existe resultado
+        # Se já existe resultado anterior, deletar para permitir refazer
         existing_result = QuizResult.objects.filter(user=user, quiz=quiz).first()
         if existing_result:
-            return Response(
-                {'error': 'Já completou este quiz.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            # Deletar respostas anteriores e resultado anterior
+            UserQuizAnswer.objects.filter(user=user, quiz=quiz).delete()
+            existing_result.delete()
 
         answers_data = request.data.get('answers', [])  # Lista de {question_id, choice_id}
 

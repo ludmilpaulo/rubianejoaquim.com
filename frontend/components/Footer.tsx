@@ -16,7 +16,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-5">
             <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-              Rubiane Joaquim Educação Financeira
+              Educação Financeira
             </h3>
             <p className="text-slate-400 text-[15px] leading-relaxed max-w-sm">
               Transforme a sua relação com o dinheiro através de cursos e mentoria personalizada.

@@ -8,11 +8,25 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'phone', 'date_joined', 'is_staff', 'is_superuser', 'is_admin']
-        read_only_fields = ['id', 'date_joined', 'is_staff', 'is_superuser']
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address', 'referral_code', 'date_joined', 'is_staff', 'is_superuser', 'is_admin']
+        read_only_fields = ['id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code']
     
     def get_is_admin(self, obj):
         return obj.is_staff or obj.is_superuser
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer para atualização de perfil do usuário"""
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'phone', 'address', 'email']
+    
+    def validate_email(self, value):
+        """Verificar se o email não está em uso por outro usuário"""
+        user = self.instance
+        if User.objects.filter(email=value).exclude(pk=user.pk).exists():
+            raise serializers.ValidationError("Este email já está em uso.")
+        return value
 
 
 class RegisterSerializer(serializers.ModelSerializer):

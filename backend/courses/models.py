@@ -154,6 +154,8 @@ class Progress(models.Model):
 
 class Question(models.Model):
     """Pergunta de múltipla escolha"""
+    course = models.ForeignKey(Course, related_name='questions', on_delete=models.CASCADE, null=True, blank=True, help_text="Curso associado (opcional)")
+    lesson = models.ForeignKey(Lesson, related_name='questions', on_delete=models.CASCADE, null=True, blank=True, help_text="Aula associada (opcional)")
     question_text = models.TextField(help_text="Texto da pergunta")
     explanation = models.TextField(blank=True, help_text="Explicação da resposta correta")
     order = models.IntegerField(default=0, help_text="Ordem da pergunta")

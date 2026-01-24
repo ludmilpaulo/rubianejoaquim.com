@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { coursesApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { formatCurrency } from '@/lib/utils/currency'
 
 interface Lesson {
   id: number
@@ -131,7 +132,7 @@ export default function CursoDetailPage() {
           <div className="bg-white border border-gray-200 rounded-lg p-6 sticky top-20">
             <div className="mb-6">
               <div className="text-3xl font-bold text-primary-600 mb-2">
-                {parseFloat(course.price).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                {formatCurrency(course.price)}
               </div>
               <p className="text-gray-600">{course.lessons.length} aulas</p>
             </div>

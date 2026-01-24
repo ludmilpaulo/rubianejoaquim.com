@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao Curso!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            color: #4a4a4a;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .course-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            border-left: 4px solid #667eea;
+        }
+        .course-card h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 10px;
+        }
+        .course-card p {
+            font-size: 15px;
+            color: #555555;
+            line-height: 1.6;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            margin: 30px 0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        .mobile-app-section {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 2px solid #e9ecef;
+        }
+        .mobile-app-section h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .mobile-app-section p {
+            font-size: 15px;
+            color: #555555;
+            margin-bottom: 15px;
+            line-height: 1.7;
+        }
+        .app-badges {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .app-badge {
+            background-color: #000000;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .features {
+            margin: 30px 0;
+        }
+        .features h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            gap: 12px;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .feature-text {
+            flex: 1;
+            font-size: 15px;
+            color: #4a4a4a;
+            line-height: 1.6;
+        }
+        .footer {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            padding: 30px;
+            text-align: center;
+        }
+        .footer p {
+            font-size: 14px;
+            color: #cccccc;
+            margin-bottom: 10px;
+        }
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+            margin: 30px 0;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 25px 20px;
+            }
+            .header {
+                padding: 30px 20px;
+            }
+            .header h1 {
+                font-size: 24px;
+            }
+            .cta-button {
+                display: block;
+                width: 100%;
+            }
+            .app-badges {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎉 Parabéns!</h1>
+            <p>Sua inscrição foi aprovada com sucesso</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                Olá, {{ user_name }}!
+            </div>
+
+            <div class="message">
+                É com grande alegria que informamos que sua inscrição foi <strong>aprovada</strong> e você já tem acesso completo ao curso!
+            </div>
+
+            <!-- Course Card -->
+            <div class="course-card">
+                <h2>{{ course_title }}</h2>
+                <p>{{ course_description }}</p>
+            </div>
+
+            <!-- CTA Button -->
+            <div style="text-align: center;">
+                <a href="{{ area_do_aluno_url }}" class="cta-button">
+                    Acessar Área do Aluno →
+                </a>
+            </div>
+
+            <!-- Features -->
+            <div class="features">
+                <h3>O que você pode fazer agora:</h3>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">
+                        <strong>Acessar todas as aulas</strong> do curso e aprender no seu próprio ritmo
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">
+                        <strong>Baixar materiais exclusivos</strong> incluindo PDFs, vídeos e recursos complementares
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">
+                        <strong>Fazer quizzes e exames</strong> para testar seu conhecimento e acompanhar seu progresso
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">✓</div>
+                    <div class="feature-text">
+                        <strong>Obter certificado</strong> ao concluir o curso com sucesso
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Mobile App Section -->
+            <div class="mobile-app-section">
+                <h3>
+                    📱 Aprenda em qualquer lugar com o App Zenda
+                </h3>
+                <p>
+                    {{ mobile_app_info }}
+                </p>
+                <p>
+                    Com o aplicativo Zenda, você pode:
+                </p>
+                <ul style="list-style: none; padding: 0; margin: 15px 0;">
+                    <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                        <span style="position: absolute; left: 0;">📚</span>
+                        Assistir aulas e acessar conteúdo offline
+                    </li>
+                    <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                        <span style="position: absolute; left: 0;">📊</span>
+                        Acompanhar seu progresso e estatísticas
+                    </li>
+                    <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                        <span style="position: absolute; left: 0;">🎯</span>
+                        Gerenciar suas finanças pessoais e de negócios
+                    </li>
+                    <li style="margin-bottom: 10px; padding-left: 25px; position: relative;">
+                        <span style="position: absolute; left: 0;">🤖</span>
+                        Usar o assistente financeiro inteligente
+                    </li>
+                </ul>
+                <div class="app-badges">
+                    <div class="app-badge">
+                        📱 iOS
+                    </div>
+                    <div class="app-badge">
+                        🤖 Android
+                    </div>
+                </div>
+            </div>
+
+            <div class="message" style="margin-top: 30px; padding: 20px; background-color: #f0f7ff; border-radius: 8px; border-left: 4px solid #667eea;">
+                <strong>💡 Dica:</strong> Comece hoje mesmo! Acesse sua área do aluno e assista à primeira aula. Cada passo que você dá é um passo em direção à sua independência financeira.
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><strong>Rubiane Joaquim Educação Financeira</strong></p>
+            <p>Transformando vidas através da educação financeira</p>
+            <p style="margin-top: 20px;">
+                <a href="{{ area_do_aluno_url }}">Acessar Área do Aluno</a> | 
+                <a href="mailto:suporte@rubianejoaquim.com">Suporte</a>
+            </p>
+            <p style="margin-top: 20px; font-size: 12px; color: #888888;">
+                Este é um email automático. Por favor, não responda diretamente.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

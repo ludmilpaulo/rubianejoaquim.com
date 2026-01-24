@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import { adminApi } from '@/lib/api'
 import Link from 'next/link'
+import { formatCurrency } from '@/lib/utils/currency'
 
 interface Course {
   id: number
@@ -144,7 +145,7 @@ export default function AdminCoursesPage() {
                       <div className="text-sm text-gray-500">{course.short_description || course.description.substring(0, 50)}...</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {parseFloat(course.price).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                      {formatCurrency(course.price)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
