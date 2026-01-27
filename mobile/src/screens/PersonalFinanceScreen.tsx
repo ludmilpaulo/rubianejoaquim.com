@@ -67,7 +67,7 @@ interface Category {
 }
 
 export default function PersonalFinanceScreen() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>('overview')
+  const [activeTab, setActiveTab] = useState<'principios' | 'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>('principios')
   const [refreshing, setRefreshing] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -109,6 +109,11 @@ export default function PersonalFinanceScreen() {
   })
   const [goalForm, setGoalForm] = useState({ title: '', description: '', target_amount: '', target_date: null as Date | null, current_amount: '0' })
   const [debtForm, setDebtForm] = useState({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null as Date | null, description: '' })
+
+  // Princípios calculators
+  const [principiosIncome, setPrincipiosIncome] = useState('')
+  const [principiosQuantoTenho, setPrincipiosQuantoTenho] = useState('')
+  const [principiosQuantoGastar, setPrincipiosQuantoGastar] = useState('')
 
   useEffect(() => {
     loadData()
@@ -423,7 +428,7 @@ export default function PersonalFinanceScreen() {
                 <Text variant="titleMedium" style={styles.principleCardTitle}>Divisão do 100%</Text>
               </View>
               <Text variant="bodySmall" style={styles.principleSubtitle}>
-                Divida o seu rendimento mensal desta forma:
+                Deve ter estes valores disponíveis no seu rendimento mensal:
               </Text>
               <View style={styles.divisionRow}>
                 <View style={[styles.divisionBar, styles.divisionBar50]}>
@@ -453,7 +458,7 @@ export default function PersonalFinanceScreen() {
                 <Text variant="titleMedium" style={styles.principleCardTitle}>Regra dos 3x</Text>
               </View>
               <Text variant="bodyMedium" style={styles.principleText}>
-                Antes de gastar — por exemplo, ao sair com amigos — tenha em mente: <Text variant="bodyMedium" style={styles.principleHighlight}>tem de ter 3 vezes o valor que vai gastar</Text>. Ou seja, se vai gastar 100, tenha 300 disponível. Assim protege as suas finanças e evita apertos.
+                Antes de gastar — por exemplo, ao sair com amigos — <Text variant="bodyMedium" style={styles.principleHighlight}>tem de ter 3 vezes o valor que vai gastar disponível</Text>. Ou seja, se vai gastar 100 KZ, precisa de ter 300 KZ disponível. Assim protege as suas finanças e evita apertos.
               </Text>
             </Card.Content>
           </Card>
@@ -480,6 +485,7 @@ export default function PersonalFinanceScreen() {
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
             {[
+              { key: 'principios', label: 'Princípios', icon: 'lightbulb-on' },
               { key: 'overview', label: 'Visão Geral', icon: 'view-dashboard' },
               { key: 'expenses', label: 'Despesas', icon: 'cash-minus' },
               { key: 'budgets', label: 'Orçamentos', icon: 'wallet' },
@@ -505,6 +511,110 @@ export default function PersonalFinanceScreen() {
         </View>
 
         {/* Content based on active tab */}
+        {activeTab === 'principios' && (
+          <View style={styles.content}>
+            <View style={styles.principlesContainer}>
+              <Text variant="titleMedium" style={styles.principlesTitle}>Princípios da Educação Financeira</Text>
+
+              {/* Divisão do 100% - 50/30/20 + calculadora (KZ) */}
+              <Card style={styles.principleCard}>
+                <Card.Content>
+                  <View style={styles.principleHeader}>
+                    <MaterialCommunityIcons name="chart-pie" size={28} color="#6366f1" />
+                    <Text variant="titleMedium" style={styles.principleCardTitle}>Divisão do 100%</Text>
+                  </View>
+                  <Text variant="bodySmall" style={styles.principleSubtitle}>
+                    Divida o seu rendimento mensal desta forma:
+                  </Text>
+                  <View style={styles.divisionRow}>
+                    <View style={[styles.divisionBar, styles.divisionBar50]}>
+                      <Text variant="labelLarge" style={styles.divisionBarText}>50%</Text>
+                      <Text variant="bodySmall" style={styles.divisionLabel}>Despesas fixas</Text>
+                      <Text variant="bodySmall" style={styles.divisionHint}>(casa, transportes, contas)</Text>
+                    </View>
+                    <View style={[styles.divisionBar, styles.divisionBar30]}>
+                      <Text variant="labelLarge" style={styles.divisionBarText}>30%</Text>
+                      <Text variant="bodySmall" style={styles.divisionLabel}>Desejos</Text>
+                      <Text variant="bodySmall" style={styles.divisionHint}>(lazer, jantares, extras)</Text>
+                    </View>
+                    <View style={[styles.divisionBar, styles.divisionBar20]}>
+                      <Text variant="labelLarge" style={styles.divisionBarText}>20%</Text>
+                      <Text variant="bodySmall" style={styles.divisionLabel}>Economizar</Text>
+                      <Text variant="bodySmall" style={styles.divisionHint}>(poupança, objetivos)</Text>
+                    </View>
+                  </View>
+                  <View style={styles.calculatorBlock}>
+                    <Text variant="labelMedium" style={styles.calculatorLabel}>Valor disponível por regra (KZ)</Text>
+                    <Text variant="bodySmall" style={styles.principleSubtitle}>Introduza o seu rendimento mensal para ver quanto deve ter disponível em cada parte:</Text>
+                    <TextInput
+                      mode="outlined"
+                      label="Rendimento mensal (KZ)"
+                      value={principiosIncome}
+                      onChangeText={setPrincipiosIncome}
+                      keyboardType="decimal-pad"
+                      style={styles.calculatorInput}
+                    />
+                    {principiosIncome !== '' && parseFloat(principiosIncome.replace(',', '.')) > 0 && (
+                      <View style={styles.calculatorResults}>
+                        <Text variant="bodySmall">Valor disponível para despesas fixas (50%): <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(principiosIncome.replace(',', '.')) * 0.5)}</Text></Text>
+                        <Text variant="bodySmall">Valor disponível para desejos (30%): <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(principiosIncome.replace(',', '.')) * 0.3)}</Text></Text>
+                        <Text variant="bodySmall">Valor disponível para economizar (20%): <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(principiosIncome.replace(',', '.')) * 0.2)}</Text></Text>
+                      </View>
+                    )}
+                  </View>
+                </Card.Content>
+              </Card>
+
+              {/* Regra dos 3x + calculadora (KZ) */}
+              <Card style={[styles.principleCard, { borderLeftColor: '#10b981' }]}>
+                <Card.Content>
+                  <View style={styles.principleHeader}>
+                    <MaterialCommunityIcons name="shield-check" size={28} color="#10b981" />
+                    <Text variant="titleMedium" style={styles.principleCardTitle}>Regra dos 3x</Text>
+                  </View>
+                  <Text variant="bodyMedium" style={styles.principleText}>
+                    Antes de gastar — por exemplo, ao sair com amigos — <Text variant="bodyMedium" style={styles.principleHighlight}>tem de ter 3 vezes o valor que vai gastar disponível</Text>. Ou seja, se vai gastar 100 KZ, precisa de ter 300 KZ disponível. Assim protege as suas finanças e evita apertos.
+                  </Text>
+                  <View style={styles.calculatorBlock}>
+                    <Text variant="labelMedium" style={styles.calculatorLabel}>Quanto posso gastar? (conforme o valor disponível)</Text>
+                    <Text variant="bodySmall" style={styles.principleSubtitle}>Introduza quanto tem disponível — só pode gastar até 1/3:</Text>
+                    <TextInput
+                      mode="outlined"
+                      label="Valor que tenho disponível (KZ)"
+                      value={principiosQuantoTenho}
+                      onChangeText={setPrincipiosQuantoTenho}
+                      keyboardType="decimal-pad"
+                      style={styles.calculatorInput}
+                    />
+                    {principiosQuantoTenho !== '' && parseFloat(principiosQuantoTenho.replace(',', '.')) > 0 && (
+                      <Text variant="bodyMedium" style={styles.principleHighlight}>
+                        Conforme a regra, pode gastar até {formatCurrency(parseFloat(principiosQuantoTenho.replace(',', '.')) / 3)} (1/3 do que tem disponível)
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.calculatorBlock}>
+                    <Text variant="labelMedium" style={styles.calculatorLabel}>Quanto preciso ter disponível? (conforme a regra dos 3x)</Text>
+                    <Text variant="bodySmall" style={styles.principleSubtitle}>Introduza quanto vai gastar — precisa de ter 3× esse valor disponível:</Text>
+                    <TextInput
+                      mode="outlined"
+                      label="Vou gastar (KZ)"
+                      value={principiosQuantoGastar}
+                      onChangeText={setPrincipiosQuantoGastar}
+                      keyboardType="decimal-pad"
+                      style={styles.calculatorInput}
+                    />
+                    {principiosQuantoGastar !== '' && parseFloat(principiosQuantoGastar.replace(',', '.')) > 0 && (
+                      <Text variant="bodyMedium" style={styles.principleHighlight}>
+                        Precisa de ter {formatCurrency(parseFloat(principiosQuantoGastar.replace(',', '.')) * 3)} disponível (3× o valor que vai gastar)
+                      </Text>
+                    )}
+                  </View>
+                </Card.Content>
+              </Card>
+            </View>
+          </View>
+        )}
+
         {activeTab === 'overview' && (
           <View style={styles.content}>
             {/* Chart */}
@@ -790,16 +900,18 @@ export default function PersonalFinanceScreen() {
       </ScrollView>
 
       {/* FAB */}
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        onPress={() => {
-          if (activeTab === 'expenses') setShowExpenseModal(true)
-          else if (activeTab === 'budgets') setShowBudgetModal(true)
-          else if (activeTab === 'goals') setShowGoalModal(true)
-          else if (activeTab === 'debts') setShowDebtModal(true)
-        }}
-      />
+      {activeTab !== 'principios' && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={() => {
+            if (activeTab === 'expenses') setShowExpenseModal(true)
+            else if (activeTab === 'budgets') setShowBudgetModal(true)
+            else if (activeTab === 'goals') setShowGoalModal(true)
+            else if (activeTab === 'debts') setShowDebtModal(true)
+          }}
+        />
+      )}
 
       {/* Expense Modal */}
       <Portal>
@@ -1383,6 +1495,29 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 11,
     marginTop: 2,
+  },
+  calculatorBlock: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  calculatorLabel: {
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  calculatorInput: {
+    marginTop: 4,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  calculatorResults: {
+    marginTop: 8,
+    gap: 4,
+  },
+  resultAmount: {
+    fontWeight: '700',
+    color: '#10b981',
   },
   summaryCard: {
     margin: 16,
