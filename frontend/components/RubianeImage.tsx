@@ -25,7 +25,7 @@ export default function RubianeImage() {
     <>
       <Image
         src="/images/Rubiane.jpeg"
-        alt="Rubiane Joaquim - Especialista em Educação Financeira"
+        alt="Rubiane Joaquim — Especialista em Educação Financeira. Cursos e mentoria para todos os países e pessoas de língua portuguesa."
         fill
         className="object-cover object-center"
         priority

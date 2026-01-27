@@ -2,14 +2,49 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import RubianeImage from '@/components/RubianeImage'
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.rubianejoaquim.com'
+
 export const metadata: Metadata = {
-  title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim',
-  description: 'Cursos e mentoria em educação financeira com Rubiane Joaquim. Aprenda a poupar, investir e alcançar liberdade financeira. Formação em Portugal.',
+  title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim Educação Financeira',
+  description: 'Rubiane Joaquim — educação financeira para todos os países e pessoas de língua portuguesa. Cursos online e mentoria para poupar, investir e liberdade financeira. Portugal, Brasil, Angola, Moçambique e lusófonos.',
+  openGraph: {
+    title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim',
+    description: 'Cursos e mentoria em educação financeira para todos os países de língua portuguesa. Aprenda a poupar, investir e alcançar liberdade financeira com Rubiane Joaquim.',
+    url: '/',
+    siteName: 'Rubiane Joaquim Educação Financeira',
+    images: [{ url: '/images/Rubiane.jpeg', width: 1200, height: 630, alt: 'Rubiane Joaquim — Especialista em Educação Financeira para todos os países de língua portuguesa' }],
+    locale: 'pt_PT',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Transforme a sua relação com o dinheiro | Rubiane Joaquim',
+    description: 'Cursos e mentoria em educação financeira para todos os países e pessoas de língua portuguesa. Poupar, investir, liberdade financeira.',
+    images: ['/images/Rubiane.jpeg'],
+  },
+  alternates: { canonical: '/' },
+}
+
+const webPageSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Rubiane Joaquim | Educação Financeira — Cursos e Mentoria para Todos os Países de Língua Portuguesa',
+  description: 'Cursos e mentoria em educação financeira para todos os países e pessoas de língua portuguesa. Com Rubiane Joaquim — poupar, investir e liberdade financeira.',
+  url: SITE_URL,
+  image: `${SITE_URL}/images/Rubiane.jpeg`,
+  inLanguage: 'pt',
+  isPartOf: { '@id': `${SITE_URL}/#website` },
+  about: { '@id': `${SITE_URL}/#organization` },
+  primaryImageOfPage: { '@type': 'ImageObject', url: `${SITE_URL}/images/Rubiane.jpeg` },
 }
 
 export default function Home() {
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webPageSchema) }}
+      />
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary-50 via-white to-primary-50/30 py-24 md:py-32 overflow-hidden">
         <div className="absolute inset-0 bg-grid-pattern"></div>
