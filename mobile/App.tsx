@@ -3,6 +3,7 @@ import { Provider } from 'react-redux'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
 import { PaperProvider } from 'react-native-paper'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { store } from './src/store'
 import { checkAuth } from './src/store/authSlice'
 import { useAppDispatch, useAppSelector } from './src/hooks/redux'
@@ -23,12 +24,14 @@ function AppContent() {
   }
 
   return (
-    <PaperProvider>
-      <NavigationContainer>
-        {user && hasPaidAccess ? <MainNavigator /> : <AuthNavigator />}
-        <StatusBar style="auto" />
-      </NavigationContainer>
-    </PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider>
+        <NavigationContainer>
+          {user && hasPaidAccess ? <MainNavigator /> : <AuthNavigator />}
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </PaperProvider>
+    </SafeAreaProvider>
   )
 }
 

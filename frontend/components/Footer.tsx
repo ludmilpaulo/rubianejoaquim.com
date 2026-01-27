@@ -113,7 +113,13 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-slate-500 text-sm">
-            &copy; {new Date().getFullYear()} Rubiane Joaquim Educação Financeira. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} Rubiane Joaquim Educação Financeira.{' '}
+            <Link
+              href="/legal"
+              className="text-slate-400 hover:text-white transition-colors duration-200 underline underline-offset-2 decoration-slate-600 hover:decoration-primary-400"
+            >
+              Todos os direitos reservados.
+            </Link>
           </p>
         </div>
       </div>

@@ -20,7 +20,30 @@ export const login = createAsyncThunk(
       await AsyncStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Erro ao fazer login')
+      // Extract specific error message from response
+      let errorMessage = 'Erro ao fazer login'
+      
+      if (error.response?.data) {
+        if (error.response.data.email) {
+          errorMessage = Array.isArray(error.response.data.email) 
+            ? error.response.data.email[0] 
+            : error.response.data.email
+        } else if (error.response.data.password) {
+          errorMessage = Array.isArray(error.response.data.password) 
+            ? error.response.data.password[0] 
+            : error.response.data.password
+        } else if (error.response.data.non_field_errors) {
+          errorMessage = Array.isArray(error.response.data.non_field_errors) 
+            ? error.response.data.non_field_errors[0] 
+            : error.response.data.non_field_errors
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      return rejectWithValue(errorMessage)
     }
   }
 )
@@ -49,6 +72,11 @@ export const checkPaidAccess = createAsyncThunk('auth/checkPaidAccess', async ()
 export const logout = createAsyncThunk('auth/logout', async () => {
   await AsyncStorage.removeItem('token')
   await AsyncStorage.removeItem('user')
+  
+  // Optionally clear biometric credentials on logout (uncomment if desired)
+  // import { clearBiometricCredentials } from '../utils/biometric'
+  // await clearBiometricCredentials()
+  
   return null
 })
 

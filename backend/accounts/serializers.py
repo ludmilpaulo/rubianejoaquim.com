@@ -59,28 +59,36 @@ class LoginSerializer(serializers.Serializer):
         if email_or_username and password:
             from .models import User
             user = None
+            user_exists = False
             
-            # First, try to authenticate directly (works if email_or_username is an email)
-            # Since USERNAME_FIELD is 'email', authenticate expects email as username
-            user = authenticate(username=email_or_username, password=password)
-            
-            # If that doesn't work, it might be a username - find user and authenticate with their email
-            if not user:
+            # Check if user exists first
+            try:
+                user_obj = User.objects.get(username=email_or_username)
+                user_exists = True
+                # Authenticate using the user's email (which is the USERNAME_FIELD)
+                user = authenticate(username=user_obj.email, password=password)
+            except User.DoesNotExist:
+                # Try as email (case-insensitive)
                 try:
-                    # Check if it's a username
-                    user_obj = User.objects.get(username=email_or_username)
-                    # Authenticate using the user's email (which is the USERNAME_FIELD)
+                    user_obj = User.objects.get(email__iexact=email_or_username)
+                    user_exists = True
                     user = authenticate(username=user_obj.email, password=password)
                 except User.DoesNotExist:
-                    # Try as email (case-insensitive)
-                    try:
-                        user_obj = User.objects.get(email__iexact=email_or_username)
-                        user = authenticate(username=user_obj.email, password=password)
-                    except User.DoesNotExist:
-                        pass
+                    # User doesn't exist
+                    user_exists = False
             
-            if not user:
-                raise serializers.ValidationError('Credenciais inválidas.')
+            # If user doesn't exist, raise specific error
+            if not user_exists:
+                raise serializers.ValidationError({
+                    'email': ['Utilizador não encontrado. Verifique o email ou username.']
+                })
+            
+            # If user exists but password is wrong
+            if user_exists and not user:
+                raise serializers.ValidationError({
+                    'password': ['Palavra-passe incorreta. Tente novamente.']
+                })
+            
             if not user.is_active:
                 raise serializers.ValidationError('Conta desativada.')
             attrs['user'] = user

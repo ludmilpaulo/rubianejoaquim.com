@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, StyleSheet, ScrollView } from 'react-native'
 import { Text, Card, Button, List } from 'react-native-paper'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { logout } from '../store/authSlice'
 
@@ -13,7 +14,8 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container}>
       <Card style={styles.profileCard}>
         <Card.Content>
           <View style={styles.profileHeader}>
@@ -65,10 +67,15 @@ export default function ProfileScreen() {
         </Button>
       </View>
     </ScrollView>
+    </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

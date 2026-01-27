@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import login
+from django.views.decorators.csrf import csrf_exempt
 from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserUpdateSerializer
 
@@ -37,12 +38,14 @@ class RegisterView(generics.CreateAPIView):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@csrf_exempt
 def login_view(request):
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        login(request, user)
+        # Don't call login() for API token auth - it triggers CSRF checks
+        # login(request, user)
         return Response({
             'user': UserSerializer(user).data,
             'token': token.key

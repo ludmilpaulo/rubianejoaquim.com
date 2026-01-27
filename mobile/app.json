@@ -14,7 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rubianejoaquim.zenda"
+      "bundleIdentifier": "com.rubianejoaquim.zenda",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +35,11 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eed2db02-a05b-4292-9a7c-777b198b7b6e"
+      }
+    }
   }
 }

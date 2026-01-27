@@ -11,6 +11,9 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/course/', include('courses.urls')),
     path('api/mentorship/', include('mentorship.urls')),
+    path('api/finance/', include('finance.urls')),
+    path('api/tasks/', include('tasks.urls')),
+    path('api/ai-copilot/', include('ai_copilot.urls')),
 ]
 
 if settings.DEBUG:

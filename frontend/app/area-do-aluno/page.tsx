@@ -78,27 +78,87 @@ export default function AreaDoAlunoPage() {
   const [savingProfile, setSavingProfile] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !authUser) {
-      router.push('/login')
-      return
+    // Only run on client side
+    if (typeof window === 'undefined') return
+
+    const initializeData = async () => {
+      // Se não está carregando e não há usuário, redirecionar
+      if (!isLoading && !authUser) {
+        router.push('/login')
+        return
+      }
+      
+      // Se há usuário, verificar autenticação e carregar dados
+      if (authUser && !isLoading) {
+        try {
+          // Verificar autenticação primeiro
+          await checkAuth()
+          // Aguardar um pouco para o estado atualizar
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Carregar dados apenas se ainda houver usuário autenticado
+          const { user: currentUser } = useAuthStore.getState()
+          if (currentUser) {
+            await Promise.all([
+              fetchData(),
+              fetchUserProfile()
+            ])
+          } else {
+            router.push('/login')
+          }
+        } catch (error) {
+          console.error('Erro ao inicializar:', error)
+          router.push('/login')
+        }
+      }
     }
-    if (authUser) {
-      checkAuth()
-      fetchData()
-      fetchUserProfile()
-    }
+    initializeData()
   }, [authUser, isLoading, router, checkAuth])
 
   const fetchData = async () => {
+    // Only fetch if user is authenticated
+    if (!authUser) {
+      console.log('Usuário não autenticado, pulando fetchData')
+      setLoading(false)
+      return
+    }
+
     try {
+      console.log('Buscando dados do aluno...')
       const [enrollmentsRes, mentorshipRes] = await Promise.all([
         coursesApi.myEnrollments(),
         mentorshipApi.myRequests(),
       ])
+      console.log('Dados recebidos:', { enrollmentsRes, mentorshipRes })
       setEnrollments(enrollmentsRes.data.results || enrollmentsRes.data || [])
       setMentorshipRequests(mentorshipRes.data.results || mentorshipRes.data || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao carregar dados:', error)
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        }
+      })
+      
+      // Se for erro 401, o interceptor já vai redirecionar
+      if (error.response?.status === 401) {
+        // Token inválido - já será redirecionado pelo interceptor
+        return
+      }
+      
+      // Network Error - backend might not be reachable
+      if (error.code === 'ECONNREFUSED' || error.message === 'Network Error' || !error.response) {
+        console.error('Erro de conexão: Backend não está acessível')
+        // Don't redirect, just show empty state
+        setEnrollments([])
+        setMentorshipRequests([])
+      }
     } finally {
       setLoading(false)
     }
