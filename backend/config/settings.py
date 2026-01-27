@@ -23,7 +23,11 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 if DEBUG:
     ALLOWED_HOSTS = ['*']  # Allow all hosts in development
 else:
-    ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,192.168.1.139,0.0.0.0', cast=lambda v: [s.strip() for s in v.split(',')])
+    ALLOWED_HOSTS = config(
+        'ALLOWED_HOSTS',
+        default='ludmilpaulo.pythonanywhere.com,localhost,127.0.0.1',
+        cast=lambda v: [s.strip() for s in v.split(',')]
+    )
 
 
 # Application definition
@@ -41,6 +45,9 @@ INSTALLED_APPS = [
     'courses',
     'mentorship',
     'accounts',
+    'finance',
+    'tasks',
+    'ai_copilot',
 ]
 
 MIDDLEWARE = [
@@ -173,5 +180,9 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Rubiane Joaquim <noreply@rubianejoaquim.com>')
 
-# Frontend URL for email links
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
+# Frontend URL for email links (production: https://www.rubianejoaquim.com)
+FRONTEND_URL = config('FRONTEND_URL', default='https://www.rubianejoaquim.com')
+
+# OpenAI Configuration
+OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
+OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')

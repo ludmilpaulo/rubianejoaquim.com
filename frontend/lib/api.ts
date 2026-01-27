@@ -1,23 +1,66 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://ludmilpaulo.pythonanywhere.com/api'
+    : 'http://localhost:8000/api')
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 })
 
 // Interceptor para adicionar token
 api.interceptors.request.use((config) => {
-  const token = Cookies.get('token')
-  if (token) {
-    config.headers.Authorization = `Token ${token}`
+  // Only add token if we're in the browser (not SSR)
+  if (typeof window !== 'undefined') {
+    const token = Cookies.get('token')
+    if (token) {
+      config.headers.Authorization = `Token ${token}`
+    }
   }
   return config
+}, (error) => {
+  return Promise.reject(error)
 })
+
+// Interceptor para lidar com erros 401 (não autorizado) e erros de rede
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network Error:', {
+        message: error.message,
+        code: error.code,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        }
+      })
+      // Don't redirect on network errors, let the component handle it
+      return Promise.reject(error)
+    }
+
+    if (error.response?.status === 401) {
+      // Token inválido ou expirado - limpar autenticação
+      if (typeof window !== 'undefined') {
+        Cookies.remove('token')
+        // Redirecionar para login apenas se estiver no cliente
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default api
 

@@ -15,6 +15,11 @@ backend/media/
 backend/staticfiles/
 backend/.env
 
+# Frontend env (secrets)
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
 # IDE
 .idea/
 .vscode/

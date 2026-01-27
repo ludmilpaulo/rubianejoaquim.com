@@ -12,11 +12,12 @@ const DEV_IP = '192.168.1.139' // Update this if your IP changes
 const getApiBaseUrl = () => {
   if (__DEV__) {
     if (Platform.OS === 'ios') {
-      // Try to detect simulator (not perfect, but works in most cases)
-      // iOS Simulator can use localhost
+      // iOS Simulator should use localhost
       // Physical iOS devices need the network IP
-      // For now, default to network IP (works for both, but slower on simulator)
-      return `http://${DEV_IP}:8000/api`
+      // Check if running on simulator by checking if we can use localhost
+      // For simulator, use localhost; for physical device, use network IP
+      // Default to localhost for iOS (works for simulator, change to DEV_IP for physical device)
+      return 'http://localhost:8000/api'
     } else if (Platform.OS === 'android') {
       // Android Emulator uses 10.0.2.2 to access host machine's localhost
       // Physical Android devices use the network IP
@@ -26,12 +27,13 @@ const getApiBaseUrl = () => {
     }
     return `http://${DEV_IP}:8000/api`
   }
-  return 'https://rubianejoaquim.com/api'
+  return 'https://ludmilpaulo.pythonanywhere.com/api'
 }
 
 const API_BASE_URL = getApiBaseUrl()
-
-console.log('API Base URL:', API_BASE_URL) // Debug log
+if (__DEV__) {
+  console.log('API Base URL:', API_BASE_URL)
+}
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -165,10 +167,42 @@ export const accessApi = {
   },
 }
 
-// Personal Finance API (to be implemented in backend)
+// Personal Finance API
 export const personalFinanceApi = {
-  getExpenses: async () => {
-    const response = await api.get('/finance/personal/expenses/')
+  // Categories
+  getCategories: async (isPersonal?: boolean) => {
+    const params = isPersonal !== undefined ? { is_personal: isPersonal } : {}
+    const response = await api.get('/finance/categories/', { params })
+    return response.data
+  },
+  
+  createCategory: async (data: any) => {
+    const response = await api.post('/finance/categories/', data)
+    return response.data
+  },
+  
+  updateCategory: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/categories/${id}/`, data)
+    return response.data
+  },
+  
+  deleteCategory: async (id: number) => {
+    const response = await api.delete(`/finance/categories/${id}/`)
+    return response.data
+  },
+  
+  // Expenses
+  getExpenses: async (month?: number, year?: number, category?: number) => {
+    const params: any = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    if (category) params.category = category
+    const response = await api.get('/finance/personal/expenses/', { params })
+    return response.data
+  },
+  
+  getExpense: async (id: number) => {
+    const response = await api.get(`/finance/personal/expenses/${id}/`)
     return response.data
   },
   
@@ -177,36 +211,294 @@ export const personalFinanceApi = {
     return response.data
   },
   
-  getBudgets: async () => {
-    const response = await api.get('/finance/personal/budgets/')
+  updateExpense: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/personal/expenses/${id}/`, data)
     return response.data
   },
   
-  getGoals: async () => {
-    const response = await api.get('/finance/personal/goals/')
+  deleteExpense: async (id: number) => {
+    const response = await api.delete(`/finance/personal/expenses/${id}/`)
+    return response.data
+  },
+  
+  getExpensesSummary: async () => {
+    const response = await api.get('/finance/personal/expenses/summary/')
+    return response.data
+  },
+  
+  // Budgets
+  getBudgets: async (month?: number, year?: number) => {
+    const params: any = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.get('/finance/personal/budgets/', { params })
+    return response.data
+  },
+  
+  getBudget: async (id: number) => {
+    const response = await api.get(`/finance/personal/budgets/${id}/`)
+    return response.data
+  },
+  
+  createBudget: async (data: any) => {
+    const response = await api.post('/finance/personal/budgets/', data)
+    return response.data
+  },
+  
+  updateBudget: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/personal/budgets/${id}/`, data)
+    return response.data
+  },
+  
+  deleteBudget: async (id: number) => {
+    const response = await api.delete(`/finance/personal/budgets/${id}/`)
+    return response.data
+  },
+  
+  // Goals
+  getGoals: async (status?: string) => {
+    const params = status ? { status } : {}
+    const response = await api.get('/finance/personal/goals/', { params })
+    return response.data
+  },
+  
+  getGoal: async (id: number) => {
+    const response = await api.get(`/finance/personal/goals/${id}/`)
+    return response.data
+  },
+  
+  createGoal: async (data: any) => {
+    const response = await api.post('/finance/personal/goals/', data)
+    return response.data
+  },
+  
+  updateGoal: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/personal/goals/${id}/`, data)
+    return response.data
+  },
+  
+  addMoneyToGoal: async (id: number, amount: number) => {
+    const response = await api.post(`/finance/personal/goals/${id}/add-money/`, { amount })
+    return response.data
+  },
+  
+  deleteGoal: async (id: number) => {
+    const response = await api.delete(`/finance/personal/goals/${id}/`)
+    return response.data
+  },
+  
+  // Debts
+  getDebts: async (status?: string) => {
+    const params = status ? { status } : {}
+    const response = await api.get('/finance/personal/debts/', { params })
+    return response.data
+  },
+  
+  getDebt: async (id: number) => {
+    const response = await api.get(`/finance/personal/debts/${id}/`)
+    return response.data
+  },
+  
+  createDebt: async (data: any) => {
+    const response = await api.post('/finance/personal/debts/', data)
+    return response.data
+  },
+  
+  updateDebt: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/personal/debts/${id}/`, data)
+    return response.data
+  },
+  
+  deleteDebt: async (id: number) => {
+    const response = await api.delete(`/finance/personal/debts/${id}/`)
     return response.data
   },
 }
 
-// Business Finance API (to be implemented in backend)
+// Business Finance API
 export const businessFinanceApi = {
-  getSales: async () => {
-    const response = await api.get('/finance/business/sales/')
+  // Categories
+  getCategories: async (isBusiness?: boolean) => {
+    const params = isBusiness !== undefined ? { is_business: isBusiness } : {}
+    const response = await api.get('/finance/categories/', { params })
     return response.data
   },
   
-  getExpenses: async () => {
-    const response = await api.get('/finance/business/expenses/')
+  createCategory: async (data: any) => {
+    const response = await api.post('/finance/categories/', data)
     return response.data
   },
   
+  updateCategory: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/categories/${id}/`, data)
+    return response.data
+  },
+  
+  deleteCategory: async (id: number) => {
+    const response = await api.delete(`/finance/categories/${id}/`)
+    return response.data
+  },
+  
+  // Sales
+  getSales: async (month?: number, year?: number) => {
+    const params: any = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.get('/finance/business/sales/', { params })
+    return response.data
+  },
+  
+  getSale: async (id: number) => {
+    const response = await api.get(`/finance/business/sales/${id}/`)
+    return response.data
+  },
+  
+  createSale: async (data: any) => {
+    const response = await api.post('/finance/business/sales/', data)
+    return response.data
+  },
+  
+  updateSale: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/business/sales/${id}/`, data)
+    return response.data
+  },
+  
+  deleteSale: async (id: number) => {
+    const response = await api.delete(`/finance/business/sales/${id}/`)
+    return response.data
+  },
+  
+  getSalesSummary: async () => {
+    const response = await api.get('/finance/business/sales/summary/')
+    return response.data
+  },
+  
+  // Expenses
+  getExpenses: async (month?: number, year?: number, category?: number) => {
+    const params: any = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    if (category) params.category = category
+    const response = await api.get('/finance/business/expenses/', { params })
+    return response.data
+  },
+  
+  getExpense: async (id: number) => {
+    const response = await api.get(`/finance/business/expenses/${id}/`)
+    return response.data
+  },
+  
+  createExpense: async (data: any) => {
+    const response = await api.post('/finance/business/expenses/', data)
+    return response.data
+  },
+  
+  updateExpense: async (id: number, data: any) => {
+    const response = await api.patch(`/finance/business/expenses/${id}/`, data)
+    return response.data
+  },
+  
+  deleteExpense: async (id: number) => {
+    const response = await api.delete(`/finance/business/expenses/${id}/`)
+    return response.data
+  },
+  
+  getExpensesSummary: async () => {
+    const response = await api.get('/finance/business/expenses/summary/')
+    return response.data
+  },
+  
+  // Metrics
   getMetrics: async () => {
-    const response = await api.get('/finance/business/metrics/')
+    const response = await api.get('/finance/business/metrics/overview/')
     return response.data
   },
 }
 
-// Education API
+// Courses API
+export const coursesApi = {
+  list: async () => {
+    const response = await api.get('/course/course/')
+    return response.data
+  },
+  
+  get: async (id: number) => {
+    const response = await api.get(`/course/course/${id}/`)
+    return response.data
+  },
+  
+  myEnrollments: async () => {
+    const response = await api.get('/course/enrollment/')
+    return response.data
+  },
+  
+  getEnrollment: async (id: number) => {
+    const response = await api.get(`/course/enrollment/${id}/`)
+    return response.data
+  },
+  
+  getEnrollmentProgress: async (id: number) => {
+    const response = await api.get(`/course/enrollment/${id}/progress/`)
+    return response.data
+  },
+}
+
+// Lessons API
+export const lessonsApi = {
+  list: async (courseId?: number) => {
+    const params = courseId ? { course: courseId } : {}
+    const response = await api.get('/course/lesson/', { params })
+    return response.data
+  },
+  
+  get: async (id: number) => {
+    const response = await api.get(`/course/lesson/${id}/`)
+    return response.data
+  },
+  
+  markCompleted: async (id: number) => {
+    const response = await api.post(`/course/lesson/${id}/mark-completed/`)
+    return response.data
+  },
+  
+  getFreeLessons: async () => {
+    const response = await api.get('/course/course/free-lesson/')
+    return response.data
+  },
+}
+
+// AI Copilot API
+export const aiCopilotApi = {
+  getConversations: async () => {
+    const response = await api.get('/ai-copilot/conversations/')
+    return response.data
+  },
+  
+  getConversation: async (id: number) => {
+    const response = await api.get(`/ai-copilot/conversations/${id}/`)
+    return response.data
+  },
+  
+  createConversation: async (title?: string) => {
+    const response = await api.post('/ai-copilot/conversations/', { title })
+    return response.data
+  },
+  
+  deleteConversation: async (id: number) => {
+    const response = await api.delete(`/ai-copilot/conversations/${id}/`)
+    return response.data
+  },
+  
+  chat: async (message: string, conversationId?: number | null) => {
+    const response = await api.post('/ai-copilot/conversations/chat/', {
+      message,
+      conversation_id: conversationId || null,
+    })
+    return response.data
+  },
+}
+
+// Education API (deprecated - use coursesApi and lessonsApi)
 export const educationApi = {
   getLessons: async () => {
     const response = await api.get('/course/lesson/')
@@ -215,6 +507,129 @@ export const educationApi = {
   
   getProgress: async () => {
     const response = await api.get('/course/progress/')
+    return response.data
+  },
+}
+
+// Tasks API
+export const tasksApi = {
+  // Categories
+  getCategories: async () => {
+    const response = await api.get('/tasks/categories/')
+    return response.data
+  },
+  
+  // Tasks
+  getTasks: async (status?: string, priority?: string, category?: number, overdue?: boolean) => {
+    const params: any = {}
+    if (status) params.status = status
+    if (priority) params.priority = priority
+    if (category) params.category = category
+    if (overdue) params.overdue = overdue
+    const response = await api.get('/tasks/tasks/', { params })
+    return response.data
+  },
+  
+  getTask: async (id: number) => {
+    const response = await api.get(`/tasks/tasks/${id}/`)
+    return response.data
+  },
+  
+  createTask: async (data: any) => {
+    const response = await api.post('/tasks/tasks/', data)
+    return response.data
+  },
+  
+  updateTask: async (id: number, data: any) => {
+    const response = await api.patch(`/tasks/tasks/${id}/`, data)
+    return response.data
+  },
+  
+  deleteTask: async (id: number) => {
+    const response = await api.delete(`/tasks/tasks/${id}/`)
+    return response.data
+  },
+  
+  completeTask: async (id: number) => {
+    const response = await api.post(`/tasks/tasks/${id}/complete/`)
+    return response.data
+  },
+  
+  getTodayTasks: async () => {
+    const response = await api.get('/tasks/tasks/today/')
+    return response.data
+  },
+  
+  getUpcomingTasks: async () => {
+    const response = await api.get('/tasks/tasks/upcoming/')
+    return response.data
+  },
+  
+  getTaskStats: async () => {
+    const response = await api.get('/tasks/tasks/stats/')
+    return response.data
+  },
+  
+  // Targets
+  getTargets: async (status?: string, target_type?: string) => {
+    const params: any = {}
+    if (status) params.status = status
+    if (target_type) params.target_type = target_type
+    const response = await api.get('/tasks/targets/', { params })
+    return response.data
+  },
+  
+  getTarget: async (id: number) => {
+    const response = await api.get(`/tasks/targets/${id}/`)
+    return response.data
+  },
+  
+  createTarget: async (data: any) => {
+    const response = await api.post('/tasks/targets/', data)
+    return response.data
+  },
+  
+  updateTarget: async (id: number, data: any) => {
+    const response = await api.patch(`/tasks/targets/${id}/`, data)
+    return response.data
+  },
+  
+  deleteTarget: async (id: number) => {
+    const response = await api.delete(`/tasks/targets/${id}/`)
+    return response.data
+  },
+  
+  updateTargetProgress: async (id: number, current_value: number) => {
+    const response = await api.post(`/tasks/targets/${id}/update_progress/`, { current_value })
+    return response.data
+  },
+  
+  // Notifications
+  getNotifications: async (is_read?: boolean, type?: string) => {
+    const params: any = {}
+    if (is_read !== undefined) params.is_read = is_read
+    if (type) params.type = type
+    const response = await api.get('/tasks/notifications/', { params })
+    return response.data
+  },
+  
+  getNotification: async (id: number) => {
+    const response = await api.get(`/tasks/notifications/${id}/`)
+    return response.data
+  },
+  
+  markNotificationRead: async (id: number) => {
+    const response = await api.post(`/tasks/notifications/${id}/mark_read/`)
+    return response.data
+  },
+  
+  markAllNotificationsRead: async () => {
+    const response = await api.post('/tasks/notifications/mark_all_read/')
+    return response.data
+  },
+  
+  getUnreadCount: async () => {
+    const response = await api.get('/tasks/notifications/unread_count/')
     return response.data
   },
 }
