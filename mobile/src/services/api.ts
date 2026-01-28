@@ -3,30 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 
 // API Base URL Configuration
-// For iOS Simulator: use localhost
-// For Android Emulator: use 10.0.2.2
-// For physical devices: use your computer's IP address (192.168.1.139)
-// Update the IP below if your computer's IP changes
-const DEV_IP = '192.168.1.139' // Update this if your IP changes
+// Use production API by default
+// To use local dev server, set EXPO_PUBLIC_API_URL env var or uncomment DEV_IP line below
+const DEV_IP = '192.168.1.139' // Local dev server IP (only used if EXPO_PUBLIC_API_URL not set and __DEV__ is true)
 
 const getApiBaseUrl = () => {
-  if (__DEV__) {
-    if (Platform.OS === 'ios') {
-      // iOS Simulator should use localhost
-      // Physical iOS devices need the network IP
-      // Check if running on simulator by checking if we can use localhost
-      // For simulator, use localhost; for physical device, use network IP
-      // Default to localhost for iOS (works for simulator, change to DEV_IP for physical device)
-      return 'http://localhost:8000/api'
-    } else if (Platform.OS === 'android') {
-      // Android Emulator uses 10.0.2.2 to access host machine's localhost
-      // Physical Android devices use the network IP
-      // Try network IP first (works for physical devices)
-      // If you're on emulator and it doesn't work, manually change to: http://10.0.2.2:8000/api
-      return `http://${DEV_IP}:8000/api`
-    }
-    return `http://${DEV_IP}:8000/api`
+  // Check for environment variable override first
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL
   }
+  
+  // Use production API by default
+  // Uncomment the line below to use local dev server in development
+  // if (__DEV__) {
+  //   return `http://${DEV_IP}:8000/api`
+  // }
+  
   return 'https://ludmilpaulo.pythonanywhere.com/api'
 }
 

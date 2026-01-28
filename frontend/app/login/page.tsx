@@ -56,7 +56,19 @@ export default function LoginPage() {
         router.push('/area-do-aluno')
       }
     } catch (err: any) {
-      setError(err.message || 'Erro ao fazer login/registro')
+      const errorMessage = err.message || 'Erro ao fazer login/registro'
+      setError(errorMessage)
+      
+      // Show alert for specific login errors
+      if (isLogin) {
+        if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
+          alert('❌ Utilizador não encontrado\n\nO utilizador que introduziu não existe. Verifique o email ou username e tente novamente.')
+        } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
+          alert('⚠️ Palavra-passe incorreta\n\nO utilizador existe, mas a palavra-passe está incorreta. Tente novamente.')
+        } else if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error')) {
+          alert('🔌 Erro de Conexão\n\n' + errorMessage)
+        }
+      }
     } finally {
       setLoading(false)
     }
@@ -70,8 +82,32 @@ export default function LoginPage() {
         </h1>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-6">
-            {error}
+          <div className={`px-4 py-3 rounded-lg mb-6 ${
+            error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+              ? 'bg-orange-50 border border-orange-200 text-orange-800'
+              : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+              ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            <div className="flex items-start gap-2">
+              <span className="text-lg">
+                {error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                  ? '❌'
+                  : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                  ? '⚠️'
+                  : '🔴'}
+              </span>
+              <div className="flex-1">
+                <p className="font-semibold">
+                  {error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                    ? 'Utilizador não encontrado'
+                    : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                    ? 'Palavra-passe incorreta'
+                    : 'Erro ao fazer login'}
+                </p>
+                <p className="text-sm mt-1">{error}</p>
+              </div>
+            </div>
           </div>
         )}
 

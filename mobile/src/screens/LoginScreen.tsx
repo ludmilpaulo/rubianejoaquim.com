@@ -27,6 +27,28 @@ export default function LoginScreen() {
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [enableBiometricOption, setEnableBiometricOption] = useState(false)
 
+  // Initialize biometric availability on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      try {
+        const available = await isBiometricAvailable()
+        setBiometricAvailable(available)
+        
+        if (available) {
+          const type = await getBiometricType()
+          setBiometricType(type)
+          
+          const enabled = await isBiometricEnabled()
+          setBiometricEnabled(enabled)
+        }
+      } catch (error) {
+        console.error('Error checking biometric:', error)
+      }
+    }
+    
+    checkBiometric()
+  }, [])
+
   const handleLogin = async () => {
     if (!emailOrUsername || !password) {
       setError('Por favor, preencha todos os campos')
@@ -50,9 +72,30 @@ export default function LoginScreen() {
         }
       }
     } catch (err: any) {
-      const errorMessage = err.payload || err.message || 'Erro ao fazer login. Verifique suas credenciais.'
+      let errorMessage = 'Erro ao fazer login. Verifique suas credenciais.'
+      
+      // Check for specific error messages
+      if (err.message) {
+        if (err.message.includes('não foi possível conectar') || err.message.includes('Network Error') || err.message.includes('timeout')) {
+          errorMessage = err.message
+        } else if (err.message.includes('Credenciais inválidas') || err.message.includes('incorret')) {
+          errorMessage = 'Credenciais inválidas. Verifique o seu email/username e password.'
+        } else if (err.message.includes('não encontrado') || err.message.includes('não existe')) {
+          errorMessage = 'Utilizador não encontrado. Verifique o seu email/username.'
+        } else {
+          errorMessage = err.message
+        }
+      } else if (err.payload) {
+        errorMessage = err.payload
+      }
+      
       setError(errorMessage)
       console.error('Login error:', err) // Debug log
+      
+      // Show alert for connection errors
+      if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error')) {
+        Alert.alert('Erro de Conexão', errorMessage)
+      }
     } finally {
       setLoading(false)
     }
@@ -84,17 +127,42 @@ export default function LoginScreen() {
     try {
       await dispatch(login(credentials)).unwrap()
     } catch (err: any) {
-      const errorMessage = err.payload || err.message || 'Erro ao fazer login. Verifique suas credenciais.'
+      let errorMessage = 'Erro ao fazer login. Verifique suas credenciais.'
+      
+      // Extract error message from payload (Redux thunk rejection)
+      if (err.payload) {
+        errorMessage = err.payload
+      } else if (err.message) {
+        errorMessage = err.message
+      }
+      
       setError(errorMessage)
+      
+      // Show specific alerts based on error type
+      if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
+        Alert.alert(
+          '❌ Utilizador não encontrado',
+          'O utilizador que introduziu não existe.\n\nVerifique o email ou username e tente novamente.',
+          [{ text: 'OK', style: 'default' }]
+        )
+      } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
+        Alert.alert(
+          '⚠️ Palavra-passe incorreta',
+          'O utilizador existe, mas a palavra-passe está incorreta.\n\nTente novamente.',
+          [{ text: 'OK', style: 'default' }]
+        )
+      } else {
+        // Generic error for biometric login
+        Alert.alert(
+          'Erro ao fazer login',
+          errorMessage
+        )
+      }
       
       // If credentials are invalid, clear biometric data
       if (err.response?.status === 401 || err.response?.status === 400) {
         await clearBiometricCredentials()
         setBiometricEnabled(false)
-        Alert.alert(
-          'Credenciais inválidas',
-          'As credenciais biométricas não são mais válidas. Por favor, faça login novamente.'
-        )
       }
     } finally {
       setLoading(false)
@@ -118,7 +186,42 @@ export default function LoginScreen() {
             </Text>
 
             {error ? (
-              <Text style={styles.error}>{error}</Text>
+              <View style={[
+                styles.errorContainer,
+                error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                  ? styles.errorWarning
+                  : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                  ? styles.errorInfo
+                  : styles.errorDanger
+              ]}>
+                <MaterialCommunityIcons
+                  name={
+                    error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                      ? 'account-remove'
+                      : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                      ? 'lock-alert'
+                      : 'alert-circle'
+                  }
+                  size={20}
+                  color={
+                    error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                      ? '#f97316'
+                      : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                      ? '#eab308'
+                      : '#d32f2f'
+                  }
+                />
+                <Text style={[
+                  styles.error,
+                  error.includes('não encontrado') || error.includes('Utilizador não encontrado')
+                    ? styles.errorWarningText
+                    : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
+                    ? styles.errorInfoText
+                    : styles.errorDangerText
+                ]}>
+                  {error}
+                </Text>
+              </View>
             ) : null}
 
             <TextInput
@@ -287,10 +390,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  error: {
-    color: '#d32f2f',
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 16,
-    textAlign: 'center',
+  },
+  errorWarning: {
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+  },
+  errorInfo: {
+    backgroundColor: '#fefce8',
+    borderWidth: 1,
+    borderColor: '#fde047',
+  },
+  errorDanger: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+  },
+  error: {
+    flex: 1,
+    fontSize: 14,
+    textAlign: 'left',
+  },
+  errorWarningText: {
+    color: '#c2410c',
+  },
+  errorInfoText: {
+    color: '#854d0e',
+  },
+  errorDangerText: {
+    color: '#d32f2f',
   },
   note: {
     marginTop: 16,

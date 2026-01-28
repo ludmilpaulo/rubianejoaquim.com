@@ -34,7 +34,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Este app usa Face ID para autenticação rápida e segura."
+        }
+      ]
     ],
     "extra": {
       "eas": {

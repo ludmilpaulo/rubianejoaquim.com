@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
-import { adminApi } from '@/lib/api'
+import { adminApi, getFullUrl } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils/currency'
 
 interface MentorshipRequest {
@@ -239,7 +239,7 @@ export default function AdminMentorshipPage() {
                       <button
                         onClick={() => {
                           if (!request.payment_proof) return
-                          const url = request.payment_proof.file_url || (request.payment_proof.file?.startsWith('http') ? request.payment_proof.file : `http://localhost:8000${request.payment_proof.file}`)
+                          const url = request.payment_proof.file_url || getFullUrl(request.payment_proof.file || '')
                           if (url) {
                             const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
                             if (!newWindow) {

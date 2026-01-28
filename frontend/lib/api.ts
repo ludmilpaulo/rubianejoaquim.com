@@ -1,11 +1,10 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
+// Use production API by default, override with NEXT_PUBLIC_API_URL env var
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'production'
-    ? 'https://ludmilpaulo.pythonanywhere.com/api'
-    : 'http://localhost:8000/api')
+  'https://ludmilpaulo.pythonanywhere.com/api'
 
 const api = axios.create({
   baseURL: API_URL,
@@ -14,6 +13,16 @@ const api = axios.create({
   },
   timeout: 10000, // 10 second timeout
 })
+
+// Helper function to get full URL from relative path (for images/files)
+export const getFullUrl = (relativePath: string): string => {
+  if (!relativePath) return ''
+  if (relativePath.startsWith('http')) return relativePath
+  
+  // Remove /api from base URL to get backend root
+  const backendBase = API_URL.replace('/api', '')
+  return `${backendBase}${relativePath}`
+}
 
 // Interceptor para adicionar token
 api.interceptors.request.use((config) => {

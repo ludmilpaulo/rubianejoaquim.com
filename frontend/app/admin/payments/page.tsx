@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
-import { adminApi } from '@/lib/api'
+import { adminApi, getFullUrl } from '@/lib/api'
 
 interface PaymentProof {
   id: number
@@ -174,7 +174,7 @@ export default function AdminPaymentsPage() {
                   {payment.file_url || payment.file ? (
                     <button
                       onClick={() => {
-                        const url = payment.file_url || (payment.file.startsWith('http') ? payment.file : `http://localhost:8000${payment.file}`)
+                        const url = payment.file_url || getFullUrl(payment.file || '')
                         if (url) {
                           // Abrir em nova aba de forma segura
                           const newWindow = window.open(url, '_blank', 'noopener,noreferrer')
