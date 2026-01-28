@@ -147,6 +147,29 @@ export default function EditLessonPage() {
     setAttachments(attachments.filter((_, i) => i !== index))
   }
 
+  const generateSlug = (title: string) => {
+    if (!title) return ''
+    return title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais, mantém letras, números, espaços e hífens
+      .trim()
+      .replace(/\s+/g, '-') // Substitui espaços por hífens
+      .replace(/-+/g, '-') // Remove hífens duplicados
+      .replace(/(^-|-$)/g, '') // Remove hífens no início e fim
+      .substring(0, 50) // Limita o tamanho
+  }
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const title = e.target.value
+    setFormData({
+      ...formData,
+      title,
+      slug: generateSlug(title), // Always auto-generate slug from title
+    })
+  }
+
   const updateAttachment = (index: number, field: keyof Attachment, value: any) => {
     const updated = [...attachments]
     updated[index] = { ...updated[index], [field]: value }
@@ -313,7 +336,7 @@ export default function EditLessonPage() {
                 type="text"
                 required
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={handleTitleChange}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
               />
             </div>
@@ -327,8 +350,12 @@ export default function EditLessonPage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent bg-gray-50"
+                readOnly
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Slug gerado automaticamente a partir do título
+              </p>
             </div>
 
             <div>

@@ -72,7 +72,7 @@ export default function NewLessonPage() {
     setFormData({
       ...formData,
       title,
-      slug: formData.slug || generateSlug(title),
+      slug: generateSlug(title), // Always auto-generate slug from title
     })
   }
 
@@ -230,9 +230,13 @@ export default function NewLessonPage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent bg-gray-50"
                 placeholder="introducao-financas-pessoais"
+                readOnly
               />
+              <p className="mt-1 text-sm text-gray-500">
+                Slug gerado automaticamente a partir do título
+              </p>
             </div>
 
             <div>
