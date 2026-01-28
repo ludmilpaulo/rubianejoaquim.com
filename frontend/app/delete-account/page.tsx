@@ -63,23 +63,34 @@ export default function DeleteAccountPage() {
               </p>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">
-              Como Solicitar a Exclusão da Sua Conta
-            </h2>
-            <ol className="list-decimal list-inside space-y-4 mb-8 text-gray-700">
-              <li>
-                <strong>Leia atentamente</strong> as informações abaixo sobre quais dados serão excluídos.
-              </li>
-              <li>
-                <strong>Confirme</strong> que você leu e entendeu as informações marcando a caixa de confirmação abaixo.
-              </li>
-              <li>
-                <strong>Clique no botão</strong> "Solicitar Exclusão de Conta" para enviar sua solicitação.
-              </li>
-              <li>
-                Você será <strong>desconectado automaticamente</strong> após a solicitação ser enviada.
-              </li>
-            </ol>
+            <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-6 mb-8">
+              <h2 className="text-2xl font-bold text-blue-900 mt-0 mb-4">
+                📋 Como Solicitar a Exclusão da Sua Conta no Zenda
+              </h2>
+              <p className="text-blue-800 mb-4 font-semibold">
+                Siga estes passos para solicitar a exclusão da sua conta e dados associados:
+              </p>
+              <ol className="list-decimal list-inside space-y-4 text-blue-900 font-medium">
+                <li className="bg-white p-3 rounded border border-blue-200">
+                  <strong>Leia atentamente</strong> todas as informações abaixo sobre quais dados serão excluídos e quais podem ser mantidos.
+                </li>
+                <li className="bg-white p-3 rounded border border-blue-200">
+                  <strong>Revise o período de retenção</strong> de 30 dias e as exceções legais mencionadas abaixo.
+                </li>
+                <li className="bg-white p-3 rounded border border-blue-200">
+                  <strong>Confirme</strong> que você leu e entendeu todas as informações marcando a caixa de confirmação no final desta página.
+                </li>
+                <li className="bg-white p-3 rounded border border-blue-200">
+                  <strong>Clique no botão</strong> "Solicitar Exclusão de Conta" para enviar sua solicitação.
+                </li>
+                <li className="bg-white p-3 rounded border border-blue-200">
+                  Você será <strong>desconectado automaticamente</strong> após a solicitação ser enviada com sucesso.
+                </li>
+              </ol>
+              <p className="text-blue-800 mt-4 text-sm">
+                <strong>Nota:</strong> Se você não tiver uma conta ou não estiver logado, entre em contato conosco através dos canais de suporte abaixo.
+              </p>
+            </div>
 
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">
               Dados que Serão Excluídos
@@ -173,19 +184,43 @@ export default function DeleteAccountPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/area-do-aluno"
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center font-semibold transition"
-              >
-                Cancelar
-              </Link>
-              <button
-                onClick={handleRequestDeletion}
-                disabled={loading || !confirmed}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition"
-              >
-                {loading ? 'Processando...' : 'Solicitar Exclusão de Conta'}
-              </button>
+              {user ? (
+                <>
+                  <Link
+                    href="/area-do-aluno"
+                    className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center font-semibold transition"
+                  >
+                    Cancelar
+                  </Link>
+                  <button
+                    onClick={handleRequestDeletion}
+                    disabled={loading || !confirmed}
+                    className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold transition"
+                  >
+                    {loading ? 'Processando...' : 'Solicitar Exclusão de Conta'}
+                  </button>
+                </>
+              ) : (
+                <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-6 w-full">
+                  <p className="text-yellow-900 font-semibold mb-2">
+                    Você precisa estar logado para solicitar a exclusão da conta.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                    <Link
+                      href="/login"
+                      className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-center font-semibold transition"
+                    >
+                      Fazer Login
+                    </Link>
+                    <Link
+                      href="/"
+                      className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-center font-semibold transition"
+                    >
+                      Voltar ao Início
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Contact Information */}
