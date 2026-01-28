@@ -14,16 +14,13 @@
       "autoIncrement": true
     },
     "production": {
-      "autoIncrement": true,
-      "android": {
-        "releaseStatus": "production"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
     "production": {
       "android": {
-        "releaseStatus": "production"
+        "releaseStatus": "completed"
       }
     }
   }
