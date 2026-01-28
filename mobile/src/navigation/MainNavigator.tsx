@@ -13,6 +13,10 @@ import NotificationsScreen from '../screens/NotificationsScreen'
 import CourseLessonsScreen from '../screens/CourseLessonsScreen'
 import LessonDetailScreen from '../screens/LessonDetailScreen'
 import AICopilotScreen from '../screens/AICopilotScreen'
+import MarketScreen from '../screens/MarketScreen'
+import SettingsScreen from '../screens/SettingsScreen'
+import AboutScreen from '../screens/AboutScreen'
+import HelpSupportScreen from '../screens/HelpSupportScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -45,6 +49,11 @@ function HomeStack() {
         component={AICopilotScreen}
         options={{ title: 'AI Financial Copilot', headerStyle: { backgroundColor: '#8b5cf6' }, headerTintColor: '#fff' }}
       />
+      <Stack.Screen 
+        name="Market" 
+        component={MarketScreen}
+        options={{ title: 'Mercado Global', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
     </Stack.Navigator>
   )
 }
@@ -66,6 +75,33 @@ function EducationStack() {
         name="LessonDetail" 
         component={LessonDetailScreen}
         options={{ title: 'Aula', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+    </Stack.Navigator>
+  )
+}
+
+function ProfileStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="ProfileMain" 
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{ title: 'Configurações', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen 
+        name="About" 
+        component={AboutScreen}
+        options={{ title: 'Sobre o Zenda', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen 
+        name="HelpSupport" 
+        component={HelpSupportScreen}
+        options={{ title: 'Ajuda e Suporte', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
       />
     </Stack.Navigator>
   )
@@ -128,8 +164,8 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen}
-        options={{ title: 'Perfil' }}
+        component={ProfileStack}
+        options={{ title: 'Perfil', headerShown: false }}
       />
     </Tab.Navigator>
   )

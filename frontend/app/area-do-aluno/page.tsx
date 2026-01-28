@@ -780,10 +780,22 @@ function PaymentUploadForm({ enrollmentId, onUpload, uploading }: { enrollmentId
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
       <h4 className="font-semibold text-gray-900 mb-2">Instruções de Pagamento</h4>
-      <p className="text-sm text-gray-600 mb-4">
-        Faça a transferência para o IBAN: <strong>PT50 0000 0000 0000 0000 0000 0</strong><br />
-        Valor: Consulte o valor do curso na página de detalhes.
-      </p>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <div className="space-y-2 text-sm">
+          <div>
+            <span className="font-medium text-gray-700">IBAN:</span>
+            <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700">Destinatário:</span>
+            <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700">Valor:</span>
+            <p className="text-gray-600 mt-1">Consulte o valor do curso na página de detalhes.</p>
+          </div>
+        </div>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -837,9 +849,18 @@ function MentorshipPaymentUploadForm({ requestId, onUpload, uploading }: { reque
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
       <h4 className="font-semibold text-gray-900 mb-2">Instruções de Pagamento</h4>
-      <p className="text-sm text-gray-600 mb-4">
-        Faça a transferência para o IBAN: <strong>PT50 0000 0000 0000 0000 0000 0</strong>
-      </p>
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+        <div className="space-y-2 text-sm">
+          <div>
+            <span className="font-medium text-gray-700">IBAN:</span>
+            <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
+          </div>
+          <div>
+            <span className="font-medium text-gray-700">Destinatário:</span>
+            <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+          </div>
+        </div>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

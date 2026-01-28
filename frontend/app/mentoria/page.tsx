@@ -88,6 +88,32 @@ export default function MentoriaPage() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white border border-gray-200 rounded-lg p-8">
             <h2 className="text-2xl font-semibold mb-6">Pedir Vaga</h2>
+            
+            {selectedPackage && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Informações de Pagamento</h3>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">IBAN:</span>
+                    <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Destinatário:</span>
+                    <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Valor:</span>
+                    <p className="text-gray-900 font-semibold mt-1">
+                      {formatCurrency(packages.find(p => p.id === selectedPackage)?.price || '0')}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-600 mt-3">
+                  Após a transferência, faça o upload do comprovativo na sua área do aluno.
+                </p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

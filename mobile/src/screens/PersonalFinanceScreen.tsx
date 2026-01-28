@@ -404,78 +404,42 @@ export default function PersonalFinanceScreen() {
         >
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>Finanças Pessoais</Text>
-          <Menu
-            visible={false}
-            onDismiss={() => {}}
-            anchor={<IconButton icon="filter" size={24} onPress={() => {}} />}
-          >
-            <Menu.Item onPress={() => {}} title="Este Mês" />
-            <Menu.Item onPress={() => {}} title="Mês Passado" />
-            <Menu.Item onPress={() => {}} title="Este Ano" />
-          </Menu>
+          <View style={styles.headerContent}>
+            <View style={styles.headerIconContainer}>
+              <MaterialCommunityIcons name="wallet" size={28} color="#6366f1" />
+            </View>
+            <View style={styles.headerText}>
+              <Text variant="headlineMedium" style={styles.title}>Finanças Pessoais</Text>
+              <Text variant="bodySmall" style={styles.headerSubtitle}>
+                {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Princípios Financeiros - Divisão do 100% e Regra dos 3x */}
-        <View style={styles.principlesContainer}>
-          <Text variant="titleMedium" style={styles.principlesTitle}>Princípios da Educação Financeira</Text>
-          
-          {/* Divisão do 100% - 50/30/20 */}
-          <Card style={styles.principleCard}>
-            <Card.Content>
-              <View style={styles.principleHeader}>
-                <MaterialCommunityIcons name="chart-pie" size={28} color="#6366f1" />
-                <Text variant="titleMedium" style={styles.principleCardTitle}>Divisão do 100%</Text>
-              </View>
-              <Text variant="bodySmall" style={styles.principleSubtitle}>
-                Deve ter estes valores disponíveis no seu rendimento mensal:
-              </Text>
-              <View style={styles.divisionRow}>
-                <View style={[styles.divisionBar, styles.divisionBar50]}>
-                  <Text variant="labelLarge" style={styles.divisionBarText}>50%</Text>
-                  <Text variant="bodySmall" style={styles.divisionLabel}>Despesas fixas</Text>
-                  <Text variant="bodySmall" style={styles.divisionHint}>(casa, transportes, contas)</Text>
-                </View>
-                <View style={[styles.divisionBar, styles.divisionBar30]}>
-                  <Text variant="labelLarge" style={styles.divisionBarText}>30%</Text>
-                  <Text variant="bodySmall" style={styles.divisionLabel}>Desejos</Text>
-                  <Text variant="bodySmall" style={styles.divisionHint}>(lazer, jantares, extras)</Text>
-                </View>
-                <View style={[styles.divisionBar, styles.divisionBar20]}>
-                  <Text variant="labelLarge" style={styles.divisionBarText}>20%</Text>
-                  <Text variant="bodySmall" style={styles.divisionLabel}>Economizar</Text>
-                  <Text variant="bodySmall" style={styles.divisionHint}>(poupança, objetivos)</Text>
-                </View>
-              </View>
-            </Card.Content>
-          </Card>
-
-          {/* Regra dos 3x */}
-          <Card style={[styles.principleCard, { borderLeftColor: '#10b981' }]}>
-            <Card.Content>
-              <View style={styles.principleHeader}>
-                <MaterialCommunityIcons name="shield-check" size={28} color="#10b981" />
-                <Text variant="titleMedium" style={styles.principleCardTitle}>Regra dos 3x</Text>
-              </View>
-              <Text variant="bodyMedium" style={styles.principleText}>
-                Antes de gastar — por exemplo, ao sair com amigos — <Text variant="bodyMedium" style={styles.principleHighlight}>tem de ter 3 vezes o valor que vai gastar disponível</Text>. Ou seja, se vai gastar 100 KZ, precisa de ter 300 KZ disponível. Assim protege as suas finanças e evita apertos.
-              </Text>
-            </Card.Content>
-          </Card>
-        </View>
 
         {/* Summary Card */}
         <Card style={styles.summaryCard}>
-          <Card.Content>
-            <Text variant="bodySmall" style={styles.summaryLabel}>Despesas do Mês</Text>
-            <Text variant="headlineLarge" style={styles.summaryAmount}>
-              {formatCurrency(totalExpenses)}
-            </Text>
+          <Card.Content style={styles.summaryContent}>
+            <View style={styles.summaryHeader}>
+              <View>
+                <Text variant="bodySmall" style={styles.summaryLabel}>Despesas do Mês</Text>
+                <Text variant="headlineLarge" style={styles.summaryAmount}>
+                  {formatCurrency(totalExpenses)}
+                </Text>
+              </View>
+              <View style={styles.summaryIcon}>
+                <MaterialCommunityIcons name="chart-line" size={32} color="#ffffff" />
+              </View>
+            </View>
             {summary && (
               <View style={styles.summaryStats}>
-                <Text variant="bodySmall" style={styles.summaryStat}>
-                  {summary.count || 0} transações
-                </Text>
+                <View style={styles.summaryStatItem}>
+                  <MaterialCommunityIcons name="receipt" size={16} color="#ffffff" />
+                  <Text variant="bodySmall" style={styles.summaryStat}>
+                    {summary.count || 0} transações
+                  </Text>
+                </View>
               </View>
             )}
           </Card.Content>
@@ -513,122 +477,151 @@ export default function PersonalFinanceScreen() {
         {/* Content based on active tab */}
         {activeTab === 'principios' && (
           <View style={styles.content}>
-            <View style={styles.principlesContainer}>
-              <Text variant="titleMedium" style={styles.principlesTitle}>Regras de Ouro</Text>
-              <Text variant="bodySmall" style={styles.principleSubtitle}>Fundamentos das Finanças Pessoais — duas regras para decisões conscientes antes de gastar.</Text>
+            {/* Regra 1: Divisão dos 100% - Visual Calculator */}
+            <Card style={styles.goldenRuleCard}>
+              <Card.Content>
+                <View style={styles.ruleHeader}>
+                  <View style={styles.ruleIconContainer}>
+                    <MaterialCommunityIcons name="chart-pie" size={32} color="#6366f1" />
+                  </View>
+                  <View style={styles.ruleHeaderText}>
+                    <Text variant="titleLarge" style={styles.ruleTitle}>Divisão dos 100%</Text>
+                    <Text variant="bodySmall" style={styles.ruleSubtitle}>50% Fixas • 30% Desejos • 20% Poupança</Text>
+                  </View>
+                </View>
 
-              {/* Regra 1: Divisão dos 100% */}
-              <Card style={styles.principleCard}>
-                <Card.Content>
-                  <View style={styles.principleHeader}>
-                    <MaterialCommunityIcons name="chart-pie" size={28} color="#6366f1" />
-                    <Text variant="titleMedium" style={styles.principleCardTitle}>Regra 1: Divisão dos 100%</Text>
+                {/* Visual Pie Representation */}
+                <View style={styles.pieVisual}>
+                  <View style={styles.pieSegment50}>
+                    <Text variant="headlineSmall" style={styles.piePercent}>50%</Text>
                   </View>
-                  <Text variant="bodySmall" style={styles.principleSubtitle}>
-                    Todo o rendimento mensal divide-se assim:
-                  </Text>
-                  <View style={styles.divisionRow}>
-                    <View style={[styles.divisionBar, styles.divisionBar50]}>
-                      <Text variant="labelLarge" style={styles.divisionBarText}>50%</Text>
-                      <Text variant="bodySmall" style={styles.divisionLabel}>Despesas fixas</Text>
-                      <Text variant="bodySmall" style={styles.divisionHint}>(renda, transporte, comida, internet, contas)</Text>
-                    </View>
-                    <View style={[styles.divisionBar, styles.divisionBar30]}>
-                      <Text variant="labelLarge" style={styles.divisionBarText}>30%</Text>
-                      <Text variant="bodySmall" style={styles.divisionLabel}>Desejos</Text>
-                      <Text variant="bodySmall" style={styles.divisionHint}>(sair com amigos, lazer, compras não essenciais)</Text>
-                    </View>
-                    <View style={[styles.divisionBar, styles.divisionBar20]}>
-                      <Text variant="labelLarge" style={styles.divisionBarText}>20%</Text>
-                      <Text variant="bodySmall" style={styles.divisionLabel}>Poupança</Text>
-                      <Text variant="bodySmall" style={styles.divisionHint}>(emergência, objetivos futuros, investimentos)</Text>
-                    </View>
+                  <View style={styles.pieSegment30}>
+                    <Text variant="headlineSmall" style={styles.piePercent}>30%</Text>
                   </View>
-                  <View style={styles.calculatorBlock}>
-                    <Text variant="labelMedium" style={styles.calculatorLabel}>Rendimento mensal (KZ)</Text>
-                    <TextInput
-                      mode="outlined"
-                      label="Introduza o seu rendimento"
-                      value={regrasRendimento}
-                      onChangeText={setRegrasRendimento}
-                      keyboardType="decimal-pad"
-                      style={styles.calculatorInput}
-                    />
-                    {regrasRendimento !== '' && parseFloat(regrasRendimento.replace(',', '.')) > 0 && (
-                      <View style={styles.calculatorResults}>
-                        <Text variant="bodySmall">50% Despesas fixas: <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.5)}</Text></Text>
-                        <Text variant="bodySmall">30% Desejos: <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}</Text></Text>
-                        <Text variant="bodySmall">20% Poupança: <Text variant="bodySmall" style={styles.resultAmount}>{formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.2)}</Text></Text>
+                  <View style={styles.pieSegment20}>
+                    <Text variant="headlineSmall" style={styles.piePercent}>20%</Text>
+                  </View>
+                </View>
+
+                {/* Calculator */}
+                <View style={styles.calculatorSection}>
+                  <TextInput
+                    mode="outlined"
+                    label="Rendimento mensal (KZ)"
+                    value={regrasRendimento}
+                    onChangeText={setRegrasRendimento}
+                    keyboardType="decimal-pad"
+                    style={styles.calculatorInput}
+                    left={<TextInput.Icon icon="currency-usd" />}
+                  />
+                  {regrasRendimento !== '' && parseFloat(regrasRendimento.replace(',', '.')) > 0 && (
+                    <View style={styles.resultsGrid}>
+                      <View style={[styles.resultCard, styles.resultCard50]}>
+                        <View style={styles.resultIconContainer}>
+                          <MaterialCommunityIcons name="home" size={32} color="#3b82f6" />
+                        </View>
+                        <Text variant="labelLarge" style={styles.resultPercentage}>50%</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>Fixas</Text>
+                        <Text variant="headlineSmall" style={styles.resultValue}>
+                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.5)}
+                        </Text>
                       </View>
-                    )}
-                  </View>
-                </Card.Content>
-              </Card>
+                      <View style={[styles.resultCard, styles.resultCard30]}>
+                        <View style={styles.resultIconContainer}>
+                          <MaterialCommunityIcons name="heart" size={32} color="#ec4899" />
+                        </View>
+                        <Text variant="labelLarge" style={styles.resultPercentage}>30%</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>Desejos</Text>
+                        <Text variant="headlineSmall" style={styles.resultValue}>
+                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}
+                        </Text>
+                      </View>
+                      <View style={[styles.resultCard, styles.resultCard20]}>
+                        <View style={styles.resultIconContainer}>
+                          <MaterialCommunityIcons name="piggy-bank" size={32} color="#10b981" />
+                        </View>
+                        <Text variant="labelLarge" style={styles.resultPercentage}>20%</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>Poupança</Text>
+                        <Text variant="headlineSmall" style={styles.resultValue}>
+                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.2)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </Card.Content>
+            </Card>
 
-              {/* Regra 2: 3x antes de gastar + Verificação */}
-              <Card style={[styles.principleCard, { borderLeftColor: '#10b981' }]}>
-                <Card.Content>
-                  <View style={styles.principleHeader}>
-                    <MaterialCommunityIcons name="shield-check" size={28} color="#10b981" />
-                    <Text variant="titleMedium" style={styles.principleCardTitle}>Regra 2: 3× antes de gastar</Text>
+            {/* Regra 2: 3x antes de gastar - Quick Check */}
+            <Card style={[styles.goldenRuleCard, styles.ruleCard3x]}>
+              <Card.Content>
+                <View style={styles.ruleHeader}>
+                  <View style={[styles.ruleIconContainer, styles.ruleIcon3x]}>
+                    <MaterialCommunityIcons name="shield-check" size={32} color="#10b981" />
                   </View>
-                  <Text variant="bodyMedium" style={styles.principleText}>
-                    Antes de gastar em desejos, precisa de ter <Text variant="bodyMedium" style={styles.principleHighlight}>3 vezes o valor do gasto</Text> disponível. Ex.: gastar 10.000 KZ → precisas de 30.000 KZ disponíveis. Se não tiveres 3×, o app avisa para não gastar.
-                  </Text>
+                  <View style={styles.ruleHeaderText}>
+                    <Text variant="titleLarge" style={styles.ruleTitle}>Regra 3×</Text>
+                    <Text variant="bodySmall" style={styles.ruleSubtitle}>Precisas de 3× o valor antes de gastar</Text>
+                  </View>
+                </View>
 
-                  <View style={styles.calculatorBlock}>
-                    <Text variant="labelMedium" style={styles.calculatorLabel}>Verificação antes de gastar</Text>
-                    <Text variant="bodySmall" style={styles.principleSubtitle}>Introduza o valor que quer gastar e quanto tem disponível (ou deixe em branco para usar 30% do rendimento):</Text>
-                    <TextInput
-                      mode="outlined"
-                      label="Valor que quero gastar (KZ)"
-                      value={regrasValorGastar}
-                      onChangeText={setRegrasValorGastar}
-                      keyboardType="decimal-pad"
-                      style={styles.calculatorInput}
-                    />
-                    <TextInput
-                      mode="outlined"
-                      label="Quanto tenho disponível? (KZ) — opcional"
-                      value={regrasDisponivel}
-                      onChangeText={setRegrasDisponivel}
-                      keyboardType="decimal-pad"
-                      style={styles.calculatorInput}
-                      placeholder={regrasRendimento && parseFloat(regrasRendimento.replace(',', '.')) > 0 ? `Sugestão: 30% = ${formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}` : undefined}
-                    />
-                    {(() => {
-                      const parseNum = (s: string) => parseFloat((s || '').replace(',', '.')) || 0
-                      const rend = parseNum(regrasRendimento)
-                      const gastar = parseNum(regrasValorGastar)
-                      const disp = parseNum(regrasDisponivel) || (rend > 0 ? rend * 0.3 : 0)
-                      const precisa3x = gastar * 3
-                      if (gastar > 0 && disp > 0) {
-                        const pode = disp >= precisa3x
-                        return (
-                          <View style={[styles.feedbackBox, pode ? styles.feedbackOk : styles.feedbackAtencao]}>
-                            <MaterialCommunityIcons name={pode ? 'check-circle' : 'alert-circle'} size={28} color={pode ? '#10b981' : '#f59e0b'} />
-                            <View style={styles.feedbackText}>
-                              {pode ? (
-                                <>
-                                  <Text variant="titleMedium" style={[styles.feedbackTitle, { color: '#10b981' }]}>Podes gastar.</Text>
-                                  <Text variant="bodySmall">Tens 3× o valor disponível.</Text>
-                                </>
-                              ) : (
-                                <>
-                                  <Text variant="titleMedium" style={[styles.feedbackTitle, { color: '#b45309' }]}>Atenção: ainda não tens 3× o valor.</Text>
-                                  <Text variant="bodySmall">Melhor poupar. Precisas de {formatCurrency(precisa3x)} (3× {formatCurrency(gastar)}). Tens {formatCurrency(disp)} disponível.</Text>
-                                </>
-                              )}
-                            </View>
+                <View style={styles.checkerSection}>
+                  <TextInput
+                    mode="outlined"
+                    label="Quero gastar (KZ)"
+                    value={regrasValorGastar}
+                    onChangeText={setRegrasValorGastar}
+                    keyboardType="decimal-pad"
+                    style={styles.calculatorInput}
+                    left={<TextInput.Icon icon="cash-minus" />}
+                  />
+                  <TextInput
+                    mode="outlined"
+                    label="Tenho disponível (KZ)"
+                    value={regrasDisponivel}
+                    onChangeText={setRegrasDisponivel}
+                    keyboardType="decimal-pad"
+                    style={styles.calculatorInput}
+                    placeholder={regrasRendimento && parseFloat(regrasRendimento.replace(',', '.')) > 0 ? `Sugestão: ${formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}` : 'Opcional'}
+                    left={<TextInput.Icon icon="wallet" />}
+                  />
+                  {(() => {
+                    const parseNum = (s: string) => parseFloat((s || '').replace(',', '.')) || 0
+                    const rend = parseNum(regrasRendimento)
+                    const gastar = parseNum(regrasValorGastar)
+                    const disp = parseNum(regrasDisponivel) || (rend > 0 ? rend * 0.3 : 0)
+                    const precisa3x = gastar * 3
+                    if (gastar > 0 && disp > 0) {
+                      const pode = disp >= precisa3x
+                      return (
+                        <View style={[styles.verificationResult, pode ? styles.verificationOk : styles.verificationWarning]}>
+                          <MaterialCommunityIcons 
+                            name={pode ? 'check-circle' : 'alert-circle'} 
+                            size={40} 
+                            color={pode ? '#10b981' : '#f59e0b'} 
+                          />
+                          <View style={styles.verificationContent}>
+                            <Text variant="titleLarge" style={[styles.verificationTitle, { color: pode ? '#10b981' : '#b45309' }]}>
+                              {pode ? 'Podes gastar ✓' : 'Ainda não podes'}
+                            </Text>
+                            {pode ? (
+                              <Text variant="bodyMedium" style={styles.verificationText}>
+                                Tens {formatCurrency(disp)} disponível, suficiente para gastar {formatCurrency(gastar)}
+                              </Text>
+                            ) : (
+                              <Text variant="bodyMedium" style={styles.verificationText}>
+                                Precisas de {formatCurrency(precisa3x)} (3× {formatCurrency(gastar)}). Tens {formatCurrency(disp)}.
+                              </Text>
+                            )}
                           </View>
-                        )
-                      }
-                      return null
-                    })()}
-                  </View>
-                </Card.Content>
-              </Card>
-            </View>
+                        </View>
+                      )
+                    }
+                    return null
+                  })()}
+                </View>
+              </Card.Content>
+            </Card>
           </View>
         )}
 
@@ -1410,26 +1403,48 @@ export default function PersonalFinanceScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   scrollView: {
     flex: 1,
   },
   header: {
+    padding: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    paddingTop: 8,
-    backgroundColor: '#fff',
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#1f2937',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    color: '#6b7280',
+    fontSize: 13,
   },
   principlesContainer: {
     paddingHorizontal: 16,
@@ -1442,149 +1457,236 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingLeft: 4,
   },
-  principleCard: {
-    marginBottom: 12,
-    borderRadius: 12,
-    elevation: 2,
-    backgroundColor: '#fff',
-    borderLeftWidth: 4,
+  goldenRuleCard: {
+    marginBottom: 20,
+    borderRadius: 20,
+    elevation: 4,
+    backgroundColor: '#ffffff',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    borderLeftWidth: 5,
     borderLeftColor: '#6366f1',
   },
-  principleHeader: {
+  ruleCard3x: {
+    borderLeftColor: '#10b981',
+  },
+  ruleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
+    marginBottom: 20,
   },
-  principleCardTitle: {
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  principleSubtitle: {
-    color: '#666',
-    marginBottom: 12,
-  },
-  principleText: {
-    color: '#374151',
-    lineHeight: 22,
-  },
-  principleHighlight: {
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  divisionRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  divisionBar: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    alignItems: 'center',
+  ruleIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    backgroundColor: '#f0f4ff',
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  divisionBar50: {
-    backgroundColor: '#dbeafe',
-    borderWidth: 1,
-    borderColor: '#3b82f6',
+  ruleIcon3x: {
+    backgroundColor: '#ecfdf5',
   },
-  divisionBar30: {
-    backgroundColor: '#fce7f3',
-    borderWidth: 1,
-    borderColor: '#ec4899',
+  ruleHeaderText: {
+    flex: 1,
   },
-  divisionBar20: {
-    backgroundColor: '#d1fae5',
-    borderWidth: 1,
-    borderColor: '#10b981',
-  },
-  divisionBarText: {
+  ruleTitle: {
     fontWeight: '700',
-    color: '#1f2937',
-  },
-  divisionLabel: {
-    color: '#374151',
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  divisionHint: {
-    color: '#6b7280',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  calculatorBlock: {
-    marginTop: 16,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  calculatorLabel: {
     color: '#1f2937',
     marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  ruleSubtitle: {
+    color: '#6b7280',
+    fontSize: 13,
+  },
+  pieVisual: {
+    flexDirection: 'row',
+    height: 120,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    elevation: 2,
+  },
+  pieSegment50: {
+    flex: 0.5,
+    backgroundColor: '#dbeafe',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 2,
+    borderRightColor: '#ffffff',
+  },
+  pieSegment30: {
+    flex: 0.3,
+    backgroundColor: '#fce7f3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 2,
+    borderRightColor: '#ffffff',
+  },
+  pieSegment20: {
+    flex: 0.2,
+    backgroundColor: '#d1fae5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  piePercent: {
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  calculatorSection: {
+    marginTop: 20,
   },
   calculatorInput: {
-    marginTop: 4,
-    marginBottom: 8,
-    backgroundColor: '#fff',
+    marginBottom: 20,
+    backgroundColor: '#ffffff',
+    fontSize: 16,
   },
-  calculatorResults: {
-    marginTop: 8,
-    gap: 4,
-  },
-  resultAmount: {
-    fontWeight: '700',
-    color: '#10b981',
-  },
-  feedbackBox: {
+  resultsGrid: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: 12,
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    marginTop: 16,
   },
-  feedbackOk: {
+  resultCard: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    minHeight: 160,
+    justifyContent: 'center',
+  },
+  resultCard50: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 2.5,
+    borderColor: '#3b82f6',
+  },
+  resultCard30: {
+    backgroundColor: '#fdf2f8',
+    borderWidth: 2.5,
+    borderColor: '#ec4899',
+  },
+  resultCard20: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 2.5,
+    borderColor: '#10b981',
+  },
+  resultIconContainer: {
+    marginBottom: 12,
+  },
+  resultPercentage: {
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 4,
+    fontSize: 16,
+  },
+  resultLabel: {
+    color: '#374151',
+    marginBottom: 12,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  resultValue: {
+    fontWeight: '700',
+    color: '#1f2937',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  checkerSection: {
+    marginTop: 8,
+  },
+  verificationResult: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+  },
+  verificationOk: {
     backgroundColor: '#ecfdf5',
     borderColor: '#10b981',
   },
-  feedbackAtencao: {
+  verificationWarning: {
     backgroundColor: '#fffbeb',
     borderColor: '#f59e0b',
   },
-  feedbackText: {
+  verificationContent: {
     flex: 1,
+    marginLeft: 16,
   },
-  feedbackTitle: {
+  verificationTitle: {
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  verificationText: {
+    color: '#374151',
+    lineHeight: 20,
   },
   summaryCard: {
     margin: 16,
+    marginBottom: 8,
     backgroundColor: '#6366f1',
+    borderRadius: 20,
+    elevation: 6,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+  },
+  summaryContent: {
+    padding: 20,
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  summaryIcon: {
+    width: 56,
+    height: 56,
     borderRadius: 16,
-    elevation: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   summaryLabel: {
-    color: '#fff',
+    color: '#ffffff',
     opacity: 0.9,
-    marginBottom: 4,
+    marginBottom: 8,
+    fontSize: 14,
   },
   summaryAmount: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: '#ffffff',
+    fontWeight: '700',
+    letterSpacing: -1,
   },
   summaryStats: {
-    marginTop: 8,
+    marginTop: 4,
+  },
+  summaryStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   summaryStat: {
-    color: '#fff',
-    opacity: 0.8,
+    color: '#ffffff',
+    opacity: 0.9,
+    fontSize: 13,
   },
   tabsContainer: {
     backgroundColor: '#fff',
-    paddingVertical: 8,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   tabs: {
     flexDirection: 'row',
@@ -1593,21 +1695,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 4,
+    paddingVertical: 10,
+    marginHorizontal: 6,
     borderRadius: 20,
+    backgroundColor: '#f9fafb',
   },
   tabActive: {
     backgroundColor: '#eef2ff',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabLabel: {
-    marginLeft: 6,
-    color: '#666',
-    fontSize: 14,
+    marginLeft: 8,
+    color: '#6b7280',
+    fontSize: 13,
+    fontWeight: '500',
   },
   tabLabelActive: {
     color: '#6366f1',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   content: {
     padding: 16,

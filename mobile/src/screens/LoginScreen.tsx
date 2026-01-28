@@ -74,27 +74,59 @@ export default function LoginScreen() {
     } catch (err: any) {
       let errorMessage = 'Erro ao fazer login. Verifique suas credenciais.'
       
-      // Check for specific error messages
-      if (err.message) {
-        if (err.message.includes('não foi possível conectar') || err.message.includes('Network Error') || err.message.includes('timeout')) {
-          errorMessage = err.message
-        } else if (err.message.includes('Credenciais inválidas') || err.message.includes('incorret')) {
-          errorMessage = 'Credenciais inválidas. Verifique o seu email/username e password.'
-        } else if (err.message.includes('não encontrado') || err.message.includes('não existe')) {
-          errorMessage = 'Utilizador não encontrado. Verifique o seu email/username.'
-        } else {
-          errorMessage = err.message
+      console.error('🔴 Login error object:', JSON.stringify(err, null, 2))
+      console.error('🔴 Error type:', typeof err)
+      console.error('🔴 Error keys:', Object.keys(err || {}))
+      
+      // Extract error message from Redux thunk rejection
+      // Redux Toolkit thunks reject with the value passed to rejectWithValue
+      if (err.payload) {
+        errorMessage = typeof err.payload === 'string' ? err.payload : JSON.stringify(err.payload)
+        console.log('📦 Error from payload:', err.payload)
+      } else if (err.message) {
+        errorMessage = err.message
+        console.log('📝 Error from message:', err.message)
+      } else if (typeof err === 'string') {
+        errorMessage = err
+        console.log('📄 Error is string:', err)
+      } else {
+        // Try to extract from error object
+        const errorStr = err.toString()
+        if (errorStr !== '[object Object]') {
+          errorMessage = errorStr
         }
-      } else if (err.payload) {
-        errorMessage = err.payload
+        console.log('🔍 Error string representation:', errorStr)
       }
       
       setError(errorMessage)
-      console.error('Login error:', err) // Debug log
+      console.error('❌ Final error message:', errorMessage)
       
-      // Show alert for connection errors
-      if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error')) {
-        Alert.alert('Erro de Conexão', errorMessage)
+      // Show specific alerts based on error type
+      if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
+        Alert.alert(
+          '❌ Utilizador não encontrado',
+          'O utilizador que introduziu não existe.\n\nVerifique o email ou username e tente novamente.',
+          [{ text: 'OK', style: 'default' }]
+        )
+      } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
+        Alert.alert(
+          '⚠️ Palavra-passe incorreta',
+          'O utilizador existe, mas a palavra-passe está incorreta.\n\nTente novamente.',
+          [{ text: 'OK', style: 'default' }]
+        )
+      } else if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error') || errorMessage.includes('timeout') || errorMessage.includes('conectar ao servidor')) {
+        Alert.alert(
+          '🔌 Erro de Conexão',
+          errorMessage + '\n\nVerifique:\n• Ligação à internet\n• URL do servidor está correta\n• Servidor está online',
+          [{ text: 'OK', style: 'default' }]
+        )
+      } else {
+        // Show generic error alert
+        Alert.alert(
+          '❌ Erro ao fazer login',
+          errorMessage,
+          [{ text: 'OK', style: 'default' }]
+        )
       }
     } finally {
       setLoading(false)
@@ -175,9 +207,18 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
+        <View style={styles.backgroundDecor}>
+          <View style={styles.circle1} />
+          <View style={styles.circle2} />
+        </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.card}>
-          <Card.Content>
+        <Card style={styles.card} elevation={8}>
+          <Card.Content style={styles.cardContent}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoCircle}>
+                <MaterialCommunityIcons name="wallet" size={40} color="#6366f1" />
+              </View>
+            </View>
             <Text variant="headlineMedium" style={styles.title}>
               Zenda
             </Text>
@@ -286,6 +327,9 @@ export default function LoginScreen() {
               loading={loading}
               disabled={loading}
               style={styles.button}
+              buttonColor="#6366f1"
+              contentStyle={styles.buttonContent}
+              labelStyle={styles.buttonLabel}
             >
               Entrar
             </Button>
@@ -321,30 +365,84 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
+    position: 'relative',
+  },
+  backgroundDecor: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+  },
+  circle1: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: '#6366f1',
+    opacity: 0.06,
+    top: -80,
+    right: -80,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#8b5cf6',
+    opacity: 0.06,
+    bottom: -60,
+    left: -60,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
+    zIndex: 1,
   },
   card: {
-    elevation: 4,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  cardContent: {
+    padding: 24,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f0f4ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#e0e7ff',
   },
   title: {
     textAlign: 'center',
     marginBottom: 8,
-    fontWeight: 'bold',
-    color: '#6366f1',
+    fontWeight: '700',
+    color: '#1f2937',
+    letterSpacing: -0.5,
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: 24,
-    color: '#666',
+    marginBottom: 32,
+    color: '#6b7280',
+    lineHeight: 20,
   },
   input: {
     marginBottom: 16,
@@ -394,8 +492,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 12,
     marginBottom: 16,
   },
   errorWarning: {

@@ -166,13 +166,35 @@ export default function CursoDetailPage() {
                 </a>
               </div>
             ) : (
-              <button
-                onClick={handleEnroll}
-                disabled={enrolling}
-                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
-              >
-                {enrolling ? 'A processar...' : 'Comprar Curso'}
-              </button>
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">Informações de Pagamento</h3>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">IBAN:</span>
+                      <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Destinatário:</span>
+                      <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Valor:</span>
+                      <p className="text-gray-900 font-semibold mt-1">{formatCurrency(course.price)}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-3">
+                    Após a transferência, faça o upload do comprovativo na sua área do aluno.
+                  </p>
+                </div>
+                <button
+                  onClick={handleEnroll}
+                  disabled={enrolling}
+                  className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+                >
+                  {enrolling ? 'A processar...' : 'Comprar Curso'}
+                </button>
+              </div>
             )}
           </div>
         </div>

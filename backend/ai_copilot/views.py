@@ -263,20 +263,74 @@ Como posso ajudá-lo hoje? Para respostas completas com IA, configure a OPENAI_A
         try:
             client = OpenAI(api_key=api_key)
             response = client.chat.completions.create(
-                model=getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
                 messages=messages,
-                max_tokens=500,
+                max_tokens=800,
                 temperature=0.7,
             )
-            return response.choices[0].message.content.strip()
+            ai_content = response.choices[0].message.content.strip()
+            if not ai_content:
+                raise ValueError("Empty response from OpenAI")
+            return ai_content
         except Exception as e:
-            # Se houver erro, retornar resposta padrão
-            return f"""Desculpe, não consegui processar sua mensagem no momento. 
+            # Log error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"OpenAI API error: {str(e)}")
+            
+            # Se houver erro, retornar resposta padrão contextual
+            user_message = messages[-1]['content'].lower() if messages else ""
+            
+            if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
+                return """Ótima pergunta sobre orçamento! Aqui estão algumas dicas práticas:
 
-No entanto, posso ajudá-lo com:
-- Planejamento de orçamento mensal
-- Estratégias para reduzir despesas
+1. **Regra 50/30/20**: 
+   - 50% para necessidades (aluguel, comida, transporte)
+   - 30% para desejos (entretenimento, hobbies)
+   - 20% para poupança e investimentos
+
+2. **Rastreie seus gastos**: Use a seção de Finanças Pessoais do app para registrar todas as despesas.
+
+3. **Revise mensalmente**: Analise onde está gastando mais e identifique oportunidades de economia.
+
+Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+            
+            elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
+                return """Excelente foco em poupança! Aqui estão estratégias eficazes:
+
+1. **Poupança Automática**: Configure transferências automáticas assim que receber seu salário.
+
+2. **Meta de Poupança**: Use a seção de Metas no app para definir objetivos claros e acompanhar o progresso.
+
+3. **Fundo de Emergência**: Procure ter pelo menos 3-6 meses de despesas guardadas.
+
+4. **Comece Pequeno**: Mesmo pequenas quantias fazem diferença ao longo do tempo.
+
+Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+            
+            elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
+                return """Gestão de dívidas é crucial! Aqui estão algumas estratégias:
+
+1. **Método da Bola de Neve**: Pague primeiro a menor dívida, depois a próxima.
+
+2. **Priorize Juros Altos**: Foque em dívidas com maiores taxas de juros primeiro.
+
+3. **Negocie**: Entre em contato com credores para renegociar condições.
+
+4. **Use o App**: Registre suas dívidas na seção de Finanças Pessoais para acompanhar o progresso.
+
+Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+            
+            else:
+                return """Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
+
+Posso ajudá-lo com:
+- Planejamento de orçamento
+- Estratégias de poupança
 - Gestão de dívidas
-- Definição de metas financeiras realistas
+- Definição de metas financeiras
+- Educação financeira
 
-Por favor, reformule sua pergunta ou entre em contato com o suporte."""
+Como posso ajudá-lo hoje? 
+
+Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""

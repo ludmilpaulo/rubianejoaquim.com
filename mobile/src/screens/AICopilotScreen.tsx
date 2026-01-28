@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput } from 'react-native'
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated } from 'react-native'
 import { Text, TextInput, Button, Card, ActivityIndicator } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -29,17 +29,47 @@ export default function AICopilotScreen() {
   const [sending, setSending] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<RNTextInput>(null)
+  const dot1Anim = useRef(new Animated.Value(0.4)).current
+  const dot2Anim = useRef(new Animated.Value(0.4)).current
+  const dot3Anim = useRef(new Animated.Value(0.4)).current
+
+  // Typing animation
+  useEffect(() => {
+    if (sending) {
+      const animateDots = () => {
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(dot1Anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot2Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot3Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(dot1Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot2Anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot3Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+          ]),
+          Animated.parallel([
+            Animated.timing(dot1Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot2Anim, { toValue: 0.4, duration: 400, useNativeDriver: true }),
+            Animated.timing(dot3Anim, { toValue: 1, duration: 400, useNativeDriver: true }),
+          ]),
+        ]).start(() => {
+          if (sending) animateDots()
+        })
+      }
+      animateDots()
+    } else {
+      dot1Anim.setValue(0.4)
+      dot2Anim.setValue(0.4)
+      dot3Anim.setValue(0.4)
+    }
+  }, [sending])
 
   useEffect(() => {
     if (conversationId) {
       loadConversation()
-    } else {
-      // Welcome message
-      setMessages([{
-        role: 'assistant',
-        content: 'Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças pessoais e de negócios.\n\nPosso ajudá-lo com:\n• Planejamento de orçamento\n• Estratégias de poupança\n• Gestão de dívidas\n• Definição de metas financeiras\n• Educação financeira\n\nComo posso ajudá-lo hoje?'
-      }])
     }
+    // Welcome message is now shown in the UI when messages.length === 0
   }, [conversationId])
 
   const loadConversation = async () => {
@@ -100,7 +130,10 @@ export default function AICopilotScreen() {
     }, 100)
 
     try {
+      console.log('📤 Sending message to AI Copilot:', inputText.trim())
       const response = await aiCopilotApi.chat(inputText.trim(), conversationId)
+      
+      console.log('✅ AI Copilot response:', response)
       
       // Handle response - could be direct data or wrapped
       const responseData = response.data || response
@@ -108,6 +141,7 @@ export default function AICopilotScreen() {
       // Update conversation ID if this is a new conversation
       if (responseData.conversation_id && !conversationId) {
         setConversationId(responseData.conversation_id)
+        console.log('💬 New conversation ID:', responseData.conversation_id)
       }
 
       // Add assistant response
@@ -120,6 +154,32 @@ export default function AICopilotScreen() {
           content: assistantMsg.content || assistantMsg.message || '',
           created_at: assistantMsg.created_at,
         }
+        console.log('🤖 Assistant message:', message)
+        setMessages(prev => [...prev, message])
+      } else if (responseData.message) {
+        // Fallback: if response has direct message field
+        const message: Message = {
+          role: 'assistant',
+          content: responseData.message,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, message])
+      } else if (responseData.content) {
+        // Another fallback: direct content field
+        const message: Message = {
+          role: 'assistant',
+          content: responseData.content,
+          created_at: new Date().toISOString(),
+        }
+        setMessages(prev => [...prev, message])
+      } else {
+        console.warn('⚠️ Unexpected response format:', responseData)
+        // Last resort: show the whole response
+        const message: Message = {
+          role: 'assistant',
+          content: 'Desculpe, recebi uma resposta em formato inesperado. Por favor, tente novamente.',
+          created_at: new Date().toISOString(),
+        }
         setMessages(prev => [...prev, message])
       }
 
@@ -128,7 +188,12 @@ export default function AICopilotScreen() {
         scrollViewRef.current?.scrollToEnd({ animated: true })
       }, 100)
     } catch (error: any) {
-      console.error('Error sending message:', error)
+      console.error('❌ Error sending message:', error)
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      })
       
       // Provide more helpful error message
       let errorMessage = 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.'
@@ -137,6 +202,8 @@ export default function AICopilotScreen() {
         errorMessage = 'Sessão expirada. Por favor, faça login novamente.'
       } else if (error.response?.status === 403) {
         errorMessage = 'Você não tem permissão para usar esta funcionalidade.'
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Erro no servidor. O AI Copilot pode estar temporariamente indisponível. Tente novamente em alguns instantes.'
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error
       } else if (error.message) {
@@ -171,10 +238,10 @@ export default function AICopilotScreen() {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="robot" size={24} color="#8b5cf6" />
+                <MaterialCommunityIcons name="robot" size={28} color="#8b5cf6" />
               </View>
-              <View>
-                <Text variant="titleMedium" style={styles.headerTitle}>
+              <View style={styles.headerText}>
+                <Text variant="titleLarge" style={styles.headerTitle}>
                   AI Financial Copilot
                 </Text>
                 <Text variant="bodySmall" style={styles.headerSubtitle}>
@@ -243,10 +310,18 @@ export default function AICopilotScreen() {
           )}
           {sending && (
             <View style={styles.sendingIndicator}>
-              <ActivityIndicator size="small" color="#8b5cf6" />
-              <Text variant="bodySmall" style={styles.sendingText}>
-                AI está pensando...
-              </Text>
+              <View style={styles.assistantIcon}>
+                <MaterialCommunityIcons name="robot" size={22} color="#8b5cf6" />
+              </View>
+              <Card style={styles.assistantMessageCard} elevation={1}>
+                <Card.Content style={styles.messageContent}>
+                  <View style={styles.typingDots}>
+                    <Animated.View style={[styles.dot, { opacity: dot1Anim }]} />
+                    <Animated.View style={[styles.dot, { opacity: dot2Anim }]} />
+                    <Animated.View style={[styles.dot, { opacity: dot3Anim }]} />
+                  </View>
+                </Card.Content>
+              </Card>
             </View>
           )}
         </ScrollView>
@@ -257,30 +332,32 @@ export default function AICopilotScreen() {
             <TextInput
               ref={inputRef}
               mode="outlined"
-              placeholder="Digite sua pergunta..."
+              placeholder="Digite sua pergunta sobre finanças..."
               value={inputText}
               onChangeText={setInputText}
               multiline
               maxLength={500}
               style={styles.input}
               contentStyle={styles.inputContent}
-              disabled={sending}
+              disabled={sending || loading}
               onSubmitEditing={handleSend}
               returnKeyType="send"
+              left={<TextInput.Icon icon="message-text" />}
             />
             <Button
               mode="contained"
               onPress={handleSend}
-              disabled={!inputText.trim() || sending}
+              disabled={!inputText.trim() || sending || loading}
               style={styles.sendButton}
               contentStyle={styles.sendButtonContent}
+              buttonColor="#8b5cf6"
               icon="send"
             >
               Enviar
             </Button>
           </View>
           <Text variant="bodySmall" style={styles.inputHint}>
-            O AI pode ajudá-lo com orçamento, poupança, dívidas e muito mais
+            💡 O AI pode ajudá-lo com orçamento, poupança, dívidas e muito mais
           </Text>
         </View>
       </KeyboardAvoidingView>
@@ -291,18 +368,22 @@ export default function AICopilotScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   container: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     elevation: 2,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -315,25 +396,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3e8ff',
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#f5f3ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    borderWidth: 2,
+    borderColor: '#e9d5ff',
+  },
+  headerText: {
+    flex: 1,
   },
   headerTitle: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#1f2937',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    color: '#666',
-    marginTop: 2,
+    color: '#6b7280',
+    fontSize: 13,
   },
   messagesContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
   },
   messagesContent: {
     padding: 16,
@@ -343,11 +431,77 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 48,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#6b7280',
+  },
+  welcomeContainer: {
+    alignItems: 'center',
     paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  welcomeIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 30,
+    backgroundColor: '#f5f3ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 3,
+    borderColor: '#e9d5ff',
+  },
+  welcomeTitle: {
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  welcomeText: {
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  suggestionsContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  suggestionsTitle: {
+    color: '#374151',
+    marginBottom: 16,
+    fontWeight: '600',
+  },
+  suggestionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  suggestionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    gap: 8,
+  },
+  suggestionText: {
+    color: '#374151',
+    fontWeight: '500',
   },
   messageWrapper: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 20,
     alignItems: 'flex-end',
   },
   userMessageWrapper: {
@@ -358,74 +512,100 @@ const styles = StyleSheet.create({
   },
   messageCard: {
     maxWidth: '80%',
-    elevation: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   userMessageCard: {
     backgroundColor: '#6366f1',
-    borderTopRightRadius: 4,
+    borderRadius: 20,
+    borderBottomRightRadius: 4,
   },
   assistantMessageCard: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 4,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   messageContent: {
-    padding: 12,
+    padding: 14,
   },
   messageText: {
     color: '#1f2937',
+    lineHeight: 20,
   },
   userMessageText: {
-    color: '#fff',
+    color: '#ffffff',
   },
   assistantMessageText: {
     color: '#1f2937',
   },
   messageTime: {
-    marginTop: 4,
-    opacity: 0.7,
-    fontSize: 10,
+    marginTop: 6,
+    opacity: 0.6,
+    fontSize: 11,
   },
   assistantIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3e8ff',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f5f3ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 10,
     marginBottom: 4,
+    borderWidth: 2,
+    borderColor: '#e9d5ff',
   },
   userIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#eef2ff',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 10,
     marginBottom: 4,
+    borderWidth: 2,
+    borderColor: '#c7d2fe',
   },
   sendingIndicator: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 8,
+    alignItems: 'flex-end',
+    marginBottom: 20,
+    justifyContent: 'flex-start',
   },
-  sendingText: {
-    color: '#666',
+  typingDots: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#8b5cf6',
   },
   inputContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderTopWidth: 1,
     borderTopColor: '#e5e7eb',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 12,
   },
   input: {
     flex: 1,
@@ -433,18 +613,22 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   inputContent: {
-    minHeight: 44,
+    minHeight: 48,
+    paddingVertical: 12,
   },
   sendButton: {
-    borderRadius: 8,
+    borderRadius: 12,
+    elevation: 2,
   },
   sendButtonContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    height: 48,
   },
   inputHint: {
-    marginTop: 8,
-    color: '#999',
+    marginTop: 12,
+    color: '#9ca3af',
     textAlign: 'center',
+    fontSize: 12,
   },
 })

@@ -20,10 +20,23 @@ export const login = createAsyncThunk(
       await AsyncStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error: any) {
-      // Extract specific error message from response
+      // Extract specific error message
+      // The authApi.login already throws Error objects with descriptive messages
       let errorMessage = 'Erro ao fazer login'
       
-      if (error.response?.data) {
+      console.log('🔴 authSlice login error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        code: error.code,
+      })
+      
+      // First check if it's an Error object with a message (from authApi.login)
+      if (error.message) {
+        errorMessage = error.message
+      } 
+      // Then check response data (for direct API errors)
+      else if (error.response?.data) {
         if (error.response.data.email) {
           errorMessage = Array.isArray(error.response.data.email) 
             ? error.response.data.email[0] 
@@ -39,10 +52,9 @@ export const login = createAsyncThunk(
         } else if (error.response.data.error) {
           errorMessage = error.response.data.error
         }
-      } else if (error.message) {
-        errorMessage = error.message
       }
       
+      console.log('📤 Rejecting with error message:', errorMessage)
       return rejectWithValue(errorMessage)
     }
   }

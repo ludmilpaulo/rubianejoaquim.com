@@ -31,8 +31,13 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  timeout: 15000, // 15 second timeout (increased for mobile)
+  timeout: 30000, // 30 second timeout (increased for production)
+  // For production HTTPS, ensure SSL validation
+  validateStatus: function (status) {
+    return status >= 200 && status < 500; // Don't throw on 4xx errors
+  },
 })
 
 // Request interceptor to add token
@@ -62,44 +67,105 @@ api.interceptors.response.use(
   }
 )
 
+// Test API connectivity
+export const testApiConnection = async () => {
+  try {
+    console.log('🧪 Testing API connection to:', API_BASE_URL)
+    const response = await api.get('/auth/me/', { timeout: 10000 })
+    console.log('✅ API connection test successful:', response.status)
+    return { success: true, status: response.status }
+  } catch (error: any) {
+    console.error('❌ API connection test failed:', {
+      code: error.code,
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+    })
+    return { 
+      success: false, 
+      error: error.message,
+      code: error.code,
+      status: error.response?.status 
+    }
+  }
+}
+
 // Auth API
 export const authApi = {
   login: async (emailOrUsername: string, password: string) => {
     try {
+      console.log('🔐 Attempting login to:', API_BASE_URL + '/auth/login/')
+      console.log('📧 Email/Username:', emailOrUsername)
+      
       const response = await api.post('/auth/login/', {
         email: emailOrUsername,
         password,
       })
-      return response.data
+      
+      console.log('✅ Login response status:', response.status)
+      console.log('✅ Login response data:', response.data)
+      
+      if (response.status >= 200 && response.status < 300) {
+        return response.data
+      } else {
+        // Handle non-2xx responses
+        const errorData = response.data || {}
+        const errorMsg = errorData.email?.[0] || 
+                        errorData.password?.[0] ||
+                        errorData.non_field_errors?.[0] ||
+                        errorData.error ||
+                        `Erro ao fazer login (status: ${response.status})`
+        throw new Error(errorMsg)
+      }
     } catch (error: any) {
       // Better error handling
-      console.error('Login error details:', {
+      console.error('❌ Login error details:', {
         code: error.code,
         message: error.message,
         response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
         url: error.config?.url,
         baseURL: error.config?.baseURL,
+        headers: error.config?.headers,
       })
       
-      if (error.code === 'ECONNREFUSED' || error.message?.includes('Network Error') || error.message?.includes('timeout')) {
+      // Network/connection errors
+      if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
         const errorMsg = `Não foi possível conectar ao servidor.\n\n` +
-          `URL tentada: ${error.config?.baseURL || API_BASE_URL}\n` +
-          `Verifique:\n` +
-          `1. O backend está rodando? (python manage.py runserver 0.0.0.0:8000)\n` +
-          `2. O IP está correto? (192.168.1.139)\n` +
-          `3. Está na mesma rede WiFi?\n` +
-          `4. Firewall está bloqueando?`
+          `URL: ${error.config?.baseURL || API_BASE_URL}\n` +
+          `Erro: ${error.message}\n\n` +
+          `Verifique a sua ligação à internet.`
         throw new Error(errorMsg)
       }
+      
+      if (error.message?.includes('Network Error') || error.message?.includes('timeout')) {
+        const errorMsg = `Erro de rede ou timeout.\n\n` +
+          `URL: ${error.config?.baseURL || API_BASE_URL}\n` +
+          `Verifique a sua ligação à internet.`
+        throw new Error(errorMsg)
+      }
+      
+      // SSL/Certificate errors
+      if (error.code === 'CERT_HAS_EXPIRED' || error.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' || error.message?.includes('certificate')) {
+        const errorMsg = `Erro de certificado SSL.\n\n` +
+          `Contacte o suporte técnico.`
+        throw new Error(errorMsg)
+      }
+      
+      // Backend validation errors
       if (error.response?.data) {
         const errorMsg = error.response.data.email?.[0] || 
                         error.response.data.password?.[0] ||
                         error.response.data.non_field_errors?.[0] ||
                         error.response.data.error ||
-                        'Credenciais inválidas'
+                        `Erro ao fazer login (${error.response.status})`
         throw new Error(errorMsg)
       }
-      throw error
+      
+      // Generic error
+      throw new Error(error.message || 'Erro desconhecido ao fazer login')
     }
   },
   

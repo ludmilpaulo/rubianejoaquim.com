@@ -465,7 +465,7 @@ export default function AulaPage() {
             </div>
             
             <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-sm text-gray-600">Preço do Curso</p>
                   <p className="text-2xl font-bold text-primary-600">{formatCurrency(course.price)}</p>
@@ -474,6 +474,11 @@ export default function AulaPage() {
                   <p className="text-sm text-gray-600">Acesso Completo</p>
                   <p className="text-sm font-semibold text-gray-900">Todas as Aulas</p>
                 </div>
+              </div>
+              <div className="pt-3 border-t border-primary-200">
+                <p className="text-xs text-gray-600">
+                  💳 Pagamento por transferência bancária. Verá as informações completas na página do curso.
+                </p>
               </div>
             </div>
 
