@@ -525,6 +525,19 @@ export const lessonsApi = {
   },
 }
 
+// Lesson Quiz API
+export const lessonQuizApi = {
+  getByLesson: async (lessonId: number) => {
+    const response = await api.get(`/course/lesson-quiz/by-lesson/${lessonId}/`)
+    return response.data
+  },
+  
+  submit: async (quizId: number, answers: Array<{ question_id: number; choice_id: number }>) => {
+    const response = await api.post(`/course/lesson-quiz/${quizId}/submit/`, { answers })
+    return response.data
+  },
+}
+
 // AI Copilot API
 export const aiCopilotApi = {
   getConversations: async () => {

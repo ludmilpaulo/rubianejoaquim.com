@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import YoutubePlayer from 'react-native-youtube-iframe'
-import { lessonsApi } from '../services/api'
+import { lessonsApi, lessonQuizApi } from '../services/api'
 import { extractYouTubeVideoId, isYouTubeUrl } from '../utils/youtube'
 
 const { width } = Dimensions.get('window')
@@ -52,6 +52,8 @@ export default function LessonDetailScreen() {
   const [markingComplete, setMarkingComplete] = useState(false)
   const [playing, setPlaying] = useState(false)
   const playerRef = useRef<any>(null)
+  const [quiz, setQuiz] = useState<any | null>(null)
+  const [loadingQuiz, setLoadingQuiz] = useState(false)
   
   // Extract YouTube video ID if it's a YouTube URL
   const videoId = lesson?.video_url && isYouTubeUrl(lesson.video_url) 
@@ -63,6 +65,13 @@ export default function LessonDetailScreen() {
       loadLesson()
     }
   }, [lessonId])
+
+  useEffect(() => {
+    // Load quiz when lesson is completed
+    if (lesson && lesson.progress?.completed) {
+      loadQuiz()
+    }
+  }, [lesson?.progress?.completed])
 
   const loadLesson = async () => {
     try {
@@ -331,6 +340,101 @@ export default function LessonDetailScreen() {
             </Card.Content>
           </Card>
         )}
+
+        {/* Quiz Section - Show after lesson completion */}
+        {isCompleted && (
+          <Card style={styles.card}>
+            <Card.Content>
+              <View style={styles.quizHeader}>
+                <MaterialCommunityIcons name="file-question" size={24} color="#6366f1" />
+                <Text variant="titleMedium" style={styles.sectionTitle}>
+                  Quiz da Aula
+                </Text>
+              </View>
+              <Divider style={styles.divider} />
+              {loadingQuiz ? (
+                <View style={styles.quizLoading}>
+                  <Text variant="bodyMedium" style={styles.quizLoadingText}>
+                    Carregando quiz...
+                  </Text>
+                </View>
+              ) : quiz && quiz.quiz ? (
+                <View style={styles.quizContent}>
+                  <Text variant="bodyLarge" style={styles.quizTitle}>
+                    {quiz.quiz.title || 'Quiz da Aula'}
+                  </Text>
+                  {quiz.quiz.questions && quiz.quiz.questions.length > 0 && (
+                    <Text variant="bodyMedium" style={styles.quizInfo}>
+                      {quiz.quiz.questions.length} pergunta{quiz.quiz.questions.length > 1 ? 's' : ''}
+                      {quiz.quiz.passing_score && ` • Nota mínima: ${quiz.quiz.passing_score}%`}
+                    </Text>
+                  )}
+                  {quiz.previous_result ? (
+                    <View style={styles.quizResult}>
+                      <View style={styles.resultRow}>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>
+                          Pontuação:
+                        </Text>
+                        <Text variant="titleMedium" style={[
+                          styles.resultValue,
+                          quiz.previous_result.passed ? styles.resultPassed : styles.resultFailed
+                        ]}>
+                          {quiz.previous_result.score.toFixed(1)}%
+                        </Text>
+                      </View>
+                      <View style={styles.resultRow}>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>
+                          Respostas corretas:
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.resultValue}>
+                          {quiz.previous_result.correct_answers} / {quiz.previous_result.total_questions}
+                        </Text>
+                      </View>
+                      {quiz.previous_result.passed ? (
+                        <Chip
+                          icon="check-circle"
+                          style={styles.passedChip}
+                          textStyle={styles.passedChipText}
+                        >
+                          Aprovado
+                        </Chip>
+                      ) : (
+                        <Chip
+                          icon="alert-circle"
+                          style={styles.failedChip}
+                          textStyle={styles.failedChipText}
+                        >
+                          Não Aprovado
+                        </Chip>
+                      )}
+                    </View>
+                  ) : (
+                    <Button
+                      mode="contained"
+                      icon="play-circle"
+                      onPress={() => {
+                        navigation.navigate('LessonQuiz', { 
+                          lessonId: lesson.id,
+                          quizId: quiz.quiz.id 
+                        })
+                      }}
+                      style={styles.startQuizButton}
+                    >
+                      Iniciar Quiz
+                    </Button>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.noQuiz}>
+                  <MaterialCommunityIcons name="file-question-outline" size={48} color="#9ca3af" />
+                  <Text variant="bodyMedium" style={styles.noQuizText}>
+                    Esta aula não possui quiz disponível.
+                  </Text>
+                </View>
+              )}
+            </Card.Content>
+          </Card>
+        )}
       </ScrollView>
     </SafeAreaView>
   )
@@ -505,6 +609,86 @@ const styles = StyleSheet.create({
   },
   completedText: {
     color: '#666',
+    textAlign: 'center',
+  },
+  quizHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  quizLoading: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  quizLoadingText: {
+    color: '#666',
+  },
+  quizContent: {
+    marginTop: 8,
+  },
+  quizTitle: {
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  quizInfo: {
+    color: '#666',
+    marginBottom: 16,
+  },
+  quizResult: {
+    backgroundColor: '#f9fafb',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  resultLabel: {
+    color: '#666',
+  },
+  resultValue: {
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  resultPassed: {
+    color: '#10b981',
+  },
+  resultFailed: {
+    color: '#ef4444',
+  },
+  passedChip: {
+    backgroundColor: '#d1fae5',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  passedChipText: {
+    color: '#10b981',
+    fontSize: 12,
+  },
+  failedChip: {
+    backgroundColor: '#fee2e2',
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  failedChipText: {
+    color: '#ef4444',
+    fontSize: 12,
+  },
+  startQuizButton: {
+    marginTop: 8,
+  },
+  noQuiz: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  noQuizText: {
+    color: '#9ca3af',
+    marginTop: 12,
     textAlign: 'center',
   },
 })
