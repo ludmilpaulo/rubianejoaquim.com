@@ -83,6 +83,10 @@ export default function PersonalFinanceScreen() {
   const [showBudgetModal, setShowBudgetModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [showDebtModal, setShowDebtModal] = useState(false)
+  const [showPayDebtModal, setShowPayDebtModal] = useState(false)
+  const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [payingDebt, setPayingDebt] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
   const [showBudgetPeriodMenu, setShowBudgetPeriodMenu] = useState(false)
@@ -343,6 +347,42 @@ export default function PersonalFinanceScreen() {
   })
   const resetGoalForm = () => setGoalForm({ title: '', description: '', target_amount: '', target_date: null, current_amount: '0' })
   const resetDebtForm = () => setDebtForm({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null, description: '' })
+
+  const handlePayDebt = async () => {
+    if (!selectedDebt || !paymentAmount || parseFloat(paymentAmount) <= 0) {
+      Alert.alert('Erro', 'Por favor, insira um valor válido para o pagamento.')
+      return
+    }
+
+    const paymentValue = parseFloat(paymentAmount)
+    const currentPaid = parseFloat(selectedDebt.paid_amount)
+    const totalAmount = parseFloat(selectedDebt.total_amount)
+    const newPaidAmount = currentPaid + paymentValue
+
+    if (newPaidAmount > totalAmount) {
+      Alert.alert('Erro', `O valor do pagamento não pode exceder o valor restante de ${formatCurrency(totalAmount - currentPaid)}.`)
+      return
+    }
+
+    try {
+      setPayingDebt(true)
+      const newStatus = newPaidAmount >= totalAmount ? 'paid' : selectedDebt.status
+      await personalFinanceApi.updateDebt(selectedDebt.id, {
+        paid_amount: newPaidAmount.toString(),
+        status: newStatus,
+      })
+      setShowPayDebtModal(false)
+      setPaymentAmount('')
+      setSelectedDebt(null)
+      await loadData()
+      Alert.alert('Sucesso', `Pagamento de ${formatCurrency(paymentValue)} registado com sucesso!`)
+    } catch (error: any) {
+      console.error('Error paying debt:', error)
+      Alert.alert('Erro', error.response?.data?.error || 'Erro ao registrar pagamento. Por favor, tente novamente.')
+    } finally {
+      setPayingDebt(false)
+    }
+  }
 
   const openEditExpense = (expense: Expense) => {
     setEditingItem(expense)
@@ -895,12 +935,55 @@ export default function PersonalFinanceScreen() {
                         ]}
                       />
                     </View>
-                    <View style={styles.debtFooter}>
-                      <Text variant="bodySmall">
-                        Restante: {formatCurrency(parseFloat(debt.remaining_amount))}
-                      </Text>
-                      <Text variant="bodySmall">Vencimento: {new Date(debt.due_date).toLocaleDateString('pt-PT')}</Text>
+                    <View style={styles.debtInfo}>
+                      <View style={styles.debtInfoRow}>
+                        <Text variant="bodySmall" style={styles.debtInfoLabel}>
+                          Total:
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.debtInfoValue}>
+                          {formatCurrency(parseFloat(debt.total_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.debtInfoRow}>
+                        <Text variant="bodySmall" style={styles.debtInfoLabel}>
+                          Pago:
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.debtInfoValue}>
+                          {formatCurrency(parseFloat(debt.paid_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.debtInfoRow}>
+                        <Text variant="bodySmall" style={styles.debtInfoLabel}>
+                          Restante:
+                        </Text>
+                        <Text variant="bodyMedium" style={[styles.debtInfoValue, styles.remainingAmount]}>
+                          {formatCurrency(parseFloat(debt.remaining_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.debtInfoRow}>
+                        <Text variant="bodySmall" style={styles.debtInfoLabel}>
+                          Vencimento:
+                        </Text>
+                        <Text variant="bodySmall" style={styles.debtInfoValue}>
+                          {new Date(debt.due_date).toLocaleDateString('pt-PT')}
+                        </Text>
+                      </View>
                     </View>
+                    {debt.status !== 'paid' && parseFloat(debt.remaining_amount) > 0 && (
+                      <Button
+                        mode="contained"
+                        icon="cash-check"
+                        onPress={() => {
+                          setSelectedDebt(debt)
+                          setPaymentAmount('')
+                          setShowPayDebtModal(true)
+                        }}
+                        style={styles.payDebtButton}
+                        buttonColor="#10b981"
+                      >
+                        Pagar Dívida
+                      </Button>
+                    )}
                   </Card.Content>
                 </Card>
               ))
@@ -1300,21 +1383,135 @@ export default function PersonalFinanceScreen() {
       {/* Debt Modal */}
       <Portal>
         <Modal visible={showDebtModal} onDismiss={() => { setShowDebtModal(false); setEditingItem(null); resetDebtForm() }} contentContainerStyle={styles.modal}>
-          <Text variant="headlineSmall" style={styles.modalTitle}>
-            {editingItem ? 'Editar Dívida' : 'Nova Dívida'}
-          </Text>
-          <TextInput label="Credor" value={debtForm.creditor} onChangeText={(text) => setDebtForm({ ...debtForm, creditor: text })} />
-          <TextInput label="Valor Total" keyboardType="numeric" value={debtForm.total_amount} onChangeText={(text) => setDebtForm({ ...debtForm, total_amount: text })} />
-          <TextInput label="Valor Pago" keyboardType="numeric" value={debtForm.paid_amount} onChangeText={(text) => setDebtForm({ ...debtForm, paid_amount: text })} />
-          <TextInput label="Taxa de Juros (%)" keyboardType="numeric" value={debtForm.interest_rate} onChangeText={(text) => setDebtForm({ ...debtForm, interest_rate: text })} />
-          <DatePicker
-            label="Data de Vencimento"
-            value={debtForm.due_date}
-            onChange={(date) => setDebtForm({ ...debtForm, due_date: date })}
-          />
-          <Button mode="contained" onPress={handleSaveDebt} style={styles.modalButton}>
-            Salvar
-          </Button>
+          <ScrollView>
+            <Text variant="headlineSmall" style={styles.modalTitle}>
+              {editingItem ? 'Editar Dívida' : 'Nova Dívida'}
+            </Text>
+            <TextInput label="Credor" value={debtForm.creditor} onChangeText={(text) => setDebtForm({ ...debtForm, creditor: text })} style={styles.input} />
+            <TextInput label="Valor Total" keyboardType="numeric" value={debtForm.total_amount} onChangeText={(text) => setDebtForm({ ...debtForm, total_amount: text })} style={styles.input} />
+            <TextInput label="Valor Pago" keyboardType="numeric" value={debtForm.paid_amount} onChangeText={(text) => setDebtForm({ ...debtForm, paid_amount: text })} style={styles.input} />
+            <TextInput label="Taxa de Juros (%)" keyboardType="numeric" value={debtForm.interest_rate} onChangeText={(text) => setDebtForm({ ...debtForm, interest_rate: text })} style={styles.input} />
+            <DatePicker
+              label="Data de Vencimento"
+              value={debtForm.due_date}
+              onChange={(date) => setDebtForm({ ...debtForm, due_date: date })}
+            />
+            <TextInput label="Descrição" value={debtForm.description} onChangeText={(text) => setDebtForm({ ...debtForm, description: text })} multiline numberOfLines={3} style={styles.input} />
+            <Button mode="contained" onPress={handleSaveDebt} style={styles.modalButton}>
+              Salvar
+            </Button>
+          </ScrollView>
+        </Modal>
+      </Portal>
+
+      {/* Pay Debt Modal */}
+      <Portal>
+        <Modal 
+          visible={showPayDebtModal} 
+          onDismiss={() => { 
+            setShowPayDebtModal(false)
+            setSelectedDebt(null)
+            setPaymentAmount('')
+          }} 
+          contentContainerStyle={styles.modal}
+        >
+          <ScrollView>
+            <Text variant="headlineSmall" style={styles.modalTitle}>
+              Pagar Dívida
+            </Text>
+            {selectedDebt && (
+              <>
+                <Card style={styles.infoCard}>
+                  <Card.Content>
+                    <Text variant="titleMedium" style={styles.debtModalTitle}>
+                      {selectedDebt.creditor}
+                    </Text>
+                    <View style={styles.debtModalInfo}>
+                      <View style={styles.debtModalRow}>
+                        <Text variant="bodySmall" style={styles.debtModalLabel}>
+                          Valor Total:
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.debtModalValue}>
+                          {formatCurrency(parseFloat(selectedDebt.total_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.debtModalRow}>
+                        <Text variant="bodySmall" style={styles.debtModalLabel}>
+                          Já Pago:
+                        </Text>
+                        <Text variant="bodyMedium" style={styles.debtModalValue}>
+                          {formatCurrency(parseFloat(selectedDebt.paid_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.debtModalRow}>
+                        <Text variant="bodySmall" style={styles.debtModalLabel}>
+                          Restante:
+                        </Text>
+                        <Text variant="bodyMedium" style={[styles.debtModalValue, styles.remainingAmount]}>
+                          {formatCurrency(parseFloat(selectedDebt.remaining_amount))}
+                        </Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${Math.min(parseFloat(selectedDebt.progress_percentage), 100)}%`,
+                              backgroundColor: '#ef4444',
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </Card.Content>
+                </Card>
+                <TextInput
+                  label="Valor do Pagamento"
+                  keyboardType="numeric"
+                  value={paymentAmount}
+                  onChangeText={(text) => setPaymentAmount(text)}
+                  style={styles.input}
+                  left={<TextInput.Icon icon="currency-usd" />}
+                  placeholder="0.00"
+                />
+                {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                  <Card style={styles.previewCard}>
+                    <Card.Content>
+                      <Text variant="bodySmall" style={styles.previewLabel}>Após este pagamento:</Text>
+                      <View style={styles.previewRow}>
+                        <Text variant="bodySmall" style={styles.previewLabel}>Total Pago:</Text>
+                        <Text variant="titleMedium" style={styles.previewValue}>
+                          {formatCurrency(parseFloat(selectedDebt.paid_amount) + parseFloat(paymentAmount))}
+                        </Text>
+                      </View>
+                      <View style={styles.previewRow}>
+                        <Text variant="bodySmall" style={styles.previewLabel}>Restante:</Text>
+                        <Text variant="titleMedium" style={[styles.previewValue, parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 ? styles.paidAmount : null]}>
+                          {formatCurrency(Math.max(parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount), 0))}
+                        </Text>
+                      </View>
+                      {parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 && (
+                        <Chip icon="check-circle" style={styles.willBePaidChip} textStyle={styles.willBePaidChipText}>
+                          Dívida será totalmente paga!
+                        </Chip>
+                      )}
+                    </Card.Content>
+                  </Card>
+                )}
+                <Button 
+                  mode="contained" 
+                  onPress={handlePayDebt} 
+                  style={styles.modalButton}
+                  disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || payingDebt}
+                  loading={payingDebt}
+                  icon="cash-check"
+                  buttonColor="#10b981"
+                >
+                  {payingDebt ? 'Processando...' : 'Registrar Pagamento'}
+                </Button>
+              </>
+            )}
+          </ScrollView>
         </Modal>
       </Portal>
 
@@ -1879,6 +2076,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
+  },
+  debtInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  debtInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  debtInfoLabel: {
+    color: '#6b7280',
+  },
+  debtInfoValue: {
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  remainingAmount: {
+    color: '#ef4444',
+    fontWeight: '700',
+  },
+  payDebtButton: {
+    marginTop: 16,
+  },
+  debtModalTitle: {
+    fontWeight: '700',
+    marginBottom: 12,
+    color: '#1f2937',
+  },
+  debtModalInfo: {
+    marginTop: 8,
+  },
+  debtModalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  debtModalLabel: {
+    color: '#6b7280',
+  },
+  debtModalValue: {
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  willBePaidChip: {
+    backgroundColor: '#d1fae5',
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  willBePaidChipText: {
+    color: '#10b981',
+    fontSize: 12,
+  },
+  paidAmount: {
+    color: '#10b981',
+  },
+  previewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   statsGrid: {
     flexDirection: 'row',
