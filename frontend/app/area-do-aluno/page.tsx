@@ -589,7 +589,7 @@ export default function AreaDoAlunoPage() {
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (
-              <div className="max-w-2xl">
+              <div className="max-w-2xl space-y-6">
                 <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl p-6 mb-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Informações Pessoais</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -628,7 +628,7 @@ export default function AreaDoAlunoPage() {
                 </div>
 
                 {/* Referral Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6">
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 mb-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Compartilhe e Ganhe! 🎁</h3>
                   <p className="text-gray-700 mb-4">
                     Compartilhe seus cursos favoritos e ganhe benefícios quando seus amigos se inscreverem!
@@ -650,6 +650,32 @@ export default function AreaDoAlunoPage() {
                   <p className="text-sm text-gray-600">
                     Quando alguém usar seu código ao se registrar, você receberá benefícios especiais!
                   </p>
+                </div>
+
+                {/* Account Deletion Section */}
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-red-900 mb-2">
+                        Exclusão de Conta
+                      </h3>
+                      <p className="text-red-800 mb-4">
+                        Você pode solicitar a exclusão da sua conta e de todos os dados associados no <strong>Zenda</strong>. 
+                        Esta ação é permanente e irreversível.
+                      </p>
+                      <Link
+                        href="/delete-account"
+                        className="inline-block px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-semibold"
+                      >
+                        Solicitar Exclusão de Conta
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

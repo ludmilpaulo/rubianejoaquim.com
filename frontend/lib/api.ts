@@ -82,6 +82,7 @@ export const authApi = {
   me: () => api.get('/auth/me/'),
   updateProfile: (data: { first_name?: string; last_name?: string; phone?: string; address?: string; email?: string }) =>
     api.put('/auth/profile/', data),
+  requestAccountDeletion: () => api.post('/auth/request-deletion/'),
 }
 
 // Courses
