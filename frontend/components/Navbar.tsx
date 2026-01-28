@@ -87,15 +87,23 @@ export default function Navbar() {
             {showLoading ? (
               <div className="w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
             ) : showUser && user ? (
-              user.is_admin ? (
-                <Link href="/admin" className="text-primary-600 font-semibold">
-                  Admin
-                </Link>
-              ) : (
-                <Link href="/area-do-aluno" className="text-primary-600 font-semibold">
-                  Área do Aluno
-                </Link>
-              )
+              <div className="flex items-center gap-3">
+                {user.is_admin ? (
+                  <Link href="/admin" className="text-primary-600 font-semibold">
+                    Admin
+                  </Link>
+                ) : (
+                  <Link href="/area-do-aluno" className="text-primary-600 font-semibold">
+                    Área do Aluno
+                  </Link>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="text-gray-700 hover:text-primary-600 font-semibold transition-colors"
+                >
+                  Sair
+                </button>
+              </div>
             ) : (
               <Link
                 href="/login"
