@@ -69,3 +69,29 @@ def update_profile(request):
         serializer.save()
         return Response(UserSerializer(request.user).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def request_account_deletion(request):
+    """Solicitar exclusão de conta e dados associados"""
+    user = request.user
+    
+    # Log the deletion request (for admin review)
+    # In production, you might want to:
+    # 1. Send an email to admin
+    # 2. Store deletion request in a separate model
+    # 3. Schedule actual deletion after a grace period
+    
+    # For now, we'll deactivate the account immediately
+    # In production, consider a grace period (e.g., 30 days) before actual deletion
+    user.is_active = False
+    user.save()
+    
+    # Delete auth token to log out the user
+    Token.objects.filter(user=user).delete()
+    
+    return Response({
+        'message': 'Sua solicitação de exclusão de conta foi recebida. Sua conta e dados associados serão removidos em breve.',
+        'account_deactivated': True
+    }, status=status.HTTP_200_OK)

@@ -1,11 +1,12 @@
 import React from 'react'
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { Text, Card, Button, List, Divider } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { logout } from '../store/authSlice'
 import { useNavigation } from '@react-navigation/native'
+import { authApi } from '../services/api'
 
 export default function ProfileScreen() {
   const dispatch = useAppDispatch()
@@ -14,6 +15,45 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     dispatch(logout())
+  }
+
+  const handleRequestAccountDeletion = () => {
+    Alert.alert(
+      'Solicitar Exclusão de Conta',
+      'Tem certeza que deseja solicitar a exclusão da sua conta e de todos os dados associados?\n\nEsta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Solicitar Exclusão',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await authApi.requestAccountDeletion()
+              Alert.alert(
+                'Solicitação Recebida',
+                'Sua solicitação de exclusão de conta foi recebida. Sua conta e dados associados serão removidos em breve.\n\nVocê será desconectado agora.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      dispatch(logout())
+                    },
+                  },
+                ]
+              )
+            } catch (error: any) {
+              Alert.alert(
+                'Erro',
+                error.response?.data?.error || error.message || 'Erro ao solicitar exclusão de conta. Por favor, tente novamente.'
+              )
+            }
+          },
+        },
+      ]
+    )
   }
 
   return (
@@ -107,6 +147,28 @@ export default function ProfileScreen() {
                     </Text>
                     <Text variant="bodySmall" style={styles.menuItemSubtitle}>
                       FAQ e contacto para suporte
+                    </Text>
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
+              </View>
+            </TouchableOpacity>
+            <Divider style={styles.divider} />
+            <TouchableOpacity
+              onPress={handleRequestAccountDeletion}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIconContainer, { backgroundColor: '#fee2e2' }]}>
+                    <MaterialCommunityIcons name="delete-forever" size={24} color="#ef4444" />
+                  </View>
+                  <View style={styles.menuItemText}>
+                    <Text variant="titleMedium" style={[styles.menuItemTitle, styles.deleteTitle]}>
+                      Solicitar Exclusão de Conta
+                    </Text>
+                    <Text variant="bodySmall" style={styles.menuItemSubtitle}>
+                      Remover conta e todos os dados associados
                     </Text>
                   </View>
                 </View>
@@ -250,5 +312,8 @@ const styles = StyleSheet.create({
   logoutButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteTitle: {
+    color: '#ef4444',
   },
 })

@@ -184,6 +184,11 @@ export const authApi = {
     const response = await api.get('/auth/me/')
     return response.data
   },
+  
+  requestAccountDeletion: async () => {
+    const response = await api.post('/auth/request-deletion/')
+    return response.data
+  },
 }
 
 // Access Verification API
