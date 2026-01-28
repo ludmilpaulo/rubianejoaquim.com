@@ -427,13 +427,65 @@ export default function PersonalFinanceScreen() {
   const activeGoals = goals.filter(g => g.status === 'active')
   const activeDebts = debts.filter(d => d.status === 'active' || d.status === 'overdue')
 
-  const chartData = summary?.by_category?.slice(0, 5).map((cat: any) => ({
+  // Color palette for pie chart - different colors for each category
+  const pieChartColors = [
+    '#6366f1', // Indigo
+    '#ec4899', // Pink
+    '#10b981', // Green
+    '#f59e0b', // Amber
+    '#ef4444', // Red
+    '#8b5cf6', // Purple
+    '#06b6d4', // Cyan
+    '#f97316', // Orange
+  ]
+
+  const chartData = summary?.by_category?.slice(0, 5).map((cat: any, index: number) => ({
     name: cat.category__name || 'Outros',
     amount: parseFloat(cat.total),
-    color: '#6366f1',
+    color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
   })) || []
+
+  // Group expenses and budgets by period type for comparison
+  const today = new Date()
+  const currentDate = today.getDate()
+  const currentMonth = today.getMonth() + 1
+  const currentYear = today.getFullYear()
+
+  // Filter expenses by period
+  const dailyExpenses = expenses.filter(exp => {
+    const expDate = new Date(exp.date)
+    return expDate.getDate() === currentDate && 
+           expDate.getMonth() + 1 === currentMonth && 
+           expDate.getFullYear() === currentYear
+  })
+  
+  const monthlyExpenses = expenses.filter(exp => {
+    const expDate = new Date(exp.date)
+    return expDate.getMonth() + 1 === currentMonth && 
+           expDate.getFullYear() === currentYear
+  })
+  
+  const yearlyExpenses = expenses.filter(exp => {
+    const expDate = new Date(exp.date)
+    return expDate.getFullYear() === currentYear
+  })
+
+  // Calculate totals
+  const dailyExpensesTotal = dailyExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+  const monthlyExpensesTotal = monthlyExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+  const yearlyExpensesTotal = yearlyExpenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+
+  // Filter budgets by period type (fallback to monthly if period_type not available)
+  const dailyBudgets = budgets.filter(b => b.period_type === 'daily' || (b.period_type === undefined && b.date))
+  const monthlyBudgets = budgets.filter(b => b.period_type === 'monthly' || (b.period_type === undefined && b.month === currentMonth && b.year === currentYear))
+  const yearlyBudgets = budgets.filter(b => b.period_type === 'yearly' || (b.period_type === undefined && b.year === currentYear && !b.month))
+
+  // Calculate budget totals for each period
+  const dailyBudgetTotal = dailyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
+  const monthlyBudgetTotal = monthlyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
+  const yearlyBudgetTotal = yearlyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -2141,6 +2193,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  budgetComparisonCard: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  budgetComparisonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  budgetComparisonTitle: {
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  budgetComparisonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  budgetComparisonItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  budgetComparisonLabel: {
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  budgetComparisonValue: {
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  budgetComparisonPercentage: {
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptyComparison: {
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyComparisonText: {
+    color: '#9ca3af',
+    marginTop: 12,
+    textAlign: 'center',
   },
   statsGrid: {
     flexDirection: 'row',
