@@ -73,7 +73,52 @@ export const useAuthStore = create<AuthState>((set) => ({
       Cookies.set('token', token, { expires: 30 })
       set({ user, token })
     } catch (error: any) {
-      throw new Error(error.response?.data?.error || 'Erro ao registar')
+      // Extract specific validation errors from Django REST Framework
+      let errorMessage = 'Erro ao registar'
+      
+      if (error.response?.data) {
+        const errors = error.response.data
+        
+        // Collect all field errors
+        const fieldErrors: string[] = []
+        
+        if (errors.email) {
+          const emailErrors = Array.isArray(errors.email) ? errors.email : [errors.email]
+          fieldErrors.push(`Email: ${emailErrors.join(', ')}`)
+        }
+        if (errors.username) {
+          const usernameErrors = Array.isArray(errors.username) ? errors.username : [errors.username]
+          fieldErrors.push(`Username: ${usernameErrors.join(', ')}`)
+        }
+        if (errors.password) {
+          const passwordErrors = Array.isArray(errors.password) ? errors.password : [errors.password]
+          fieldErrors.push(`Palavra-passe: ${passwordErrors.join(', ')}`)
+        }
+        if (errors.password_confirm) {
+          const confirmErrors = Array.isArray(errors.password_confirm) ? errors.password_confirm : [errors.password_confirm]
+          fieldErrors.push(`Confirmação: ${confirmErrors.join(', ')}`)
+        }
+        if (errors.phone) {
+          const phoneErrors = Array.isArray(errors.phone) ? errors.phone : [errors.phone]
+          fieldErrors.push(`Telefone: ${phoneErrors.join(', ')}`)
+        }
+        if (errors.non_field_errors) {
+          const nonFieldErrors = Array.isArray(errors.non_field_errors) ? errors.non_field_errors : [errors.non_field_errors]
+          fieldErrors.push(...nonFieldErrors)
+        }
+        
+        if (fieldErrors.length > 0) {
+          errorMessage = fieldErrors.join('\n')
+        } else if (errors.error) {
+          errorMessage = errors.error
+        } else if (typeof errors === 'string') {
+          errorMessage = errors
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      throw new Error(errorMessage)
     }
   },
 

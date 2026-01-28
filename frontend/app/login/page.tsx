@@ -29,6 +29,11 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
+        if (!formData.email || !formData.password) {
+          setError('Por favor, preencha todos os campos obrigatórios.')
+          setLoading(false)
+          return
+        }
         await login(formData.email, formData.password)
         // Get updated user after login
         const updatedUser = useAuthStore.getState().user
@@ -38,19 +43,56 @@ export default function LoginPage() {
           router.push('/area-do-aluno')
         }
       } else {
-        if (formData.password !== formData.password_confirm) {
-          setError('As palavras-passe não coincidem')
+        // Validation for registration
+        if (!formData.email || !formData.username || !formData.password || !formData.password_confirm) {
+          setError('Por favor, preencha todos os campos obrigatórios (Email, Username, Palavra-passe e Confirmação).')
           setLoading(false)
           return
         }
+        
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+          setError('Por favor, introduza um email válido.')
+          setLoading(false)
+          return
+        }
+        
+        // Username validation (alphanumeric, underscore, dot, hyphen, max 150 chars)
+        const usernameRegex = /^[a-zA-Z0-9._-]+$/
+        if (!usernameRegex.test(formData.username)) {
+          setError('Username inválido. Use apenas letras, números, pontos, hífens e underscores.')
+          setLoading(false)
+          return
+        }
+        
+        if (formData.username.length > 150) {
+          setError('Username muito longo. Máximo 150 caracteres.')
+          setLoading(false)
+          return
+        }
+        
+        // Password validation
+        if (formData.password.length < 8) {
+          setError('A palavra-passe deve ter pelo menos 8 caracteres.')
+          setLoading(false)
+          return
+        }
+        
+        if (formData.password !== formData.password_confirm) {
+          setError('As palavras-passe não coincidem.')
+          setLoading(false)
+          return
+        }
+        
         await register({
-          email: formData.email,
-          username: formData.username,
+          email: formData.email.trim(),
+          username: formData.username.trim(),
           password: formData.password,
           password_confirm: formData.password_confirm,
-          first_name: formData.first_name || undefined,
-          last_name: formData.last_name || undefined,
-          phone: formData.phone || undefined,
+          first_name: formData.first_name?.trim() || undefined,
+          last_name: formData.last_name?.trim() || undefined,
+          phone: formData.phone?.trim() || undefined,
         })
         // Students always go to student area
         router.push('/area-do-aluno')
@@ -68,6 +110,13 @@ export default function LoginPage() {
         } else if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error')) {
           alert('🔌 Erro de Conexão\n\n' + errorMessage)
         }
+      } else {
+        // Show alert for registration errors
+        const errorLines = errorMessage.split('\n')
+        const title = errorLines[0] || 'Erro ao registar'
+        const details = errorLines.slice(1).join('\n') || errorMessage
+        
+        alert(`❌ Erro ao Registar\n\n${details}\n\nPor favor, corrija os erros e tente novamente.`)
       }
     } finally {
       setLoading(false)
@@ -95,7 +144,7 @@ export default function LoginPage() {
                   ? '❌'
                   : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
                   ? '⚠️'
-                  : '🔴'}
+                  : isLogin ? '🔴' : '❌'}
               </span>
               <div className="flex-1">
                 <p className="font-semibold">
@@ -103,9 +152,13 @@ export default function LoginPage() {
                     ? 'Utilizador não encontrado'
                     : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
                     ? 'Palavra-passe incorreta'
-                    : 'Erro ao fazer login'}
+                    : isLogin ? 'Erro ao fazer login' : 'Erro ao registar'}
                 </p>
-                <p className="text-sm mt-1">{error}</p>
+                <div className="text-sm mt-1 whitespace-pre-line">
+                  {error.split('\n').map((line, idx) => (
+                    <p key={idx} className={idx > 0 ? 'mt-1' : ''}>{line}</p>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
