@@ -252,10 +252,23 @@ export default function BusinessFinanceScreen() {
   const profit = totalSales - totalExpenses
 
   const salesChartData = sales.slice(0, 7).map(sale => parseFloat(sale.amount))
-  const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: any) => ({
+  
+  // Color palette for pie chart - different colors for each category
+  const pieChartColors = [
+    '#6366f1', // Indigo
+    '#ec4899', // Pink
+    '#10b981', // Green
+    '#f59e0b', // Amber
+    '#ef4444', // Red
+    '#8b5cf6', // Purple
+    '#06b6d4', // Cyan
+    '#f97316', // Orange
+  ]
+
+  const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: any, index: number) => ({
     name: cat.category__name || 'Outros',
     amount: parseFloat(cat.total),
-    color: '#ef4444',
+    color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
   })) || []
