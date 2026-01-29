@@ -5,6 +5,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch } from '../hooks/redux'
 import { login } from '../store/authSlice'
+import type { StackScreenProps } from '@react-navigation/stack'
+import type { AuthStackParamList } from '../navigation/AuthNavigator'
+
+type Props = StackScreenProps<AuthStackParamList, 'Login'>
 import {
   isBiometricAvailable,
   getBiometricType,
@@ -15,7 +19,7 @@ import {
   clearBiometricCredentials,
 } from '../utils/biometric'
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }: Props) {
   const dispatch = useAppDispatch()
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -212,7 +216,7 @@ export default function LoginScreen() {
           <View style={styles.circle2} />
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.card} elevation={8}>
+        <Card style={styles.card} elevation={8 as 0 | 1 | 2 | 3 | 4 | 5}>
           <Card.Content style={styles.cardContent}>
             <View style={styles.logoContainer}>
               <View style={styles.logoCircle}>
@@ -351,8 +355,17 @@ export default function LoginScreen() {
               </TouchableOpacity>
             )}
 
+            <TouchableOpacity
+              style={styles.registerLink}
+              onPress={() => navigation.navigate('Register')}
+              disabled={loading}
+            >
+              <Text style={styles.registerLinkText}>Não tem conta? </Text>
+              <Text style={styles.registerLinkBold}>Registar</Text>
+            </TouchableOpacity>
+
             <Text style={styles.note}>
-              Apenas utilizadores com acesso pago podem usar o app.
+              Registe-se para 1 semana grátis ou inscreva-se num curso no site.
             </Text>
           </Card.Content>
         </Card>
@@ -412,7 +425,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
-    elevation: 8,
+    elevation: 8 as number,
   },
   cardContent: {
     padding: 24,
@@ -525,8 +538,24 @@ const styles = StyleSheet.create({
   errorDangerText: {
     color: '#d32f2f',
   },
-  note: {
+  registerLink: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 16,
+    paddingVertical: 8,
+  },
+  registerLinkText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  registerLinkBold: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  note: {
+    marginTop: 8,
     textAlign: 'center',
     fontSize: 12,
     color: '#999',

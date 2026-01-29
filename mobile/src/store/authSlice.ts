@@ -60,6 +60,39 @@ export const login = createAsyncThunk(
   }
 )
 
+export const register = createAsyncThunk(
+  'auth/register',
+  async (
+    data: {
+      email: string
+      username: string
+      password: string
+      password_confirm: string
+      first_name: string
+      last_name: string
+      phone?: string
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const result = await authApi.register(data)
+      await AsyncStorage.setItem('token', result.token)
+      await AsyncStorage.setItem('user', JSON.stringify(result.user))
+      return { user: result.user, token: result.token }
+    } catch (error: any) {
+      let errorMessage = 'Erro ao criar conta.'
+      if (error.response?.data) {
+        const d = error.response.data
+        if (d.email) errorMessage = Array.isArray(d.email) ? d.email[0] : d.email
+        else if (d.username) errorMessage = Array.isArray(d.username) ? d.username[0] : d.username
+        else if (d.password) errorMessage = Array.isArray(d.password) ? d.password[0] : d.password
+        else if (d.non_field_errors) errorMessage = Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors
+      } else if (error.message) errorMessage = error.message
+      return rejectWithValue(errorMessage)
+    }
+  }
+)
+
 export const checkAuth = createAsyncThunk('auth/checkAuth', async () => {
   const token = await AsyncStorage.getItem('token')
   if (!token) {
@@ -109,6 +142,17 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false
         // Error message is available in action.payload
+      })
+      .addCase(register.pending, (state) => {
+        state.isLoading = true
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isLoading = false
+      })
+      .addCase(register.rejected, (state) => {
+        state.isLoading = false
       })
       .addCase(checkAuth.pending, (state) => {
         state.isLoading = true

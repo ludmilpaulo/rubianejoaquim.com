@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'finance',
     'tasks',
     'ai_copilot',
+    'subscriptions',
 ]
 
 MIDDLEWARE = [
@@ -188,3 +189,8 @@ FRONTEND_URL = config('FRONTEND_URL', default='https://www.rubianejoaquim.com')
 # Add it to your .env file as: OPENAI_API_KEY=sk-...
 OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
 OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
+
+# Mobile App (Zenda) subscription payment
+SUBSCRIPTION_MONTHLY_PRICE_KZ = config('SUBSCRIPTION_MONTHLY_PRICE_KZ', default=10000, cast=int)
+SUBSCRIPTION_IBAN = config('SUBSCRIPTION_IBAN', default='0040 0000 4047.9796.1015.9')
+SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Patricia Fernando Joaquim')

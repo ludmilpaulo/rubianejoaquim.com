@@ -1,12 +1,14 @@
-import React from 'react'
-import { View, StyleSheet, Linking, Alert } from 'react-native'
+import React, { useState } from 'react'
+import { View, StyleSheet, Linking, Alert, ScrollView } from 'react-native'
 import { Text, Button, Card } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useAppDispatch } from '../hooks/redux'
 import { checkPaidAccess } from '../store/authSlice'
+import { accessApi } from '../services/api'
 
 export default function AccessDeniedScreen() {
   const dispatch = useAppDispatch()
+  const [subscribing, setSubscribing] = useState(false)
 
   const handleCheckAgain = () => {
     dispatch(checkPaidAccess())
@@ -26,8 +28,25 @@ export default function AccessDeniedScreen() {
     }
   }
 
+  const handleStartFreeTrial = async () => {
+    setSubscribing(true)
+    try {
+      await accessApi.subscribeToMobileApp()
+      await dispatch(checkPaidAccess()).unwrap()
+      Alert.alert(
+        'Semana grátis ativada',
+        'Tem 7 dias de acesso gratuito ao app. Após esse período, pode subscrever por 10.000 Kz/mês e enviar o comprovativo de pagamento para continuar a usar o Zenda.'
+      )
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || error?.message || 'Não foi possível ativar a semana grátis.'
+      Alert.alert('Erro', msg)
+    } finally {
+      setSubscribing(false)
+    }
+  }
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scroll}>
       <View style={styles.backgroundDecor}>
         <View style={styles.circle1} />
         <View style={styles.circle2} />
@@ -44,44 +63,67 @@ export default function AccessDeniedScreen() {
             </View>
           </View>
           <Text variant="headlineMedium" style={styles.title}>
-            Acesso Restrito
+            Acesso ao Zenda
           </Text>
           <Text variant="bodyLarge" style={styles.message}>
-            Este app está disponível apenas para utilizadores que têm acesso pago a cursos ou mentoria.
+            Para usar o app, precisa de estar inscrito num curso, ter mentoria aprovada ou ter subscrição do app.
           </Text>
           <Text variant="bodyMedium" style={styles.submessage}>
-            Por favor, inscreva-se num curso ou solicite uma mentoria através do site.
+            Não tem curso? Comece com <Text style={styles.bold}>1 semana grátis</Text>, depois subscreva por <Text style={styles.bold}>10.000 Kz/mês</Text>. O pagamento é ativado após envio do comprovativo.
           </Text>
           <View style={styles.buttonContainer}>
             <Button
               mode="contained"
-              onPress={handleOpenCourses}
+              onPress={handleStartFreeTrial}
+              loading={subscribing}
+              disabled={subscribing}
               style={styles.primaryButton}
               buttonColor="#6366f1"
               contentStyle={styles.buttonContent}
               labelStyle={styles.buttonLabel}
-              icon={() => <MaterialCommunityIcons name="book-open-variant" size={22} color="#fff" />}
+              icon={subscribing ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
+            >
+              {subscribing ? 'A ativar...' : 'Começar semana grátis'}
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={handleOpenCourses}
+              style={styles.secondaryButton}
+              contentStyle={styles.buttonContent}
+              labelStyle={styles.secondaryButtonLabel}
+              icon={() => <MaterialCommunityIcons name="book-open-variant" size={20} color="#6366f1" />}
             >
               Ver Cursos e Inscrever-se
             </Button>
             <Button
-              mode="outlined"
+              mode="text"
               onPress={handleCheckAgain}
-              style={styles.secondaryButton}
+              style={styles.tertiaryButton}
               contentStyle={styles.buttonContent}
-              labelStyle={styles.secondaryButtonLabel}
+              labelStyle={styles.tertiaryButtonLabel}
               icon={() => <MaterialCommunityIcons name="refresh" size={20} color="#6366f1" />}
             >
-              Verificar Novamente
+              Verificar novamente
             </Button>
           </View>
         </Card.Content>
       </Card>
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    paddingVertical: 40,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -165,6 +207,10 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     lineHeight: 20,
   },
+  bold: {
+    fontWeight: '700',
+    color: '#374151',
+  },
   buttonContainer: {
     width: '100%',
     gap: 12,
@@ -195,6 +241,14 @@ const styles = StyleSheet.create({
   secondaryButtonLabel: {
     fontSize: 15,
     fontWeight: '600',
+    color: '#6366f1',
+  },
+  tertiaryButton: {
+    marginTop: 8,
+  },
+  tertiaryButtonLabel: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#6366f1',
   },
 })

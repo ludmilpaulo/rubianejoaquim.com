@@ -173,8 +173,10 @@ export const authApi = {
     email: string
     username: string
     password: string
+    password_confirm: string
     first_name: string
     last_name: string
+    phone?: string
   }) => {
     const response = await api.post('/auth/register/', data)
     return response.data
@@ -193,17 +195,19 @@ export const authApi = {
 
 // Access Verification API
 export const accessApi = {
+  // Paid access = course enrollment OR mentorship OR mobile app subscription
   checkPaidAccess: async () => {
     try {
-      const [enrollmentsRes, mentorshipRes] = await Promise.all([
+      const [enrollmentsRes, mentorshipRes, subscriptionRes] = await Promise.all([
         api.get('/course/enrollment/'),
         api.get('/mentorship/request/'),
+        api.get('/subscriptions/mobile/me/').catch(() => ({ data: { has_access: false } })),
       ])
       
       const enrollments = enrollmentsRes.data.results || enrollmentsRes.data || []
       const mentorshipRequests = mentorshipRes.data.results || mentorshipRes.data || []
+      const hasMobileSubscription = subscriptionRes.data?.has_access === true
       
-      // Check if user has at least one active enrollment or approved mentorship
       const hasActiveEnrollment = Array.isArray(enrollments) && 
         enrollments.some((e: any) => e.status === 'active')
       
@@ -212,7 +216,7 @@ export const accessApi = {
           m.status === 'approved' || m.status === 'scheduled' || m.status === 'completed'
         )
       
-      return hasActiveEnrollment || hasApprovedMentorship
+      return hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription
     } catch (error) {
       console.error('Error checking paid access:', error)
       return false
@@ -227,6 +231,32 @@ export const accessApi = {
   getMentorshipRequests: async () => {
     const response = await api.get('/mentorship/request/')
     return response.data.results || response.data
+  },
+
+  // Mobile app subscription (1 week free, then 10,000 Kz/month)
+  getMobileSubscription: async () => {
+    const response = await api.get('/subscriptions/mobile/me/')
+    return response.data
+  },
+
+  getSubscriptionPaymentInfo: async () => {
+    const response = await api.get('/subscriptions/mobile/payment-info/')
+    return response.data
+  },
+  
+  subscribeToMobileApp: async () => {
+    const response = await api.post('/subscriptions/mobile/subscribe/')
+    return response.data
+  },
+  
+  uploadSubscriptionPaymentProof: async (subscriptionId: number, file: any, notes?: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (notes) formData.append('notes', notes)
+    const response = await api.post(`/subscriptions/mobile/${subscriptionId}/upload-proof/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
   },
 }
 

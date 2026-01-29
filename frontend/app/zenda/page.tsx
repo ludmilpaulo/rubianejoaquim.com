@@ -209,6 +209,33 @@ export default function ZendaPage() {
         </div>
       </section>
 
+      {/* Monthly subscription payment */}
+      <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-12">
+          Subscrição Mensal
+        </h2>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 max-w-xl mx-auto">
+          <p className="text-gray-600 mb-6 text-center">
+            Após a semana grátis, a subscrição do app Zenda é de <strong className="text-primary-600">10 000 Kz/mês</strong>. 
+            Faça a transferência e envie o comprovativo na aplicação para ativar ou renovar.
+          </p>
+          <div className="bg-gray-50 rounded-lg p-6 space-y-3">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Valor mensal:</span>
+              <p className="text-xl font-semibold text-gray-900 font-mono">10 000 Kz</p>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-700">IBAN:</span>
+              <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Destinatário:</span>
+              <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="bg-primary-600 text-white">
         <div className="max-w-4xl mx-auto px-4 py-16 md:py-24 text-center">

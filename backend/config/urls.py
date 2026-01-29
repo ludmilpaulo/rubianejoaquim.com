@@ -14,6 +14,7 @@ urlpatterns = [
     path('api/finance/', include('finance.urls')),
     path('api/tasks/', include('tasks.urls')),
     path('api/ai-copilot/', include('ai_copilot.urls')),
+    path('api/subscriptions/', include('subscriptions.urls')),
 ]
 
 if settings.DEBUG:
