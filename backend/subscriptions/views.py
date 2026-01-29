@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.utils import timezone
@@ -89,7 +89,7 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['GET'])
-@AllowAny
+@permission_classes([AllowAny])
 def payment_info(_request):
     """Informações de pagamento da subscrição mensal (público para o app mostrar)."""
     return Response({
