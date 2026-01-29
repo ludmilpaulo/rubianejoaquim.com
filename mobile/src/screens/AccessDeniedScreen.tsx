@@ -29,7 +29,7 @@ export default function AccessDeniedScreen() {
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
       ])
-      setSubscription(subRes?.subscription ?? subRes ?? null)
+      setSubscription(subRes?.subscription != null ? subRes.subscription : null)
       setPaymentInfo(payRes ?? null)
     } catch {
       setSubscription(null)
