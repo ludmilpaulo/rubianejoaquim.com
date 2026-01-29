@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import PhoneSlideshow from '@/components/PhoneSlideshow'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.rubianejoaquim.com'
 
@@ -64,11 +65,23 @@ export default function ZendaPage() {
             </div>
             
             <div className="relative">
-              <div className="bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl p-8 shadow-xl">
-                <div className="bg-white rounded-xl p-4 shadow-lg">
-                  <div className="aspect-[9/16] bg-gray-100 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-400 text-sm">Preview do App</p>
-                  </div>
+              <div className="bg-gradient-to-br from-primary-100 to-primary-200 rounded-2xl p-6 md:p-8 shadow-xl">
+                <div className="bg-white rounded-xl p-3 md:p-4 shadow-lg">
+                  <PhoneSlideshow 
+                    images={[
+                      '/phone/iphone/0.png',
+                      '/phone/iphone/1.png',
+                      '/phone/iphone/2.png',
+                      '/phone/iphone/3.png',
+                      '/phone/iphone/4.png',
+                      '/phone/iphone/5.png',
+                      '/phone/iphone/6.png',
+                      '/phone/iphone/7.png',
+                      '/phone/iphone/8.png',
+                      '/phone/iphone/9.png',
+                    ]}
+                    interval={4000}
+                  />
                 </div>
               </div>
             </div>
