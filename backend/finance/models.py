@@ -119,7 +119,10 @@ class Budget(models.Model):
                 expenses = expenses.filter(date__year=self.year, date__month=self.month)
 
             result = expenses.aggregate(Sum('amount'))['amount__sum']
-            return result if result is not None else Decimal('0.00')
+            if result is None:
+                return Decimal('0.00')
+            # Ensure result is a properly quantized Decimal
+            return Decimal(str(result)).quantize(Decimal('0.01'))
         except Exception as e:
             # Return 0 if there's any error calculating spent
             import logging
