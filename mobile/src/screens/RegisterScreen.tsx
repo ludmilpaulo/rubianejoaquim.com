@@ -53,7 +53,7 @@ export default function RegisterScreen({ navigation }: Props) {
       await dispatch(checkPaidAccess()).unwrap()
       Alert.alert(
         'Conta criada',
-        'A sua conta foi criada. Pode começar a semana grátis do app na próxima ecrã ou inscrever-se num curso no site.'
+        'Na próxima ecrã, toque em «Começar a minha semana grátis» para ativar o acesso ao app. Depois terá 7 dias grátis.'
       )
       navigation.replace('AccessDenied')
     } catch (err: any) {

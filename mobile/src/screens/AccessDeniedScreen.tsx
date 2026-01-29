@@ -155,6 +155,11 @@ export default function AccessDeniedScreen() {
           <Text variant="bodyMedium" style={styles.submessage}>
             Não tem curso? Comece com <Text style={styles.bold}>1 semana grátis</Text>, depois subscreva por <Text style={styles.bold}>10.000 Kz/mês</Text>. O pagamento é ativado após envio do comprovativo.
           </Text>
+          {!subLoading && !subscription && (
+            <Text variant="bodyMedium" style={styles.ctaHint}>
+              Toque no botão abaixo para ativar a sua semana grátis e começar a usar o Zenda.
+            </Text>
+          )}
 
           {/* Trial already expired: show pay + upload */}
           {!subLoading && subscription && (subscription.status === 'expired' || subscription.status === 'cancelled') && (
@@ -222,19 +227,24 @@ export default function AccessDeniedScreen() {
 
           <View style={styles.buttonContainer}>
             {!subLoading && !subscription && (
-              <Button
-                mode="contained"
-                onPress={handleStartFreeTrial}
-                loading={subscribing}
-                disabled={subscribing}
-                style={styles.primaryButton}
-                buttonColor="#6366f1"
-                contentStyle={styles.buttonContent}
-                labelStyle={styles.buttonLabel}
-                icon={subscribing ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
-              >
-                {subscribing ? 'A ativar...' : 'Começar semana grátis'}
-              </Button>
+              <>
+                <Button
+                  mode="contained"
+                  onPress={handleStartFreeTrial}
+                  loading={subscribing}
+                  disabled={subscribing}
+                  style={styles.primaryButton}
+                  buttonColor="#6366f1"
+                  contentStyle={styles.buttonContent}
+                  labelStyle={styles.buttonLabel}
+                  icon={subscribing ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
+                >
+                  {subscribing ? 'A ativar...' : 'Começar a minha semana grátis'}
+                </Button>
+                <Text variant="bodySmall" style={styles.buttonHint}>
+                  Toque para ativar o acesso ao app
+                </Text>
+              </>
             )}
             <Button
               mode="outlined"
@@ -365,6 +375,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     gap: 12,
+  },
+  buttonHint: {
+    marginTop: 6,
+    textAlign: 'center',
+    color: '#9ca3af',
+    fontSize: 13,
   },
   primaryButton: {
     borderRadius: 12,
