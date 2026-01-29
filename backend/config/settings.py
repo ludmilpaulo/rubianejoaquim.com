@@ -183,6 +183,8 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Rubiane Joaquim <nore
 # Frontend URL for email links (production: https://www.rubianejoaquim.com)
 FRONTEND_URL = config('FRONTEND_URL', default='https://www.rubianejoaquim.com')
 
-# OpenAI Configuration
+# OpenAI Configuration for AI Financial Copilot
+# Get your API key from: https://platform.openai.com/api-keys
+# Add it to your .env file as: OPENAI_API_KEY=sk-...
 OPENAI_API_KEY = config('OPENAI_API_KEY', default=None)
 OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
