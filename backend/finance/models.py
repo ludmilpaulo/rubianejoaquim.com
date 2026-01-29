@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
@@ -55,10 +56,23 @@ class PersonalExpense(models.Model):
 
 
 class Budget(models.Model):
-    """Orçamento mensal"""
+    """Orçamento (diário, mensal, anual ou personalizado)"""
+    PERIOD_CHOICES = [
+        ('daily', 'Diário'),
+        ('monthly', 'Mensal'),
+        ('yearly', 'Anual'),
+        ('custom', 'Personalizado'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='budgets')
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    period_type = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='monthly')
+    # For daily budgets
+    date = models.DateField(null=True, blank=True, help_text="Data (para orçamentos diários)")
+    # For custom budgets
+    start_date = models.DateField(null=True, blank=True, help_text="Data inicial (para orçamentos personalizados)")
+    end_date = models.DateField(null=True, blank=True, help_text="Data final (para orçamentos personalizados)")
     month = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
     year = models.IntegerField()
     description = models.TextField(blank=True, help_text="Descrição do orçamento")
@@ -68,22 +82,50 @@ class Budget(models.Model):
     class Meta:
         verbose_name = "Orçamento"
         verbose_name_plural = "Orçamentos"
+        # Keep the previous monthly uniqueness (best-effort); other period types may allow multiple entries.
         unique_together = ['user', 'category', 'month', 'year']
-        ordering = ['-year', '-month']
+        ordering = ['-year', '-month', '-created_at']
 
     def __str__(self):
         return f"{self.user.username} - {self.category.name if self.category else 'Geral'} - {self.month}/{self.year}"
 
     @property
     def spent(self):
-        """Calcula quanto foi gasto neste orçamento"""
-        expenses = PersonalExpense.objects.filter(
-            user=self.user,
-            category=self.category,
-            date__year=self.year,
-            date__month=self.month
-        )
-        return sum(exp.amount for exp in expenses)
+        """Calcula quanto foi gasto dentro do período do orçamento"""
+        try:
+            expenses = PersonalExpense.objects.filter(user=self.user)
+            
+            # Filter by category if specified
+            if self.category_id:
+                expenses = expenses.filter(category=self.category)
+            else:
+                # If no category, only count expenses without category
+                expenses = expenses.filter(category__isnull=True)
+
+            # Filter by period type
+            period_type = getattr(self, 'period_type', 'monthly')  # Default to monthly for backward compatibility
+            
+            if period_type == 'daily':
+                if not self.date:
+                    return Decimal('0.00')
+                expenses = expenses.filter(date=self.date)
+            elif period_type == 'yearly':
+                expenses = expenses.filter(date__year=self.year)
+            elif period_type == 'custom':
+                if not self.start_date or not self.end_date:
+                    return Decimal('0.00')
+                expenses = expenses.filter(date__range=(self.start_date, self.end_date))
+            else:  # monthly (default)
+                expenses = expenses.filter(date__year=self.year, date__month=self.month)
+
+            result = expenses.aggregate(Sum('amount'))['amount__sum']
+            return result if result is not None else Decimal('0.00')
+        except Exception as e:
+            # Return 0 if there's any error calculating spent
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error calculating spent for budget {self.id}: {str(e)}')
+            return Decimal('0.00')
 
     @property
     def remaining(self):

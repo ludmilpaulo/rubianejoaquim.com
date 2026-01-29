@@ -67,6 +67,9 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Resumo das despesas do mês atual"""
+        if not request.user or not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        
         user = request.user
         now = timezone.now()
         
@@ -101,12 +104,39 @@ class BudgetViewSet(viewsets.ModelViewSet):
         month = self.request.query_params.get('month', None)
         year = self.request.query_params.get('year', None)
         
-        if month:
-            queryset = queryset.filter(month=month)
         if year:
             queryset = queryset.filter(year=year)
+
+        # If month is provided (mobile uses it for the selected month),
+        # include:
+        # - monthly budgets for that month
+        # - daily budgets within that month
+        # - custom budgets that overlap that month
+        # - yearly budgets for the selected year (regardless of month)
+        if month and year:
+            try:
+                m = int(month)
+                y = int(year)
+                month_start = datetime(y, m, 1).date()
+                # Compute month end
+                if m == 12:
+                    month_end = datetime(y + 1, 1, 1).date() - timedelta(days=1)
+                else:
+                    month_end = datetime(y, m + 1, 1).date() - timedelta(days=1)
+
+                queryset = queryset.filter(
+                    Q(period_type='monthly', month=m) |
+                    Q(period_type='daily', date__year=y, date__month=m) |
+                    Q(period_type='custom', start_date__lte=month_end, end_date__gte=month_start) |
+                    Q(period_type='yearly')
+                )
+            except (ValueError, TypeError):
+                # Fallback to old behavior if month/year are invalid
+                queryset = queryset.filter(month=month)
+        elif month:
+            queryset = queryset.filter(month=month)
         
-        return queryset.order_by('-year', '-month')
+        return queryset.order_by('-year', '-month', '-created_at')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
