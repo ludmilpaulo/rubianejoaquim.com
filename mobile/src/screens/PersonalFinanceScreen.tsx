@@ -124,25 +124,41 @@ export default function PersonalFinanceScreen() {
   }, [selectedMonth, selectedYear])
 
   const loadData = async () => {
-    try {
-      const [expensesRes, budgetsRes, goalsRes, debtsRes, categoriesRes, summaryRes] = await Promise.all([
-        personalFinanceApi.getExpenses(selectedMonth, selectedYear),
-        personalFinanceApi.getBudgets(selectedMonth, selectedYear),
-        personalFinanceApi.getGoals(),
-        personalFinanceApi.getDebts(),
-        personalFinanceApi.getCategories(true),
-        personalFinanceApi.getExpensesSummary(),
-      ])
-      
-      setExpenses(Array.isArray(expensesRes) ? expensesRes : expensesRes.results || [])
-      setBudgets(Array.isArray(budgetsRes) ? budgetsRes : budgetsRes.results || [])
-      setGoals(Array.isArray(goalsRes) ? goalsRes : goalsRes.results || [])
-      setDebts(Array.isArray(debtsRes) ? debtsRes : debtsRes.results || [])
-      setCategories(Array.isArray(categoriesRes) ? categoriesRes : categoriesRes.results || [])
-      setSummary(summaryRes)
-    } catch (error) {
-      console.error('Error loading data:', error)
-    }
+    const endpointNames = ['expenses', 'budgets', 'goals', 'debts', 'categories', 'summary'] as const
+    const results = await Promise.allSettled([
+      personalFinanceApi.getExpenses(selectedMonth, selectedYear),
+      personalFinanceApi.getBudgets(selectedMonth, selectedYear),
+      personalFinanceApi.getGoals(),
+      personalFinanceApi.getDebts(),
+      personalFinanceApi.getCategories(true),
+      personalFinanceApi.getExpensesSummary(),
+    ])
+
+    results.forEach((result, i) => {
+      const name = endpointNames[i]
+      if (result.status === 'fulfilled') {
+        const data = result.value
+        switch (name) {
+          case 'expenses': setExpenses(Array.isArray(data) ? data : (data as any).results || []); break
+          case 'budgets': setBudgets(Array.isArray(data) ? data : (data as any).results || []); break
+          case 'goals': setGoals(Array.isArray(data) ? data : (data as any).results || []); break
+          case 'debts': setDebts(Array.isArray(data) ? data : (data as any).results || []); break
+          case 'categories': setCategories(Array.isArray(data) ? data : (data as any).results || []); break
+          case 'summary': setSummary(data); break
+        }
+      } else {
+        const err = result.reason as any
+        const url = err?.config?.baseURL && err?.config?.url
+          ? `${err.config.baseURL.replace(/\/$/, '')}${err.config.url}`
+          : err?.config?.url ?? err?.request?.responseURL ?? 'unknown'
+        const status = err?.response?.status
+        const body = err?.response?.data
+        console.error(
+          `[PersonalFinance] Endpoint "${name}" failed:`,
+          JSON.stringify({ endpoint: name, url, status, responseBody: body }, null, 2)
+        )
+      }
+    })
   }
 
   const onRefresh = async () => {
