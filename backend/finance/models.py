@@ -133,20 +133,33 @@ class Budget(models.Model):
     @property
     def remaining(self):
         """Calcula quanto resta do orçamento"""
-        result = self.amount - self.spent
-        # Ensure we return a Decimal, not a float
-        return Decimal(str(result)).quantize(Decimal('0.01'))
+        try:
+            result = self.amount - self.spent
+            # Ensure we return a properly quantized Decimal
+            if isinstance(result, Decimal):
+                return result.quantize(Decimal('0.01'))
+            return Decimal(str(result)).quantize(Decimal('0.01'))
+        except (InvalidOperation, TypeError, ValueError):
+            return Decimal('0.00')
 
     @property
     def percentage_used(self):
         """Percentual usado do orçamento"""
-        if self.amount == 0:
+        if self.amount == 0 or self.amount is None:
             return Decimal('0.00')
         try:
-            # Calculate percentage and ensure it's a Decimal with 2 decimal places
-            percentage = (self.spent / self.amount) * 100
-            return Decimal(str(percentage)).quantize(Decimal('0.01'))
-        except (InvalidOperation, ZeroDivisionError):
+            # Ensure both values are Decimal
+            spent_decimal = self.spent if isinstance(self.spent, Decimal) else Decimal(str(self.spent))
+            amount_decimal = self.amount if isinstance(self.amount, Decimal) else Decimal(str(self.amount))
+            
+            if amount_decimal == 0:
+                return Decimal('0.00')
+            
+            # Calculate percentage
+            percentage = (spent_decimal / amount_decimal) * Decimal('100')
+            # Quantize to 2 decimal places
+            return percentage.quantize(Decimal('0.01'))
+        except (InvalidOperation, ZeroDivisionError, TypeError, ValueError):
             return Decimal('0.00')
 
 
