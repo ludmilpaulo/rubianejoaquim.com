@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from decimal import Decimal
 from .models import (
     Category, PersonalExpense, Budget, Goal, Debt,
     Sale, BusinessExpense
@@ -38,12 +39,42 @@ class PersonalExpenseSerializer(serializers.ModelSerializer):
 
 class BudgetSerializer(serializers.ModelSerializer):
     category_name = serializers.SerializerMethodField()
-    spent = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    remaining = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    percentage_used = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    spent = serializers.SerializerMethodField()
+    remaining = serializers.SerializerMethodField()
+    percentage_used = serializers.SerializerMethodField()
 
     def get_category_name(self, obj):
         return obj.category.name if obj.category else None
+
+    def get_spent(self, obj):
+        """Return spent as a string to avoid Decimal serialization issues"""
+        try:
+            spent_value = obj.spent
+            if isinstance(spent_value, Decimal):
+                return str(spent_value.quantize(Decimal('0.01')))
+            return str(spent_value) if spent_value is not None else '0.00'
+        except Exception:
+            return '0.00'
+
+    def get_remaining(self, obj):
+        """Return remaining as a string to avoid Decimal serialization issues"""
+        try:
+            remaining_value = obj.remaining
+            if isinstance(remaining_value, Decimal):
+                return str(remaining_value.quantize(Decimal('0.01')))
+            return str(remaining_value) if remaining_value is not None else '0.00'
+        except Exception:
+            return '0.00'
+
+    def get_percentage_used(self, obj):
+        """Return percentage_used as a string to avoid Decimal serialization issues"""
+        try:
+            percentage_value = obj.percentage_used
+            if isinstance(percentage_value, Decimal):
+                return str(percentage_value.quantize(Decimal('0.01')))
+            return str(percentage_value) if percentage_value is not None else '0.00'
+        except Exception:
+            return '0.00'
 
     def validate(self, attrs):
         # Support partial updates
