@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 User = get_user_model()
 
@@ -130,14 +130,21 @@ class Budget(models.Model):
     @property
     def remaining(self):
         """Calcula quanto resta do orçamento"""
-        return self.amount - self.spent
+        result = self.amount - self.spent
+        # Ensure we return a Decimal, not a float
+        return Decimal(str(result)).quantize(Decimal('0.01'))
 
     @property
     def percentage_used(self):
         """Percentual usado do orçamento"""
         if self.amount == 0:
-            return 0
-        return (self.spent / self.amount) * 100
+            return Decimal('0.00')
+        try:
+            # Calculate percentage and ensure it's a Decimal with 2 decimal places
+            percentage = (self.spent / self.amount) * 100
+            return Decimal(str(percentage)).quantize(Decimal('0.01'))
+        except (InvalidOperation, ZeroDivisionError):
+            return Decimal('0.00')
 
 
 class Goal(models.Model):
