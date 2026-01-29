@@ -253,6 +253,26 @@ export const adminApi = {
     toggleStaff: (id: number) => api.post(`/course/admin/users/${id}/toggle-staff/`),
   },
   
+  // Mobile app subscriptions (admin)
+  subscriptions: {
+    list: (status?: string) => {
+      const params = status ? { status } : {}
+      return api.get('/subscriptions/admin/subscriptions/', { params })
+    },
+    get: (id: number) => api.get(`/subscriptions/admin/subscriptions/${id}/`),
+    deactivate: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/deactivate/`),
+    extend30Days: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/extend-30-days/`),
+    paymentProofs: {
+      list: (status?: string) => {
+        const params = status ? { status } : {}
+        return api.get('/subscriptions/admin/payment-proofs/', { params })
+      },
+      get: (id: number) => api.get(`/subscriptions/admin/payment-proofs/${id}/`),
+      approve: (id: number) => api.post(`/subscriptions/admin/payment-proofs/${id}/approve/`),
+      reject: (id: number) => api.post(`/subscriptions/admin/payment-proofs/${id}/reject/`),
+    },
+  },
+
   // Mentorship Admin
   mentorship: {
     packages: {

@@ -28,6 +28,11 @@ try:
 except ImportError:
     MentorshipRequest = None
 
+try:
+    from subscriptions.models import MobileAppSubscriptionPaymentProof
+except ImportError:
+    MobileAppSubscriptionPaymentProof = None
+
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
     """CRUD completo de cursos para admin"""
@@ -447,6 +452,7 @@ def admin_stats(request):
         'approved_payments': PaymentProof.objects.filter(status='approved').count(),
         'rejected_payments': PaymentProof.objects.filter(status='rejected').count(),
         'total_progress': Progress.objects.filter(completed=True).count(),
+        'pending_mobile_subscription_proofs': MobileAppSubscriptionPaymentProof.objects.filter(status='pending').count() if MobileAppSubscriptionPaymentProof else 0,
     }
     
     # Recent enrollments

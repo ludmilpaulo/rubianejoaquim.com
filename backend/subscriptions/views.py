@@ -30,7 +30,7 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='subscribe')
     def subscribe(self, request):
-        """Inscrever no app móvel (1 semana grátis)."""
+        """Inscrever no app móvel (1 semana grátis). Trial só pode ser usado uma vez."""
         user = request.user
         sub, created = MobileAppSubscription.objects.get_or_create(
             user=user,
@@ -42,7 +42,20 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                     {'detail': 'Já tem subscrição ativa ou em período de teste.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            # Reativar trial se expirou/cancelou
+            # Trial só pode ser usado uma vez: se já expirou, cancelou ou trial_ends_at já passou, não reativar
+            trial_already_used = (
+                sub.status in ('expired', 'cancelled')
+                or (sub.status == 'trial' and sub.trial_ends_at and sub.trial_ends_at < timezone.now())
+            )
+            if trial_already_used:
+                return Response(
+                    {
+                        'detail': 'O seu período de teste já terminou e só pode ser utilizado uma vez. Para continuar a usar o Zenda, efetue o pagamento da subscrição mensal e envie o comprovativo em Perfil.',
+                        'code': 'trial_already_used',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Reativar trial apenas se ainda está em trial e trial_ends_at no futuro (edge case)
             sub.status = 'trial'
             sub.trial_ends_at = timezone.now() + timedelta(days=7)
             sub.subscription_ends_at = None

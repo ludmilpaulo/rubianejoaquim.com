@@ -11,6 +11,7 @@ interface Stats {
   totalEnrollments: number
   totalMentorshipRequests: number
   pendingPayments: number
+  pending_mobile_subscription_proofs?: number
   recent_enrollments?: any[]
   recent_payments?: any[]
 }
@@ -49,6 +50,7 @@ export default function AdminDashboard() {
             totalEnrollments: response.data.total_enrollments,
             totalMentorshipRequests: response.data.total_mentorship_requests,
             pendingPayments: response.data.pending_payments,
+            pending_mobile_subscription_proofs: response.data.pending_mobile_subscription_proofs ?? 0,
             recent_enrollments: response.data.recent_enrollments || [],
             recent_payments: response.data.recent_payments || [],
           })
@@ -197,6 +199,21 @@ export default function AdminDashboard() {
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Pagamentos</h3>
             <p className="text-gray-600 text-sm">Ver e aprovar comprovantes de pagamento</p>
+          </Link>
+
+          <Link
+            href="/admin/subscriptions"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-indigo-500"
+          >
+            <div className="flex items-center mb-2">
+              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Subscrições App Zenda</h3>
+            </div>
+            <p className="text-gray-600 text-sm">Trial, ativar/desativar subscrições e comprovativos de pagamento do app móvel</p>
           </Link>
 
           <Link

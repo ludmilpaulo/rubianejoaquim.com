@@ -112,3 +112,22 @@ export interface Progress {
   lessons_completed: number
   certificates: number
 }
+
+// Mobile app subscription
+export interface MobileAppSubscription {
+  id: number
+  status: 'trial' | 'active' | 'expired' | 'cancelled'
+  trial_ends_at: string | null
+  subscription_ends_at: string | null
+  has_access: boolean
+  days_until_expiry: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SubscriptionPaymentInfo {
+  monthly_price_kz: number
+  currency: string
+  iban: string
+  payee_name: string
+}

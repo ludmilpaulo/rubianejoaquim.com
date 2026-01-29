@@ -246,6 +246,16 @@ export const accessApi = {
   
   subscribeToMobileApp: async () => {
     const response = await api.post('/subscriptions/mobile/subscribe/')
+    if (response.status < 200 || response.status >= 300) {
+      const msg =
+        response.data?.detail ||
+        (typeof response.data?.error === 'string' ? response.data.error : null) ||
+        response.data?.message ||
+        `Erro ao ativar (${response.status})`
+      const err: any = new Error(msg || 'Não foi possível ativar a semana grátis.')
+      err.response = response
+      throw err
+    }
     return response.data
   },
   
