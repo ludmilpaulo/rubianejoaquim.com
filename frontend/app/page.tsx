@@ -125,11 +125,11 @@ Especialista em educação financeira com <strong className="text-gray-900">anos
               </div>
               <div className="mt-8 flex items-center gap-6">
                 <div>
-                  <div className="text-3xl font-bold text-primary-600">500+</div>
+                  <div className="text-3xl font-bold text-primary-600">50+</div>
                   <div className="text-sm text-gray-600">Alunos Formados</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-primary-600">10+</div>
+                  <div className="text-3xl font-bold text-primary-600">2+</div>
                   <div className="text-sm text-gray-600">Anos de Experiência</div>
                 </div>
                 <div>
