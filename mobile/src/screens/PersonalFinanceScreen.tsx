@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Dimensions, Alert, Text as RNText } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButtons, Menu, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -32,6 +33,7 @@ interface Budget {
   period_type?: string
   start_date?: string
   end_date?: string
+  date?: string
   spent: string
   remaining: string
   percentage_used: string
@@ -40,6 +42,7 @@ interface Budget {
 interface Goal {
   id: number
   title: string
+  description?: string
   target_amount: string
   current_amount: string
   target_date: string
@@ -67,6 +70,7 @@ interface Category {
 }
 
 export default function PersonalFinanceScreen() {
+  const navigation = useNavigation()
   const [activeTab, setActiveTab] = useState<'principios' | 'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>('principios')
   const [refreshing, setRefreshing] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -730,6 +734,32 @@ export default function PersonalFinanceScreen() {
                 </View>
               </Card.Content>
             </Card>
+
+            {/* Tirar dinheiro do orçamento - link to full guide */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => (navigation as any).navigate('OrcamentoPrincipios')}
+            >
+              <Card style={[styles.goldenRuleCard, styles.orcamentoCard]}>
+                <Card.Content>
+                  <View style={styles.ruleHeader}>
+                    <View style={[styles.ruleIconContainer, { backgroundColor: '#eef2ff' }]}>
+                      <MaterialCommunityIcons name="wallet-outline" size={32} color="#6366f1" />
+                    </View>
+                    <View style={styles.ruleHeaderText}>
+                      <Text variant="titleLarge" style={styles.ruleTitle}>Tirar dinheiro do orçamento</Text>
+                      <Text variant="bodySmall" style={styles.ruleSubtitle}>
+                        7 cenários reais: custos operacionais, projetos, reembolsos, contingência, fundador, crescimento, lucro
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={28} color="#6366f1" />
+                  </View>
+                  <Text variant="bodySmall" style={styles.orcamentoCta}>
+                    Toque para ver a regra real: alocar, aprovar e justificar →
+                  </Text>
+                </Card.Content>
+              </Card>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -918,7 +948,7 @@ export default function PersonalFinanceScreen() {
                         <Text variant="titleMedium">{goal.title}</Text>
                         <Text variant="bodySmall" style={styles.goalDescription}>{goal.description}</Text>
                       </View>
-                      {goal.status === 'active' && (
+                      {(goal.status === 'active' || goal.status === 'completed' || goal.status === 'cancelled') && (
                         <Chip
                           icon="check-circle"
                           style={styles.statusChip}
@@ -1309,7 +1339,7 @@ export default function PersonalFinanceScreen() {
                         name={
                           budgetForm.period_type === 'daily' ? 'calendar-today' :
                           budgetForm.period_type === 'monthly' ? 'calendar-month' :
-                          budgetForm.period_type === 'yearly' ? 'calendar-year' :
+                          budgetForm.period_type === 'yearly' ? 'calendar' :
                           'calendar-range'
                         }
                         size={20}
@@ -1354,7 +1384,7 @@ export default function PersonalFinanceScreen() {
                   }}
                   title="Anual"
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="calendar-year" size={20} color="#6366f1" />
+                    <MaterialCommunityIcons name="calendar" size={20} color="#6366f1" />
                   )}
                 />
                 <Menu.Item
@@ -1736,6 +1766,15 @@ const styles = StyleSheet.create({
   },
   ruleCard3x: {
     borderLeftColor: '#10b981',
+  },
+  orcamentoCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366f1',
+  },
+  orcamentoCta: {
+    marginTop: 8,
+    color: '#6366f1',
+    fontWeight: '600',
   },
   ruleHeader: {
     flexDirection: 'row',
@@ -2330,5 +2369,96 @@ const styles = StyleSheet.create({
   dropdownText: {
     flex: 1,
     color: '#1f2937',
+  },
+  expenseActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  editActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#6366f1',
+  },
+  actionButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editActionText: {
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  deleteActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  deleteActionText: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  categoryHeader: {
+    marginBottom: 8,
+  },
+  label: {
+    color: '#6b7280',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  placeholderText: {
+    color: '#9ca3af',
+  },
+  input: {
+    marginBottom: 12,
+    backgroundColor: '#fff',
+  },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  iconOption: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  iconOptionSelected: {
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  colorOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorOptionSelected: {
+    borderColor: '#1f2937',
   },
 })

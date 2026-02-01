@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import HomeScreen from '../screens/HomeScreen'
 import PersonalFinanceScreen from '../screens/PersonalFinanceScreen'
+import OrcamentoPrincipiosScreen from '../screens/OrcamentoPrincipiosScreen'
 import BusinessFinanceScreen from '../screens/BusinessFinanceScreen'
 import EducationScreen from '../screens/EducationScreen'
 import ProfileScreen from '../screens/ProfileScreen'
@@ -80,6 +81,27 @@ function EducationStack() {
   )
 }
 
+function PersonalStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="PersonalMain"
+        component={PersonalFinanceScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="OrcamentoPrincipios"
+        component={OrcamentoPrincipiosScreen}
+        options={{
+          title: 'Tirar dinheiro do orçamento',
+          headerStyle: { backgroundColor: '#6366f1' },
+          headerTintColor: '#fff',
+        }}
+      />
+    </Stack.Navigator>
+  )
+}
+
 function ProfileStack() {
   return (
     <Stack.Navigator>
@@ -149,8 +171,8 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Personal" 
-        component={PersonalFinanceScreen}
-        options={{ title: 'Pessoal' }}
+        component={PersonalStack}
+        options={{ title: 'Pessoal', headerShown: false }}
       />
       <Tab.Screen 
         name="Business" 

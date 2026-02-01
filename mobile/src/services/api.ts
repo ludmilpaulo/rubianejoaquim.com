@@ -91,6 +91,19 @@ export const testApiConnection = async () => {
   }
 }
 
+// App config (e.g. store version for update prompt)
+export const configApi = {
+  getAppVersion: async () => {
+    const response = await api.get<{
+      ios: string
+      android: string
+      ios_store_url?: string
+      android_store_url?: string
+    }>('/config/app-version/', { timeout: 8000 })
+    return response.data
+  },
+}
+
 // Auth API
 export const authApi = {
   login: async (emailOrUsername: string, password: string) => {

@@ -470,6 +470,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 4,
   },
+  buttonContent: {
+    paddingVertical: 4,
+  },
+  buttonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   biometricButton: {
     marginBottom: 16,
     paddingVertical: 4,

@@ -1,16 +1,26 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, Switch, Alert } from 'react-native'
 import { Text, Card, List, Divider } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
 import { Linking } from 'react-native'
+import { areNotificationsEnabled, setNotificationsEnabled as persistNotificationsEnabled } from '../utils/notifications'
 
 export default function SettingsScreen() {
   const { user } = useAppSelector((state) => state.auth)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [darkMode, setDarkMode] = useState(false)
+
+  useEffect(() => {
+    areNotificationsEnabled().then(setNotificationsEnabled)
+  }, [])
+
+  const handleNotificationsToggle = (value: boolean) => {
+    setNotificationsEnabled(value)
+    persistNotificationsEnabled(value).catch(() => {})
+  }
 
   const handleClearCache = () => {
     Alert.alert(
@@ -63,13 +73,14 @@ export default function SettingsScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>Preferências</Text>
             <List.Item
               title="Notificações"
-              description="Receber notificações sobre tarefas e atualizações"
+              description="Lembretes de tarefas atrasadas e metas financeiras (com vibração)"
               left={(props) => <List.Icon {...props} icon="bell" color="#6366f1" />}
               right={() => (
                 <Switch
                   value={notificationsEnabled}
-                  onValueChange={setNotificationsEnabled}
-                  color="#6366f1"
+                  onValueChange={handleNotificationsToggle}
+                  trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
+                  thumbColor={notificationsEnabled ? '#6366f1' : '#f3f4f6'}
                 />
               )}
             />
@@ -82,7 +93,8 @@ export default function SettingsScreen() {
                 <Switch
                   value={biometricEnabled}
                   onValueChange={setBiometricEnabled}
-                  color="#6366f1"
+                  trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
+                  thumbColor={biometricEnabled ? '#6366f1' : '#f3f4f6'}
                 />
               )}
             />
@@ -95,7 +107,8 @@ export default function SettingsScreen() {
                 <Switch
                   value={darkMode}
                   onValueChange={setDarkMode}
-                  color="#6366f1"
+                  trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
+                  thumbColor={darkMode ? '#6366f1' : '#f3f4f6'}
                   disabled
                 />
               )}

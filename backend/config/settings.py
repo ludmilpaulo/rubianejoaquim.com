@@ -194,3 +194,9 @@ OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
 SUBSCRIPTION_MONTHLY_PRICE_KZ = config('SUBSCRIPTION_MONTHLY_PRICE_KZ', default=10000, cast=int)
 SUBSCRIPTION_IBAN = config('SUBSCRIPTION_IBAN', default='0040 0000 4047.9796.1015.9')
 SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Patricia Fernando Joaquim')
+
+# Mobile App (Zenda) store update check - bump when you publish a new version
+APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.0')
+APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.0')
+APP_STORE_URL_IOS = config('APP_STORE_URL_IOS', default='')  # e.g. https://apps.apple.com/app/id1234567890
+APP_STORE_URL_ANDROID = config('APP_STORE_URL_ANDROID', default='https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda')

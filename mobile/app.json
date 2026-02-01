@@ -2,13 +2,13 @@
   "expo": {
     "name": "Zenda",
     "slug": "zenda",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#6366f1"
     },
@@ -18,7 +18,8 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,8 +28,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true,
-      "package": "com.rubianejoaquim.zenda"
+      "package": "com.rubianejoaquim.zenda",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +41,8 @@
         {
           "faceIDPermission": "Este app usa Face ID para autenticação rápida e segura."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "extra": {
       "eas": {

@@ -87,6 +87,20 @@ export default function LessonDetailScreen() {
     }
   }
 
+  const loadQuiz = async () => {
+    if (!lessonId) return
+    try {
+      setLoadingQuiz(true)
+      const data = await lessonQuizApi.getByLesson(lessonId)
+      setQuiz(data)
+    } catch (error) {
+      console.error('Error loading quiz:', error)
+      setQuiz(null)
+    } finally {
+      setLoadingQuiz(false)
+    }
+  }
+
   const handleMarkComplete = async () => {
     if (!lesson) return
     

@@ -10,6 +10,8 @@ import { useAppDispatch, useAppSelector } from './src/hooks/redux'
 import AuthNavigator from './src/navigation/AuthNavigator'
 import MainNavigator from './src/navigation/MainNavigator'
 import LoadingScreen from './src/screens/LoadingScreen'
+import { setupNotifications } from './src/utils/notifications'
+import { checkStoreUpdate } from './src/utils/storeUpdate'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -18,6 +20,21 @@ function AppContent() {
   useEffect(() => {
     dispatch(checkAuth())
   }, [dispatch])
+
+  useEffect(() => {
+    if (user && hasPaidAccess) {
+      setupNotifications().catch(() => {})
+    }
+  }, [user, hasPaidAccess])
+
+  useEffect(() => {
+    if (user && hasPaidAccess) {
+      const t = setTimeout(() => {
+        checkStoreUpdate().catch(() => {})
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+  }, [user, hasPaidAccess])
 
   if (isLoading) {
     return <LoadingScreen />

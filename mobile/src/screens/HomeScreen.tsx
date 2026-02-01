@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, AppState } from 'react-native'
 import { Text, Card, Badge } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
-import { tasksApi } from '../services/api'
+import { tasksApi, personalFinanceApi } from '../services/api'
+import { notifyOverdueOrDueTasks, notifyFinanceGoalsReminder } from '../utils/notifications'
+
+const REMINDER_DELAY_MS = 2500
+const REMINDER_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
   const navigation = useNavigation<any>()
   const [unreadCount, setUnreadCount] = useState(0)
+  const lastReminderCheck = useRef<number>(0)
 
   useEffect(() => {
     loadUnreadCount()
@@ -18,6 +23,68 @@ export default function HomeScreen() {
       loadUnreadCount()
     }, 30000)
     return () => clearInterval(interval)
+  }, [])
+
+  const runReminderCheck = async () => {
+    const now = Date.now()
+    if (now - lastReminderCheck.current < REMINDER_COOLDOWN_MS) return
+    lastReminderCheck.current = now
+    try {
+      const [overdueRes, todayRes, goalsRes] = await Promise.all([
+        tasksApi.getTasks(undefined, undefined, undefined, true),
+        tasksApi.getTodayTasks(),
+        personalFinanceApi.getGoals('active').catch(() => []),
+      ])
+      const overdueList = Array.isArray(overdueRes) ? overdueRes : overdueRes?.results ?? []
+      const todayList = Array.isArray(todayRes) ? todayRes : todayRes?.results ?? []
+      const goalsList = Array.isArray(goalsRes) ? goalsRes : goalsRes?.results ?? []
+
+      const incomplete = (t: { status?: string }) =>
+        t.status !== 'completed' && t.status !== 'cancelled'
+      const overdueIncomplete = overdueList.filter(incomplete)
+      const todayIncomplete = todayList.filter(incomplete)
+      const firstOverdue = overdueIncomplete[0] as { title?: string } | undefined
+      const firstToday = todayIncomplete[0] as { title?: string } | undefined
+      const firstTaskTitle = firstOverdue?.title ?? firstToday?.title
+
+      await notifyOverdueOrDueTasks(
+        overdueIncomplete.length,
+        todayIncomplete.length,
+        firstTaskTitle
+      )
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const inDays = (d: string) => Math.floor((new Date(d).getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+      const goalsWithDeadline = goalsList
+        .filter((g: { status?: string; target_date?: string }) => g.status === 'active' && g.target_date)
+        .map((g: { title: string; target_date: string }) => ({
+          title: g.title,
+          target_date: g.target_date,
+          daysRemaining: inDays(g.target_date),
+        }))
+        .filter((g: { daysRemaining: number }) => g.daysRemaining <= 7)
+        .sort((a: { daysRemaining: number }, b: { daysRemaining: number }) => a.daysRemaining - b.daysRemaining)
+      if (goalsWithDeadline.length > 0) {
+        await notifyFinanceGoalsReminder(goalsWithDeadline)
+      }
+    } catch (e) {
+      if (__DEV__) console.warn('Reminder check failed:', e)
+    }
+  }
+
+  useEffect(() => {
+    const t = setTimeout(runReminderCheck, REMINDER_DELAY_MS)
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        const t2 = setTimeout(runReminderCheck, REMINDER_DELAY_MS)
+        return () => clearTimeout(t2)
+      }
+    })
+    return () => {
+      clearTimeout(t)
+      sub.remove()
+    }
   }, [])
 
   const loadUnreadCount = async () => {
@@ -383,4 +450,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  cardMarket: {},
 })

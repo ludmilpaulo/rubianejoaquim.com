@@ -5,6 +5,7 @@ export interface User {
   username: string
   first_name: string
   last_name: string
+  phone?: string
   is_staff: boolean
   is_superuser: boolean
   is_admin: boolean
@@ -55,6 +56,7 @@ export interface Budget {
   amount: number
   period: 'weekly' | 'monthly' | 'yearly'
   spent: number
+  date?: string
   created_at: string
 }
 
@@ -82,6 +84,7 @@ export interface BusinessExpense {
   category: string
   description: string
   date: string
+  invoice_number?: string
   created_at: string
 }
 

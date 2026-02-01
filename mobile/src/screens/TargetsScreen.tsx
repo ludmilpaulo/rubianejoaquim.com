@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     borderColor: '#ef4444',
   },
-  updateButton: {
+  modalUpdateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

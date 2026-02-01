@@ -368,6 +368,12 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     lineHeight: 20,
   },
+  ctaHint: {
+    marginBottom: 20,
+    textAlign: 'center',
+    color: '#6b7280',
+    lineHeight: 20,
+  },
   bold: {
     fontWeight: '700',
     color: '#374151',

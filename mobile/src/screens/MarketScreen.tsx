@@ -127,7 +127,7 @@ export default function MarketScreen() {
           <Card.Content style={styles.cardContent}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionIconContainer}>
-                <MaterialCommunityIcons name="currency-exchange" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="swap-horizontal" size={24} color="#6366f1" />
               </View>
               <Text variant="titleLarge" style={styles.sectionTitle}>
                 Câmbio Diário

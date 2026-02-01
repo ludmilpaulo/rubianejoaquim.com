@@ -30,6 +30,7 @@ interface BusinessExpense {
   date: string
   payment_method: string
   supplier: string
+  invoice_number?: string
   is_tax_deductible: boolean
 }
 
