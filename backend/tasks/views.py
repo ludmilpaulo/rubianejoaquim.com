@@ -98,27 +98,60 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(tasks, many=True)
         return Response(serializer.data)
 
+    def _get_period_dates(self):
+        """Parse period params: daily, monthly, yearly, custom. Returns (start_date, end_date) or None for all-time."""
+        period = self.request.query_params.get('period', 'monthly')
+        now = timezone.now().date()
+        if period == 'daily':
+            return now, now
+        if period == 'monthly':
+            month = int(self.request.query_params.get('month', now.month))
+            year = int(self.request.query_params.get('year', now.year))
+            start = datetime(year, month, 1).date()
+            if month == 12:
+                end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+            return start, end
+        if period == 'yearly':
+            year = int(self.request.query_params.get('year', now.year))
+            start = datetime(year, 1, 1).date()
+            end = datetime(year, 12, 31).date()
+            return start, end
+        if period == 'custom':
+            from_str = self.request.query_params.get('date_from')
+            to_str = self.request.query_params.get('date_to')
+            if from_str and to_str:
+                start = datetime.strptime(from_str, '%Y-%m-%d').date()
+                end = datetime.strptime(to_str, '%Y-%m-%d').date()
+                return start, end
+        return None
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Estatísticas das tarefas"""
+        """Estatísticas das tarefas. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
         user = request.user
-        total = Task.objects.filter(user=user).count()
-        completed = Task.objects.filter(user=user, status='completed').count()
-        pending = Task.objects.filter(user=user, status='pending').count()
-        in_progress = Task.objects.filter(user=user, status='in_progress').count()
-        overdue = Task.objects.filter(
-            user=user,
+        base = Task.objects.filter(user=user)
+        period_dates = self._get_period_dates()
+        if period_dates:
+            start, end = period_dates
+            base = base.filter(due_date__gte=start, due_date__lte=end)
+        total = base.count()
+        completed = base.filter(status='completed').count()
+        pending = base.filter(status='pending').count()
+        in_progress = base.filter(status='in_progress').count()
+        overdue = base.filter(
             due_date__lt=timezone.now().date(),
             status__in=['pending', 'in_progress']
         ).count()
-        
         return Response({
             'total': total,
             'completed': completed,
             'pending': pending,
             'in_progress': in_progress,
             'overdue': overdue,
-            'completion_rate': (completed / total * 100) if total > 0 else 0,
+            'completion_rate': round((completed / total * 100), 1) if total > 0 else 0,
+            'period': period_dates and {'start': str(period_dates[0]), 'end': str(period_dates[1])} or None,
         })
 
 
@@ -154,6 +187,54 @@ class TargetViewSet(viewsets.ModelViewSet):
             related_object_type='target',
             related_object_id=target.id,
         )
+
+    def _get_period_dates(self):
+        """Parse period params for stats: daily, monthly, yearly, custom."""
+        period = self.request.query_params.get('period', 'monthly')
+        now = timezone.now().date()
+        if period == 'daily':
+            return now, now
+        if period == 'monthly':
+            month = int(self.request.query_params.get('month', now.month))
+            year = int(self.request.query_params.get('year', now.year))
+            start = datetime(year, month, 1).date()
+            if month == 12:
+                end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+            return start, end
+        if period == 'yearly':
+            year = int(self.request.query_params.get('year', now.year))
+            start = datetime(year, 1, 1).date()
+            end = datetime(year, 12, 31).date()
+            return start, end
+        if period == 'custom':
+            from_str = self.request.query_params.get('date_from')
+            to_str = self.request.query_params.get('date_to')
+            if from_str and to_str:
+                start = datetime.strptime(from_str, '%Y-%m-%d').date()
+                end = datetime.strptime(to_str, '%Y-%m-%d').date()
+                return start, end
+        return None
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Estatísticas das metas. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
+        user = request.user
+        base = Target.objects.filter(user=user)
+        period_dates = self._get_period_dates()
+        if period_dates:
+            start, end = period_dates
+            base = base.filter(start_date__lte=end, target_date__gte=start)
+        total = base.count()
+        active = base.filter(status='active').count()
+        completed = base.filter(status='completed').count()
+        return Response({
+            'total': total,
+            'active': active,
+            'completed': completed,
+            'period': period_dates and {'start': str(period_dates[0]), 'end': str(period_dates[1])} or None,
+        })
 
     @action(detail=True, methods=['post'])
     def update_progress(self, request, pk=None):

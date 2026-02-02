@@ -18,8 +18,15 @@
     }
   },
   "submit": {
+    "preview": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
     "production": {
       "android": {
+        "track": "production",
         "releaseStatus": "completed"
       }
     }

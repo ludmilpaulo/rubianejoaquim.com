@@ -209,16 +209,17 @@ export const authApi = {
 // Access Verification API
 export const accessApi = {
   // Paid access = course enrollment OR mentorship OR mobile app subscription
+  // AccessDenied only shows when user has NO course enrollment AND NO subscription (and no mentorship)
   checkPaidAccess: async () => {
     try {
       const [enrollmentsRes, mentorshipRes, subscriptionRes] = await Promise.all([
         api.get('/course/enrollment/'),
-        api.get('/mentorship/request/'),
+        api.get('/mentorship/request/').catch(() => ({ data: { results: [] } })),
         api.get('/subscriptions/mobile/me/').catch(() => ({ data: { has_access: false } })),
       ])
       
-      const enrollments = enrollmentsRes.data.results || enrollmentsRes.data || []
-      const mentorshipRequests = mentorshipRes.data.results || mentorshipRes.data || []
+      const enrollments = enrollmentsRes.data?.results || enrollmentsRes.data || []
+      const mentorshipRequests = mentorshipRes.data?.results || mentorshipRes.data || []
       const hasMobileSubscription = subscriptionRes.data?.has_access === true
       
       const hasActiveEnrollment = Array.isArray(enrollments) && 
@@ -308,10 +309,15 @@ export const personalFinanceApi = {
   },
   
   // Expenses
-  getExpenses: async (month?: number, year?: number, category?: number) => {
+  getExpenses: async (month?: number, year?: number, category?: number, dateFrom?: string, dateTo?: string) => {
     const params: any = {}
-    if (month) params.month = month
-    if (year) params.year = year
+    if (dateFrom && dateTo) {
+      params.date_from = dateFrom
+      params.date_to = dateTo
+    } else {
+      if (month) params.month = month
+      if (year) params.year = year
+    }
     if (category) params.category = category
     const response = await api.get('/finance/personal/expenses/', { params })
     return response.data
@@ -337,8 +343,8 @@ export const personalFinanceApi = {
     return response.data
   },
   
-  getExpensesSummary: async () => {
-    const response = await api.get('/finance/personal/expenses/summary/')
+  getExpensesSummary: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/finance/personal/expenses/summary/', { params: params || {} })
     return response.data
   },
   
@@ -456,10 +462,15 @@ export const businessFinanceApi = {
   },
   
   // Sales
-  getSales: async (month?: number, year?: number) => {
+  getSales: async (month?: number, year?: number, dateFrom?: string, dateTo?: string) => {
     const params: any = {}
-    if (month) params.month = month
-    if (year) params.year = year
+    if (dateFrom && dateTo) {
+      params.date_from = dateFrom
+      params.date_to = dateTo
+    } else {
+      if (month) params.month = month
+      if (year) params.year = year
+    }
     const response = await api.get('/finance/business/sales/', { params })
     return response.data
   },
@@ -484,16 +495,21 @@ export const businessFinanceApi = {
     return response.data
   },
   
-  getSalesSummary: async () => {
-    const response = await api.get('/finance/business/sales/summary/')
+  getSalesSummary: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/finance/business/sales/summary/', { params: params || {} })
     return response.data
   },
   
   // Expenses
-  getExpenses: async (month?: number, year?: number, category?: number) => {
+  getExpenses: async (month?: number, year?: number, category?: number, dateFrom?: string, dateTo?: string) => {
     const params: any = {}
-    if (month) params.month = month
-    if (year) params.year = year
+    if (dateFrom && dateTo) {
+      params.date_from = dateFrom
+      params.date_to = dateTo
+    } else {
+      if (month) params.month = month
+      if (year) params.year = year
+    }
     if (category) params.category = category
     const response = await api.get('/finance/business/expenses/', { params })
     return response.data
@@ -519,14 +535,14 @@ export const businessFinanceApi = {
     return response.data
   },
   
-  getExpensesSummary: async () => {
-    const response = await api.get('/finance/business/expenses/summary/')
+  getExpensesSummary: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/finance/business/expenses/summary/', { params: params || {} })
     return response.data
   },
   
   // Metrics
-  getMetrics: async () => {
-    const response = await api.get('/finance/business/metrics/overview/')
+  getMetrics: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/finance/business/metrics/overview/', { params: params || {} })
     return response.data
   },
 }
@@ -694,8 +710,8 @@ export const tasksApi = {
     return response.data
   },
   
-  getTaskStats: async () => {
-    const response = await api.get('/tasks/tasks/stats/')
+  getTaskStats: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/tasks/tasks/stats/', { params: params || {} })
     return response.data
   },
   
@@ -705,6 +721,11 @@ export const tasksApi = {
     if (status) params.status = status
     if (target_type) params.target_type = target_type
     const response = await api.get('/tasks/targets/', { params })
+    return response.data
+  },
+
+  getTargetStats: async (params?: { period?: string; month?: number; year?: number; date_from?: string; date_to?: string }) => {
+    const response = await api.get('/tasks/targets/stats/', { params: params || {} })
     return response.data
   },
   

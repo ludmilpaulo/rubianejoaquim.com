@@ -8,6 +8,7 @@ import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
 import { personalFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
+import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 
 const { width } = Dimensions.get('window')
 
@@ -79,6 +80,10 @@ export default function PersonalFinanceScreen() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [summary, setSummary] = useState<any>(null)
+  const [periodState, setPeriodState] = useState<PeriodState>(() => {
+    const now = new Date()
+    return { period: 'monthly', month: now.getMonth() + 1, year: now.getFullYear(), dateFrom: null, dateTo: null }
+  })
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   
@@ -125,17 +130,36 @@ export default function PersonalFinanceScreen() {
 
   useEffect(() => {
     loadData()
-  }, [selectedMonth, selectedYear])
+  }, [periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
 
   const loadData = async () => {
+    const periodParams = getPeriodParams(periodState)
+    let dateFrom: string | undefined
+    let dateTo: string | undefined
+    const month = periodState.period === 'monthly' ? periodState.month : new Date().getMonth() + 1
+    const year = periodState.period === 'yearly' ? periodState.year : periodState.year
+    if (periodState.period === 'custom' && periodState.dateFrom && periodState.dateTo) {
+      dateFrom = periodState.dateFrom.toISOString().split('T')[0]
+      dateTo = periodState.dateTo.toISOString().split('T')[0]
+    } else if (periodState.period === 'daily') {
+      const d = new Date()
+      dateFrom = dateTo = d.toISOString().split('T')[0]
+    } else if (periodState.period === 'monthly') {
+      dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+    } else if (periodState.period === 'yearly') {
+      dateFrom = `${year}-01-01`
+      dateTo = `${year}-12-31`
+    }
     const endpointNames = ['expenses', 'budgets', 'goals', 'debts', 'categories', 'summary'] as const
     const results = await Promise.allSettled([
-      personalFinanceApi.getExpenses(selectedMonth, selectedYear),
-      personalFinanceApi.getBudgets(selectedMonth, selectedYear),
+      personalFinanceApi.getExpenses(month, year, undefined, dateFrom, dateTo),
+      personalFinanceApi.getBudgets(month, year),
       personalFinanceApi.getGoals(),
       personalFinanceApi.getDebts(),
       personalFinanceApi.getCategories(true),
-      personalFinanceApi.getExpensesSummary(),
+      personalFinanceApi.getExpensesSummary(periodParams),
     ])
 
     results.forEach((result, i) => {
@@ -585,6 +609,14 @@ export default function PersonalFinanceScreen() {
             ))}
           </ScrollView>
         </View>
+
+        {/* Period Selector - shown for all finance tabs except principios */}
+        {activeTab !== 'principios' && (
+          <View style={styles.periodSection}>
+            <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+            <PeriodSelector state={periodState} onChange={setPeriodState} />
+          </View>
+        )}
 
         {/* Content based on active tab */}
         {activeTab === 'principios' && (
@@ -2021,6 +2053,16 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     color: '#6366f1',
     fontWeight: '700',
+  },
+  periodSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: '#fff',
+  },
+  periodLabel: {
+    color: '#6b7280',
+    marginBottom: 8,
   },
   content: {
     padding: 16,

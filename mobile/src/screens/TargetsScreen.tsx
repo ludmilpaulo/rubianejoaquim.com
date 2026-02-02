@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
+import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 
 const { width } = Dimensions.get('window')
 
@@ -26,9 +27,11 @@ interface Target {
 }
 
 export default function TargetsScreen() {
+  const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all')
   const [refreshing, setRefreshing] = useState(false)
   const [targets, setTargets] = useState<Target[]>([])
+  const [stats, setStats] = useState<any>(null)
   
   // Modal states
   const [showTargetModal, setShowTargetModal] = useState(false)
@@ -51,13 +54,17 @@ export default function TargetsScreen() {
 
   useEffect(() => {
     loadData()
-  }, [activeFilter])
+  }, [activeFilter, periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
 
   const loadData = async () => {
     try {
       const statusFilter = activeFilter === 'all' ? undefined : activeFilter
-      const targetsRes = await tasksApi.getTargets(statusFilter)
+      const [targetsRes, statsRes] = await Promise.all([
+        tasksApi.getTargets(statusFilter),
+        tasksApi.getTargetStats(getPeriodParams(periodState)),
+      ])
       setTargets(Array.isArray(targetsRes) ? targetsRes : targetsRes.results || [])
+      setStats(statsRes)
     } catch (error) {
       console.error('Error loading targets:', error)
     }
@@ -263,6 +270,37 @@ export default function TargetsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Period Selector & Stats */}
+        <View style={styles.periodSection}>
+          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <PeriodSelector state={periodState} onChange={setPeriodState} />
+        </View>
+        {stats && (
+          <View style={styles.statsContainer}>
+            <Card style={styles.statCard}>
+              <Card.Content style={styles.statContent}>
+                <MaterialCommunityIcons name="flag" size={24} color="#6366f1" />
+                <RNText style={styles.statValue}>{stats.total}</RNText>
+                <RNText style={styles.statLabel}>Total</RNText>
+              </Card.Content>
+            </Card>
+            <Card style={styles.statCard}>
+              <Card.Content style={styles.statContent}>
+                <MaterialCommunityIcons name="play-circle" size={24} color="#10b981" />
+                <RNText style={styles.statValue}>{stats.active}</RNText>
+                <RNText style={styles.statLabel}>Ativas</RNText>
+              </Card.Content>
+            </Card>
+            <Card style={styles.statCard}>
+              <Card.Content style={styles.statContent}>
+                <MaterialCommunityIcons name="check-circle" size={24} color="#6366f1" />
+                <RNText style={styles.statValue}>{stats.completed}</RNText>
+                <RNText style={styles.statLabel}>Concluídas</RNText>
+              </Card.Content>
+            </Card>
+          </View>
+        )}
 
         {/* Filters */}
         <View style={styles.filtersContainer}>
@@ -652,6 +690,44 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 8,
     backgroundColor: '#fff',
+  },
+  periodSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  periodLabel: {
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 12,
+    backgroundColor: '#fff',
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  statContent: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2937',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
   },
   title: {
     fontWeight: 'bold',

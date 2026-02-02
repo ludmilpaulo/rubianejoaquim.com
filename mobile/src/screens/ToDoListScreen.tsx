@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
 import DatePicker from '../components/DatePicker'
 import TimePicker from '../components/TimePicker'
+import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 
 interface Task {
   id: number
@@ -30,6 +31,7 @@ interface TaskCategory {
 }
 
 export default function ToDoListScreen() {
+  const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [activeFilter, setActiveFilter] = useState<'all' | 'today' | 'upcoming' | 'overdue' | 'completed'>('all')
   const [refreshing, setRefreshing] = useState(false)
   const [tasks, setTasks] = useState<Task[]>([])
@@ -55,7 +57,7 @@ export default function ToDoListScreen() {
 
   useEffect(() => {
     loadData()
-  }, [activeFilter])
+  }, [activeFilter, periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
 
   const loadData = async () => {
     try {
@@ -68,7 +70,7 @@ export default function ToDoListScreen() {
         tasksApi.getTodayTasks(),
         tasksApi.getUpcomingTasks(),
         tasksApi.getCategories(),
-        tasksApi.getTaskStats(),
+        tasksApi.getTaskStats(getPeriodParams(periodState)),
       ])
       
       setTasks(Array.isArray(tasksRes) ? tasksRes : tasksRes.results || [])
@@ -237,6 +239,12 @@ export default function ToDoListScreen() {
             )}
           </View>
           <IconButton icon="bell" size={24} onPress={() => {}} />
+        </View>
+
+        {/* Period Selector for Analytics */}
+        <View style={styles.periodSection}>
+          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <PeriodSelector state={periodState} onChange={setPeriodState} />
         </View>
 
         {/* Stats Cards */}
@@ -501,6 +509,18 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#666',
     marginTop: 4,
+  },
+  periodSection: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  periodLabel: {
+    color: '#6b7280',
+    marginBottom: 8,
   },
   statsContainer: {
     flexDirection: 'row',

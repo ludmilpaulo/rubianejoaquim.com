@@ -7,6 +7,7 @@ import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
 import { businessFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
+import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 
 const { width } = Dimensions.get('window')
 
@@ -43,6 +44,7 @@ interface Category {
 
 export default function BusinessFinanceScreen() {
   const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'expenses'>('overview')
+  const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [refreshing, setRefreshing] = useState(false)
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<BusinessExpense[]>([])
@@ -85,17 +87,24 @@ export default function BusinessFinanceScreen() {
 
   useEffect(() => {
     loadData()
-  }, [selectedMonth, selectedYear])
+  }, [periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
 
   const loadData = async () => {
     try {
+      const periodParams = getPeriodParams(periodState)
+      const dateFrom = periodState.period === 'custom' && periodState.dateFrom
+        ? periodState.dateFrom.toISOString().split('T')[0] : undefined
+      const dateTo = periodState.period === 'custom' && periodState.dateTo
+        ? periodState.dateTo.toISOString().split('T')[0] : undefined
+      const month = periodState.period === 'monthly' ? periodState.month : new Date().getMonth() + 1
+      const year = periodState.period === 'yearly' ? periodState.year : periodState.year
       const [salesRes, expensesRes, categoriesRes, metricsRes, salesSummaryRes, expensesSummaryRes] = await Promise.all([
-        businessFinanceApi.getSales(selectedMonth, selectedYear),
-        businessFinanceApi.getExpenses(selectedMonth, selectedYear),
+        businessFinanceApi.getSales(month, year, dateFrom, dateTo),
+        businessFinanceApi.getExpenses(month, year, undefined, dateFrom, dateTo),
         businessFinanceApi.getCategories(true),
-        businessFinanceApi.getMetrics(),
-        businessFinanceApi.getSalesSummary(),
-        businessFinanceApi.getExpensesSummary(),
+        businessFinanceApi.getMetrics(periodParams),
+        businessFinanceApi.getSalesSummary(periodParams),
+        businessFinanceApi.getExpensesSummary(periodParams),
       ])
       
       setSales(Array.isArray(salesRes) ? salesRes : salesRes.results || [])
@@ -284,6 +293,12 @@ export default function BusinessFinanceScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text variant="headlineSmall" style={styles.title}>Finanças do Negócio</Text>
+        </View>
+
+        {/* Period Selector for Analytics */}
+        <View style={styles.periodSection}>
+          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <PeriodSelector state={periodState} onChange={setPeriodState} />
         </View>
 
         {/* Metrics Card */}
@@ -1103,5 +1118,14 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  periodSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  periodLabel: {
+    color: '#6b7280',
+    marginBottom: 8,
   },
 })

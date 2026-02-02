@@ -7,6 +7,43 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+
+def get_period_dates(request):
+    """Parse period params: daily, monthly, yearly, custom. Returns (start_date, end_date). Default: current month."""
+    period = request.query_params.get('period', 'monthly')
+    now = timezone.now().date()
+    if period == 'daily':
+        return now, now
+    if period == 'monthly':
+        month = int(request.query_params.get('month', now.month))
+        year = int(request.query_params.get('year', now.year))
+        start = datetime(year, month, 1).date()
+        if month == 12:
+            end = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+        else:
+            end = datetime(year, month + 1, 1).date() - timedelta(days=1)
+        return start, end
+    if period == 'yearly':
+        year = int(request.query_params.get('year', now.year))
+        start = datetime(year, 1, 1).date()
+        end = datetime(year, 12, 31).date()
+        return start, end
+    if period == 'custom':
+        from_str = request.query_params.get('date_from')
+        to_str = request.query_params.get('date_to')
+        if from_str and to_str:
+            start = datetime.strptime(from_str, '%Y-%m-%d').date()
+            end = datetime.strptime(to_str, '%Y-%m-%d').date()
+            return start, end
+    # Default: current month
+    start = datetime(now.year, now.month, 1).date()
+    if now.month == 12:
+        end = datetime(now.year + 1, 1, 1).date() - timedelta(days=1)
+    else:
+        end = datetime(now.year, now.month + 1, 1).date() - timedelta(days=1)
+    return start, end
+
+
 from .models import (
     Category, PersonalExpense, Budget, Goal, Debt,
     Sale, BusinessExpense
@@ -51,11 +88,18 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
         month = self.request.query_params.get('month', None)
         year = self.request.query_params.get('year', None)
         category = self.request.query_params.get('category', None)
+        date_from = self.request.query_params.get('date_from', None)
+        date_to = self.request.query_params.get('date_to', None)
         
-        if month:
-            queryset = queryset.filter(date__month=month)
-        if year:
-            queryset = queryset.filter(date__year=year)
+        if date_from and date_to:
+            start = datetime.strptime(date_from, '%Y-%m-%d').date()
+            end = datetime.strptime(date_to, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__gte=start, date__lte=end)
+        else:
+            if month:
+                queryset = queryset.filter(date__month=month)
+            if year:
+                queryset = queryset.filter(date__year=year)
         if category:
             queryset = queryset.filter(category_id=category)
         
@@ -66,21 +110,16 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Resumo das despesas do mês atual"""
+        """Resumo das despesas. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
         if not request.user or not request.user.is_authenticated:
             return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
         
         user = request.user
-        now = timezone.now()
+        start, end = get_period_dates(request)
+        expenses = PersonalExpense.objects.filter(user=user, date__gte=start, date__lte=end)
         
-        month_expenses = PersonalExpense.objects.filter(
-            user=user,
-            date__year=now.year,
-            date__month=now.month
-        )
-        
-        total = month_expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        by_category = month_expenses.values('category__name').annotate(
+        total = expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        by_category = expenses.values('category__name').annotate(
             total=Sum('amount'),
             count=Count('id')
         )
@@ -88,7 +127,8 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
         return Response({
             'total': str(total),
             'by_category': list(by_category),
-            'count': month_expenses.count()
+            'count': expenses.count(),
+            'period': {'start': str(start), 'end': str(end)},
         })
 
 
@@ -241,15 +281,19 @@ class SaleViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = Sale.objects.filter(user=user)
-        
         month = self.request.query_params.get('month', None)
         year = self.request.query_params.get('year', None)
-        
-        if month:
-            queryset = queryset.filter(date__month=month)
-        if year:
-            queryset = queryset.filter(date__year=year)
-        
+        date_from = self.request.query_params.get('date_from', None)
+        date_to = self.request.query_params.get('date_to', None)
+        if date_from and date_to:
+            start = datetime.strptime(date_from, '%Y-%m-%d').date()
+            end = datetime.strptime(date_to, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__gte=start, date__lte=end)
+        else:
+            if month:
+                queryset = queryset.filter(date__month=month)
+            if year:
+                queryset = queryset.filter(date__year=year)
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
@@ -257,21 +301,15 @@ class SaleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Resumo das vendas"""
+        """Resumo das vendas. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
         user = request.user
-        now = timezone.now()
-        
-        month_sales = Sale.objects.filter(
-            user=user,
-            date__year=now.year,
-            date__month=now.month
-        )
-        
-        total = month_sales.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        
+        start, end = get_period_dates(request)
+        sales = Sale.objects.filter(user=user, date__gte=start, date__lte=end)
+        total = sales.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
         return Response({
             'total': str(total),
-            'count': month_sales.count()
+            'count': sales.count(),
+            'period': {'start': str(start), 'end': str(end)},
         })
 
 
@@ -287,14 +325,19 @@ class BusinessExpenseViewSet(viewsets.ModelViewSet):
         month = self.request.query_params.get('month', None)
         year = self.request.query_params.get('year', None)
         category = self.request.query_params.get('category', None)
-        
-        if month:
-            queryset = queryset.filter(date__month=month)
-        if year:
-            queryset = queryset.filter(date__year=year)
+        date_from = self.request.query_params.get('date_from', None)
+        date_to = self.request.query_params.get('date_to', None)
+        if date_from and date_to:
+            start = datetime.strptime(date_from, '%Y-%m-%d').date()
+            end = datetime.strptime(date_to, '%Y-%m-%d').date()
+            queryset = queryset.filter(date__gte=start, date__lte=end)
+        else:
+            if month:
+                queryset = queryset.filter(date__month=month)
+            if year:
+                queryset = queryset.filter(date__year=year)
         if category:
             queryset = queryset.filter(category_id=category)
-        
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
@@ -302,26 +345,17 @@ class BusinessExpenseViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
-        """Resumo das despesas do mês atual"""
+        """Resumo das despesas. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
         user = request.user
-        now = timezone.now()
-        
-        month_expenses = BusinessExpense.objects.filter(
-            user=user,
-            date__year=now.year,
-            date__month=now.month
-        )
-        
-        total = month_expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        by_category = month_expenses.values('category__name').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        )
-        
+        start, end = get_period_dates(request)
+        expenses = BusinessExpense.objects.filter(user=user, date__gte=start, date__lte=end)
+        total = expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        by_category = expenses.values('category__name').annotate(total=Sum('amount'), count=Count('id'))
         return Response({
             'total': str(total),
             'by_category': list(by_category),
-            'count': month_expenses.count()
+            'count': expenses.count(),
+            'period': {'start': str(start), 'end': str(end)},
         })
 
 
@@ -331,42 +365,17 @@ class BusinessMetricsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def overview(self, request):
-        """Visão geral das finanças do negócio"""
+        """Visão geral das finanças. Params: period (daily|monthly|yearly|custom), month, year, date_from, date_to"""
         user = request.user
-        now = timezone.now()
-        
-        # Vendas do mês
-        month_sales = Sale.objects.filter(
-            user=user,
-            date__year=now.year,
-            date__month=now.month
-        )
-        sales_total = month_sales.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        
-        # Despesas do mês
-        month_expenses = BusinessExpense.objects.filter(
-            user=user,
-            date__year=now.year,
-            date__month=now.month
-        )
-        expenses_total = month_expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        
-        # Lucro
+        start, end = get_period_dates(request)
+        sales = Sale.objects.filter(user=user, date__gte=start, date__lte=end)
+        expenses = BusinessExpense.objects.filter(user=user, date__gte=start, date__lte=end)
+        sales_total = sales.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        expenses_total = expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
         profit = sales_total - expenses_total
-        
         return Response({
-            'sales': {
-                'total': str(sales_total),
-                'count': month_sales.count()
-            },
-            'expenses': {
-                'total': str(expenses_total),
-                'count': month_expenses.count()
-            },
-            'profit': {
-                'total': str(profit),
-                'is_positive': profit >= 0
-            },
-            'month': now.month,
-            'year': now.year
+            'sales': {'total': str(sales_total), 'count': sales.count()},
+            'expenses': {'total': str(expenses_total), 'count': expenses.count()},
+            'profit': {'total': str(profit), 'is_positive': profit >= 0},
+            'period': {'start': str(start), 'end': str(end)},
         })
