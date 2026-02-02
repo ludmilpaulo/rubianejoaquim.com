@@ -7,14 +7,17 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "preview"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     }
   },
   "submit": {
@@ -22,13 +25,35 @@
       "android": {
         "track": "internal",
         "releaseStatus": "completed"
+      },
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id",
+        "appleTeamId": "your-apple-team-id"
       }
     },
     "production": {
       "android": {
         "track": "production",
         "releaseStatus": "completed"
+      },
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id",
+        "appleTeamId": "your-apple-team-id",
+        "sku": "com.rubianejoaquim.zenda"
       }
+    }
+  },
+  "update": {
+    "development": {
+      "channel": "development"
+    },
+    "preview": {
+      "channel": "preview"
+    },
+    "production": {
+      "channel": "production"
     }
   }
 }

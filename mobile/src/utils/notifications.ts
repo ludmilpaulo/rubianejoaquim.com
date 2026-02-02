@@ -2,6 +2,10 @@
  * Local push notifications with device vibration for:
  * - Daily tasks (tarefas) not completed on time / overdue
  * - Personal finance goals (metas financeiras pessoais) deadlines
+ * 
+ * Note: This app uses LOCAL notifications (scheduled notifications) which work fine in Expo Go.
+ * The warning about remote push notifications is expected - we don't use remote notifications.
+ * Local notifications (scheduleNotificationAsync) work in both Expo Go and development builds.
  */
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'

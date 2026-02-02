@@ -12,6 +12,7 @@ import MainNavigator from './src/navigation/MainNavigator'
 import LoadingScreen from './src/screens/LoadingScreen'
 import { setupNotifications } from './src/utils/notifications'
 import { checkStoreUpdate } from './src/utils/storeUpdate'
+import { checkAndApplyUpdates } from './src/utils/appUpdates'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -28,7 +29,13 @@ function AppContent() {
   }, [user, hasPaidAccess])
 
   useEffect(() => {
+    // Check for OTA updates on app load (works in production builds)
+    checkAndApplyUpdates().catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (user && hasPaidAccess) {
+      // Check for store updates (for major version changes that require app store update)
       const t = setTimeout(() => {
         checkStoreUpdate().catch(() => {})
       }, 3000)

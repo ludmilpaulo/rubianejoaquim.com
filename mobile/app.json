@@ -42,8 +42,18 @@
           "faceIDPermission": "Este app usa Face ID para autenticação rápida e segura."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-updates"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/eed2db02-a05b-4292-9a7c-777b198b7b6e",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "eas": {
         "projectId": "eed2db02-a05b-4292-9a7c-777b198b7b6e"
