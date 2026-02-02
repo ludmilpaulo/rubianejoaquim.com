@@ -27,9 +27,9 @@
         "releaseStatus": "completed"
       },
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
+        "appleId": "ludmilpaulo@gmail.com",
+        "ascAppId": "6758412176",
+        "appleTeamId": "WF3T257QTW"
       }
     },
     "production": {
@@ -38,9 +38,9 @@
         "releaseStatus": "completed"
       },
       "ios": {
-        "appleId": "your-apple-id@example.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id",
+        "appleId": "ludmilpaulo@gmail.com",
+        "ascAppId": "6758412176",
+        "appleTeamId": "WF3T257QTW",
         "sku": "com.rubianejoaquim.zenda"
       }
     }
