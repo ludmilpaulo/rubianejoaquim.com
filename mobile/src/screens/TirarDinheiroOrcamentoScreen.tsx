@@ -7,7 +7,7 @@ import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Alert }
 import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, Menu } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { personalFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
