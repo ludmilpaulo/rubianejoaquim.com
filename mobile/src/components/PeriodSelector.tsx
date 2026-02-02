@@ -16,6 +16,7 @@ export interface PeriodState {
   year: number
   dateFrom: Date | null
   dateTo: Date | null
+  dailyDate?: Date | null  // For daily period, allow selecting a specific date
 }
 
 export function getDefaultPeriod(): PeriodState {
@@ -33,8 +34,11 @@ export function getPeriodParams(state: PeriodState): Record<string, string | num
   const now = new Date()
   const params: Record<string, string | number> = { period: state.period }
   if (state.period === 'daily') {
-    params.month = now.getMonth() + 1
-    params.year = now.getFullYear()
+    const dailyDate = state.dailyDate || now
+    params.date_from = dailyDate.toISOString().split('T')[0]
+    params.date_to = dailyDate.toISOString().split('T')[0]
+    params.month = dailyDate.getMonth() + 1
+    params.year = dailyDate.getFullYear()
   } else if (state.period === 'monthly') {
     params.month = state.month
     params.year = state.year
@@ -49,7 +53,7 @@ export function getPeriodParams(state: PeriodState): Record<string, string | num
 
 export function getPeriodLabel(state: PeriodState): string {
   if (state.period === 'daily') {
-    const d = new Date()
+    const d = state.dailyDate || new Date()
     return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })
   }
   if (state.period === 'monthly') {
@@ -157,6 +161,15 @@ export default function PeriodSelector({ state, onChange, showCustom = true, com
               />
             ))}
           </Menu>
+        </View>
+      )}
+      {state.period === 'daily' && (
+        <View style={styles.row}>
+          <DatePicker
+            label="Data"
+            value={state.dailyDate || new Date()}
+            onChange={(d) => onChange({ ...state, dailyDate: d || new Date() })}
+          />
         </View>
       )}
       {state.period === 'yearly' && (

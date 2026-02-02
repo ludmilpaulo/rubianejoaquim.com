@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import HomeScreen from '../screens/HomeScreen'
 import PersonalFinanceScreen from '../screens/PersonalFinanceScreen'
 import OrcamentoPrincipiosScreen from '../screens/OrcamentoPrincipiosScreen'
+import TirarDinheiroOrcamentoScreen from '../screens/TirarDinheiroOrcamentoScreen'
 import BusinessFinanceScreen from '../screens/BusinessFinanceScreen'
 import EducationScreen from '../screens/EducationScreen'
 import ProfileScreen from '../screens/ProfileScreen'
@@ -96,6 +97,13 @@ function PersonalStack() {
           title: 'Tirar dinheiro do orçamento',
           headerStyle: { backgroundColor: '#6366f1' },
           headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen
+        name="TirarDinheiroOrcamento"
+        component={TirarDinheiroOrcamentoScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>

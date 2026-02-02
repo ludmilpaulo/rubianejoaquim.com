@@ -349,10 +349,15 @@ export const personalFinanceApi = {
   },
   
   // Budgets
-  getBudgets: async (month?: number, year?: number) => {
+  getBudgets: async (month?: number, year?: number, dateFrom?: string, dateTo?: string) => {
     const params: any = {}
-    if (month) params.month = month
-    if (year) params.year = year
+    if (dateFrom && dateTo) {
+      params.date_from = dateFrom
+      params.date_to = dateTo
+    } else {
+      if (month) params.month = month
+      if (year) params.year = year
+    }
     const response = await api.get('/finance/personal/budgets/', { params })
     return response.data
   },
@@ -374,6 +379,11 @@ export const personalFinanceApi = {
   
   deleteBudget: async (id: number) => {
     const response = await api.delete(`/finance/personal/budgets/${id}/`)
+    return response.data
+  },
+
+  getBudgetExpenses: async (budgetId: number) => {
+    const response = await api.get(`/finance/personal/budgets/${budgetId}/expenses/`)
     return response.data
   },
   

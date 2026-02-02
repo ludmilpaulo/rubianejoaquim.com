@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Dimensions, Alert, Text as RNText } from 'react-native'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useRoute } from '@react-navigation/native'
 import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButtons, Menu, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -72,7 +72,11 @@ interface Category {
 
 export default function PersonalFinanceScreen() {
   const navigation = useNavigation()
-  const [activeTab, setActiveTab] = useState<'principios' | 'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>('principios')
+  const route = useRoute()
+  const routeParams = (route.params as any) || {}
+  const [activeTab, setActiveTab] = useState<'principios' | 'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>(
+    routeParams.initialTab || 'principios'
+  )
   const [refreshing, setRefreshing] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -82,7 +86,7 @@ export default function PersonalFinanceScreen() {
   const [summary, setSummary] = useState<any>(null)
   const [periodState, setPeriodState] = useState<PeriodState>(() => {
     const now = new Date()
-    return { period: 'monthly', month: now.getMonth() + 1, year: now.getFullYear(), dateFrom: null, dateTo: null }
+    return { period: 'monthly', month: now.getMonth() + 1, year: now.getFullYear(), dateFrom: null, dateTo: null, dailyDate: null }
   })
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -103,6 +107,10 @@ export default function PersonalFinanceScreen() {
   const [editingItem, setEditingItem] = useState<any>(null)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [addMoneyAmount, setAddMoneyAmount] = useState('')
+  const [showBudgetExpensesModal, setShowBudgetExpensesModal] = useState(false)
+  const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null)
+  const [budgetExpenses, setBudgetExpenses] = useState<Expense[]>([])
+  const [loadingBudgetExpenses, setLoadingBudgetExpenses] = useState(false)
   
   // Category form
   const [categoryForm, setCategoryForm] = useState({ name: '', icon: 'tag', color: '#6366f1' })
@@ -142,7 +150,7 @@ export default function PersonalFinanceScreen() {
       dateFrom = periodState.dateFrom.toISOString().split('T')[0]
       dateTo = periodState.dateTo.toISOString().split('T')[0]
     } else if (periodState.period === 'daily') {
-      const d = new Date()
+      const d = periodState.dailyDate || new Date()
       dateFrom = dateTo = d.toISOString().split('T')[0]
     } else if (periodState.period === 'monthly') {
       dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
@@ -217,7 +225,11 @@ export default function PersonalFinanceScreen() {
       setShowExpenseModal(false)
       setEditingItem(null)
       resetExpenseForm()
-      loadData()
+      await loadData()
+      // Reload budget expenses if modal is open
+      if (showBudgetExpensesModal && selectedBudget) {
+        await loadBudgetExpenses(selectedBudget.id)
+      }
     } catch (error: any) {
       console.error('Error saving expense:', error)
       Alert.alert('Erro', error.response?.data?.error || 'Não foi possível salvar a despesa. Tente novamente.')
@@ -236,7 +248,11 @@ export default function PersonalFinanceScreen() {
           onPress: async () => {
             try {
               await personalFinanceApi.deleteExpense(expenseId)
-              loadData()
+              await loadData()
+              // Reload budget expenses if modal is open
+              if (showBudgetExpensesModal && selectedBudget) {
+                await loadBudgetExpenses(selectedBudget.id)
+              }
             } catch (error: any) {
               console.error('Error deleting expense:', error)
               Alert.alert('Erro', error.response?.data?.error || 'Não foi possível excluir a despesa. Tente novamente.')
@@ -465,6 +481,43 @@ export default function PersonalFinanceScreen() {
       description: '',
     })
     setShowBudgetModal(true)
+  }
+
+  const loadBudgetExpenses = async (budgetId: number) => {
+    setLoadingBudgetExpenses(true)
+    try {
+      const data = await personalFinanceApi.getBudgetExpenses(budgetId)
+      setBudgetExpenses(data.expenses || [])
+      // Also reload budget data to get updated spent/remaining
+      await loadData()
+    } catch (error) {
+      console.error('Error loading budget expenses:', error)
+      setBudgetExpenses([])
+    } finally {
+      setLoadingBudgetExpenses(false)
+    }
+  }
+
+  const openBudgetExpenses = async (budget: Budget) => {
+    setSelectedBudget(budget)
+    setShowBudgetExpensesModal(true)
+    await loadBudgetExpenses(budget.id)
+  }
+
+  const openAddExpenseFromBudget = (budget: Budget) => {
+    // Pre-fill expense form with budget category and today's date
+    const today = new Date()
+    // Find category ID by name (budget.category_name is the name, not ID)
+    const categoryId = categories.find(c => c.name === budget.category_name)?.id?.toString() || ''
+    setExpenseForm({
+      category: categoryId,
+      amount: '',
+      description: '',
+      date: today,
+      payment_method: 'cash',
+    })
+    setEditingItem(null)
+    setShowExpenseModal(true)
   }
 
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
@@ -767,10 +820,10 @@ export default function PersonalFinanceScreen() {
               </Card.Content>
             </Card>
 
-            {/* Tirar dinheiro do orçamento - link to full guide */}
+            {/* Tirar dinheiro do orçamento - functional tool */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => (navigation as any).navigate('OrcamentoPrincipios')}
+              onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento')}
             >
               <Card style={[styles.goldenRuleCard, styles.orcamentoCard]}>
                 <Card.Content>
@@ -929,26 +982,49 @@ export default function PersonalFinanceScreen() {
               </Card>
             ) : (
               budgets.map(budget => (
-                <Card key={budget.id} style={styles.card} onPress={() => openEditBudget(budget)}>
+                <Card key={budget.id} style={styles.card}>
                   <Card.Content>
-                    <View style={styles.budgetHeader}>
-                      <Text variant="titleMedium">{budget.category_name || 'Geral'}</Text>
-                      <Text variant="headlineSmall">{formatCurrency(parseFloat(budget.amount))}</Text>
-                    </View>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${Math.min(parseFloat(budget.percentage_used), 100)}%`,
-                            backgroundColor: parseFloat(budget.percentage_used) > 100 ? '#ef4444' : '#6366f1',
-                          },
-                        ]}
-                      />
-                    </View>
-                    <View style={styles.budgetFooter}>
-                      <Text variant="bodySmall">Gasto: {formatCurrency(parseFloat(budget.spent))}</Text>
-                      <Text variant="bodySmall">Restante: {formatCurrency(parseFloat(budget.remaining))}</Text>
+                    <TouchableOpacity onPress={() => openEditBudget(budget)} activeOpacity={0.7}>
+                      <View style={styles.budgetHeader}>
+                        <Text variant="titleMedium">{budget.category_name || 'Geral'}</Text>
+                        <Text variant="headlineSmall">{formatCurrency(parseFloat(budget.amount))}</Text>
+                      </View>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${Math.min(parseFloat(budget.percentage_used), 100)}%`,
+                              backgroundColor: parseFloat(budget.percentage_used) > 100 ? '#ef4444' : '#6366f1',
+                            },
+                          ]}
+                        />
+                      </View>
+                      <View style={styles.budgetFooter}>
+                        <Text variant="bodySmall">Gasto: {formatCurrency(parseFloat(budget.spent))}</Text>
+                        <Text variant="bodySmall">Restante: {formatCurrency(parseFloat(budget.remaining))}</Text>
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.budgetActions}>
+                      <Button
+                        mode="outlined"
+                        compact
+                        onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
+                        icon="wallet-outline"
+                        style={styles.budgetActionButton}
+                      >
+                        Gerir Orçamento
+                      </Button>
+                      <Button
+                        mode="contained"
+                        compact
+                        onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
+                        icon="plus"
+                        style={styles.budgetActionButton}
+                        buttonColor="#6366f1"
+                      >
+                        Adicionar Gasto
+                      </Button>
                     </View>
                   </Card.Content>
                 </Card>
@@ -1722,6 +1798,120 @@ export default function PersonalFinanceScreen() {
           </ScrollView>
         </Modal>
       </Portal>
+
+      {/* Budget Expenses Modal */}
+      <Portal>
+        <Modal
+          visible={showBudgetExpensesModal}
+          onDismiss={() => {
+            setShowBudgetExpensesModal(false)
+            setSelectedBudget(null)
+            setBudgetExpenses([])
+          }}
+          contentContainerStyle={styles.modal}
+        >
+          <ScrollView>
+            <Text variant="headlineSmall" style={styles.modalTitle}>
+              Gastos do Orçamento
+            </Text>
+            {selectedBudget && (
+              <>
+                <Card style={styles.infoCard}>
+                  <Card.Content>
+                    <View style={styles.budgetHeader}>
+                      <Text variant="titleMedium">{selectedBudget.category_name || 'Geral'}</Text>
+                      <Text variant="headlineSmall">{formatCurrency(parseFloat(selectedBudget.amount))}</Text>
+                    </View>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          {
+                            width: `${Math.min(parseFloat(selectedBudget.percentage_used), 100)}%`,
+                            backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? '#ef4444' : '#6366f1',
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.budgetFooter}>
+                      <Text variant="bodySmall">Gasto: {formatCurrency(parseFloat(selectedBudget.spent))}</Text>
+                      <Text variant="bodySmall">Restante: {formatCurrency(parseFloat(selectedBudget.remaining))}</Text>
+                    </View>
+                    <Text variant="bodySmall" style={{ marginTop: 8, color: '#6b7280' }}>
+                      {selectedBudget.period_type === 'daily' && selectedBudget.date
+                        ? `Período: ${new Date(selectedBudget.date).toLocaleDateString('pt-PT')}`
+                        : selectedBudget.period_type === 'monthly'
+                        ? `Período: ${['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][selectedBudget.month]} ${selectedBudget.year}`
+                        : selectedBudget.period_type === 'yearly'
+                        ? `Período: ${selectedBudget.year}`
+                        : selectedBudget.start_date && selectedBudget.end_date
+                        ? `Período: ${new Date(selectedBudget.start_date).toLocaleDateString('pt-PT')} - ${new Date(selectedBudget.end_date).toLocaleDateString('pt-PT')}`
+                        : ''}
+                    </Text>
+                  </Card.Content>
+                </Card>
+                <View style={{ marginTop: 16 }}>
+                  <Button
+                    mode="contained"
+                    onPress={() => {
+                      setShowBudgetExpensesModal(false)
+                      openAddExpenseFromBudget(selectedBudget)
+                    }}
+                    icon="plus"
+                    buttonColor="#6366f1"
+                    style={{ marginBottom: 16 }}
+                  >
+                    Adicionar Gasto
+                  </Button>
+                </View>
+                {loadingBudgetExpenses ? (
+                  <View style={styles.emptyContent}>
+                    <Text variant="bodyMedium">Carregando gastos...</Text>
+                  </View>
+                ) : budgetExpenses.length === 0 ? (
+                  <Card style={styles.card}>
+                    <Card.Content style={styles.emptyContent}>
+                      <MaterialCommunityIcons name="cash-minus" size={48} color="#ccc" />
+                      <Text variant="bodyMedium" style={styles.emptyText}>
+                        Nenhum gasto registado neste orçamento
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                ) : (
+                  budgetExpenses.map(expense => (
+                    <Card key={expense.id} style={styles.expenseCard}>
+                      <Card.Content>
+                        <View style={styles.expenseHeader}>
+                          <View style={styles.expenseLeft}>
+                            {expense.category_icon && (
+                              <View style={[styles.categoryIcon, { backgroundColor: (expense.category_color || '#6366f1') + '20' }]}>
+                                <MaterialCommunityIcons
+                                  name={expense.category_icon as any}
+                                  size={20}
+                                  color={expense.category_color || '#6366f1'}
+                                />
+                              </View>
+                            )}
+                            <View style={{ flex: 1 }}>
+                              <Text variant="titleSmall">{expense.description}</Text>
+                              <Text variant="bodySmall" style={styles.expenseDescription}>
+                                {new Date(expense.date).toLocaleDateString('pt-PT')} • {expense.payment_method === 'cash' ? 'Dinheiro' : expense.payment_method === 'card' ? 'Cartão' : expense.payment_method === 'transfer' ? 'Transferência' : 'Outro'}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text variant="titleMedium" style={styles.expenseAmount}>
+                            {formatCurrency(parseFloat(expense.amount))}
+                          </Text>
+                        </View>
+                      </Card.Content>
+                    </Card>
+                  ))
+                )}
+              </>
+            )}
+          </ScrollView>
+        </Modal>
+      </Portal>
       </View>
     </SafeAreaView>
   )
@@ -2140,6 +2330,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
+  },
+  budgetActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  budgetActionButton: {
+    flex: 1,
   },
   goalDescription: {
     color: '#666',

@@ -143,6 +143,26 @@ class BudgetViewSet(viewsets.ModelViewSet):
         
         month = self.request.query_params.get('month', None)
         year = self.request.query_params.get('year', None)
+        date_from = self.request.query_params.get('date_from', None)
+        date_to = self.request.query_params.get('date_to', None)
+        
+        # If date_from and date_to are provided (custom period), filter budgets that overlap
+        if date_from and date_to:
+            try:
+                start = datetime.strptime(date_from, '%Y-%m-%d').date()
+                end = datetime.strptime(date_to, '%Y-%m-%d').date()
+                queryset = queryset.filter(
+                    Q(period_type='daily', date__gte=start, date__lte=end) |
+                    Q(period_type='monthly') & (
+                      Q(year__lt=end.year) | Q(year=end.year, month__lte=end.month)
+                    ) & (
+                      Q(year__gt=start.year) | Q(year=start.year, month__gte=start.month)
+                    ) |
+                    Q(period_type='yearly', year__gte=start.year, year__lte=end.year) |
+                    Q(period_type='custom', start_date__lte=end, end_date__gte=start)
+                )
+            except (ValueError, TypeError):
+                pass
         
         if year:
             queryset = queryset.filter(year=year)
@@ -153,7 +173,7 @@ class BudgetViewSet(viewsets.ModelViewSet):
         # - daily budgets within that month
         # - custom budgets that overlap that month
         # - yearly budgets for the selected year (regardless of month)
-        if month and year:
+        if month and year and not (date_from and date_to):
             try:
                 m = int(month)
                 y = int(year)
@@ -173,13 +193,53 @@ class BudgetViewSet(viewsets.ModelViewSet):
             except (ValueError, TypeError):
                 # Fallback to old behavior if month/year are invalid
                 queryset = queryset.filter(month=month)
-        elif month:
+        elif month and not (date_from and date_to):
             queryset = queryset.filter(month=month)
         
         return queryset.order_by('-year', '-month', '-created_at')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['get'])
+    def expenses(self, request, pk=None):
+        """Get expenses for this budget (filtered by category and date range)"""
+        budget = self.get_object()
+        user = request.user
+        
+        if budget.user != user:
+            return Response(
+                {'error': 'Não autorizado.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get expenses matching this budget's category and period
+        expenses = PersonalExpense.objects.filter(user=user)
+        
+        # Filter by category
+        if budget.category_id:
+            expenses = expenses.filter(category=budget.category)
+        else:
+            expenses = expenses.filter(category__isnull=True)
+        
+        # Filter by period type
+        period_type = getattr(budget, 'period_type', 'monthly')
+        if period_type == 'daily':
+            if budget.date:
+                expenses = expenses.filter(date=budget.date)
+        elif period_type == 'yearly':
+            expenses = expenses.filter(date__year=budget.year)
+        elif period_type == 'custom':
+            if budget.start_date and budget.end_date:
+                expenses = expenses.filter(date__range=(budget.start_date, budget.end_date))
+        else:  # monthly
+            expenses = expenses.filter(date__year=budget.year, date__month=budget.month)
+        
+        serializer = PersonalExpenseSerializer(expenses.order_by('-date', '-created_at'), many=True)
+        return Response({
+            'expenses': serializer.data,
+            'budget': BudgetSerializer(budget).data,
+        })
 
 
 class GoalViewSet(viewsets.ModelViewSet):

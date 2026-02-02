@@ -1,12 +1,14 @@
 /**
  * "Tirar dinheiro do orçamento" – 7 real-world scenarios + the real rule.
  * Professional, scrollable content for Finanças Pessoais.
+ * Now functional: quick actions to manage budgets and expenses.
  */
 import React from 'react'
-import { View, StyleSheet, ScrollView } from 'react-native'
-import { Text, Card } from 'react-native-paper'
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import { Text, Card, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 
 const SECTIONS = [
   {
@@ -108,6 +110,13 @@ const SECTIONS = [
 ]
 
 export default function OrcamentoPrincipiosScreen() {
+  const navigation = useNavigation<any>()
+
+  const handleGoToBudgets = () => {
+    // Navigate back to PersonalFinanceScreen and switch to budgets tab
+    navigation.navigate('PersonalFinance', { initialTab: 'budgets' })
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView
@@ -184,6 +193,32 @@ export default function OrcamentoPrincipiosScreen() {
             <Text variant="bodySmall" style={styles.ruleWarning}>
               Qualquer outra coisa = 🚨 sinal de alerta.
             </Text>
+          </Card.Content>
+        </Card>
+
+        {/* Link to functional tool */}
+        <Card style={[styles.card, styles.actionCard]}>
+          <Card.Content>
+            <View style={styles.actionHeader}>
+              <MaterialCommunityIcons name="calculator" size={32} color="#6366f1" />
+              <View style={styles.actionText}>
+                <Text variant="titleLarge" style={styles.actionTitle}>
+                  Usar na prática
+                </Text>
+                <Text variant="bodyMedium" style={styles.actionSubtitle}>
+                  Acompanhe despesas do orçamento em tempo real com filtros por data
+                </Text>
+              </View>
+            </View>
+            <Button
+              mode="contained"
+              icon="arrow-right"
+              onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento')}
+              style={styles.actionButton}
+              buttonColor="#6366f1"
+            >
+              Abrir ferramenta de orçamento
+            </Button>
           </Card.Content>
         </Card>
 
@@ -331,5 +366,79 @@ const styles = StyleSheet.create({
   },
   bottomPad: {
     height: 24,
+  },
+  actionsCard: {
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#6366f1',
+    backgroundColor: '#f8fafc',
+  },
+  actionCard: {
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+  },
+  actionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 16,
+  },
+  actionText: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  actionSubtitle: {
+    color: '#6b7280',
+    lineHeight: 20,
+  },
+  actionsTitle: {
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  actionsSubtitle: {
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  actionIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  actionLabel: {
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  primaryActionButton: {
+    marginTop: 8,
+  },
+  primaryActionContent: {
+    paddingVertical: 8,
   },
 })
