@@ -94,7 +94,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 Criar conta
               </Text>
               <Text variant="bodyMedium" style={styles.subtitle}>
-                Registe-se no Zenda para ter 1 semana grátis e depois 10.000 Kz/mês.
+                Registe-se no Zenda para ter 1 semana grátis e depois 10.000 AOA/mês.
               </Text>
 
               {error ? (

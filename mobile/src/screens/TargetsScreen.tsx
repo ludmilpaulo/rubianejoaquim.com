@@ -596,7 +596,7 @@ export default function TargetsScreen() {
               style={styles.input}
             />
             <TextInput
-              label="Unidade (ex: KZ, kg, horas)"
+              label="Unidade (ex: AOA, kg, horas)"
               value={targetForm.unit}
               onChangeText={(text) => setTargetForm({ ...targetForm, unit: text })}
               style={styles.input}

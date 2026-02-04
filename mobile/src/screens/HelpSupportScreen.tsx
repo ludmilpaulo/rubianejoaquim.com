@@ -22,7 +22,7 @@ export default function HelpSupportScreen() {
     {
       id: '3',
       question: 'O que é a Regra 3×?',
-      answer: 'Antes de gastar em desejos, deve ter 3 vezes o valor disponível. Por exemplo, para gastar 10.000 KZ, precisa de ter 30.000 KZ disponível.',
+      answer: 'Antes de gastar em desejos, deve ter 3 vezes o valor disponível. Por exemplo, para gastar 10.000 AOA, precisa de ter 30.000 AOA disponível.',
     },
     {
       id: '4',

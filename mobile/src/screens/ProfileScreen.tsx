@@ -229,7 +229,7 @@ export default function ProfileScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>Valor</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} {paymentInfo.currency}/mês
+                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>

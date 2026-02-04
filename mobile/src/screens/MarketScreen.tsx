@@ -134,7 +134,7 @@ export default function MarketScreen() {
               </Text>
             </View>
             <Text variant="bodySmall" style={styles.sectionSubtitle}>
-              Taxas de câmbio em relação ao Kwanza (KZ)
+              Taxas de câmbio em relação ao Kwanza (AOA)
             </Text>
             
             <View style={styles.currencyList}>
@@ -150,7 +150,7 @@ export default function MarketScreen() {
                           {currency.name}
                         </Text>
                         <Text variant="bodySmall" style={styles.currencyRate}>
-                          1 {currency.code} = {formatCurrency(currency.rate)} KZ
+                          1 {currency.code} = {formatCurrency(currency.rate)}
                         </Text>
                       </View>
                     </View>

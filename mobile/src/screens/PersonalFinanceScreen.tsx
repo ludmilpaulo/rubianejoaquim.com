@@ -704,7 +704,7 @@ export default function PersonalFinanceScreen() {
                 <View style={styles.calculatorSection}>
                   <TextInput
                     mode="outlined"
-                    label="Rendimento mensal (KZ)"
+                    label="Rendimento mensal (AOA)"
                     value={regrasRendimento}
                     onChangeText={setRegrasRendimento}
                     keyboardType="decimal-pad"
@@ -765,7 +765,7 @@ export default function PersonalFinanceScreen() {
                 <View style={styles.checkerSection}>
                   <TextInput
                     mode="outlined"
-                    label="Quero gastar (KZ)"
+                    label="Quero gastar (AOA)"
                     value={regrasValorGastar}
                     onChangeText={setRegrasValorGastar}
                     keyboardType="decimal-pad"
@@ -774,7 +774,7 @@ export default function PersonalFinanceScreen() {
                   />
                   <TextInput
                     mode="outlined"
-                    label="Tenho disponível (KZ)"
+                    label="Tenho disponível (AOA)"
                     value={regrasDisponivel}
                     onChangeText={setRegrasDisponivel}
                     keyboardType="decimal-pad"

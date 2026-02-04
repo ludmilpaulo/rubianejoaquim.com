@@ -107,7 +107,7 @@ def payment_info(_request):
     """Informações de pagamento da subscrição mensal (público para o app mostrar)."""
     return Response({
         'monthly_price_kz': getattr(settings, 'SUBSCRIPTION_MONTHLY_PRICE_KZ', 10000),
-        'currency': 'Kz',
+        'currency': 'AOA',
         'iban': getattr(settings, 'SUBSCRIPTION_IBAN', '0040 0000 4047.9796.1015.9'),
         'payee_name': getattr(settings, 'SUBSCRIPTION_PAYEE_NAME', 'Rubiane Patricia Fernando Joaquim'),
     })

@@ -100,7 +100,7 @@ export default function AccessDeniedScreen() {
       if (hasAccess) {
         Alert.alert(
           'Semana grátis ativada',
-          'Tem 7 dias de acesso gratuito ao app. Após esse período, pode subscrever por 10.000 Kz/mês e enviar o comprovativo de pagamento para continuar a usar o Zenda.'
+          'Tem 7 dias de acesso gratuito ao app. Após esse período, pode subscrever por 10.000 AOA/mês e enviar o comprovativo de pagamento para continuar a usar o Zenda.'
         )
       } else {
         Alert.alert('Aviso', 'Subscrição criada, mas o acesso ainda não foi atualizado. Toque em "Verificar novamente".')
@@ -153,8 +153,19 @@ export default function AccessDeniedScreen() {
             Para usar o app, precisa de estar inscrito num curso, ter mentoria aprovada ou ter subscrição do app.
           </Text>
           <Text variant="bodyMedium" style={styles.submessage}>
-            Não tem curso? Comece com <Text style={styles.bold}>1 semana grátis</Text>, depois subscreva por <Text style={styles.bold}>10.000 Kz/mês</Text>. O pagamento é ativado após envio do comprovativo.
+            Não tem curso? Comece com <Text style={styles.bold}>1 semana grátis</Text>, depois subscreva por <Text style={styles.bold}>10.000 AOA/mês</Text>. O pagamento é ativado após envio do comprovativo.
           </Text>
+          {!subLoading && !subscription && (
+            <View style={styles.termsBlock}>
+              <Text variant="labelMedium" style={styles.termsTitle}>Termos da oferta de teste</Text>
+              <Text variant="bodySmall" style={styles.termsText}>
+                • O período de teste dura 7 dias e termina 7 dias após a ativação.{'\n'}
+                • Após o período de teste, a subscrição custa 10.000 AOA/mês.{'\n'}
+                • Pode cancelar a qualquer momento durante o teste: simplesmente não efetue o pagamento. Não será cobrado automaticamente.{'\n'}
+                • Para subscrever após o teste, efetue o pagamento e envie o comprovativo na app.
+              </Text>
+            </View>
+          )}
           {!subLoading && !subscription && (
             <Text variant="bodyMedium" style={styles.ctaHint}>
               Toque no botão abaixo para ativar a sua semana grátis e começar a usar o Zenda.
@@ -179,7 +190,7 @@ export default function AccessDeniedScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>Valor</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} {paymentInfo.currency}/mês
+                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
@@ -366,6 +377,24 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     textAlign: 'center',
     color: '#6b7280',
+    lineHeight: 20,
+  },
+  termsBlock: {
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  termsTitle: {
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  termsText: {
+    color: '#64748b',
     lineHeight: 20,
   },
   ctaHint: {

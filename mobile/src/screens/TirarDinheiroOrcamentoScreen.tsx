@@ -468,7 +468,7 @@ export default function TirarDinheiroOrcamentoScreen() {
               )}
 
               <TextInput
-                label="Valor (KZ)"
+                label="Valor (AOA)"
                 value={expenseForm.amount}
                 onChangeText={(text) => setExpenseForm({ ...expenseForm, amount: text })}
                 keyboardType="decimal-pad"
