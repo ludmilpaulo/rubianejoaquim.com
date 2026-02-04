@@ -213,14 +213,23 @@ export const accessApi = {
   checkPaidAccess: async () => {
     try {
       const [enrollmentsRes, mentorshipRes, subscriptionRes] = await Promise.all([
-        api.get('/course/enrollment/'),
+        api.get('/course/enrollment/').catch(() => ({ data: { results: [] } })),
         api.get('/mentorship/request/').catch(() => ({ data: { results: [] } })),
-        api.get('/subscriptions/mobile/me/').catch(() => ({ data: { has_access: false } })),
+        api.get('/subscriptions/mobile/me/').catch(() => ({ data: { has_access: false, subscription: null } })),
       ])
       
       const enrollments = enrollmentsRes.data?.results || enrollmentsRes.data || []
       const mentorshipRequests = mentorshipRes.data?.results || mentorshipRes.data || []
+      
+      // Check subscription access - includes trial subscriptions that haven't expired
       const hasMobileSubscription = subscriptionRes.data?.has_access === true
+      
+      // Also check subscription object directly if has_access check fails
+      const subscription = subscriptionRes.data?.subscription
+      const hasActiveSubscription = subscription && (
+        subscription.status === 'trial' || 
+        subscription.status === 'active'
+      )
       
       const hasActiveEnrollment = Array.isArray(enrollments) && 
         enrollments.some((e: any) => e.status === 'active')
@@ -230,7 +239,21 @@ export const accessApi = {
           m.status === 'approved' || m.status === 'scheduled' || m.status === 'completed'
         )
       
-      return hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription
+      // User has access if they have ANY of: course enrollment, mentorship, or subscription (trial or active)
+      const hasAccess = hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription || hasActiveSubscription
+      
+      if (__DEV__) {
+        console.log('🔍 Access check:', {
+          hasActiveEnrollment,
+          hasApprovedMentorship,
+          hasMobileSubscription,
+          hasActiveSubscription,
+          subscriptionStatus: subscription?.status,
+          hasAccess,
+        })
+      }
+      
+      return hasAccess
     } catch (error) {
       console.error('Error checking paid access:', error)
       return false

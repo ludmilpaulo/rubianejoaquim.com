@@ -10,13 +10,45 @@ import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 
 export default function AccessDeniedScreen() {
   const dispatch = useAppDispatch()
-  const { user } = useAppSelector((state) => state.auth)
+  const { user, hasPaidAccess } = useAppSelector((state) => state.auth)
   const [subscribing, setSubscribing] = useState(false)
   const [subscription, setSubscription] = useState<MobileAppSubscription | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
   const [subLoading, setSubLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
+
+  // Auto-check access when screen loads - if user has access (course, subscription trial/active, or mentorship), they shouldn't be here
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+    
+    // If hasPaidAccess is already true, user shouldn't be on this screen
+    // This can happen if state updates after navigation - App.tsx will handle redirect
+    if (hasPaidAccess) {
+      return
+    }
+
+    // Always check access when screen loads to ensure we have latest status
+    // This handles cases where user has course/subscription/trial but checkAuth didn't catch it initially
+    const checkAccess = async () => {
+      try {
+        const hasAccess = await dispatch(checkPaidAccess()).unwrap()
+        // If access is found, the state update (hasPaidAccess) will trigger navigation in App.tsx
+        // App.tsx will switch to MainNavigator when hasPaidAccess becomes true
+      } catch (error) {
+        console.error('Error checking access:', error)
+      }
+    }
+    
+    // Small delay to ensure screen is mounted and state is ready
+    const timer = setTimeout(() => {
+      checkAccess()
+    }, 100)
+    
+    return () => clearTimeout(timer)
+  }, [user, dispatch]) // Removed hasPaidAccess from deps to avoid loops
 
   const loadSubscription = useCallback(async () => {
     if (!user) {
