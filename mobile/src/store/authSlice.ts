@@ -8,6 +8,7 @@ const initialState: AuthState = {
   token: null,
   isLoading: true,
   hasPaidAccess: false,
+  accessChecked: false,
 }
 
 // Async thunks
@@ -138,6 +139,9 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.isLoading = false
+        // Access not checked yet for this session; avoid showing AccessDenied briefly
+        state.hasPaidAccess = false
+        state.accessChecked = false
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false
@@ -150,6 +154,9 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.isLoading = false
+        // Access not checked yet for this session; avoid showing AccessDenied briefly
+        state.hasPaidAccess = false
+        state.accessChecked = false
       })
       .addCase(register.rejected, (state) => {
         state.isLoading = false
@@ -162,20 +169,28 @@ const authSlice = createSlice({
         state.token = action.payload.token
         state.hasPaidAccess = action.payload.hasPaidAccess
         state.isLoading = false
+        state.accessChecked = true
       })
       .addCase(checkAuth.rejected, (state) => {
         state.isLoading = false
         state.user = null
         state.token = null
         state.hasPaidAccess = false
+        state.accessChecked = false
+      })
+      .addCase(checkPaidAccess.pending, (state) => {
+        // Keep UI stable: do not reset accessChecked once it's true
+        // (prevents flicker when re-checking access in background).
       })
       .addCase(checkPaidAccess.fulfilled, (state, action) => {
         state.hasPaidAccess = action.payload
+        state.accessChecked = true
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null
         state.token = null
         state.hasPaidAccess = false
+        state.accessChecked = false
       })
   },
 })

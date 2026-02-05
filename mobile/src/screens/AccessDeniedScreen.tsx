@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, StyleSheet, Linking, Alert, ScrollView } from 'react-native'
 import { Text, Button, Card, TextInput } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -17,6 +17,25 @@ export default function AccessDeniedScreen() {
   const [subLoading, setSubLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
+  const hasShownExpiryAlert = useRef(false)
+
+  // Alert user when trial or paid subscription has expired (once per session)
+  useEffect(() => {
+    if (!user || subLoading || hasShownExpiryAlert.current || !subscription) return
+    const now = new Date()
+    const trialEnded = subscription.trial_ends_at && new Date(subscription.trial_ends_at) < now
+    const subscriptionEnded = subscription.subscription_ends_at && new Date(subscription.subscription_ends_at) < now
+    const isExpiredOrCancelled = subscription.status === 'expired' || subscription.status === 'cancelled'
+    const shouldAlert = trialEnded || subscriptionEnded || isExpiredOrCancelled
+    if (shouldAlert) {
+      hasShownExpiryAlert.current = true
+      const title = trialEnded ? 'Período de teste terminado' : 'Subscrição expirada'
+      const message = trialEnded
+        ? 'O seu período de teste já terminou e só pode ser utilizado uma vez. Para continuar a usar o Zenda, efetue o pagamento da subscrição mensal e envie o comprovativo abaixo.'
+        : 'A sua subscrição expirou. Para continuar a usar o Zenda, efetue o pagamento e envie o comprovativo abaixo.'
+      Alert.alert(title, message, [{ text: 'OK' }])
+    }
+  }, [user, subLoading, subscription])
 
   // Auto-check access when screen loads - if user has access (course, subscription trial/active, or mentorship), they shouldn't be here
   useEffect(() => {

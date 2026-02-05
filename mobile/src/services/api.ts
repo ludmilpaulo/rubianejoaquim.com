@@ -221,15 +221,9 @@ export const accessApi = {
       const enrollments = enrollmentsRes.data?.results || enrollmentsRes.data || []
       const mentorshipRequests = mentorshipRes.data?.results || mentorshipRes.data || []
       
-      // Check subscription access - includes trial subscriptions that haven't expired
+      // Subscription access: use backend's has_access only (it checks trial_ends_at and subscription_ends_at).
+      // Do NOT fallback to status === 'trial'|'active' - that would grant access after expiry.
       const hasMobileSubscription = subscriptionRes.data?.has_access === true
-      
-      // Also check subscription object directly if has_access check fails
-      const subscription = subscriptionRes.data?.subscription
-      const hasActiveSubscription = subscription && (
-        subscription.status === 'trial' || 
-        subscription.status === 'active'
-      )
       
       const hasActiveEnrollment = Array.isArray(enrollments) && 
         enrollments.some((e: any) => e.status === 'active')
@@ -239,16 +233,15 @@ export const accessApi = {
           m.status === 'approved' || m.status === 'scheduled' || m.status === 'completed'
         )
       
-      // User has access if they have ANY of: course enrollment, mentorship, or subscription (trial or active)
-      const hasAccess = hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription || hasActiveSubscription
+      // User has access if they have ANY of: course enrollment, mentorship, or valid subscription
+      const hasAccess = hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription
       
       if (__DEV__) {
         console.log('🔍 Access check:', {
           hasActiveEnrollment,
           hasApprovedMentorship,
           hasMobileSubscription,
-          hasActiveSubscription,
-          subscriptionStatus: subscription?.status,
+          subscriptionStatus: subscriptionRes.data?.subscription?.status,
           hasAccess,
         })
       }

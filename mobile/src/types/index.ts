@@ -16,6 +16,12 @@ export interface AuthState {
   token: string | null
   isLoading: boolean
   hasPaidAccess: boolean
+  /**
+   * Prevents "AccessDenied" flicker:
+   * - false: access not checked yet for current session/user
+   * - true: access checked at least once (hasPaidAccess is reliable)
+   */
+  accessChecked: boolean
 }
 
 // Enrollment & Mentorship Types
