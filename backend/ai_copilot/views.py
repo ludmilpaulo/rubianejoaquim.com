@@ -263,10 +263,10 @@ ESTILO:
     def _get_fallback_response(self, user_message, include_error_note=False):
         """Gerar resposta fallback baseada na mensagem do usuário"""
         error_note = "\n\nNota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes." if include_error_note else ""
-            
-            # Respostas contextuais básicas (baseadas em melhores práticas financeiras reconhecidas)
-            if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
-                return """Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
+
+        # Respostas contextuais básicas (baseadas em melhores práticas financeiras reconhecidas)
+        if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
+            return f"""Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
 
 1. **Regra 50/30/20** (método amplamente reconhecido):
    - 50% da renda para necessidades essenciais (aluguel, comida, transporte, contas básicas)
@@ -280,11 +280,10 @@ ESTILO:
 4. **Priorização**: Comece sempre pelas necessidades essenciais antes de alocar dinheiro para desejos.
 
 Dica: Comece pequeno e ajuste gradualmente. Um orçamento perfeito leva tempo para desenvolver.
+{error_note}"""
 
-Para respostas mais personalizadas com IA avançada, configure a OPENAI_API_KEY nas configurações do servidor."""
-
-            elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
-                return """Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
+        elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
+            return f"""Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
 
 1. **Poupança Automática** (método "pagar-se primeiro"):
    - Configure transferências automáticas assim que receber seu salário
@@ -310,11 +309,10 @@ Para respostas mais personalizadas com IA avançada, configure a OPENAI_API_KEY 
    - Revise assinaturas e serviços que não usa regularmente
    - Compare preços antes de compras grandes
    - Evite compras por impulso
+{error_note}"""
 
-Para conselhos mais detalhados e personalizados baseados na sua situação específica, configure a OPENAI_API_KEY."""
-
-            elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
-                return """Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
+        elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
+            return f"""Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
 
 1. **Método da Bola de Neve** (recomendado para motivação):
    - Liste todas as suas dívidas do menor para o maior valor
@@ -346,107 +344,10 @@ Para conselhos mais detalhados e personalizados baseados na sua situação espec
    - Construa um fundo de emergência pequeno para evitar novas dívidas
 
 Importante: Se a situação estiver fora de controle, considere consultar um profissional financeiro ou serviço de aconselhamento de dívidas.
+{error_note}"""
 
-Para análise mais detalhada e personalizada da sua situação, configure a OPENAI_API_KEY."""
-
-            else:
-                return """Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
-
-Posso ajudá-lo com:
-- Planejamento de orçamento
-- Estratégias de poupança
-- Gestão de dívidas
-- Definição de metas financeiras
-- Educação financeira
-
-Como posso ajudá-lo hoje? Para respostas completas com IA, configure a OPENAI_API_KEY nas configurações do servidor."""
-
-        try:
-            client = OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
-                messages=messages,
-                max_tokens=800,
-                temperature=0.5,  # Lower temperature for more accurate, consistent responses
-                top_p=0.9,  # Nucleus sampling for better quality
-            )
-            ai_content = response.choices[0].message.content.strip()
-            if not ai_content:
-                raise ValueError("Empty response from OpenAI")
-            return ai_content
-        except Exception as e:
-            # Log error for debugging
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"OpenAI API error: {str(e)}")
-            
-            # Se houver erro, retornar resposta padrão contextual
-            user_message = messages[-1]['content'].lower() if messages else ""
-            
-            if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
-                return """Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
-
-1. **Regra 50/30/20** (método amplamente reconhecido):
-   - 50% da renda para necessidades essenciais (aluguel, comida, transporte, contas básicas)
-   - 30% para desejos e estilo de vida (entretenimento, hobbies, compras não essenciais)
-   - 20% para poupança e investimentos (fundo de emergência, metas financeiras)
-
-2. **Rastreamento de gastos**: Use a seção de Finanças Pessoais do app Zenda para registrar todas as despesas em AOA. Isso ajuda a identificar padrões de gasto.
-
-3. **Revisão mensal**: Analise seus gastos mensalmente para identificar onde pode economizar e ajustar seu orçamento conforme necessário.
-
-Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
-            
-            elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
-                return """Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
-
-1. **Poupança Automática** (método "pagar-se primeiro"):
-   - Configure transferências automáticas assim que receber seu salário
-   - Trate a poupança como uma despesa obrigatória, não como algo opcional
-   - Comece com 10-20% da sua renda se possível
-
-2. **Metas de Poupança Específicas**:
-   - Use a seção de Metas no app Zenda para definir objetivos claros e mensuráveis
-   - Estabeleça prazos realistas para cada meta
-   - Acompanhe o progresso regularmente
-
-3. **Fundo de Emergência** (recomendação padrão da indústria financeira):
-   - Procure ter pelo menos 3-6 meses de despesas essenciais guardadas em AOA
-   - Mantenha este fundo em conta de fácil acesso, não investido
-
-4. **Comece Pequeno e Seja Consistente**:
-   - Mesmo pequenas quantias (ex: 5.000-10.000 AOA/mês) fazem diferença ao longo do tempo
-   - A consistência é mais importante que o valor inicial
-
-Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
-            
-            elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
-                return """Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
-
-1. **Método da Bola de Neve** (recomendado para motivação):
-   - Liste todas as suas dívidas do menor para o maior valor
-   - Pague o mínimo em todas, exceto a menor
-   - Pague o máximo possível na menor dívida até quitá-la
-   - Repita o processo com a próxima menor dívida
-
-2. **Método da Avalanche** (recomendado para economia):
-   - Priorize dívidas com maiores taxas de juros primeiro
-   - Foque recursos extras na dívida de maior taxa
-   - Economiza mais em juros ao longo do tempo
-
-3. **Negociação com Credores**:
-   - Entre em contato com credores para renegociar condições
-   - Explique sua situação financeira honestamente
-   - Muitos credores preferem receber algo a nada
-
-4. **Registre e Acompanhe**:
-   - Use a seção de Finanças Pessoais do app Zenda para registrar todas as dívidas em AOA
-   - Acompanhe o progresso regularmente
-
-Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
-            
-            else:
-                return """Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
+        else:
+            return f"""Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
 
 Posso ajudá-lo com:
 - Planejamento de orçamento
@@ -455,6 +356,5 @@ Posso ajudá-lo com:
 - Definição de metas financeiras
 - Educação financeira
 
-Como posso ajudá-lo hoje? 
-
-Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+Como posso ajudá-lo hoje?
+{error_note}"""
