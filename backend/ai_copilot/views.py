@@ -168,24 +168,39 @@ class ConversationViewSet(viewsets.ModelViewSet):
         messages = [
             {
                 'role': 'system',
-                'content': f"""Você é um assistente financeiro especializado chamado AI Financial Copilot. 
+                'content': f"""Você é um assistente financeiro especializado e preciso chamado AI Financial Copilot. 
 Você ajuda usuários com educação financeira, planejamento, orçamento e gestão de dinheiro.
 
-Contexto do usuário:
+IMPORTANTE - PRECISÃO E EXATIDÃO:
+- Sempre forneça informações financeiras precisas e baseadas em melhores práticas reconhecidas
+- Use apenas dados e estatísticas verificáveis quando mencionar números
+- Se não tiver certeza sobre algo específico, seja honesto e sugira consultar um profissional financeiro
+- Evite fazer previsões específicas sobre mercados ou investimentos
+- Foque em educação financeira e estratégias comprovadas
+
+CONTEXTO DO USUÁRIO:
 - Nome: {financial_context.get('user_name', 'Usuário')}
-- Despesas do mês atual: {financial_context.get('monthly_expenses', 0):.2f} AOA
+- Despesas do mês atual: {financial_context.get('monthly_expenses', 0):.2f} AOA (Kwanza Angolano)
 - Orçamentos do mês: {financial_context.get('monthly_budgets', 0):.2f} AOA
 - Metas ativas: {financial_context.get('active_goals', 0)}
 - Dívidas ativas: {financial_context.get('active_debts', 0):.2f} AOA
 
-Sua função é:
-1. Fornecer conselhos financeiros práticos e personalizados
-2. Ajudar com planejamento de orçamento
-3. Explicar conceitos financeiros de forma clara
-4. Sugerir estratégias de poupança e investimento
-5. Ajudar a definir e alcançar metas financeiras
+DIRETRIZES DE RESPOSTA:
+1. Forneça conselhos financeiros práticos, personalizados e baseados em evidências
+2. Ajudar com planejamento de orçamento usando métodos reconhecidos (ex: Regra 50/30/20)
+3. Explicar conceitos financeiros de forma clara e precisa
+4. Sugerir estratégias de poupança e investimento adequadas ao contexto do usuário
+5. Ajudar a definir e alcançar metas financeiras realistas
+6. Sempre mencione a moeda AOA (Kwanza Angolano) quando falar de valores
+7. Seja específico e acionável - evite generalidades vagas
+8. Quando apropriado, mencione ferramentas do app que podem ajudar
 
-Seja sempre positivo, encorajador e prático. Responda em português."""
+ESTILO:
+- Seja positivo, encorajador e prático
+- Use linguagem clara e acessível
+- Estruture respostas com pontos claros quando apropriado
+- Responda sempre em português (português de Angola quando relevante)
+- Mantenha respostas focadas e relevantes à pergunta do usuário"""
             }
         ]
 
@@ -207,46 +222,90 @@ Seja sempre positivo, encorajador e prático. Responda em português."""
             # Se não houver API key, retornar resposta padrão inteligente baseada na mensagem
             user_message = messages[-1]['content'].lower() if messages else ""
             
-            # Respostas contextuais básicas
+            # Respostas contextuais básicas (baseadas em melhores práticas financeiras reconhecidas)
             if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
-                return """Ótima pergunta sobre orçamento! Aqui estão algumas dicas práticas:
+                return """Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
 
-1. **Regra 50/30/20**: 
-   - 50% para necessidades (aluguel, comida, transporte)
-   - 30% para desejos (entretenimento, hobbies)
-   - 20% para poupança e investimentos
+1. **Regra 50/30/20** (método amplamente reconhecido):
+   - 50% da renda para necessidades essenciais (aluguel, comida, transporte, contas básicas)
+   - 30% para desejos e estilo de vida (entretenimento, hobbies, compras não essenciais)
+   - 20% para poupança e investimentos (fundo de emergência, metas financeiras)
 
-2. **Rastreie seus gastos**: Use a seção de Finanças Pessoais do app para registrar todas as despesas.
+2. **Rastreamento de gastos**: Use a seção de Finanças Pessoais do app Zenda para registrar todas as despesas em AOA. Isso ajuda a identificar padrões de gasto.
 
-3. **Revise mensalmente**: Analise onde está gastando mais e identifique oportunidades de economia.
+3. **Revisão mensal**: Analise seus gastos mensalmente para identificar onde pode economizar e ajustar seu orçamento conforme necessário.
 
-Para respostas mais personalizadas com IA, configure a OPENAI_API_KEY nas configurações do servidor."""
+4. **Priorização**: Comece sempre pelas necessidades essenciais antes de alocar dinheiro para desejos.
+
+Dica: Comece pequeno e ajuste gradualmente. Um orçamento perfeito leva tempo para desenvolver.
+
+Para respostas mais personalizadas com IA avançada, configure a OPENAI_API_KEY nas configurações do servidor."""
 
             elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
-                return """Excelente foco em poupança! Aqui estão estratégias eficazes:
+                return """Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
 
-1. **Poupança Automática**: Configure transferências automáticas assim que receber seu salário.
+1. **Poupança Automática** (método "pagar-se primeiro"):
+   - Configure transferências automáticas assim que receber seu salário
+   - Trate a poupança como uma despesa obrigatória, não como algo opcional
+   - Comece com 10-20% da sua renda se possível
 
-2. **Meta de Poupança**: Use a seção de Metas no app para definir objetivos claros e acompanhar o progresso.
+2. **Metas de Poupança Específicas**:
+   - Use a seção de Metas no app Zenda para definir objetivos claros e mensuráveis
+   - Estabeleça prazos realistas para cada meta
+   - Acompanhe o progresso regularmente
 
-3. **Fundo de Emergência**: Procure ter pelo menos 3-6 meses de despesas guardadas.
+3. **Fundo de Emergência** (recomendação padrão da indústria financeira):
+   - Procure ter pelo menos 3-6 meses de despesas essenciais guardadas em AOA
+   - Mantenha este fundo em conta de fácil acesso, não investido
+   - Use apenas para emergências reais (desemprego, despesas médicas inesperadas, etc.)
 
-4. **Comece Pequeno**: Mesmo pequenas quantias fazem diferença ao longo do tempo.
+4. **Comece Pequeno e Seja Consistente**:
+   - Mesmo pequenas quantias (ex: 5.000-10.000 AOA/mês) fazem diferença ao longo do tempo
+   - A consistência é mais importante que o valor inicial
+   - Aumente gradualmente conforme sua situação financeira melhora
 
-Para conselhos mais detalhados e personalizados, configure a OPENAI_API_KEY."""
+5. **Reduza Gastos Desnecessários**:
+   - Revise assinaturas e serviços que não usa regularmente
+   - Compare preços antes de compras grandes
+   - Evite compras por impulso
+
+Para conselhos mais detalhados e personalizados baseados na sua situação específica, configure a OPENAI_API_KEY."""
 
             elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
-                return """Gestão de dívidas é crucial! Aqui estão algumas estratégias:
+                return """Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
 
-1. **Método da Bola de Neve**: Pague primeiro a menor dívida, depois a próxima.
+1. **Método da Bola de Neve** (recomendado para motivação):
+   - Liste todas as suas dívidas do menor para o maior valor
+   - Pague o mínimo em todas, exceto a menor
+   - Pague o máximo possível na menor dívida até quitá-la
+   - Repita o processo com a próxima menor dívida
+   - Vantagem: ganhos psicológicos rápidos mantêm a motivação
 
-2. **Priorize Juros Altos**: Foque em dívidas com maiores taxas de juros primeiro.
+2. **Método da Avalanche** (recomendado para economia):
+   - Priorize dívidas com maiores taxas de juros primeiro
+   - Pague o mínimo em todas, exceto a de maior juro
+   - Foque recursos extras na dívida de maior taxa
+   - Vantagem: economiza mais em juros ao longo do tempo
 
-3. **Negocie**: Entre em contato com credores para renegociar condições.
+3. **Negociação com Credores**:
+   - Entre em contato com credores para renegociar condições
+   - Explique sua situação financeira honestamente
+   - Peça redução de taxas, extensão de prazo ou plano de pagamento
+   - Muitos credores preferem receber algo a nada
 
-4. **Use o App**: Registre suas dívidas na seção de Finanças Pessoais para acompanhar o progresso.
+4. **Registre e Acompanhe**:
+   - Use a seção de Finanças Pessoais do app Zenda para registrar todas as dívidas em AOA
+   - Acompanhe o progresso regularmente
+   - Celebre cada dívida quitada
 
-Para análise mais detalhada, configure a OPENAI_API_KEY."""
+5. **Evite Novas Dívidas**:
+   - Evite usar cartões de crédito enquanto paga dívidas existentes
+   - Crie um orçamento realista que inclua pagamentos de dívidas
+   - Construa um fundo de emergência pequeno para evitar novas dívidas
+
+Importante: Se a situação estiver fora de controle, considere consultar um profissional financeiro ou serviço de aconselhamento de dívidas.
+
+Para análise mais detalhada e personalizada da sua situação, configure a OPENAI_API_KEY."""
 
             else:
                 return """Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
@@ -266,7 +325,8 @@ Como posso ajudá-lo hoje? Para respostas completas com IA, configure a OPENAI_A
                 model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
                 messages=messages,
                 max_tokens=800,
-                temperature=0.7,
+                temperature=0.5,  # Lower temperature for more accurate, consistent responses
+                top_p=0.9,  # Nucleus sampling for better quality
             )
             ai_content = response.choices[0].message.content.strip()
             if not ai_content:
@@ -282,44 +342,66 @@ Como posso ajudá-lo hoje? Para respostas completas com IA, configure a OPENAI_A
             user_message = messages[-1]['content'].lower() if messages else ""
             
             if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
-                return """Ótima pergunta sobre orçamento! Aqui estão algumas dicas práticas:
+                return """Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
 
-1. **Regra 50/30/20**: 
-   - 50% para necessidades (aluguel, comida, transporte)
-   - 30% para desejos (entretenimento, hobbies)
-   - 20% para poupança e investimentos
+1. **Regra 50/30/20** (método amplamente reconhecido):
+   - 50% da renda para necessidades essenciais (aluguel, comida, transporte, contas básicas)
+   - 30% para desejos e estilo de vida (entretenimento, hobbies, compras não essenciais)
+   - 20% para poupança e investimentos (fundo de emergência, metas financeiras)
 
-2. **Rastreie seus gastos**: Use a seção de Finanças Pessoais do app para registrar todas as despesas.
+2. **Rastreamento de gastos**: Use a seção de Finanças Pessoais do app Zenda para registrar todas as despesas em AOA. Isso ajuda a identificar padrões de gasto.
 
-3. **Revise mensalmente**: Analise onde está gastando mais e identifique oportunidades de economia.
+3. **Revisão mensal**: Analise seus gastos mensalmente para identificar onde pode economizar e ajustar seu orçamento conforme necessário.
 
-Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
             
             elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
-                return """Excelente foco em poupança! Aqui estão estratégias eficazes:
+                return """Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
 
-1. **Poupança Automática**: Configure transferências automáticas assim que receber seu salário.
+1. **Poupança Automática** (método "pagar-se primeiro"):
+   - Configure transferências automáticas assim que receber seu salário
+   - Trate a poupança como uma despesa obrigatória, não como algo opcional
+   - Comece com 10-20% da sua renda se possível
 
-2. **Meta de Poupança**: Use a seção de Metas no app para definir objetivos claros e acompanhar o progresso.
+2. **Metas de Poupança Específicas**:
+   - Use a seção de Metas no app Zenda para definir objetivos claros e mensuráveis
+   - Estabeleça prazos realistas para cada meta
+   - Acompanhe o progresso regularmente
 
-3. **Fundo de Emergência**: Procure ter pelo menos 3-6 meses de despesas guardadas.
+3. **Fundo de Emergência** (recomendação padrão da indústria financeira):
+   - Procure ter pelo menos 3-6 meses de despesas essenciais guardadas em AOA
+   - Mantenha este fundo em conta de fácil acesso, não investido
 
-4. **Comece Pequeno**: Mesmo pequenas quantias fazem diferença ao longo do tempo.
+4. **Comece Pequeno e Seja Consistente**:
+   - Mesmo pequenas quantias (ex: 5.000-10.000 AOA/mês) fazem diferença ao longo do tempo
+   - A consistência é mais importante que o valor inicial
 
-Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
             
             elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
-                return """Gestão de dívidas é crucial! Aqui estão algumas estratégias:
+                return """Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
 
-1. **Método da Bola de Neve**: Pague primeiro a menor dívida, depois a próxima.
+1. **Método da Bola de Neve** (recomendado para motivação):
+   - Liste todas as suas dívidas do menor para o maior valor
+   - Pague o mínimo em todas, exceto a menor
+   - Pague o máximo possível na menor dívida até quitá-la
+   - Repita o processo com a próxima menor dívida
 
-2. **Priorize Juros Altos**: Foque em dívidas com maiores taxas de juros primeiro.
+2. **Método da Avalanche** (recomendado para economia):
+   - Priorize dívidas com maiores taxas de juros primeiro
+   - Foque recursos extras na dívida de maior taxa
+   - Economiza mais em juros ao longo do tempo
 
-3. **Negocie**: Entre em contato com credores para renegociar condições.
+3. **Negociação com Credores**:
+   - Entre em contato com credores para renegociar condições
+   - Explique sua situação financeira honestamente
+   - Muitos credores preferem receber algo a nada
 
-4. **Use o App**: Registre suas dívidas na seção de Finanças Pessoais para acompanhar o progresso.
+4. **Registre e Acompanhe**:
+   - Use a seção de Finanças Pessoais do app Zenda para registrar todas as dívidas em AOA
+   - Acompanhe o progresso regularmente
 
-Nota: O serviço de IA pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
+Nota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes."""
             
             else:
                 return """Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
