@@ -224,6 +224,7 @@ export const accessApi = {
       // Subscription access: use backend's has_access only (it checks trial_ends_at and subscription_ends_at).
       // Do NOT fallback to status === 'trial'|'active' - that would grant access after expiry.
       const hasMobileSubscription = subscriptionRes.data?.has_access === true
+      const subscription = subscriptionRes.data?.subscription
       
       const hasActiveEnrollment = Array.isArray(enrollments) && 
         enrollments.some((e: any) => e.status === 'active')
@@ -236,20 +237,24 @@ export const accessApi = {
       // User has access if they have ANY of: course enrollment, mentorship, or valid subscription
       const hasAccess = hasActiveEnrollment || hasApprovedMentorship || hasMobileSubscription
       
+      // Expired subscription: no access but has subscription record → allow Profile-only to pay & upload POP
+      const hasExpiredSubscription = !hasAccess && subscription != null && subscriptionRes.data?.has_access === false
+      
       if (__DEV__) {
         console.log('🔍 Access check:', {
           hasActiveEnrollment,
           hasApprovedMentorship,
           hasMobileSubscription,
-          subscriptionStatus: subscriptionRes.data?.subscription?.status,
+          hasExpiredSubscription,
+          subscriptionStatus: subscription?.status,
           hasAccess,
         })
       }
       
-      return hasAccess
+      return { hasAccess, hasExpiredSubscription }
     } catch (error) {
       console.error('Error checking paid access:', error)
-      return false
+      return { hasAccess: false, hasExpiredSubscription: false }
     }
   },
   

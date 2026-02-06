@@ -10,6 +10,7 @@ import { checkAuth, checkPaidAccess } from './src/store/authSlice'
 import { useAppDispatch, useAppSelector } from './src/hooks/redux'
 import AuthNavigator from './src/navigation/AuthNavigator'
 import MainNavigator from './src/navigation/MainNavigator'
+import ProfileOnlyNavigator from './src/navigation/ProfileOnlyNavigator'
 import LoadingScreen from './src/screens/LoadingScreen'
 import { setupNotifications } from './src/utils/notifications'
 import { checkStoreUpdate } from './src/utils/storeUpdate'
@@ -17,7 +18,7 @@ import { checkAndApplyUpdates } from './src/utils/appUpdates'
 
 function AppContent() {
   const dispatch = useAppDispatch()
-  const { user, isLoading, hasPaidAccess, accessChecked } = useAppSelector((state) => state.auth)
+  const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector((state) => state.auth)
 
   useEffect(() => {
     dispatch(checkAuth())
@@ -42,10 +43,10 @@ function AppContent() {
   }, [user, accessChecked, dispatch])
 
   useEffect(() => {
-    if (user && hasPaidAccess) {
+    if (user && (hasPaidAccess || hasExpiredSubscription)) {
       setupNotifications().catch(() => {})
     }
-  }, [user, hasPaidAccess])
+  }, [user, hasPaidAccess, hasExpiredSubscription])
 
   useEffect(() => {
     // Check for OTA updates on app load (works in production builds)
@@ -75,7 +76,13 @@ function AppContent() {
     <SafeAreaProvider>
       <PaperProvider>
         <NavigationContainer>
-          {user && hasPaidAccess ? <MainNavigator /> : <AuthNavigator />}
+          {user && hasPaidAccess ? (
+            <MainNavigator />
+          ) : user && hasExpiredSubscription ? (
+            <ProfileOnlyNavigator />
+          ) : (
+            <AuthNavigator />
+          )}
           <StatusBar style="auto" />
         </NavigationContainer>
       </PaperProvider>

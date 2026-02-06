@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native'
 import { Text, Card, Button, Divider, TextInput } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -12,7 +12,8 @@ import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 
 export default function ProfileScreen() {
   const dispatch = useAppDispatch()
-  const { user } = useAppSelector((state) => state.auth)
+  const { user, hasExpiredSubscription } = useAppSelector((state) => state.auth)
+  const hasShownExpiryAlert = useRef(false)
   const navigation = useNavigation<any>()
   const [subscription, setSubscription] = useState<MobileAppSubscription | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
@@ -40,6 +41,18 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadSubscription()
   }, [loadSubscription])
+
+  // Alert user when trial/subscription expired (once per session)
+  useEffect(() => {
+    if (hasExpiredSubscription && !hasShownExpiryAlert.current) {
+      hasShownExpiryAlert.current = true
+      Alert.alert(
+        'Subscrição expirada',
+        'A sua subscrição expirou. Para continuar a usar o Zenda, efetue o pagamento e envie o comprovativo abaixo.',
+        [{ text: 'OK' }]
+      )
+    }
+  }, [hasExpiredSubscription])
 
   const handleLogout = () => {
     dispatch(logout())

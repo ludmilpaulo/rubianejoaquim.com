@@ -8,6 +8,7 @@ const initialState: AuthState = {
   token: null,
   isLoading: true,
   hasPaidAccess: false,
+  hasExpiredSubscription: false,
   accessChecked: false,
 }
 
@@ -97,17 +98,17 @@ export const register = createAsyncThunk(
 export const checkAuth = createAsyncThunk('auth/checkAuth', async () => {
   const token = await AsyncStorage.getItem('token')
   if (!token) {
-    return { user: null, token: null, hasPaidAccess: false }
+    return { user: null, token: null, hasPaidAccess: false, hasExpiredSubscription: false }
   }
   
   try {
     const user = await authApi.me()
-    const hasPaidAccess = await accessApi.checkPaidAccess()
-    return { user, token, hasPaidAccess }
+    const { hasAccess, hasExpiredSubscription } = await accessApi.checkPaidAccess()
+    return { user, token, hasPaidAccess: hasAccess, hasExpiredSubscription }
   } catch (error) {
     await AsyncStorage.removeItem('token')
     await AsyncStorage.removeItem('user')
-    return { user: null, token: null, hasPaidAccess: false }
+    return { user: null, token: null, hasPaidAccess: false, hasExpiredSubscription: false }
   }
 })
 
@@ -139,8 +140,8 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.isLoading = false
-        // Access not checked yet for this session; avoid showing AccessDenied briefly
         state.hasPaidAccess = false
+        state.hasExpiredSubscription = false
         state.accessChecked = false
       })
       .addCase(login.rejected, (state, action) => {
@@ -154,8 +155,8 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.isLoading = false
-        // Access not checked yet for this session; avoid showing AccessDenied briefly
         state.hasPaidAccess = false
+        state.hasExpiredSubscription = false
         state.accessChecked = false
       })
       .addCase(register.rejected, (state) => {
@@ -168,6 +169,7 @@ const authSlice = createSlice({
         state.user = action.payload.user
         state.token = action.payload.token
         state.hasPaidAccess = action.payload.hasPaidAccess
+        state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
         state.isLoading = false
         state.accessChecked = true
       })
@@ -176,6 +178,7 @@ const authSlice = createSlice({
         state.user = null
         state.token = null
         state.hasPaidAccess = false
+        state.hasExpiredSubscription = false
         state.accessChecked = false
       })
       .addCase(checkPaidAccess.pending, (state) => {
@@ -183,13 +186,15 @@ const authSlice = createSlice({
         // (prevents flicker when re-checking access in background).
       })
       .addCase(checkPaidAccess.fulfilled, (state, action) => {
-        state.hasPaidAccess = action.payload
+        state.hasPaidAccess = action.payload.hasAccess
+        state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
         state.accessChecked = true
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null
         state.token = null
         state.hasPaidAccess = false
+        state.hasExpiredSubscription = false
         state.accessChecked = false
       })
   },

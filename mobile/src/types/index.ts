@@ -16,6 +16,8 @@ export interface AuthState {
   token: string | null
   isLoading: boolean
   hasPaidAccess: boolean
+  /** True when trial/subscription expired but user has subscription record → Profile-only to pay & upload POP */
+  hasExpiredSubscription: boolean
   /**
    * Prevents "AccessDenied" flicker:
    * - false: access not checked yet for current session/user
