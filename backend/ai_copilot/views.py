@@ -215,12 +215,54 @@ ESTILO:
         return messages
 
     def _call_openai(self, messages):
-        """Chamar OpenAI API"""
+        """Chamar OpenAI API - sempre tenta usar OpenAI primeiro se disponível"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Verificar se API key está configurada e OpenAI está disponível
         api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        if not api_key or not OPENAI_AVAILABLE:
-            # Se não houver API key, retornar resposta padrão inteligente baseada na mensagem
+        
+        # Se não houver API key ou OpenAI não disponível, usar fallback
+        if not api_key:
+            logger.warning("OPENAI_API_KEY not configured - using fallback responses")
             user_message = messages[-1]['content'].lower() if messages else ""
+            return self._get_fallback_response(user_message)
+        
+        if not OPENAI_AVAILABLE:
+            logger.warning("OpenAI package not installed - using fallback responses")
+            user_message = messages[-1]['content'].lower() if messages else ""
+            return self._get_fallback_response(user_message)
+        
+        # Tentar usar OpenAI
+        try:
+            logger.info("Calling OpenAI API for AI Copilot response")
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
+                messages=messages,
+                max_tokens=800,
+                temperature=0.5,  # Lower temperature for more accurate, consistent responses
+                top_p=0.9,  # Nucleus sampling for better quality
+            )
+            ai_content = response.choices[0].message.content.strip()
+            if not ai_content:
+                raise ValueError("Empty response from OpenAI")
+            
+            logger.info(f"OpenAI API response received successfully ({len(ai_content)} characters)")
+            return ai_content
+            
+        except Exception as e:
+            # Log error for debugging
+            logger.error(f"OpenAI API error: {str(e)}", exc_info=True)
+            
+            # Se houver erro, retornar resposta padrão contextual
+            user_message = messages[-1]['content'].lower() if messages else ""
+            logger.warning("Falling back to contextual response due to OpenAI error")
+            return self._get_fallback_response(user_message, include_error_note=True)
+    
+    def _get_fallback_response(self, user_message, include_error_note=False):
+        """Gerar resposta fallback baseada na mensagem do usuário"""
+        error_note = "\n\nNota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes." if include_error_note else ""
             
             # Respostas contextuais básicas (baseadas em melhores práticas financeiras reconhecidas)
             if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
