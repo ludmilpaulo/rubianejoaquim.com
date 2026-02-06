@@ -666,11 +666,26 @@ export const aiCopilotApi = {
   },
   
   chat: async (message: string, conversationId?: number | null) => {
-    const response = await api.post('/ai-copilot/conversations/chat/', {
-      message,
-      conversation_id: conversationId || null,
-    })
-    return response.data
+    try {
+      const response = await api.post('/ai-copilot/conversations/chat/', {
+        message,
+        conversation_id: conversationId || null,
+      })
+      if (__DEV__) {
+        console.log('📤 AI Copilot chat request:', { message: message.substring(0, 50), conversationId })
+        console.log('✅ AI Copilot chat response:', response.data)
+      }
+      return response.data
+    } catch (error: any) {
+      if (__DEV__) {
+        console.error('❌ AI Copilot chat error:', {
+          message: error.message,
+          status: error.response?.status,
+          data: error.response?.data,
+        })
+      }
+      throw error
+    }
   },
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated } from 'react-native'
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated, TouchableOpacity } from 'react-native'
 import { Text, TextInput, Button, Card, ActivityIndicator } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -135,46 +135,33 @@ export default function AICopilotScreen() {
       
       console.log('✅ AI Copilot response:', response)
       
-      // Handle response - could be direct data or wrapped
-      const responseData = response.data || response
+      // Response from api.ts already returns response.data, so response is the data object
+      const responseData = response
       
-      // Update conversation ID if this is a new conversation
-      if (responseData.conversation_id && !conversationId) {
-        setConversationId(responseData.conversation_id)
-        console.log('💬 New conversation ID:', responseData.conversation_id)
+      // Update conversation ID if this is a new conversation or if it changed
+      if (responseData.conversation_id) {
+        if (!conversationId || conversationId !== responseData.conversation_id) {
+          setConversationId(responseData.conversation_id)
+          console.log('💬 Conversation ID:', responseData.conversation_id)
+        }
       }
 
       // Add assistant response
+      // Backend returns: { conversation_id, conversation_title, user_message, assistant_message }
+      // assistant_message is a MessageSerializer object: { id, role, content, created_at }
       if (responseData.assistant_message) {
-        // Handle both serialized and direct message formats
-        const assistantMsg = responseData.assistant_message.data || responseData.assistant_message
+        const assistantMsg = responseData.assistant_message
         const message: Message = {
           id: assistantMsg.id,
           role: assistantMsg.role || 'assistant',
-          content: assistantMsg.content || assistantMsg.message || '',
+          content: assistantMsg.content || '',
           created_at: assistantMsg.created_at,
         }
         console.log('🤖 Assistant message:', message)
         setMessages(prev => [...prev, message])
-      } else if (responseData.message) {
-        // Fallback: if response has direct message field
-        const message: Message = {
-          role: 'assistant',
-          content: responseData.message,
-          created_at: new Date().toISOString(),
-        }
-        setMessages(prev => [...prev, message])
-      } else if (responseData.content) {
-        // Another fallback: direct content field
-        const message: Message = {
-          role: 'assistant',
-          content: responseData.content,
-          created_at: new Date().toISOString(),
-        }
-        setMessages(prev => [...prev, message])
       } else {
         console.warn('⚠️ Unexpected response format:', responseData)
-        // Last resort: show the whole response
+        // Fallback: show error message
         const message: Message = {
           role: 'assistant',
           content: 'Desculpe, recebi uma resposta em formato inesperado. Por favor, tente novamente.',
@@ -262,6 +249,52 @@ export default function AICopilotScreen() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#8b5cf6" />
+            </View>
+          ) : messages.length === 0 ? (
+            <View style={styles.welcomeContainer}>
+              <View style={styles.welcomeIcon}>
+                <MaterialCommunityIcons name="robot" size={64} color="#8b5cf6" />
+              </View>
+              <Text variant="headlineSmall" style={styles.welcomeTitle}>
+                Olá! Sou o AI Financial Copilot
+              </Text>
+              <Text variant="bodyLarge" style={styles.welcomeText}>
+                Estou aqui para ajudá-lo com suas finanças. Posso ajudá-lo com:
+              </Text>
+              <View style={styles.suggestionsContainer}>
+                <Text variant="bodyMedium" style={styles.suggestionsTitle}>
+                  Tente perguntar sobre:
+                </Text>
+                <View style={styles.suggestionChips}>
+                  <TouchableOpacity
+                    style={styles.suggestionChip}
+                    onPress={() => {
+                      setInputText('Como criar um orçamento?')
+                    }}
+                  >
+                    <MaterialCommunityIcons name="wallet-outline" size={18} color="#8b5cf6" />
+                    <Text style={styles.suggestionText}>Orçamento</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.suggestionChip}
+                    onPress={() => {
+                      setInputText('Como economizar dinheiro?')
+                    }}
+                  >
+                    <MaterialCommunityIcons name="piggy-bank-outline" size={18} color="#8b5cf6" />
+                    <Text style={styles.suggestionText}>Poupança</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.suggestionChip}
+                    onPress={() => {
+                      setInputText('Como pagar dívidas?')
+                    }}
+                  >
+                    <MaterialCommunityIcons name="credit-card-outline" size={18} color="#8b5cf6" />
+                    <Text style={styles.suggestionText}>Dívidas</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           ) : (
             messages.map((message, index) => (
