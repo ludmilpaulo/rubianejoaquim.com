@@ -428,3 +428,23 @@ class UserPointsSerializer(serializers.ModelSerializer):
         if obj.referral_points and obj.referral_points.enrollment:
             return obj.referral_points.enrollment.course.title
         return None
+
+
+class AdminUserPointsSerializer(serializers.ModelSerializer):
+    """Admin list: include user info for each transaction."""
+    course_title = serializers.SerializerMethodField()
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = UserPoints
+        fields = [
+            'id', 'user_id', 'user_email', 'transaction_type', 'points', 'balance_after',
+            'description', 'referral_points', 'course_title', 'created_at'
+        ]
+        read_only_fields = ['created_at', 'balance_after']
+    
+    def get_course_title(self, obj):
+        if obj.referral_points and obj.referral_points.enrollment:
+            return obj.referral_points.enrollment.course.title
+        return None

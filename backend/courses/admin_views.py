@@ -19,7 +19,8 @@ from .serializers import (
     FinalExamSerializer, FinalExamQuestionSerializer,
     UserQuizAnswerSerializer, UserExamAnswerSerializer,
     QuizResultSerializer, ExamResultSerializer,
-    ReferralShareSerializer, ReferralPointsSerializer, UserPointsSerializer
+    ReferralShareSerializer, ReferralPointsSerializer, UserPointsSerializer,
+    AdminUserPointsSerializer,
 )
 from accounts.models import User
 from accounts.serializers import UserSerializer
@@ -881,7 +882,7 @@ class AdminReferralPointsViewSet(viewsets.ModelViewSet):
 class AdminUserPointsViewSet(viewsets.ReadOnlyModelViewSet):
     """Admin view for managing user points"""
     queryset = UserPoints.objects.all()
-    serializer_class = UserPointsSerializer
+    serializer_class = AdminUserPointsSerializer
     permission_classes = [IsAuthenticated]
     
     def check_admin(self):

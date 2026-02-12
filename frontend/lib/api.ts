@@ -252,7 +252,17 @@ export const adminApi = {
     get: (id: number) => api.get(`/course/admin/users/${id}/`),
     toggleStaff: (id: number) => api.post(`/course/admin/users/${id}/toggle-staff/`),
   },
-  
+
+  // User Points (admin)
+  userPoints: {
+    list: (params?: { user_id?: number; transaction_type?: string }) =>
+      api.get('/course/admin/user-points/', { params }),
+    userBalance: (userId: number) =>
+      api.get('/course/admin/user-points/user-balance/', { params: { user_id: userId } }),
+    adjustBalance: (data: { user_id: number; points: number; description?: string }) =>
+      api.post('/course/admin/user-points/adjust-balance/', data),
+  },
+
   // Mobile app subscriptions (admin)
   subscriptions: {
     list: (status?: string) => {
