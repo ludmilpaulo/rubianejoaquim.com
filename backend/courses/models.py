@@ -97,6 +97,12 @@ class Enrollment(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     enrolled_at = models.DateTimeField(auto_now_add=True)
     activated_at = models.DateTimeField(null=True, blank=True)
+    referral_code = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="Referral code used when enrolling (for course-specific referrals)"
+    )
 
     class Meta:
         unique_together = ['user', 'course']

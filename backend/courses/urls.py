@@ -8,7 +8,8 @@ from .views import (
 from .admin_views import (
     AdminCourseViewSet, AdminLessonViewSet, AdminLessonAttachmentViewSet,
     AdminEnrollmentViewSet, AdminPaymentProofViewSet, AdminUserViewSet, admin_stats,
-    AdminQuestionViewSet, AdminChoiceViewSet, AdminLessonQuizViewSet, AdminFinalExamViewSet
+    AdminQuestionViewSet, AdminChoiceViewSet, AdminLessonQuizViewSet, AdminFinalExamViewSet,
+    AdminReferralShareViewSet, AdminReferralPointsViewSet, AdminUserPointsViewSet
 )
 
 router = DefaultRouter()
@@ -34,6 +35,9 @@ admin_router.register(r'questions', AdminQuestionViewSet, basename='admin-questi
 admin_router.register(r'choices', AdminChoiceViewSet, basename='admin-choice')
 admin_router.register(r'lesson-quizzes', AdminLessonQuizViewSet, basename='admin-lesson-quiz')
 admin_router.register(r'final-exams', AdminFinalExamViewSet, basename='admin-final-exam')
+admin_router.register(r'referral-shares', AdminReferralShareViewSet, basename='admin-referral-share')
+admin_router.register(r'referral-points', AdminReferralPointsViewSet, basename='admin-referral-points')
+admin_router.register(r'user-points', AdminUserPointsViewSet, basename='admin-user-points')
 
 urlpatterns = [
     path('', include(router.urls)),

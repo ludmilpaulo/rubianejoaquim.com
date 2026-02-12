@@ -10,7 +10,11 @@ export default function WhatsAppButton() {
       href={`${WHATSAPP_URL}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 rounded-full bg-[#25D366] text-white shadow-lg shadow-[#25D366]/30 hover:bg-[#20BD5A] hover:scale-110 hover:shadow-xl hover:shadow-[#25D366]/40 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#25D366]/50"
+      className="group fixed z-50 flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#25D366] text-white shadow-lg shadow-[#25D366]/30 hover:bg-[#20BD5A] hover:scale-110 hover:shadow-xl hover:shadow-[#25D366]/40 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-[#25D366]/50 touch-target"
+      style={{
+        bottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))',
+        right: 'max(1rem, env(safe-area-inset-right, 1rem))',
+      }}
       aria-label="Abrir conversa no WhatsApp"
     >
       <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">

@@ -171,7 +171,13 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <Navbar />
-        <main className="min-h-screen">
+        <main
+          className="min-h-screen w-full min-w-0 overflow-x-hidden"
+          style={{
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
           {children}
         </main>
         <Footer />

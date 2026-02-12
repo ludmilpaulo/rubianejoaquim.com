@@ -215,13 +215,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Store referral code in enrollment notes/metadata if provided
-        # We'll check for referral when enrollment is approved
+        # Store referral code if provided (for course-specific referrals)
         referral_code = request.data.get('referral_code') or request.query_params.get('ref')
         if referral_code:
-            # Store in a session or cookie for later processing when enrollment is approved
-            # For now, we'll check the user's referred_by field when approving
-            pass
+            enrollment.referral_code = referral_code
+            enrollment.save()
 
         serializer = self.get_serializer(enrollment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -570,14 +568,25 @@ class FinalExamViewSet(viewsets.ReadOnlyModelViewSet):
 def award_referral_points(enrollment):
     """Award points to referrer when enrollment is approved"""
     from decimal import Decimal
-    
-    # Check if user was referred by someone
-    referrer = enrollment.user.referred_by
-    if not referrer:
-        return None
+    from accounts.models import User
     
     # Check if points already awarded for this enrollment
     if ReferralPoints.objects.filter(enrollment=enrollment).exists():
+        return None
+    
+    # First check course-specific referral code (from shared link)
+    referrer = None
+    if enrollment.referral_code:
+        try:
+            referrer = User.objects.get(referral_code=enrollment.referral_code)
+        except User.DoesNotExist:
+            pass
+    
+    # Fallback to user's general referrer (from registration)
+    if not referrer:
+        referrer = enrollment.user.referred_by
+    
+    if not referrer:
         return None
     
     # Create referral points record (1 point = 1000 KZ)
@@ -668,10 +677,12 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['post'], url_path='redeem-course')
     def redeem_course(self, request):
-        """Redeem points for a course enrollment"""
+        """Redeem points for a course enrollment (full or partial)"""
         from decimal import Decimal
         
         course_id = request.data.get('course_id')
+        points_to_use = request.data.get('points_to_use', None)  # Optional: partial payment
+        
         if not course_id:
             return Response(
                 {'error': 'course_id é obrigatório.'},
@@ -679,22 +690,41 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         course = get_object_or_404(Course, id=course_id, is_active=True)
-        course_price_kz = float(course.price)
-        points_needed = Decimal(str(course_price_kz / 1000))  # Convert KZ to points
+        course_price_kz = Decimal(str(course.price))
+        points_equivalent = course_price_kz / Decimal('1000')  # Convert KZ to points
         
         current_balance = UserPoints.get_user_balance(request.user)
         
-        if current_balance < points_needed:
-            return Response(
-                {'error': f'Pontos insuficientes. Necessário: {points_needed}, Disponível: {current_balance}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Determine how many points to use
+        if points_to_use is not None:
+            points_to_use_decimal = Decimal(str(points_to_use))
+            if points_to_use_decimal > current_balance:
+                return Response(
+                    {'error': f'Pontos insuficientes. Tentou usar: {points_to_use_decimal}, Disponível: {current_balance}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if points_to_use_decimal > points_equivalent:
+                return Response(
+                    {'error': f'Não pode usar mais pontos do que o valor do curso. Curso: {points_equivalent} pts'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            points_used = points_to_use_decimal
+            remaining_kz = (course_price_kz - (points_used * Decimal('1000')))
+        else:
+            # Full payment with points
+            if current_balance < points_equivalent:
+                return Response(
+                    {'error': f'Pontos insuficientes. Necessário: {points_equivalent}, Disponível: {current_balance}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            points_used = points_equivalent
+            remaining_kz = Decimal('0')
         
         # Check if already enrolled
         enrollment, created = Enrollment.objects.get_or_create(
             user=request.user,
             course=course,
-            defaults={'status': 'active', 'activated_at': timezone.now()}
+            defaults={'status': 'active' if remaining_kz == 0 else 'pending', 'activated_at': timezone.now() if remaining_kz == 0 else None}
         )
         
         if not created:
@@ -704,52 +734,80 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         # Deduct points
-        new_balance = current_balance - points_needed
+        new_balance = current_balance - points_used
         UserPoints.objects.create(
             user=request.user,
             transaction_type='spent',
-            points=-points_needed,
+            points=-points_used,
             balance_after=new_balance,
-            description=f'Pontos gastos para curso: {course.title}'
+            description=f'Pontos gastos para curso: {course.title}' + (f' (parcial, restante: {remaining_kz} KZ)' if remaining_kz > 0 else '')
         )
         
         return Response({
-            'message': 'Curso adquirido com pontos!',
+            'message': 'Curso adquirido com pontos!' if remaining_kz == 0 else f'Pontos aplicados! Resta pagar {remaining_kz} KZ e enviar comprovativo.',
             'enrollment': EnrollmentSerializer(enrollment).data,
+            'points_used': float(points_used),
+            'remaining_kz': float(remaining_kz),
             'remaining_balance': float(new_balance)
         })
     
     @action(detail=False, methods=['post'], url_path='redeem-subscription')
     def redeem_subscription(self, request):
-        """Redeem points for app subscription"""
+        """Redeem points for app subscription (full or partial)"""
         from decimal import Decimal
         
         # Subscription costs 10,000 KZ = 10 points
-        points_needed = Decimal('10.0')
+        subscription_price_kz = Decimal('10000')
+        points_equivalent = Decimal('10.0')
+        points_to_use = request.data.get('points_to_use', None)  # Optional: partial payment
+        
         current_balance = UserPoints.get_user_balance(request.user)
         
-        if current_balance < points_needed:
-            return Response(
-                {'error': f'Pontos insuficientes. Necessário: {points_needed}, Disponível: {current_balance}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Determine how many points to use
+        if points_to_use is not None:
+            points_to_use_decimal = Decimal(str(points_to_use))
+            if points_to_use_decimal > current_balance:
+                return Response(
+                    {'error': f'Pontos insuficientes. Tentou usar: {points_to_use_decimal}, Disponível: {current_balance}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if points_to_use_decimal > points_equivalent:
+                return Response(
+                    {'error': f'Não pode usar mais pontos do que o valor da subscrição. Subscrição: {points_equivalent} pts'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            points_used = points_to_use_decimal
+            remaining_kz = subscription_price_kz - (points_used * Decimal('1000'))
+        else:
+            # Full payment with points
+            if current_balance < points_equivalent:
+                return Response(
+                    {'error': f'Pontos insuficientes. Necessário: {points_equivalent}, Disponível: {current_balance}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            points_used = points_equivalent
+            remaining_kz = Decimal('0')
         
         # Try to import subscription model
         try:
             from subscriptions.models import MobileAppSubscription
             subscription, created = MobileAppSubscription.objects.get_or_create(
                 user=request.user,
-                defaults={'status': 'active'}
+                defaults={'status': 'active' if remaining_kz == 0 else 'trial'}
             )
             
-            if not created and subscription.status == 'active':
-                return Response(
-                    {'error': 'Já tem uma subscrição ativa.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            subscription.status = 'active'
-            subscription.save()
+            if not created:
+                if subscription.status == 'active' and remaining_kz == 0:
+                    return Response(
+                        {'error': 'Já tem uma subscrição ativa.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # If partial payment, keep as trial/pending until full payment
+                if remaining_kz > 0:
+                    subscription.status = 'trial'  # Will need payment proof
+                else:
+                    subscription.status = 'active'
+                subscription.save()
         except ImportError:
             return Response(
                 {'error': 'Sistema de subscrições não disponível.'},
@@ -757,16 +815,18 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
             )
         
         # Deduct points
-        new_balance = current_balance - points_needed
+        new_balance = current_balance - points_used
         UserPoints.objects.create(
             user=request.user,
             transaction_type='spent',
-            points=-points_needed,
+            points=-points_used,
             balance_after=new_balance,
-            description='Pontos gastos para subscrição do app'
+            description='Pontos gastos para subscrição do app' + (f' (parcial, restante: {remaining_kz} KZ)' if remaining_kz > 0 else '')
         )
         
         return Response({
-            'message': 'Subscrição ativada com pontos!',
+            'message': 'Subscrição ativada com pontos!' if remaining_kz == 0 else f'Pontos aplicados! Resta pagar {remaining_kz} KZ e enviar comprovativo.',
+            'points_used': float(points_used),
+            'remaining_kz': float(remaining_kz),
             'remaining_balance': float(new_balance)
         })

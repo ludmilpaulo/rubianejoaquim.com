@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import * as DocumentPicker from 'expo-document-picker'
+import { useAppSelector } from '../hooks/redux'
 import { coursesApi, lessonsApi, referralApi } from '../services/api'
 
 const { width } = Dimensions.get('window')
@@ -57,12 +58,14 @@ const PAYMENT_RECIPIENT = 'Rubiane Patricia Fernando Joaquim'
 
 export default function EducationScreen() {
   const navigation = useNavigation<any>()
+  const { user } = useAppSelector((state) => state.auth)
   const [refreshing, setRefreshing] = useState(false)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [uploadNotes, setUploadNotes] = useState<Record<number, string>>({})
+  const [pointsBalance, setPointsBalance] = useState<number>(0)
 
   useEffect(() => {
     loadData()
@@ -71,10 +74,15 @@ export default function EducationScreen() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [enrollmentsRes, lessonsRes] = await Promise.all([
+      const [enrollmentsRes, lessonsRes, pointsRes] = await Promise.all([
         coursesApi.myEnrollments(),
         lessonsApi.list(),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
       ])
+      
+      if (pointsRes?.balance !== undefined) {
+        setPointsBalance(pointsRes.balance)
+      }
       
       // Handle enrollments response
       let enrollmentsData: Enrollment[] = []
@@ -164,8 +172,78 @@ export default function EducationScreen() {
   }
 
   const handleLessonPress = (lesson: Lesson) => {
-    // Navigate to lesson detail screen
     navigation.navigate('LessonDetail', { lessonId: lesson.id })
+  }
+
+  const handleShareCourse = async (courseId: number, courseTitle: string, platform?: string) => {
+    if (!user?.referral_code) {
+      Alert.alert('Erro', 'Código de referência não disponível.')
+      return
+    }
+
+    const baseUrl = 'https://www.rubianejoaquim.com'
+    const referralUrl = `${baseUrl}/cursos/${courseId}?ref=${user.referral_code}`
+    const shareMessage = `Confira este curso incrível: ${courseTitle}\n\n${referralUrl}\n\nGanhe pontos quando alguém se inscrever usando este link!`
+
+    try {
+      // Track the share in backend
+      await referralApi.shareCourse(courseId, platform || 'mobile')
+
+      if (platform) {
+        // Platform-specific sharing
+        const encodedUrl = encodeURIComponent(referralUrl)
+        const encodedText = encodeURIComponent(`Confira este curso: ${courseTitle}`)
+        
+        const shareUrls: Record<string, string> = {
+          facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+          twitter: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedText}`,
+          linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
+          whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+          telegram: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
+          pinterest: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedText}`,
+        }
+
+        // Instagram and TikTok don't support direct web share URLs – use native share so user can paste in app
+        if (platform === 'instagram' || platform === 'tiktok') {
+          await Share.share({
+            message: shareMessage,
+            url: referralUrl,
+            title: `Curso: ${courseTitle}`,
+          })
+          return
+        }
+
+        const url = shareUrls[platform]
+        if (url) {
+          try {
+            const supported = await Linking.canOpenURL(url)
+            if (supported) {
+              await Linking.openURL(url)
+            } else {
+              await Share.share({ message: shareMessage, url: referralUrl })
+            }
+          } catch {
+            await Share.share({ message: shareMessage, url: referralUrl })
+          }
+        } else {
+          await Share.share({ message: shareMessage, url: referralUrl })
+        }
+      } else {
+        // Generic share
+        await Share.share({
+          message: shareMessage,
+          url: referralUrl,
+        })
+      }
+    } catch (error: any) {
+      console.error('Error sharing course:', error)
+      // Still try to share even if tracking fails
+      try {
+        await Share.share({ message: shareMessage })
+      } catch (shareError) {
+        Alert.alert('Erro', 'Não foi possível compartilhar.')
+      }
+    }
   }
 
   const activeEnrollments = enrollments.filter((e) => e.status === 'active')
@@ -250,6 +328,25 @@ export default function EducationScreen() {
                 </Text>
                 <Text variant="bodySmall" style={styles.statLabel}>Certificados</Text>
               </View>
+            </View>
+            
+            {/* Points Balance */}
+            <View style={styles.pointsSection}>
+              <View style={styles.pointsCard}>
+                <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
+                <View style={styles.pointsInfo}>
+                  <Text variant="bodyMedium" style={styles.pointsLabel}>Pontos Disponíveis</Text>
+                  <Text variant="titleLarge" style={styles.pointsValue}>
+                    {pointsBalance.toFixed(1)} pts
+                  </Text>
+                  <Text variant="bodySmall" style={styles.pointsKz}>
+                    = {(pointsBalance * 1000).toFixed(0)} KZ
+                  </Text>
+                </View>
+              </View>
+              <Text variant="bodySmall" style={styles.pointsHint}>
+                Compartilhe cursos e ganhe pontos quando alguém se inscrever!
+              </Text>
             </View>
           </Card.Content>
         </Card>
@@ -366,6 +463,64 @@ export default function EducationScreen() {
                           <Text variant="bodySmall" style={styles.courseStatText}>
                             {progress.total_lessons - progress.completed_lessons} restantes
                           </Text>
+                        </View>
+                      </View>
+
+                      {/* Share Buttons */}
+                      <View style={styles.shareSection}>
+                        <Text variant="bodySmall" style={styles.shareLabel}>
+                          Compartilhar e ganhar pontos:
+                        </Text>
+                        <View style={styles.shareButtons}>
+                          <IconButton
+                            icon="share-variant"
+                            size={20}
+                            iconColor="#6366f1"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title)}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="facebook"
+                            size={20}
+                            iconColor="#1877f2"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'facebook')}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="twitter"
+                            size={20}
+                            iconColor="#1da1f2"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'twitter')}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="whatsapp"
+                            size={20}
+                            iconColor="#25d366"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'whatsapp')}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="instagram"
+                            size={20}
+                            iconColor="#e4405f"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'instagram')}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="music-note"
+                            size={20}
+                            iconColor="#000000"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'tiktok')}
+                            style={styles.shareButton}
+                          />
+                          <IconButton
+                            icon="pinterest"
+                            size={20}
+                            iconColor="#bd081c"
+                            onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title, 'pinterest')}
+                            style={styles.shareButton}
+                          />
                         </View>
                       </View>
                     </Card.Content>
@@ -944,5 +1099,62 @@ const styles = StyleSheet.create({
   rejectedText: {
     color: '#991b1b',
     flex: 1,
+  },
+  pointsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  pointsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  pointsInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  pointsLabel: {
+    color: '#92400e',
+    marginBottom: 4,
+  },
+  pointsValue: {
+    color: '#92400e',
+    fontWeight: 'bold',
+  },
+  pointsKz: {
+    color: '#a16207',
+    marginTop: 2,
+  },
+  pointsHint: {
+    color: '#666',
+    fontSize: 11,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  shareSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  shareLabel: {
+    color: '#666',
+    marginBottom: 8,
+    fontSize: 12,
+  },
+  shareButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 4,
+  },
+  shareButton: {
+    margin: 0,
+    backgroundColor: '#f5f5f5',
   },
 })

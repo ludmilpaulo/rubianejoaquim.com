@@ -43,37 +43,37 @@ export default function CursosPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-      <div className="text-center mb-16 animate-fade-in">
-        <span className="text-primary-600 font-semibold text-sm uppercase tracking-wide">Cursos Disponíveis</span>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mt-4 mb-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16 lg:py-24">
+      <div className="text-center mb-8 sm:mb-12 md:mb-16 animate-fade-in">
+        <span className="text-primary-600 font-semibold text-xs sm:text-sm uppercase tracking-wide">Cursos Disponíveis</span>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mt-3 sm:mt-4 mb-4 sm:mb-6 px-2">
           Transforme o seu futuro{' '}
           <span className="gradient-text">financeiro</span>
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed px-2">
           Escolha o curso ideal para começar a sua jornada de educação financeira e alcançar a liberdade que sempre desejou.
         </p>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-20">
+        <div className="flex justify-center items-center py-12 sm:py-20">
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
             <div className="absolute inset-0 border-4 border-transparent border-r-primary-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
           </div>
         </div>
       ) : courses.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="text-center py-12 sm:py-20">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
-          <h3 className="text-2xl font-bold text-gray-900 mb-2">Nenhum curso disponível</h3>
-          <p className="text-gray-500">Novos cursos serão adicionados em breve.</p>
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Nenhum curso disponível</h3>
+          <p className="text-sm sm:text-base text-gray-500">Novos cursos serão adicionados em breve.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {courses.map((course, index) => (
             <div 
               key={course.id} 
@@ -96,27 +96,27 @@ export default function CursosPage() {
                   </svg>
                 </div>
               )}
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors">{course.title}</h3>
-                <p className="text-gray-600 mb-6 line-clamp-3 leading-relaxed">{course.short_description}</p>
-                <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-100">
+              <div className="p-4 sm:p-6">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 group-hover:text-primary-600 transition-colors">{course.title}</h3>
+                <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 line-clamp-3 leading-relaxed">{course.short_description}</p>
+                <div className="flex justify-between items-center mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-100">
                   <div>
-                    <span className="text-3xl font-bold text-primary-600">
+                    <span className="text-2xl sm:text-3xl font-bold text-primary-600">
                       {formatCurrency(course.price)}
                     </span>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-500">Total de aulas</div>
-                    <div className="text-lg font-semibold text-gray-900">{course.lessons_count}</div>
+                    <div className="text-xs sm:text-sm text-gray-500">Total de aulas</div>
+                    <div className="text-base sm:text-lg font-semibold text-gray-900">{course.lessons_count}</div>
                   </div>
                 </div>
                 <Link
                   href={`/cursos/${course.id}`}
-                  className="group/btn block w-full bg-primary-600 text-white text-center py-3.5 rounded-xl hover:bg-primary-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden"
+                  className="group/btn block w-full bg-primary-600 text-white text-center py-2.5 sm:py-3.5 rounded-xl hover:bg-primary-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden text-sm sm:text-base"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     Ver Detalhes
-                    <svg className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
                   </span>

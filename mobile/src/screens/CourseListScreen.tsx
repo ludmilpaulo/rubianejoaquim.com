@@ -12,7 +12,8 @@ import { Text, Card, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { coursesApi } from '../services/api'
+import { useAppSelector } from '../hooks/redux'
+import { coursesApi, referralApi } from '../services/api'
 
 interface Course {
   id: number
@@ -33,18 +34,26 @@ interface Enrollment {
 
 export default function CourseListScreen() {
   const navigation = useNavigation<any>()
+  const { user } = useAppSelector((state) => state.auth)
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [enrollingId, setEnrollingId] = useState<number | null>(null)
+  const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [redeemingId, setRedeemingId] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
     try {
-      const [coursesRes, enrollmentsRes] = await Promise.all([
+      const [coursesRes, enrollmentsRes, pointsRes] = await Promise.all([
         coursesApi.list(),
         coursesApi.myEnrollments(),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
       ])
+      
+      if (pointsRes?.balance !== undefined) {
+        setPointsBalance(pointsRes.balance)
+      }
       const coursesList = Array.isArray(coursesRes)
         ? coursesRes
         : coursesRes?.results ?? coursesRes?.data?.results ?? coursesRes?.data ?? []
@@ -75,7 +84,7 @@ export default function CourseListScreen() {
   const getEnrollmentForCourse = (courseId: number) =>
     enrollments.find((e) => e.course.id === courseId)
 
-  const handleEnroll = async (course: Course) => {
+  const handleEnroll = async (course: Course, referralCodeFromShare?: string) => {
     const existing = getEnrollmentForCourse(course.id)
     if (existing?.status === 'active') {
       navigation.navigate('EducationMain')
@@ -90,7 +99,9 @@ export default function CourseListScreen() {
     }
     setEnrollingId(course.id)
     try {
-      await coursesApi.enroll(course.id)
+      // Use referral code from shared link if available, otherwise use user's referral code
+      const referralCode = referralCodeFromShare || undefined
+      await coursesApi.enroll(course.id, referralCode)
       Alert.alert(
         'Inscrição criada',
         'Agora efetue o pagamento e envie o comprovativo na aba Educação. O acesso será ativado após aprovação.'
@@ -106,6 +117,87 @@ export default function CourseListScreen() {
       Alert.alert('Erro', msg)
     } finally {
       setEnrollingId(null)
+    }
+  }
+
+  const handleRedeemWithPoints = async (course: Course, usePartial: boolean = false) => {
+    const coursePriceKz = parseFloat(course.price || '0')
+    const pointsNeeded = coursePriceKz / 1000 // 1 point = 1000 KZ
+    
+    if (pointsBalance <= 0) {
+      Alert.alert('Sem pontos', 'Não tem pontos disponíveis para usar.')
+      return
+    }
+
+    if (usePartial && pointsBalance < pointsNeeded) {
+      // Partial payment
+      const remainingKz = coursePriceKz - (pointsBalance * 1000)
+      Alert.alert(
+        'Usar pontos parciais',
+        `Deseja usar ${pointsBalance.toFixed(1)} pontos (${(pointsBalance * 1000).toFixed(0)} KZ) e pagar ${remainingKz.toFixed(0)} KZ restantes por transferência?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            onPress: async () => {
+              setRedeemingId(course.id)
+              try {
+                const result = await referralApi.redeemCourse(course.id, pointsBalance)
+                Alert.alert(
+                  'Pontos aplicados',
+                  result.message || `Pontos aplicados! Resta pagar ${remainingKz.toFixed(0)} KZ e enviar comprovativo na aba Educação.`
+                )
+                await loadData()
+                navigation.navigate('EducationMain')
+              } catch (err: any) {
+                const msg =
+                  err?.response?.data?.error ??
+                  err?.response?.data?.detail ??
+                  err?.message ??
+                  'Não foi possível resgatar.'
+                Alert.alert('Erro', msg)
+              } finally {
+                setRedeemingId(null)
+              }
+            },
+          },
+        ]
+      )
+    } else if (pointsBalance >= pointsNeeded) {
+      // Full payment
+      Alert.alert(
+        'Confirmar compra',
+        `Deseja usar ${pointsNeeded.toFixed(1)} pontos (${coursePriceKz.toFixed(0)} KZ) para adquirir "${course.title}"?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            onPress: async () => {
+              setRedeemingId(course.id)
+              try {
+                await referralApi.redeemCourse(course.id)
+                Alert.alert('Sucesso', 'Curso adquirido com pontos!')
+                await loadData()
+                navigation.navigate('EducationMain')
+              } catch (err: any) {
+                const msg =
+                  err?.response?.data?.error ??
+                  err?.response?.data?.detail ??
+                  err?.message ??
+                  'Não foi possível resgatar.'
+                Alert.alert('Erro', msg)
+              } finally {
+                setRedeemingId(null)
+              }
+            },
+          },
+        ]
+      )
+    } else {
+      Alert.alert(
+        'Pontos insuficientes',
+        `Necessita de ${pointsNeeded.toFixed(1)} pontos para este curso. Tem ${pointsBalance.toFixed(1)} pontos disponíveis.\n\nPode usar seus pontos e pagar o restante por transferência.`
+      )
     }
   }
 
@@ -131,8 +223,27 @@ export default function CourseListScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Points Balance */}
+        {pointsBalance > 0 && (
+          <Card style={styles.pointsCard}>
+            <Card.Content>
+              <View style={styles.pointsRow}>
+                <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
+                <View style={styles.pointsInfo}>
+                  <Text variant="bodyMedium" style={styles.pointsLabel}>
+                    Pontos Disponíveis
+                  </Text>
+                  <Text variant="titleLarge" style={styles.pointsValue}>
+                    {pointsBalance.toFixed(1)} pts ({(pointsBalance * 1000).toFixed(0)} KZ)
+                  </Text>
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+        
         <Text variant="titleMedium" style={styles.intro}>
-          Escolha o curso, pague por transferência e envie o comprovativo na aba Educação.
+          Escolha o curso. Se tiver pontos, pode usá-los para comprar. Caso contrário, pague por transferência e envie o comprovativo na aba Educação.
         </Text>
         {courses.length === 0 ? (
           <Card style={styles.card}>
@@ -187,15 +298,44 @@ export default function CourseListScreen() {
                       Enviar comprovativo na aba Educação
                     </Button>
                   ) : (
-                    <Button
-                      mode="contained"
-                      onPress={() => handleEnroll(course)}
-                      loading={isEnrolling}
-                      disabled={isEnrolling}
-                      style={styles.btn}
-                    >
-                      Inscrever e pagar por transferência
-                    </Button>
+                    <View style={styles.buttonGroup}>
+                      {pointsBalance > 0 && parseFloat(course.price || '0') > 0 && (
+                        <>
+                          {pointsBalance >= parseFloat(course.price || '0') / 1000 ? (
+                            <Button
+                              mode="contained"
+                              onPress={() => handleRedeemWithPoints(course, false)}
+                              loading={redeemingId === course.id}
+                              disabled={redeemingId === course.id || enrollingId === course.id}
+                              style={[styles.btn, styles.redeemBtn]}
+                              icon="star"
+                            >
+                              Usar pontos para este curso
+                            </Button>
+                          ) : (
+                            <Button
+                              mode="contained"
+                              onPress={() => handleRedeemWithPoints(course, true)}
+                              loading={redeemingId === course.id}
+                              disabled={redeemingId === course.id || enrollingId === course.id}
+                              style={[styles.btn, styles.redeemBtn]}
+                              icon="star"
+                            >
+                              Usar {pointsBalance.toFixed(1)} pts + pagar restante
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      <Button
+                        mode={pointsBalance > 0 && parseFloat(course.price || '0') > 0 ? "outlined" : "contained"}
+                        onPress={() => handleEnroll(course)}
+                        loading={isEnrolling}
+                        disabled={isEnrolling || redeemingId === course.id}
+                        style={styles.btn}
+                      >
+                        Pagar por transferência
+                      </Button>
+                    </View>
                   )}
                 </Card.Content>
               </Card>
@@ -237,4 +377,26 @@ const styles = StyleSheet.create({
   courseDesc: { color: '#666', marginTop: 4 },
   price: { color: '#6366f1', fontWeight: '600', marginTop: 4 },
   btn: { marginTop: 4 },
+  buttonGroup: { gap: 8, marginTop: 4 },
+  redeemBtn: { backgroundColor: '#f59e0b' },
+  pointsCard: {
+    marginBottom: 16,
+    backgroundColor: '#fef3c7',
+  },
+  pointsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pointsInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  pointsLabel: {
+    color: '#92400e',
+    marginBottom: 4,
+  },
+  pointsValue: {
+    color: '#92400e',
+    fontWeight: 'bold',
+  },
 })

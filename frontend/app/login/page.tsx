@@ -124,9 +124,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-20">
-      <div className="bg-white border border-gray-200 rounded-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+    <div
+      className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
+      style={{
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
+      }}
+    >
+      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
           {isLogin ? 'Entrar' : 'Registar'}
         </h1>
 
@@ -176,10 +182,10 @@ export default function LoginPage() {
                   required={!isLogin}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Primeiro Nome
@@ -188,7 +194,7 @@ export default function LoginPage() {
                     type="text"
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -199,7 +205,7 @@ export default function LoginPage() {
                     type="text"
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -249,7 +255,8 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none touch-target min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,7 +288,8 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none touch-target min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label={showPasswordConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
                 >
                   {showPasswordConfirm ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

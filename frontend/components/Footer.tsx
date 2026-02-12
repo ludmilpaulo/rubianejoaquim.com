@@ -11,8 +11,14 @@ export default function Footer() {
       <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 opacity-60 pointer-events-none" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-500/30 to-transparent" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
+      <div
+        className="max-w-7xl mx-auto py-10 sm:py-12 md:py-16 relative px-4 sm:px-6 lg:px-8"
+        style={{
+          paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
+        }}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-6 sm:gap-8 md:gap-8">
           {/* Brand */}
           <div className="md:col-span-5">
             <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
@@ -111,8 +117,8 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-slate-800 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-slate-500 text-sm">
+        <div className="border-t border-slate-800 mt-8 sm:mt-12 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-center sm:text-left">
+          <p className="text-slate-500 text-xs sm:text-sm">
             &copy; {new Date().getFullYear()} Rubiane Joaquim Educação Financeira.{' '}
             <Link
               href="/legal"

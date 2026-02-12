@@ -7,7 +7,7 @@ import * as DocumentPicker from 'expo-document-picker'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { logout, checkPaidAccess } from '../store/authSlice'
 import { useNavigation } from '@react-navigation/native'
-import { authApi, accessApi } from '../services/api'
+import { authApi, accessApi, referralApi } from '../services/api'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 
 export default function ProfileScreen() {
@@ -20,16 +20,22 @@ export default function ProfileScreen() {
   const [subLoading, setSubLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
+  const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [redeemingSubscription, setRedeemingSubscription] = useState(false)
 
   const loadSubscription = useCallback(async () => {
     try {
       setSubLoading(true)
-      const [subRes, payRes] = await Promise.all([
+      const [subRes, payRes, pointsRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
       ])
       setSubscription(subRes?.subscription ?? subRes ?? null)
       setPaymentInfo(payRes ?? null)
+      if (pointsRes?.balance !== undefined) {
+        setPointsBalance(pointsRes.balance)
+      }
     } catch {
       setSubscription(null)
       setPaymentInfo(null)
@@ -86,6 +92,86 @@ export default function ProfileScreen() {
       Alert.alert('Erro', msg)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleRedeemSubscription = async (usePartial: boolean = false) => {
+    const pointsNeeded = 10.0 // 10 points = 10,000 KZ = monthly subscription
+    
+    if (pointsBalance <= 0) {
+      Alert.alert('Sem pontos', 'Não tem pontos disponíveis para usar.')
+      return
+    }
+
+    if (usePartial && pointsBalance < pointsNeeded) {
+      // Partial payment
+      const remainingKz = 10000 - (pointsBalance * 1000)
+      Alert.alert(
+        'Usar pontos parciais',
+        `Deseja usar ${pointsBalance.toFixed(1)} pontos (${(pointsBalance * 1000).toFixed(0)} KZ) e pagar ${remainingKz.toFixed(0)} KZ restantes por transferência?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            onPress: async () => {
+              setRedeemingSubscription(true)
+              try {
+                const result = await referralApi.redeemSubscription(pointsBalance)
+                Alert.alert(
+                  'Pontos aplicados',
+                  result.message || `Pontos aplicados! Resta pagar ${remainingKz.toFixed(0)} KZ e enviar comprovativo abaixo.`
+                )
+                await loadSubscription()
+                dispatch(checkPaidAccess())
+              } catch (err: any) {
+                const msg =
+                  err?.response?.data?.error ??
+                  err?.response?.data?.detail ??
+                  err?.message ??
+                  'Não foi possível resgatar.'
+                Alert.alert('Erro', msg)
+              } finally {
+                setRedeemingSubscription(false)
+              }
+            },
+          },
+        ]
+      )
+    } else if (pointsBalance >= pointsNeeded) {
+      // Full payment
+      Alert.alert(
+        'Confirmar resgate',
+        `Deseja usar ${pointsNeeded} pontos (10.000 KZ) para ativar a subscrição mensal?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            onPress: async () => {
+              setRedeemingSubscription(true)
+              try {
+                await referralApi.redeemSubscription()
+                Alert.alert('Sucesso', 'Subscrição ativada com pontos!')
+                await loadSubscription()
+                dispatch(checkPaidAccess())
+              } catch (err: any) {
+                const msg =
+                  err?.response?.data?.error ??
+                  err?.response?.data?.detail ??
+                  err?.message ??
+                  'Não foi possível resgatar.'
+                Alert.alert('Erro', msg)
+              } finally {
+                setRedeemingSubscription(false)
+              }
+            },
+          },
+        ]
+      )
+    } else {
+      Alert.alert(
+        'Pontos insuficientes',
+        `Necessita de ${pointsNeeded} pontos para ativar a subscrição. Tem ${pointsBalance.toFixed(1)} pontos disponíveis.\n\nPode usar seus pontos e pagar o restante por transferência.`
+      )
     }
   }
 
@@ -154,6 +240,60 @@ export default function ProfileScreen() {
                 )}
               </View>
             </View>
+          </Card.Content>
+        </Card>
+
+        {/* Points Balance Card */}
+        <Card style={styles.pointsCard}>
+          <Card.Content>
+            <View style={styles.pointsHeader}>
+              <View style={styles.pointsIconContainer}>
+                <MaterialCommunityIcons name="star-circle" size={32} color="#f59e0b" />
+              </View>
+              <View style={styles.pointsInfo}>
+                <Text variant="titleLarge" style={styles.pointsTitle}>
+                  Pontos Disponíveis
+                </Text>
+                <Text variant="headlineMedium" style={styles.pointsValue}>
+                  {pointsBalance.toFixed(1)} pts
+                </Text>
+                <Text variant="bodyMedium" style={styles.pointsKz}>
+                  = {(pointsBalance * 1000).toFixed(0)} KZ
+                </Text>
+              </View>
+            </View>
+            <Text variant="bodySmall" style={styles.pointsHint}>
+              Compartilhe cursos e ganhe 1 ponto quando alguém se inscrever e pagar!
+            </Text>
+            {(subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && pointsBalance > 0 && (
+              <>
+                {pointsBalance >= 10 ? (
+                  <Button
+                    mode="contained"
+                    onPress={() => handleRedeemSubscription(false)}
+                    loading={redeemingSubscription}
+                    disabled={redeemingSubscription}
+                    style={styles.redeemButton}
+                    buttonColor="#f59e0b"
+                    icon="star"
+                  >
+                    Resgatar subscrição com pontos (10 pts)
+                  </Button>
+                ) : (
+                  <Button
+                    mode="contained"
+                    onPress={() => handleRedeemSubscription(true)}
+                    loading={redeemingSubscription}
+                    disabled={redeemingSubscription}
+                    style={styles.redeemButton}
+                    buttonColor="#f59e0b"
+                    icon="star"
+                  >
+                    Usar {pointsBalance.toFixed(1)} pts + pagar restante
+                  </Button>
+                )}
+              </>
+            )}
           </Card.Content>
         </Card>
 
@@ -700,6 +840,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  pointsCard: {
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: '#fef3c7',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  pointsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pointsIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fbbf24',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  pointsInfo: {
+    flex: 1,
+  },
+  pointsTitle: {
+    color: '#92400e',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  pointsValue: {
+    color: '#92400e',
+    fontWeight: 'bold',
+  },
+  pointsKz: {
+    color: '#a16207',
+    marginTop: 4,
+  },
+  pointsHint: {
+    color: '#78350f',
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  redeemButton: {
+    marginTop: 12,
+    borderRadius: 12,
   },
   uploadHint: {
     color: '#9ca3af',

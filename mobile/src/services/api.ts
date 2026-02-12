@@ -595,8 +595,12 @@ export const coursesApi = {
     return response.data
   },
 
-  enroll: async (courseId: number) => {
-    const response = await api.post('/course/enrollment/', { course_id: courseId })
+  enroll: async (courseId: number, referralCode?: string) => {
+    const data: any = { course_id: courseId }
+    if (referralCode) {
+      data.referral_code = referralCode
+    }
+    const response = await api.post('/course/enrollment/', data)
     return response.data
   },
 
@@ -736,15 +740,21 @@ export const referralApi = {
     return response.data
   },
   
-  redeemCourse: async (courseId: number) => {
-    const response = await api.post('/course/user-points/redeem-course/', {
-      course_id: courseId,
-    })
+  redeemCourse: async (courseId: number, pointsToUse?: number) => {
+    const data: any = { course_id: courseId }
+    if (pointsToUse !== undefined) {
+      data.points_to_use = pointsToUse
+    }
+    const response = await api.post('/course/user-points/redeem-course/', data)
     return response.data
   },
   
-  redeemSubscription: async () => {
-    const response = await api.post('/course/user-points/redeem-subscription/')
+  redeemSubscription: async (pointsToUse?: number) => {
+    const data: any = {}
+    if (pointsToUse !== undefined) {
+      data.points_to_use = pointsToUse
+    }
+    const response = await api.post('/course/user-points/redeem-subscription/', data)
     return response.data
   },
 }

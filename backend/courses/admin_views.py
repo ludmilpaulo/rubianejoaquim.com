@@ -18,7 +18,8 @@ from .serializers import (
     QuestionSerializer, ChoiceSerializer, LessonQuizSerializer, LessonQuizQuestionSerializer,
     FinalExamSerializer, FinalExamQuestionSerializer,
     UserQuizAnswerSerializer, UserExamAnswerSerializer,
-    QuizResultSerializer, ExamResultSerializer
+    QuizResultSerializer, ExamResultSerializer,
+    ReferralShareSerializer, ReferralPointsSerializer, UserPointsSerializer
 )
 from accounts.models import User
 from accounts.serializers import UserSerializer
@@ -759,3 +760,233 @@ class AdminFinalExamViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except FinalExamQuestion.DoesNotExist:
             return Response({'error': 'Pergunta não encontrada no exame.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminReferralShareViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin view for managing referral shares"""
+    queryset = ReferralShare.objects.all()
+    serializer_class = ReferralShareSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def check_admin(self):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            return Response(
+                {'error': 'Acesso negado. Apenas administradores.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+    
+    def list(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        
+        queryset = self.queryset.select_related('referrer', 'course')
+        
+        # Filters
+        referrer_id = request.query_params.get('referrer_id')
+        course_id = request.query_params.get('course_id')
+        platform = request.query_params.get('platform')
+        
+        if referrer_id:
+            queryset = queryset.filter(referrer_id=referrer_id)
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        if platform:
+            queryset = queryset.filter(platform=platform)
+        
+        self.queryset = queryset.order_by('-shared_at')
+        return super().list(request, *args, **kwargs)
+
+
+class AdminReferralPointsViewSet(viewsets.ModelViewSet):
+    """Admin view for managing referral points"""
+    queryset = ReferralPoints.objects.all()
+    serializer_class = ReferralPointsSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def check_admin(self):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            return Response(
+                {'error': 'Acesso negado. Apenas administradores.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+    
+    def list(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        
+        queryset = self.queryset.select_related('referrer', 'referred_user', 'enrollment__course')
+        
+        # Filters
+        referrer_id = request.query_params.get('referrer_id')
+        status_filter = request.query_params.get('status')
+        
+        if referrer_id:
+            queryset = queryset.filter(referrer_id=referrer_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        self.queryset = queryset.order_by('-created_at')
+        return super().list(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        """Approve referral points"""
+        check = self.check_admin()
+        if check:
+            return check
+        
+        referral_points = self.get_object()
+        referral_points.status = 'approved'
+        referral_points.approved_by = request.user
+        referral_points.approved_at = timezone.now()
+        referral_points.save()
+        
+        serializer = self.get_serializer(referral_points)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        """Reject referral points"""
+        check = self.check_admin()
+        if check:
+            return check
+        
+        referral_points = self.get_object()
+        referral_points.status = 'rejected'
+        referral_points.approved_by = request.user
+        referral_points.approved_at = timezone.now()
+        referral_points.save()
+        
+        # Deduct points from user balance if they were already added
+        current_balance = UserPoints.get_user_balance(referral_points.referrer)
+        if current_balance >= referral_points.points:
+            new_balance = current_balance - referral_points.points
+            UserPoints.objects.create(
+                user=referral_points.referrer,
+                transaction_type='admin_adjustment',
+                points=-referral_points.points,
+                balance_after=new_balance,
+                description=f'Pontos removidos: {referral_points.enrollment.course.title} (rejeitado)',
+                referral_points=referral_points
+            )
+        
+        serializer = self.get_serializer(referral_points)
+        return Response(serializer.data)
+
+
+class AdminUserPointsViewSet(viewsets.ReadOnlyModelViewSet):
+    """Admin view for managing user points"""
+    queryset = UserPoints.objects.all()
+    serializer_class = UserPointsSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def check_admin(self):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            return Response(
+                {'error': 'Acesso negado. Apenas administradores.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return None
+    
+    def list(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        
+        queryset = self.queryset.select_related('user', 'referral_points__enrollment__course')
+        
+        # Filters
+        user_id = request.query_params.get('user_id')
+        transaction_type = request.query_params.get('transaction_type')
+        
+        if user_id:
+            queryset = queryset.filter(user_id=user_id)
+        if transaction_type:
+            queryset = queryset.filter(transaction_type=transaction_type)
+        
+        self.queryset = queryset.order_by('-created_at')
+        return super().list(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'], url_path='user-balance')
+    def user_balance(self, request):
+        """Get balance for a specific user"""
+        check = self.check_admin()
+        if check:
+            return check
+        
+        user_id = request.query_params.get('user_id')
+        if not user_id:
+            return Response(
+                {'error': 'user_id é obrigatório.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(id=user_id)
+            balance = UserPoints.get_user_balance(user)
+            return Response({
+                'user_id': user.id,
+                'user_email': user.email,
+                'balance': float(balance),
+                'balance_kz': float(balance * 1000),
+            })
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Usuário não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=False, methods=['post'], url_path='adjust-balance')
+    def adjust_balance(self, request):
+        """Manually adjust user's point balance (admin only)"""
+        check = self.check_admin()
+        if check:
+            return check
+        
+        from decimal import Decimal
+        
+        user_id = request.data.get('user_id')
+        points = request.data.get('points')
+        description = request.data.get('description', 'Ajuste manual de pontos')
+        
+        if not user_id or points is None:
+            return Response(
+                {'error': 'user_id e points são obrigatórios.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(id=user_id)
+            points_decimal = Decimal(str(points))
+            current_balance = UserPoints.get_user_balance(user)
+            new_balance = current_balance + points_decimal
+            
+            UserPoints.objects.create(
+                user=user,
+                transaction_type='admin_adjustment',
+                points=points_decimal,
+                balance_after=new_balance,
+                description=description
+            )
+            
+            return Response({
+                'message': 'Saldo ajustado com sucesso.',
+                'user_id': user.id,
+                'points_added': float(points_decimal),
+                'previous_balance': float(current_balance),
+                'new_balance': float(new_balance),
+            })
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Usuário não encontrado.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Erro ao ajustar saldo: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

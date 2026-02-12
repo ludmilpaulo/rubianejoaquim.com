@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { checkPaidAccess } from '../store/authSlice'
-import { accessApi } from '../services/api'
+import { accessApi, referralApi } from '../services/api'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 
 export default function AccessDeniedScreen() {
@@ -17,6 +17,8 @@ export default function AccessDeniedScreen() {
   const [subLoading, setSubLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
+  const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [redeemingSubscription, setRedeemingSubscription] = useState(false)
 
   // Auto-check access when screen loads - if user has access (course, subscription trial/active, or mentorship), they shouldn't be here
   useEffect(() => {
@@ -57,12 +59,14 @@ export default function AccessDeniedScreen() {
     }
     try {
       setSubLoading(true)
-      const [subRes, payRes] = await Promise.all([
+      const [subRes, payRes, pointsRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
       ])
       setSubscription(subRes?.subscription != null ? subRes.subscription : null)
       setPaymentInfo(payRes ?? null)
+      if (pointsRes?.balance !== undefined) setPointsBalance(pointsRes.balance)
     } catch {
       setSubscription(null)
       setPaymentInfo(null)
@@ -122,6 +126,46 @@ export default function AccessDeniedScreen() {
     } finally {
       setUploading(false)
     }
+  }
+
+  const POINTS_FOR_SUBSCRIPTION = 10
+
+  const handleRedeemSubscriptionWithPoints = async () => {
+    if (pointsBalance < POINTS_FOR_SUBSCRIPTION) {
+      Alert.alert(
+        'Pontos insuficientes',
+        `Precisa de ${POINTS_FOR_SUBSCRIPTION} pontos para ativar a subscrição (10.000 KZ). Tem ${pointsBalance.toFixed(1)} pontos. Compartilhe cursos para ganhar mais!`
+      )
+      return
+    }
+    Alert.alert(
+      'Usar pontos para subscrição',
+      `Deseja usar ${POINTS_FOR_SUBSCRIPTION} pontos (10.000 KZ) para ativar a subscrição mensal?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sim, usar pontos',
+          onPress: async () => {
+            setRedeemingSubscription(true)
+            try {
+              await referralApi.redeemSubscription()
+              Alert.alert('Sucesso', 'Subscrição ativada com pontos!')
+              await loadSubscription()
+              dispatch(checkPaidAccess())
+            } catch (err: any) {
+              const msg =
+                err?.response?.data?.error ??
+                err?.response?.data?.detail ??
+                err?.message ??
+                'Não foi possível ativar.'
+              Alert.alert('Erro', msg)
+            } finally {
+              setRedeemingSubscription(false)
+            }
+          },
+        },
+      ]
+    )
   }
 
   const handleStartFreeTrial = async () => {
@@ -239,6 +283,26 @@ export default function AccessDeniedScreen() {
                   </View>
                 </View>
               )}
+              {pointsBalance >= POINTS_FOR_SUBSCRIPTION && (
+                <Button
+                  mode="contained"
+                  onPress={handleRedeemSubscriptionWithPoints}
+                  loading={redeemingSubscription}
+                  disabled={redeemingSubscription}
+                  style={styles.pointsButton}
+                  buttonColor="#f59e0b"
+                  contentStyle={styles.buttonContent}
+                  labelStyle={styles.buttonLabel}
+                  icon={() => <MaterialCommunityIcons name="star" size={22} color="#fff" />}
+                >
+                  {redeemingSubscription ? 'A ativar...' : `Usar pontos para subscrição (${POINTS_FOR_SUBSCRIPTION} pts)`}
+                </Button>
+              )}
+              <Text variant="bodySmall" style={styles.payOrPointsHint}>
+                {pointsBalance >= POINTS_FOR_SUBSCRIPTION
+                  ? 'Ou pague por transferência e envie o comprovativo abaixo:'
+                  : 'Efetue o pagamento e envie o comprovativo abaixo:'}
+              </Text>
               <TextInput
                 mode="outlined"
                 label="Notas (opcional)"
@@ -536,6 +600,17 @@ const styles = StyleSheet.create({
   notesInput: {
     backgroundColor: '#fff',
     marginBottom: 12,
+  },
+  pointsButton: {
+    marginBottom: 16,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  payOrPointsHint: {
+    marginBottom: 12,
+    textAlign: 'center',
+    color: '#6b7280',
+    fontStyle: 'italic',
   },
   uploadButton: {
     borderRadius: 12,
