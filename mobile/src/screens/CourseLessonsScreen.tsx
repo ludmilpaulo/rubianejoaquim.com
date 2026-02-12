@@ -161,7 +161,9 @@ export default function CourseLessonsScreen() {
           ) : (
             lessons.map((lesson, index) => {
               const isCompleted = lesson.progress?.completed || false
-              const isLocked = !lesson.is_free && !enrollment
+              // In the Educação area, user should only access lessons for courses where they are enrolled.
+              // Lock all lessons if there is no active enrollment for this course.
+              const isLocked = !enrollment
               
               return (
                 <TouchableOpacity

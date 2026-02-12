@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CourseViewSet, LessonViewSet, EnrollmentViewSet, ProgressViewSet,
-    LessonQuizViewSet, FinalExamViewSet
+    LessonQuizViewSet, FinalExamViewSet,
+    ReferralShareViewSet, ReferralPointsViewSet, UserPointsViewSet
 )
 from .admin_views import (
     AdminCourseViewSet, AdminLessonViewSet, AdminLessonAttachmentViewSet,
@@ -17,6 +18,9 @@ router.register(r'enrollment', EnrollmentViewSet, basename='enrollment')
 router.register(r'progress', ProgressViewSet, basename='progress')
 router.register(r'lesson-quiz', LessonQuizViewSet, basename='lesson-quiz')
 router.register(r'final-exam', FinalExamViewSet, basename='final-exam')
+router.register(r'referral-share', ReferralShareViewSet, basename='referral-share')
+router.register(r'referral-points', ReferralPointsViewSet, basename='referral-points')
+router.register(r'user-points', UserPointsViewSet, basename='user-points')
 
 # Admin routes
 admin_router = DefaultRouter()

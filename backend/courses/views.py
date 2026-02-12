@@ -8,14 +8,16 @@ from .models import (
     Course, Lesson, Enrollment, PaymentProof, Progress,
     LessonQuiz, FinalExam, Question, Choice,
     UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
-    LessonQuizQuestion, FinalExamQuestion
+    LessonQuizQuestion, FinalExamQuestion,
+    ReferralShare, ReferralPoints, UserPoints
 )
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, LessonSerializer,
     EnrollmentSerializer, PaymentProofSerializer, ProgressSerializer,
     LessonQuizSerializer, FinalExamSerializer, QuestionSerializer,
     UserQuizAnswerSerializer, UserExamAnswerSerializer,
-    QuizResultSerializer, ExamResultSerializer
+    QuizResultSerializer, ExamResultSerializer,
+    ReferralShareSerializer, ReferralPointsSerializer, UserPointsSerializer
 )
 from django.utils import timezone
 
@@ -213,6 +215,14 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Store referral code in enrollment notes/metadata if provided
+        # We'll check for referral when enrollment is approved
+        referral_code = request.data.get('referral_code') or request.query_params.get('ref')
+        if referral_code:
+            # Store in a session or cookie for later processing when enrollment is approved
+            # For now, we'll check the user's referred_by field when approving
+            pass
+
         serializer = self.get_serializer(enrollment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -226,13 +236,6 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Verificar se já existe
-        if hasattr(enrollment, 'payment_proof'):
-            return Response(
-                {'error': 'Já existe um comprovativo para esta inscrição.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         file = request.FILES.get('file')
         notes = request.data.get('notes', '')
 
@@ -242,6 +245,28 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Check if payment proof already exists
+        if hasattr(enrollment, 'payment_proof'):
+            existing_proof = enrollment.payment_proof
+            # Allow re-upload only if previous proof was rejected
+            if existing_proof.status == 'rejected':
+                # Update existing proof
+                existing_proof.file = file
+                existing_proof.notes = notes
+                existing_proof.status = 'pending'
+                existing_proof.reviewed_by = None
+                existing_proof.reviewed_at = None
+                existing_proof.save()
+                serializer = PaymentProofSerializer(existing_proof)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                # Already has a pending or approved proof
+                return Response(
+                    {'error': 'Já existe um comprovativo para esta inscrição.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Create new payment proof
         proof = PaymentProof.objects.create(
             enrollment=enrollment,
             file=file,
@@ -540,3 +565,208 @@ class FinalExamViewSet(viewsets.ReadOnlyModelViewSet):
         results = ExamResult.objects.filter(user=user, exam=exam).order_by('-completed_at')
         serializer = ExamResultSerializer(results, many=True)
         return Response(serializer.data)
+
+
+def award_referral_points(enrollment):
+    """Award points to referrer when enrollment is approved"""
+    from decimal import Decimal
+    
+    # Check if user was referred by someone
+    referrer = enrollment.user.referred_by
+    if not referrer:
+        return None
+    
+    # Check if points already awarded for this enrollment
+    if ReferralPoints.objects.filter(enrollment=enrollment).exists():
+        return None
+    
+    # Create referral points record (1 point = 1000 KZ)
+    referral_points = ReferralPoints.objects.create(
+        referrer=referrer,
+        referred_user=enrollment.user,
+        enrollment=enrollment,
+        points=Decimal('1.0'),
+        status='pending'  # Admin needs to approve
+    )
+    
+    # Update user's point balance
+    current_balance = UserPoints.get_user_balance(referrer)
+    new_balance = current_balance + Decimal('1.0')
+    
+    UserPoints.objects.create(
+        user=referrer,
+        transaction_type='earned',
+        points=Decimal('1.0'),
+        balance_after=new_balance,
+        description=f'Pontos ganhos por referência: {enrollment.course.title}',
+        referral_points=referral_points
+    )
+    
+    return referral_points
+
+
+class ReferralShareViewSet(viewsets.ModelViewSet):
+    """Track course shares"""
+    serializer_class = ReferralShareSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return ReferralShare.objects.filter(referrer=self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(referrer=self.request.user)
+    
+    @action(detail=False, methods=['post'], url_path='share-course')
+    def share_course(self, request):
+        """Record a course share"""
+        course_id = request.data.get('course_id')
+        platform = request.data.get('platform', '')
+        
+        if not course_id:
+            return Response(
+                {'error': 'course_id é obrigatório.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        course = get_object_or_404(Course, id=course_id, is_active=True)
+        
+        share = ReferralShare.objects.create(
+            referrer=request.user,
+            course=course,
+            platform=platform
+        )
+        
+        serializer = ReferralShareSerializer(share)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class ReferralPointsViewSet(viewsets.ReadOnlyModelViewSet):
+    """View referral points earned"""
+    serializer_class = ReferralPointsSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return ReferralPoints.objects.filter(referrer=self.request.user)
+
+
+class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
+    """View user points balance and history"""
+    serializer_class = UserPointsSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserPoints.objects.filter(user=self.request.user)
+    
+    @action(detail=False, methods=['get'], url_path='balance')
+    def balance(self, request):
+        """Get current points balance"""
+        balance = UserPoints.get_user_balance(request.user)
+        return Response({
+            'balance': float(balance),
+            'balance_kz': float(balance * 1000),  # 1 point = 1000 KZ
+        })
+    
+    @action(detail=False, methods=['post'], url_path='redeem-course')
+    def redeem_course(self, request):
+        """Redeem points for a course enrollment"""
+        from decimal import Decimal
+        
+        course_id = request.data.get('course_id')
+        if not course_id:
+            return Response(
+                {'error': 'course_id é obrigatório.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        course = get_object_or_404(Course, id=course_id, is_active=True)
+        course_price_kz = float(course.price)
+        points_needed = Decimal(str(course_price_kz / 1000))  # Convert KZ to points
+        
+        current_balance = UserPoints.get_user_balance(request.user)
+        
+        if current_balance < points_needed:
+            return Response(
+                {'error': f'Pontos insuficientes. Necessário: {points_needed}, Disponível: {current_balance}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if already enrolled
+        enrollment, created = Enrollment.objects.get_or_create(
+            user=request.user,
+            course=course,
+            defaults={'status': 'active', 'activated_at': timezone.now()}
+        )
+        
+        if not created:
+            return Response(
+                {'error': 'Já está inscrito neste curso.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Deduct points
+        new_balance = current_balance - points_needed
+        UserPoints.objects.create(
+            user=request.user,
+            transaction_type='spent',
+            points=-points_needed,
+            balance_after=new_balance,
+            description=f'Pontos gastos para curso: {course.title}'
+        )
+        
+        return Response({
+            'message': 'Curso adquirido com pontos!',
+            'enrollment': EnrollmentSerializer(enrollment).data,
+            'remaining_balance': float(new_balance)
+        })
+    
+    @action(detail=False, methods=['post'], url_path='redeem-subscription')
+    def redeem_subscription(self, request):
+        """Redeem points for app subscription"""
+        from decimal import Decimal
+        
+        # Subscription costs 10,000 KZ = 10 points
+        points_needed = Decimal('10.0')
+        current_balance = UserPoints.get_user_balance(request.user)
+        
+        if current_balance < points_needed:
+            return Response(
+                {'error': f'Pontos insuficientes. Necessário: {points_needed}, Disponível: {current_balance}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Try to import subscription model
+        try:
+            from subscriptions.models import MobileAppSubscription
+            subscription, created = MobileAppSubscription.objects.get_or_create(
+                user=request.user,
+                defaults={'status': 'active'}
+            )
+            
+            if not created and subscription.status == 'active':
+                return Response(
+                    {'error': 'Já tem uma subscrição ativa.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            subscription.status = 'active'
+            subscription.save()
+        except ImportError:
+            return Response(
+                {'error': 'Sistema de subscrições não disponível.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        # Deduct points
+        new_balance = current_balance - points_needed
+        UserPoints.objects.create(
+            user=request.user,
+            transaction_type='spent',
+            points=-points_needed,
+            balance_after=new_balance,
+            description='Pontos gastos para subscrição do app'
+        )
+        
+        return Response({
+            'message': 'Subscrição ativada com pontos!',
+            'remaining_balance': float(new_balance)
+        })

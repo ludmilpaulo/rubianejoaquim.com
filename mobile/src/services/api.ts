@@ -594,6 +594,28 @@ export const coursesApi = {
     const response = await api.get('/course/enrollment/')
     return response.data
   },
+
+  enroll: async (courseId: number) => {
+    const response = await api.post('/course/enrollment/', { course_id: courseId })
+    return response.data
+  },
+
+  /** file: { uri, name, type } from DocumentPicker (React Native) */
+  uploadPaymentProof: async (
+    enrollmentId: number,
+    file: { uri: string; name: string; type: string },
+    notes?: string
+  ) => {
+    const formData = new FormData()
+    formData.append('file', file as any)
+    if (notes) formData.append('notes', notes)
+    const response = await api.post(
+      `/course/enrollment/${enrollmentId}/upload-payment-proof/`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    )
+    return response.data
+  },
   
   getEnrollment: async (id: number) => {
     const response = await api.get(`/course/enrollment/${id}/`)
@@ -686,6 +708,44 @@ export const aiCopilotApi = {
       }
       throw error
     }
+  },
+}
+
+// Referral & Points API
+export const referralApi = {
+  shareCourse: async (courseId: number, platform?: string) => {
+    const response = await api.post('/course/referral-share/share-course/', {
+      course_id: courseId,
+      platform: platform || '',
+    })
+    return response.data
+  },
+  
+  getReferralPoints: async () => {
+    const response = await api.get('/course/referral-points/')
+    return response.data
+  },
+  
+  getPointsBalance: async () => {
+    const response = await api.get('/course/user-points/balance/')
+    return response.data
+  },
+  
+  getPointsHistory: async () => {
+    const response = await api.get('/course/user-points/')
+    return response.data
+  },
+  
+  redeemCourse: async (courseId: number) => {
+    const response = await api.post('/course/user-points/redeem-course/', {
+      course_id: courseId,
+    })
+    return response.data
+  },
+  
+  redeemSubscription: async () => {
+    const response = await api.post('/course/user-points/redeem-subscription/')
+    return response.data
   },
 }
 

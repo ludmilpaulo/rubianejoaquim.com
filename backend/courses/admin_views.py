@@ -9,7 +9,8 @@ from .utils import send_enrollment_approval_email
 from .models import (
     Course, Lesson, Enrollment, PaymentProof, Progress, LessonAttachment,
     Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
-    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult
+    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
+    ReferralShare, ReferralPoints, UserPoints
 )
 from .serializers import (
     CourseSerializer, CourseDetailSerializer, LessonSerializer, AdminLessonSerializer,
@@ -277,6 +278,16 @@ class AdminEnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.activated_at = timezone.now()
         enrollment.save()
         
+        # Award referral points if user was referred
+        try:
+            from .views import award_referral_points
+            award_referral_points(enrollment)
+        except Exception as e:
+            # Log but don't fail approval
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error awarding referral points: {e}')
+        
         # Enviar email de aprovação
         try:
             send_enrollment_approval_email(enrollment)
@@ -359,6 +370,15 @@ class AdminPaymentProofViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.status = 'active'
         enrollment.activated_at = timezone.now()
         enrollment.save()
+        
+        # Award referral points if user was referred
+        try:
+            from .views import award_referral_points
+            award_referral_points(enrollment)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error awarding referral points: {e}')
         
         # Enviar email de aprovação
         try:

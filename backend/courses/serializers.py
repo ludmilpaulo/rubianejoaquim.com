@@ -3,7 +3,8 @@ from django.utils.text import slugify
 from .models import (
     Course, Lesson, LessonAttachment, Enrollment, PaymentProof, Progress,
     Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
-    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult
+    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
+    ReferralShare, ReferralPoints, UserPoints
 )
 
 
@@ -385,3 +386,45 @@ class ExamResultSerializer(serializers.ModelSerializer):
             'score', 'total_questions', 'correct_answers', 'passed',
             'started_at', 'completed_at'
         ]
+
+
+class ReferralShareSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    referrer_email = serializers.CharField(source='referrer.email', read_only=True)
+    
+    class Meta:
+        model = ReferralShare
+        fields = ['id', 'referrer', 'referrer_email', 'course', 'course_title', 'platform', 'shared_at']
+        read_only_fields = ['referrer', 'shared_at']
+
+
+class ReferralPointsSerializer(serializers.ModelSerializer):
+    referrer_email = serializers.CharField(source='referrer.email', read_only=True)
+    referred_user_email = serializers.CharField(source='referred_user.email', read_only=True)
+    course_title = serializers.CharField(source='enrollment.course.title', read_only=True)
+    
+    class Meta:
+        model = ReferralPoints
+        fields = [
+            'id', 'referrer', 'referrer_email', 'referred_user', 'referred_user_email',
+            'enrollment', 'course_title', 'points', 'status', 'created_at',
+            'approved_at', 'approved_by'
+        ]
+        read_only_fields = ['created_at', 'approved_at', 'approved_by']
+
+
+class UserPointsSerializer(serializers.ModelSerializer):
+    course_title = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = UserPoints
+        fields = [
+            'id', 'transaction_type', 'points', 'balance_after', 'description',
+            'referral_points', 'course_title', 'created_at'
+        ]
+        read_only_fields = ['created_at', 'balance_after']
+    
+    def get_course_title(self, obj):
+        if obj.referral_points and obj.referral_points.enrollment:
+            return obj.referral_points.enrollment.course.title
+        return None

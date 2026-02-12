@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Dimensions, Alert } from 'react-native'
-import { Text, Card, Button, ProgressBar, Chip } from 'react-native-paper'
+import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Dimensions, Alert, Share, Linking } from 'react-native'
+import { Text, Card, Button, ProgressBar, Chip, TextInput, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import { coursesApi, lessonsApi } from '../services/api'
+import * as DocumentPicker from 'expo-document-picker'
+import { coursesApi, lessonsApi, referralApi } from '../services/api'
 
 const { width } = Dimensions.get('window')
 
@@ -19,6 +20,12 @@ interface Enrollment {
   status: string
   enrolled_at: string
   activated_at: string | null
+  payment_proof?: {
+    id: number
+    status: string
+    created_at: string
+    reviewed_at: string | null
+  } | null
   progress?: {
     completed_lessons: number
     total_lessons: number
@@ -45,12 +52,17 @@ interface Lesson {
   } | null
 }
 
+const PAYMENT_IBAN = '0040 0000 4047.9796.1015.9'
+const PAYMENT_RECIPIENT = 'Rubiane Patricia Fernando Joaquim'
+
 export default function EducationScreen() {
   const navigation = useNavigation<any>()
   const [refreshing, setRefreshing] = useState(false)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
+  const [uploadingId, setUploadingId] = useState<number | null>(null)
+  const [uploadNotes, setUploadNotes] = useState<Record<number, string>>({})
 
   useEffect(() => {
     loadData()
@@ -75,8 +87,9 @@ export default function EducationScreen() {
           ? enrollmentsRes.data 
           : enrollmentsRes.data.results || []
       }
-      
-      setEnrollments(enrollmentsData.filter((e: Enrollment) => e.status === 'active'))
+
+      const normalizedEnrollments = Array.isArray(enrollmentsData) ? enrollmentsData : []
+      setEnrollments(normalizedEnrollments)
       
       // Handle lessons response
       let lessonsData: Lesson[] = []
@@ -89,9 +102,15 @@ export default function EducationScreen() {
           ? lessonsRes.data 
           : lessonsRes.data.results || []
       }
+
+      // Only show recent lessons for courses where the user has an active enrollment
+      const activeCourseIds = normalizedEnrollments
+        .filter((e) => e.status === 'active')
+        .map((e) => e.course.id)
       
       // Sort by order and get recent ones
       const sortedLessons = lessonsData
+        .filter((lesson) => activeCourseIds.includes(lesson.course.id))
         .sort((a: Lesson, b: Lesson) => {
           // Prioritize completed lessons, then by order
           if (a.progress?.completed && !b.progress?.completed) return -1
@@ -115,9 +134,33 @@ export default function EducationScreen() {
   }
 
   const handleCoursePress = (enrollment: Enrollment) => {
-    // Navigate to course detail or lessons list
-    // For now, we'll show lessons for this course
     navigation.navigate('CourseLessons', { courseId: enrollment.course.id, enrollmentId: enrollment.id })
+  }
+
+  const handleUploadPaymentProof = async (enrollmentId: number) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*', 'application/pdf'],
+        copyToCacheDirectory: true,
+      })
+      if (result.canceled) return
+      const file = result.assets[0]
+      setUploadingId(enrollmentId)
+      const filePayload = {
+        uri: file.uri,
+        name: file.name ?? `proof_${Date.now()}.jpg`,
+        type: file.mimeType ?? 'image/jpeg',
+      }
+      await coursesApi.uploadPaymentProof(enrollmentId, filePayload, uploadNotes[enrollmentId] || undefined)
+      setUploadNotes((prev) => ({ ...prev, [enrollmentId]: '' }))
+      Alert.alert('Comprovativo enviado', 'O seu comprovativo foi recebido. O acesso será ativado após aprovação.')
+      await loadData()
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? err?.response?.data?.detail ?? err?.message ?? 'Não foi possível enviar.'
+      Alert.alert('Erro', msg)
+    } finally {
+      setUploadingId(null)
+    }
   }
 
   const handleLessonPress = (lesson: Lesson) => {
@@ -125,9 +168,11 @@ export default function EducationScreen() {
     navigation.navigate('LessonDetail', { lessonId: lesson.id })
   }
 
-  const totalCourses = enrollments.length
-  const totalLessons = enrollments.reduce((sum, e) => sum + (e.progress?.total_lessons || 0), 0)
-  const completedLessons = enrollments.reduce((sum, e) => sum + (e.progress?.completed_lessons || 0), 0)
+  const activeEnrollments = enrollments.filter((e) => e.status === 'active')
+  const pendingEnrollments = enrollments.filter((e) => e.status === 'pending')
+  const totalCourses = activeEnrollments.length
+  const totalLessons = activeEnrollments.reduce((sum, e) => sum + (e.progress?.total_lessons || 0), 0)
+  const completedLessons = activeEnrollments.reduce((sum, e) => sum + (e.progress?.completed_lessons || 0), 0)
   const overallProgress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
 
   if (loading && enrollments.length === 0 && recentLessons.length === 0) {
@@ -201,7 +246,7 @@ export default function EducationScreen() {
               <View style={styles.statCard}>
                 <MaterialCommunityIcons name="certificate" size={24} color="#8b5cf6" />
                 <Text variant="headlineSmall" style={styles.statValue}>
-                  {enrollments.filter(e => e.progress && e.progress.percentage === 100).length}
+                  {activeEnrollments.filter(e => e.progress && e.progress.percentage === 100).length}
                 </Text>
                 <Text variant="bodySmall" style={styles.statLabel}>Certificados</Text>
               </View>
@@ -215,14 +260,14 @@ export default function EducationScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>
               Meus Cursos
             </Text>
-            {enrollments.length > 0 && (
+            {activeEnrollments.length > 0 && (
               <Chip icon="book" compact style={styles.countChip}>
-                {enrollments.length}
+                {activeEnrollments.length}
               </Chip>
             )}
           </View>
 
-          {enrollments.length === 0 ? (
+          {activeEnrollments.length === 0 ? (
             <Card style={styles.card}>
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="book-open-outline" size={64} color="#ccc" />
@@ -234,10 +279,7 @@ export default function EducationScreen() {
                 </Text>
                 <Button
                   mode="contained"
-                  onPress={() => {
-                    // Navigate to courses list (if available)
-                    Alert.alert('Explorar Cursos', 'Funcionalidade em desenvolvimento')
-                  }}
+                  onPress={() => navigation.navigate('CourseList')}
                   style={styles.button}
                 >
                   Explorar Cursos
@@ -245,7 +287,8 @@ export default function EducationScreen() {
               </Card.Content>
             </Card>
           ) : (
-            enrollments.map(enrollment => {
+            <>
+              {activeEnrollments.map(enrollment => {
               const progress = enrollment.progress || { completed_lessons: 0, total_lessons: 0, percentage: 0 }
               const isCompleted = progress.percentage === 100
               
@@ -329,9 +372,130 @@ export default function EducationScreen() {
                   </Card>
                 </TouchableOpacity>
               )
-            })
+            })}
+              {activeEnrollments.length > 0 && (
+                <Button
+                  mode="outlined"
+                  onPress={() => navigation.navigate('CourseList')}
+                  style={styles.exploreButton}
+                  icon="book-open-outline"
+                >
+                  Explorar mais cursos
+                </Button>
+              )}
+            </>
           )}
         </View>
+
+        {/* Pending Enrollments Section */}
+        {pendingEnrollments.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Inscrições Pendentes
+              </Text>
+              <Chip icon="clock" compact style={styles.countChip}>
+                {pendingEnrollments.length}
+              </Chip>
+            </View>
+            {pendingEnrollments.map((enrollment) => {
+              const hasProof = !!enrollment.payment_proof
+              const proofStatus = enrollment.payment_proof?.status
+              const isUploading = uploadingId === enrollment.id
+              return (
+                <Card key={enrollment.id} style={styles.pendingCard}>
+                  <Card.Content>
+                    <View style={styles.pendingHeader}>
+                      <MaterialCommunityIcons name="book-open" size={24} color="#f59e0b" />
+                      <View style={styles.pendingInfo}>
+                        <Text variant="titleMedium" style={styles.pendingTitle}>
+                          {enrollment.course.title}
+                        </Text>
+                        <Text variant="bodySmall" style={styles.pendingDate}>
+                          Inscrito em {new Date(enrollment.enrolled_at).toLocaleDateString('pt-PT')}
+                        </Text>
+                      </View>
+                    </View>
+                    {!hasProof ? (
+                      <View style={styles.paymentInfo}>
+                        <Text variant="bodySmall" style={styles.paymentLabel}>
+                          Instruções de pagamento:
+                        </Text>
+                        <Text variant="bodySmall" style={styles.paymentText}>
+                          IBAN: {PAYMENT_IBAN}
+                        </Text>
+                        <Text variant="bodySmall" style={styles.paymentText}>
+                          Destinatário: {PAYMENT_RECIPIENT}
+                        </Text>
+                        <Text variant="bodySmall" style={styles.paymentText}>
+                          Valor: {enrollment.course.price || 'Consulte o valor do curso'}
+                        </Text>
+                        <TextInput
+                          label="Notas (opcional)"
+                          value={uploadNotes[enrollment.id] || ''}
+                          onChangeText={(text) =>
+                            setUploadNotes((prev) => ({ ...prev, [enrollment.id]: text }))
+                          }
+                          mode="outlined"
+                          style={styles.notesInput}
+                          multiline
+                          numberOfLines={2}
+                        />
+                        <Button
+                          mode="contained"
+                          onPress={() => handleUploadPaymentProof(enrollment.id)}
+                          loading={isUploading}
+                          disabled={isUploading}
+                          style={styles.uploadButton}
+                          icon="upload"
+                        >
+                          Enviar comprovativo
+                        </Button>
+                      </View>
+                    ) : proofStatus === 'pending' ? (
+                      <View style={styles.pendingStatus}>
+                        <MaterialCommunityIcons name="clock-outline" size={24} color="#f59e0b" />
+                        <Text variant="bodyMedium" style={styles.pendingStatusText}>
+                          Comprovativo enviado. Aguarde aprovação.
+                        </Text>
+                      </View>
+                    ) : proofStatus === 'rejected' ? (
+                      <View style={styles.paymentInfo}>
+                        <View style={styles.rejectedStatus}>
+                          <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
+                          <Text variant="bodyMedium" style={styles.rejectedText}>
+                            Comprovativo rejeitado. Por favor, envie novamente.
+                          </Text>
+                        </View>
+                        <TextInput
+                          label="Notas (opcional)"
+                          value={uploadNotes[enrollment.id] || ''}
+                          onChangeText={(text) =>
+                            setUploadNotes((prev) => ({ ...prev, [enrollment.id]: text }))
+                          }
+                          mode="outlined"
+                          style={styles.notesInput}
+                          multiline
+                          numberOfLines={2}
+                        />
+                        <Button
+                          mode="contained"
+                          onPress={() => handleUploadPaymentProof(enrollment.id)}
+                          loading={isUploading}
+                          disabled={isUploading}
+                          style={styles.uploadButton}
+                          icon="upload"
+                        >
+                          Enviar novamente
+                        </Button>
+                      </View>
+                    ) : null}
+                  </Card.Content>
+                </Card>
+              )
+            })}
+          </View>
+        )}
 
         {/* Recent Lessons Section */}
         <View style={styles.section}>
@@ -702,5 +866,83 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     color: '#999',
+  },
+  exploreButton: {
+    marginTop: 12,
+  },
+  pendingCard: {
+    marginBottom: 12,
+    borderRadius: 12,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  pendingHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  pendingInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  pendingTitle: {
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  pendingDate: {
+    color: '#666',
+    fontSize: 12,
+  },
+  paymentInfo: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  paymentLabel: {
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+  },
+  paymentText: {
+    color: '#666',
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: 'monospace',
+  },
+  notesInput: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  uploadButton: {
+    marginTop: 4,
+  },
+  pendingStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+  },
+  pendingStatusText: {
+    color: '#92400e',
+    flex: 1,
+  },
+  rejectedStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: '#fee2e2',
+    borderRadius: 8,
+  },
+  rejectedText: {
+    color: '#991b1b',
+    flex: 1,
   },
 })

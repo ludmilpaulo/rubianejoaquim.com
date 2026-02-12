@@ -355,3 +355,153 @@ class ExamResult(models.Model):
             self.score = 0
         self.passed = self.score >= self.exam.passing_score
         self.save()
+
+
+class ReferralShare(models.Model):
+    """Track when a user shares a course"""
+    referrer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='referral_shares',
+        on_delete=models.CASCADE,
+        help_text="User who shared the course"
+    )
+    course = models.ForeignKey(
+        Course,
+        related_name='referral_shares',
+        on_delete=models.CASCADE,
+        help_text="Course that was shared"
+    )
+    platform = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Social media platform (facebook, twitter, whatsapp, etc.)"
+    )
+    shared_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-shared_at']
+        indexes = [
+            models.Index(fields=['referrer', 'course']),
+        ]
+    
+    def __str__(self):
+        return f"{self.referrer.email} shared {self.course.title}"
+
+
+class ReferralPoints(models.Model):
+    """Track points earned from referrals"""
+    STATUS_CHOICES = [
+        ('pending', 'Pendente'),
+        ('approved', 'Aprovado'),
+        ('rejected', 'Rejeitado'),
+    ]
+    
+    referrer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='referral_points_earned',
+        on_delete=models.CASCADE,
+        help_text="User who shared and earned points"
+    )
+    referred_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='referral_points_received',
+        on_delete=models.CASCADE,
+        help_text="User who enrolled from the referral"
+    )
+    enrollment = models.ForeignKey(
+        Enrollment,
+        related_name='referral_points',
+        on_delete=models.CASCADE,
+        help_text="Enrollment that triggered the points"
+    )
+    points = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=1.0,
+        help_text="Points earned (1 point = 1000 KZ)"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        help_text="Status of the points award"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='approved_referral_points',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Admin who approved the points"
+    )
+    
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['referrer', 'enrollment']
+        indexes = [
+            models.Index(fields=['referrer', 'status']),
+            models.Index(fields=['referred_user']),
+        ]
+    
+    def __str__(self):
+        return f"{self.referrer.email} earned {self.points} points from {self.referred_user.email}"
+
+
+class UserPoints(models.Model):
+    """Track user's point balance and history"""
+    TRANSACTION_TYPE_CHOICES = [
+        ('earned', 'Ganho'),
+        ('spent', 'Gasto'),
+        ('expired', 'Expirado'),
+        ('admin_adjustment', 'Ajuste Admin'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='points_transactions',
+        on_delete=models.CASCADE
+    )
+    transaction_type = models.CharField(
+        max_length=20,
+        choices=TRANSACTION_TYPE_CHOICES
+    )
+    points = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Points amount (positive for earned, negative for spent)"
+    )
+    balance_after = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="User's balance after this transaction"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Description of the transaction"
+    )
+    referral_points = models.ForeignKey(
+        ReferralPoints,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Related referral points if this is from a referral"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'transaction_type']),
+            models.Index(fields=['user', 'created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.transaction_type} - {self.points} points"
+    
+    @classmethod
+    def get_user_balance(cls, user):
+        """Get current point balance for a user"""
+        latest = cls.objects.filter(user=user).order_by('-created_at').first()
+        return latest.balance_after if latest else 0

@@ -200,3 +200,8 @@ APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.0')
 APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.0')
 APP_STORE_URL_IOS = config('APP_STORE_URL_IOS', default='')  # e.g. https://apps.apple.com/app/id1234567890
 APP_STORE_URL_ANDROID = config('APP_STORE_URL_ANDROID', default='https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda')
+
+# Apple In-App Purchase (Guideline 3.1.1) - for receipt verification
+# App Store Connect → Your App → App Information → App-Specific Shared Secret
+APPLE_SHARED_SECRET = config('APPLE_SHARED_SECRET', default=None)
+APPLE_BUNDLE_ID = config('APPLE_BUNDLE_ID', default='com.rubianejoaquim.zenda')

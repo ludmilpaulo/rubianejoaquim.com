@@ -14,6 +14,7 @@ import TargetsScreen from '../screens/TargetsScreen'
 import NotificationsScreen from '../screens/NotificationsScreen'
 import CourseLessonsScreen from '../screens/CourseLessonsScreen'
 import LessonDetailScreen from '../screens/LessonDetailScreen'
+import CourseListScreen from '../screens/CourseListScreen'
 import AICopilotScreen from '../screens/AICopilotScreen'
 import MarketScreen from '../screens/MarketScreen'
 import SettingsScreen from '../screens/SettingsScreen'
@@ -77,6 +78,11 @@ function EducationStack() {
         name="LessonDetail" 
         component={LessonDetailScreen}
         options={{ title: 'Aula', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen 
+        name="CourseList" 
+        component={CourseListScreen}
+        options={{ title: 'Explorar Cursos', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
       />
     </Stack.Navigator>
   )
