@@ -40,7 +40,7 @@ Plataforma de cursos e mentoria em educação financeira.
 - ✅ Ver cursos comprados
 - ✅ Ver aulas (vídeo + texto + anexos PDF)
 - ✅ Marcar "concluído"
-- ⏳ Certificado (fase 2)
+- ✅ Certificado (conclusão do curso + quizzes aprovados)
 
 ### 3. Pagamento Manual
 - ✅ Aluno clica "Comprar"
@@ -87,7 +87,6 @@ npm run dev
 ## Próximos Passos (Fase 2)
 
 - App React Native
-- Certificados
 - Notificações
 - Pagamento automatizado (Stripe/PayPal)
 - Dashboard admin completo

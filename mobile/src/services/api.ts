@@ -204,6 +204,20 @@ export const authApi = {
     const response = await api.post('/auth/request-deletion/')
     return response.data
   },
+
+  requestPasswordReset: async (email: string) => {
+    const response = await api.post('/auth/forgot-password/', { email: email.trim().toLowerCase() })
+    return response.data
+  },
+
+  confirmPasswordReset: async (uid: string, token: string, newPassword: string) => {
+    const response = await api.post('/auth/password-reset-confirm/', {
+      uid,
+      token,
+      new_password: newPassword,
+    })
+    return response.data
+  },
 }
 
 // Access Verification API
@@ -628,6 +642,16 @@ export const coursesApi = {
   
   getEnrollmentProgress: async (id: number) => {
     const response = await api.get(`/course/enrollment/${id}/progress/`)
+    return response.data
+  },
+
+  getQuizResults: async (enrollmentId: number) => {
+    const response = await api.get(`/course/enrollment/${enrollmentId}/quiz-results/`)
+    return response.data
+  },
+
+  getCertificateInfo: async (enrollmentId: number) => {
+    const response = await api.get(`/course/enrollment/${enrollmentId}/certificate-info/`)
     return response.data
   },
 }

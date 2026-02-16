@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
 
 export default function LoginPage() {
@@ -241,9 +242,16 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Palavra-passe
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Palavra-passe
+              </label>
+              {isLogin && (
+                <Link href="/login/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
+                  Esqueceu a palavra-passe?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}

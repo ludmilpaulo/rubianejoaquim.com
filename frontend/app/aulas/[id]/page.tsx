@@ -395,25 +395,24 @@ export default function AulaPage() {
     setSubmittingQuiz(true)
     try {
       const result = await lessonQuizzesApi.submit(quiz.id, answersArray)
-      setQuizResult(result.data)
-      
-      // Verificar se passou no quiz (score >= passing_score)
-      const passed = result.data.score >= quiz.passing_score
-      
+      const data = result?.data ?? result
+      const score = Number(data?.score ?? 0)
+      const passed = score >= (quiz.passing_score ?? 0)
+      setQuizResult({
+        score,
+        passed,
+        correct_answers: Number(data?.correct_answers ?? 0),
+        total_questions: Number(data?.total_questions ?? quiz.questions?.length ?? 0),
+      })
+
       if (passed) {
-        // Se passou, marcar a aula como concluída
         await markLessonAsCompleted()
-        // Não mostrar alert aqui, o markLessonAsCompleted já vai redirecionar
-        // Mostrar mensagem de sucesso no modal
         setShowQuizModal(false)
         setQuiz(null)
         setQuizAnswers({})
         setQuizResult(null)
       } else {
-        // Se não passou, mostrar resultado mas não marcar como concluída
-        alert(`Você obteve ${result.data.score}%, mas precisa de ${quiz.passing_score}% para passar. Tente novamente!`)
-        // Opcional: limpar respostas para tentar novamente
-        // setQuizAnswers({})
+        alert(`Você obteve ${score}%, mas precisa de ${quiz.passing_score}% para passar. Tente novamente!`)
       }
     } catch (error: any) {
       alert(error.response?.data?.error || 'Erro ao submeter quiz.')
@@ -705,22 +704,22 @@ export default function AulaPage() {
 
       {/* Quiz Modal - Professional and Attractive Design */}
       {showQuizModal && quiz && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col animate-slide-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] min-h-0 overflow-hidden flex flex-col animate-slide-up my-auto">
             {/* Header with Gradient */}
-            <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-purple-600 px-8 py-6 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-purple-600 px-4 sm:px-8 py-4 sm:py-6 text-white relative overflow-hidden flex-shrink-0">
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC00LjQxOC0zLjU4Mi04LTgtOHMtOCAzLjU4Mi04IDggMy41ODIgOCA4IDggOC0zLjU4MiA4LTh6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
               <div className="relative z-10 flex justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                      <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                       </svg>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-bold mb-1">Quiz da Aula</h3>
-                      <p className="text-primary-100 text-sm">{lesson.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-xl sm:text-2xl font-bold mb-0.5 sm:mb-1 truncate">Quiz da Aula</h3>
+                      <p className="text-primary-100 text-xs sm:text-sm truncate">{lesson.title}</p>
                     </div>
                   </div>
                   {quiz.description && (
@@ -760,7 +759,7 @@ export default function AulaPage() {
             </div>
 
             {/* Quiz Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-6 bg-gradient-to-b from-gray-50 to-white">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-b from-gray-50 to-white scroll-touch">
               {quizResult ? (
                 /* Result Screen */
                 <div className="space-y-6">
@@ -939,7 +938,7 @@ export default function AulaPage() {
                                   return (
                                     <label
                                       key={choice.id}
-                                      className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                      className={`flex items-center p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all min-h-[44px] touch-target ${
                                         isSelected
                                           ? 'bg-primary-50 border-primary-400 shadow-md'
                                           : 'bg-gray-50 border-gray-200 hover:border-primary-300 hover:bg-primary-50/50'
@@ -1026,7 +1025,7 @@ export default function AulaPage() {
                   <button
                     onClick={handleSubmitQuiz}
                     disabled={submittingQuiz || Object.keys(quizAnswers).length !== quiz.questions?.length}
-                    className={`flex-1 px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-lg ${
+                    className={`flex-1 min-h-[48px] px-6 sm:px-8 py-4 rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg ${
                       Object.keys(quizAnswers).length === quiz.questions?.length && !submittingQuiz
                         ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white hover:from-primary-700 hover:to-purple-700 hover:shadow-xl transform hover:scale-105'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'

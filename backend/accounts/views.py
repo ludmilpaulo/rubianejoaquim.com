@@ -4,6 +4,11 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import login
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.conf import settings
+from django.core.mail import send_mail
 from django.views.decorators.csrf import csrf_exempt
 from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserUpdateSerializer
@@ -69,6 +74,87 @@ def update_profile(request):
         serializer.save()
         return Response(UserSerializer(request.user).data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def forgot_password(request):
+    """Request password reset: send email with reset link. Always return 200 to avoid email enumeration."""
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response(
+            {'error': 'Email é obrigatório.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    user = User.objects.filter(email__iexact=email).first()
+    if user and user.is_active:
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
+        reset_url = f'{frontend_url.rstrip("/")}/login/reset-password?uid={uid}&token={token}'
+        subject = 'Redefinir palavra-passe - Zenda / Rubiane Joaquim'
+        message = (
+            f'Olá,\n\n'
+            f'Recebemos um pedido para redefinir a palavra-passe da sua conta.\n\n'
+            f'Clique no link abaixo para definir uma nova palavra-passe:\n{reset_url}\n\n'
+            f'O link é válido por 24 horas. Se não solicitou esta alteração, ignore este email.\n\n'
+            f'Com os melhores cumprimentos,\nRubiane Joaquim'
+        )
+        try:
+            send_mail(
+                subject,
+                message,
+                getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@rubianejoaquim.com'),
+                [user.email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            return Response(
+                {'error': 'Não foi possível enviar o email. Tente mais tarde.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+    return Response({
+        'message': 'Se o email estiver registado, receberá um link para redefinir a palavra-passe.',
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@csrf_exempt
+def password_reset_confirm(request):
+    """Confirm password reset with uid, token and new_password."""
+    uid = request.data.get('uid')
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+    if not uid or not token or not new_password:
+        return Response(
+            {'error': 'Parâmetros em falta: uid, token e new_password são obrigatórios.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if len(new_password) < 8:
+        return Response(
+            {'error': 'A nova palavra-passe deve ter pelo menos 8 caracteres.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    try:
+        user_id = force_str(urlsafe_base64_decode(uid))
+        user = User.objects.get(pk=user_id, is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        return Response(
+            {'error': 'Link inválido ou expirado. Solicite um novo link de redefinição.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if not default_token_generator.check_token(user, token):
+        return Response(
+            {'error': 'Link inválido ou expirado. Solicite um novo link de redefinição.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    user.set_password(new_password)
+    user.save()
+    return Response({
+        'message': 'Palavra-passe alterada com sucesso. Pode entrar com a nova palavra-passe.',
+    }, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

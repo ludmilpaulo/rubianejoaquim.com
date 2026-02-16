@@ -139,6 +139,17 @@ export default function CourseLessonsScreen() {
                   />
                 </View>
               )}
+              {enrollmentId && (
+                <Button
+                  mode="outlined"
+                  icon="chart-line"
+                  onPress={() => navigation.navigate('CourseProgress', { courseId, enrollmentId })}
+                  style={styles.progressButton}
+                  compact
+                >
+                  Ver progresso e quizzes
+                </Button>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -289,6 +300,10 @@ const styles = StyleSheet.create({
   },
   progressSection: {
     marginTop: 8,
+  },
+  progressButton: {
+    marginTop: 12,
+    borderColor: '#6366f1',
   },
   progressHeader: {
     flexDirection: 'row',

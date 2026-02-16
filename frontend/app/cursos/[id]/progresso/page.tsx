@@ -67,7 +67,8 @@ export default function CourseProgressPage() {
 
         // Buscar resultados dos quizzes
         const progressRes = await coursesApi.getQuizResults(enrollment.id)
-        setProgress(progressRes.data)
+        const payload = progressRes?.data ?? progressRes
+        setProgress(payload && typeof payload.course_id !== 'undefined' ? payload : null)
       } catch (error) {
         console.error('Erro ao carregar progresso:', error)
       } finally {
@@ -124,21 +125,21 @@ export default function CourseProgressPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 py-6 sm:py-12 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Link 
             href="/area-do-aluno" 
-            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4 transition"
+            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4 transition min-h-[44px]"
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Voltar para Área do Aluno
           </Link>
-          <h1 className="text-4xl font-extrabold text-gray-900 mb-2">{progress.course_title}</h1>
-          <p className="text-lg text-gray-600">Acompanhe seu progresso e desempenho no curso</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 mb-2 break-words">{progress.course_title}</h1>
+          <p className="text-base sm:text-lg text-gray-600">Acompanhe seu progresso e desempenho no curso</p>
         </div>
 
         {/* Overall Stats Cards */}
@@ -234,7 +235,7 @@ export default function CourseProgressPage() {
           </div>
           
           <div className="p-6">
-            {progress.quiz_results.length === 0 ? (
+            {(progress.quiz_results ?? []).length === 0 ? (
               <div className="text-center py-12">
                 <FaBookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">Nenhum quiz encontrado neste curso.</p>
@@ -244,7 +245,7 @@ export default function CourseProgressPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {progress.quiz_results.map((result, index) => (
+                {(progress.quiz_results ?? []).map((result, index) => (
                   <div
                     key={result.quiz_id}
                     className={`border-2 rounded-xl p-5 transition-all hover:shadow-lg ${

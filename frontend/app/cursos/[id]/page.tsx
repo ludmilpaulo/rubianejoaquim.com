@@ -167,10 +167,16 @@ export default function CursoDetailPage() {
                   </p>
                 </div>
                 <a
-                  href="/area-do-aluno"
-                  className="block w-full bg-primary-600 text-white text-center py-2 sm:py-2.5 rounded-lg hover:bg-primary-700 transition text-sm sm:text-base font-semibold"
+                  href={`/cursos/${params.id}/progresso`}
+                  className="block w-full bg-primary-600 text-white text-center py-2.5 sm:py-3 rounded-lg hover:bg-primary-700 transition text-sm sm:text-base font-semibold min-h-[44px] flex items-center justify-center"
                 >
-                  Ir para Área do Aluno
+                  Ver progresso e quizzes
+                </a>
+                <a
+                  href="/area-do-aluno"
+                  className="block w-full border-2 border-primary-600 text-primary-600 text-center py-2 sm:py-2.5 rounded-lg hover:bg-primary-50 transition text-sm sm:text-base font-semibold"
+                >
+                  Área do Aluno
                 </a>
               </div>
             ) : (

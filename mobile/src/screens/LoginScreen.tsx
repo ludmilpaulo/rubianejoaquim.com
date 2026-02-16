@@ -294,6 +294,13 @@ export default function LoginScreen({ navigation }: Props) {
                   />
                 }
               />
+              <TouchableOpacity
+                style={styles.forgotLink}
+                onPress={() => navigation.navigate('ForgotPassword')}
+                disabled={loading}
+              >
+                <Text style={styles.forgotLinkText}>Esqueceu a palavra-passe?</Text>
+              </TouchableOpacity>
             </View>
 
             {biometricAvailable && biometricEnabled && (
@@ -465,6 +472,16 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  forgotLinkText: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '500',
   },
   button: {
     marginTop: 8,

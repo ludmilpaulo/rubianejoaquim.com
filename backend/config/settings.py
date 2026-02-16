@@ -184,6 +184,9 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Rubiane Joaquim <nore
 # Frontend URL for email links (production: https://www.rubianejoaquim.com)
 FRONTEND_URL = config('FRONTEND_URL', default='https://www.rubianejoaquim.com')
 
+# Password reset link validity (seconds). Default 24 hours.
+PASSWORD_RESET_TIMEOUT = config('PASSWORD_RESET_TIMEOUT', default=86400, cast=int)
+
 # OpenAI Configuration for AI Financial Copilot
 # Get your API key from: https://platform.openai.com/api-keys
 # Add it to your .env file as: OPENAI_API_KEY=sk-...

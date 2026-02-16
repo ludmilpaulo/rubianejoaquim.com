@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Linking, TouchableOpacity, Alert, Dimensi
 import { Text, Card, Button, Chip, Divider } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import YoutubePlayer from 'react-native-youtube-iframe'
 import { lessonsApi, lessonQuizApi } from '../services/api'
 import { extractYouTubeVideoId, isYouTubeUrl } from '../utils/youtube'
@@ -67,11 +67,22 @@ export default function LessonDetailScreen() {
   }, [lessonId])
 
   useEffect(() => {
-    // Load quiz when lesson is completed
-    if (lesson && lesson.progress?.completed) {
+    // Load quiz when lesson is loaded (so we can show "Fazer quiz" before or after completing)
+    if (lesson) {
       loadQuiz()
     }
-  }, [lesson?.progress?.completed])
+  }, [lesson?.id])
+
+  // Refresh lesson and quiz when returning from LessonQuiz so completed state and result are up to date
+  useFocusEffect(
+    React.useCallback(() => {
+      if (lessonId) {
+        loadLesson().then(() => {
+          if (lessonId) loadQuiz()
+        })
+      }
+    }, [lessonId])
+  )
 
   const loadLesson = async () => {
     try {
@@ -92,7 +103,8 @@ export default function LessonDetailScreen() {
     try {
       setLoadingQuiz(true)
       const data = await lessonQuizApi.getByLesson(lessonId)
-      setQuiz(data)
+      const quizData = data && (data.quiz !== undefined ? data.quiz : data)
+      setQuiz(quizData && quizData.id ? quizData : null)
     } catch (error) {
       console.error('Error loading quiz:', error)
       setQuiz(null)
@@ -319,20 +331,31 @@ export default function LessonDetailScreen() {
           </Card>
         )}
 
-        {/* Complete Button */}
+        {/* Complete / Quiz Button: if quiz exists and not passed, show "Fazer quiz" first; else "Marcar como Concluída" */}
         {!isCompleted && (
           <Card style={styles.card}>
             <Card.Content>
-              <Button
-                mode="contained"
-                icon="check-circle"
-                onPress={handleMarkComplete}
-                loading={markingComplete}
-                disabled={markingComplete}
-                style={styles.completeButton}
-              >
-                Marcar como Concluída
-              </Button>
+              {quiz && quiz.questions && quiz.questions.length > 0 && !quiz.previous_result?.passed ? (
+                <Button
+                  mode="contained"
+                  icon="play-circle"
+                  onPress={() => navigation.navigate('LessonQuiz', { lessonId: lesson.id, quizId: quiz.id })}
+                  style={styles.completeButton}
+                >
+                  Fazer quiz para concluir
+                </Button>
+              ) : (
+                <Button
+                  mode="contained"
+                  icon="check-circle"
+                  onPress={handleMarkComplete}
+                  loading={markingComplete}
+                  disabled={markingComplete}
+                  style={styles.completeButton}
+                >
+                  Marcar como Concluída
+                </Button>
+              )}
             </Card.Content>
           </Card>
         )}
@@ -372,15 +395,15 @@ export default function LessonDetailScreen() {
                     Carregando quiz...
                   </Text>
                 </View>
-              ) : quiz && quiz.quiz ? (
+              ) : quiz && quiz.id ? (
                 <View style={styles.quizContent}>
                   <Text variant="bodyLarge" style={styles.quizTitle}>
-                    {quiz.quiz.title || 'Quiz da Aula'}
+                    {quiz.title || 'Quiz da Aula'}
                   </Text>
-                  {quiz.quiz.questions && quiz.quiz.questions.length > 0 && (
+                  {quiz.questions && quiz.questions.length > 0 && (
                     <Text variant="bodyMedium" style={styles.quizInfo}>
-                      {quiz.quiz.questions.length} pergunta{quiz.quiz.questions.length > 1 ? 's' : ''}
-                      {quiz.quiz.passing_score && ` • Nota mínima: ${quiz.quiz.passing_score}%`}
+                      {quiz.questions.length} pergunta{quiz.questions.length > 1 ? 's' : ''}
+                      {quiz.passing_score != null && ` • Nota mínima: ${quiz.passing_score}%`}
                     </Text>
                   )}
                   {quiz.previous_result ? (
@@ -427,10 +450,7 @@ export default function LessonDetailScreen() {
                       mode="contained"
                       icon="play-circle"
                       onPress={() => {
-                        navigation.navigate('LessonQuiz', { 
-                          lessonId: lesson.id,
-                          quizId: quiz.quiz.id 
-                        })
+                        navigation.navigate('LessonQuiz', { lessonId: lesson.id, quizId: quiz.id })
                       }}
                       style={styles.startQuizButton}
                     >

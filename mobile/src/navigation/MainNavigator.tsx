@@ -13,7 +13,9 @@ import ToDoListScreen from '../screens/ToDoListScreen'
 import TargetsScreen from '../screens/TargetsScreen'
 import NotificationsScreen from '../screens/NotificationsScreen'
 import CourseLessonsScreen from '../screens/CourseLessonsScreen'
+import CourseProgressScreen from '../screens/CourseProgressScreen'
 import LessonDetailScreen from '../screens/LessonDetailScreen'
+import LessonQuizScreen from '../screens/LessonQuizScreen'
 import CourseListScreen from '../screens/CourseListScreen'
 import AICopilotScreen from '../screens/AICopilotScreen'
 import MarketScreen from '../screens/MarketScreen'
@@ -75,9 +77,19 @@ function EducationStack() {
         options={{ title: 'Aulas do Curso', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
+        name="CourseProgress" 
+        component={CourseProgressScreen}
+        options={{ title: 'Progresso', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen 
         name="LessonDetail" 
         component={LessonDetailScreen}
         options={{ title: 'Aula', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen 
+        name="LessonQuiz" 
+        component={LessonQuizScreen}
+        options={{ title: 'Quiz', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="CourseList" 

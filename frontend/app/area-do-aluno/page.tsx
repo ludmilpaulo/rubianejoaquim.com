@@ -467,6 +467,15 @@ export default function AreaDoAlunoPage() {
                                     </svg>
                                     Ver Progresso
                                   </Link>
+                                  <Link
+                                    href={`/certificado/${enrollment.id}`}
+                                    className="border-2 border-primary-600 text-primary-600 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:bg-primary-50 transition flex items-center justify-center gap-2 text-sm sm:text-base"
+                                  >
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                    </svg>
+                                    Ver Certificado
+                                  </Link>
                                   <div className="flex gap-2 flex-wrap">
                                     <button
                                       onClick={() => shareToSocialMedia('facebook', enrollment.course.id, enrollment.course.title)}

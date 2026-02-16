@@ -185,17 +185,63 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
 
         # Resetar resultado do exame final se existir
         try:
-            final_exam = course.final_exam
+            final_exam = getattr(course, 'final_exam', None)
             if final_exam:
                 ExamResult.objects.filter(user=user, exam=final_exam).delete()
                 UserExamAnswer.objects.filter(user=user, exam=final_exam).delete()
-        except FinalExam.DoesNotExist:
+        except Exception:
             pass
 
         return Response({
             'message': 'Curso resetado com sucesso. Você pode começar novamente.',
             'course_id': course.id,
         })
+
+    @action(detail=True, methods=['get'], url_path='certificate-info')
+    def certificate_info(self, request, pk=None):
+        """Check if user is eligible for a course certificate and return data for it."""
+        enrollment = self.get_object()
+        if enrollment.status != 'active':
+            return Response({
+                'eligible': False,
+                'message': 'Inscrição não está ativa.',
+            }, status=status.HTTP_200_OK)
+        course = enrollment.course
+        user = request.user
+        lessons = course.lessons.all()
+        total_lessons = lessons.count()
+        completed_lessons = Progress.objects.filter(
+            user=user, lesson__in=lessons, completed=True
+        ).count()
+        all_lessons_done = total_lessons > 0 and completed_lessons >= total_lessons
+        course_passed = True
+        total_quizzes = 0
+        for lesson in lessons:
+            try:
+                quiz = LessonQuiz.objects.get(lesson=lesson, is_active=True)
+                total_quizzes += 1
+                result = QuizResult.objects.filter(user=user, quiz=quiz).first()
+                if not result or not result.passed:
+                    course_passed = False
+                    break
+            except LessonQuiz.DoesNotExist:
+                pass
+        eligible = all_lessons_done and (total_quizzes == 0 or course_passed)
+        completed_at = None
+        if eligible:
+            last_progress = Progress.objects.filter(
+                user=user, lesson__course=course, completed=True
+            ).order_by('-updated_at').first()
+            if last_progress and last_progress.updated_at:
+                completed_at = last_progress.updated_at.isoformat()
+        return Response({
+            'eligible': eligible,
+            'course_id': course.id,
+            'course_title': course.title,
+            'user_name': getattr(user, 'get_full_name', lambda: '')() or user.username or user.email,
+            'completed_at': completed_at,
+            'message': None if eligible else 'Conclua todas as aulas e quizzes com aprovação para obter o certificado.',
+        }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         """Criar enrollment (inscrição)"""

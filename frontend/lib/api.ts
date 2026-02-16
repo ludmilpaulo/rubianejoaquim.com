@@ -83,6 +83,10 @@ export const authApi = {
   updateProfile: (data: { first_name?: string; last_name?: string; phone?: string; address?: string; email?: string }) =>
     api.put('/auth/profile/', data),
   requestAccountDeletion: () => api.post('/auth/request-deletion/'),
+  requestPasswordReset: (email: string) =>
+    api.post('/auth/forgot-password/', { email }),
+  confirmPasswordReset: (uid: string, token: string, newPassword: string) =>
+    api.post('/auth/password-reset-confirm/', { uid, token, new_password: newPassword }),
 }
 
 // Courses
@@ -102,6 +106,7 @@ export const coursesApi = {
   },
   getQuizResults: (enrollmentId: number) => api.get(`/course/enrollment/${enrollmentId}/quiz-results/`),
   retakeCourse: (enrollmentId: number) => api.post(`/course/enrollment/${enrollmentId}/retake-course/`),
+  getCertificateInfo: (enrollmentId: number) => api.get(`/course/enrollment/${enrollmentId}/certificate-info/`),
 }
 
 // Lessons
