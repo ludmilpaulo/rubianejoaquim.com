@@ -87,6 +87,8 @@ export const authApi = {
     api.post('/auth/forgot-password/', { email }),
   confirmPasswordReset: (uid: string, token: string, newPassword: string) =>
     api.post('/auth/password-reset-confirm/', { uid, token, new_password: newPassword }),
+  sendAppUpdateNotification: (appVersion: string) =>
+    api.post('/auth/send-app-update-notification/', { app_version: appVersion }),
 }
 
 // Courses

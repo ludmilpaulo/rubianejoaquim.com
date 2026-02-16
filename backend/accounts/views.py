@@ -8,7 +8,8 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer, UserUpdateSerializer
@@ -180,4 +181,53 @@ def request_account_deletion(request):
     return Response({
         'message': 'Sua solicitação de exclusão de conta foi recebida. Sua conta e dados associados serão removidos em breve.',
         'account_deactivated': True
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def send_app_update_notification(request):
+    """Send app update notification email to all active users (admin only)"""
+    if not (request.user.is_staff or request.user.is_superuser):
+        return Response(
+            {'error': 'Acesso negado. Apenas administradores.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    app_version = request.data.get('app_version', 'Nova versão')
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
+    
+    users = User.objects.filter(is_active=True)
+    total_users = users.count()
+    sent_count = 0
+    failed_count = 0
+    
+    subject = f'📱 Nova Atualização do App Zenda Disponível! - Versão {app_version}'
+    
+    for user in users:
+        try:
+            html_message = render_to_string('emails/app_update_notification.html', {
+                'user_name': user.first_name or user.username,
+                'app_version': app_version,
+                'frontend_url': frontend_url,
+            })
+            
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=f'Olá {user.first_name or user.username},\n\nUma nova atualização do App Zenda está disponível! Versão {app_version}.\n\nAtualize agora para aproveitar todas as melhorias e novos recursos.\n\nAcesse a App Store ou Google Play para atualizar.\n\nCom os melhores cumprimentos,\nRubiane Joaquim',
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@rubianejoaquim.com'),
+                to=[user.email],
+            )
+            email.attach_alternative(html_message, 'text/html')
+            email.send()
+            sent_count += 1
+        except Exception as e:
+            print(f'Error sending email to {user.email}: {str(e)}')
+            failed_count += 1
+    
+    return Response({
+        'message': 'Notificações enviadas com sucesso!',
+        'total_users': total_users,
+        'sent_count': sent_count,
+        'failed_count': failed_count,
     }, status=status.HTTP_200_OK)

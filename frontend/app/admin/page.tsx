@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import Link from 'next/link'
-import { adminApi } from '@/lib/api'
+import { adminApi, authApi } from '@/lib/api'
 
 interface Stats {
   totalCourses: number
@@ -29,6 +29,10 @@ export default function AdminDashboard() {
     recent_payments: [],
   })
   const [loadingStats, setLoadingStats] = useState(true)
+  const [sendingUpdateEmail, setSendingUpdateEmail] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [updateResult, setUpdateResult] = useState<{ sent_count: number; total_users: number; failed_count: number } | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -252,7 +256,102 @@ export default function AdminDashboard() {
             </div>
             <p className="text-gray-600 text-sm">Consultar transações, saldos e ajustar pontos (referral e resgates)</p>
           </Link>
+
+          {/* Notify all users about app update */}
+          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-indigo-500">
+            <div className="flex items-center mb-2">
+              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Notificar Atualização do App</h3>
+            </div>
+            <p className="text-gray-600 text-sm mb-4">Enviar email a todos os utilizadores para atualizarem o app Zenda</p>
+            <button
+              type="button"
+              onClick={() => { setShowUpdateModal(true); setUpdateResult(null); setAppVersion(''); }}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition"
+            >
+              Enviar email a todos
+            </button>
+          </div>
         </div>
+
+        {/* Modal: Send app update notification */}
+        {showUpdateModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Notificar atualização do App</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Será enviado um email profissional a todos os utilizadores ativos com um link para atualizarem o app Zenda.
+              </p>
+              {!updateResult ? (
+                <>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Versão do app (opcional)</label>
+                  <input
+                    type="text"
+                    value={appVersion}
+                    onChange={(e) => setAppVersion(e.target.value)}
+                    placeholder="ex: 1.2.0"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowUpdateModal(false)}
+                      className="px-4 py-2 text-gray-700 font-medium rounded-lg hover:bg-gray-100"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setSendingUpdateEmail(true)
+                        try {
+                          const res = await authApi.sendAppUpdateNotification(appVersion || 'Nova versão')
+                          const data = res?.data ?? res
+                          setUpdateResult({
+                            sent_count: data.sent_count ?? 0,
+                            total_users: data.total_users ?? 0,
+                            failed_count: data.failed_count ?? 0,
+                          })
+                        } catch (err: any) {
+                          alert(err.response?.data?.error || 'Erro ao enviar emails.')
+                        } finally {
+                          setSendingUpdateEmail(false)
+                        }
+                      }}
+                      disabled={sendingUpdateEmail}
+                      className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {sendingUpdateEmail ? 'A enviar...' : 'Enviar a todos'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="py-4 text-center">
+                    <p className="text-green-600 font-semibold mb-1">Emails enviados com sucesso!</p>
+                    <p className="text-gray-600 text-sm">
+                      {updateResult.sent_count} de {updateResult.total_users} utilizadores.
+                      {updateResult.failed_count > 0 && (
+                        <span className="text-amber-600"> ({updateResult.failed_count} falharam)</span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateModal(false)}
+                    className="w-full py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
+                  >
+                    Fechar
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow">

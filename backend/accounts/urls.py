@@ -7,6 +7,7 @@ from .views import (
     request_account_deletion,
     forgot_password,
     password_reset_confirm,
+    send_app_update_notification,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('request-deletion/', request_account_deletion, name='request-account-deletion'),
     path('forgot-password/', forgot_password, name='forgot-password'),
     path('password-reset-confirm/', password_reset_confirm, name='password-reset-confirm'),
+    path('send-app-update-notification/', send_app_update_notification, name='send-app-update-notification'),
 ]

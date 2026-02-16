@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atualização do App Zenda Disponível!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+        }
+        .header {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            padding: 50px 30px;
+            text-align: center;
+            color: #ffffff;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .header p {
+            font-size: 18px;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+        .app-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 20px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .content {
+            padding: 50px 30px;
+        }
+        .greeting {
+            font-size: 22px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 25px;
+        }
+        .message {
+            font-size: 17px;
+            color: #4a4a4a;
+            margin-bottom: 35px;
+            line-height: 1.8;
+        }
+        .update-card {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 35px 0;
+            border-left: 5px solid #6366f1;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+        }
+        .update-card h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .update-card p {
+            font-size: 16px;
+            color: #555555;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .feature-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 24px;
+        }
+        .feature-content h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        .feature-content p {
+            font-size: 15px;
+            color: #666666;
+            line-height: 1.6;
+        }
+        .cta-section {
+            text-align: center;
+            margin: 40px 0;
+            padding: 30px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 18px 45px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            text-align: center;
+            margin: 15px 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            letter-spacing: 0.5px;
+        }
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+        .app-badges {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        .app-badge {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .app-badge-icon {
+            font-size: 20px;
+        }
+        .divider {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #e0e7ff, transparent);
+            margin: 40px 0;
+        }
+        .footer {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .footer-logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .footer p {
+            font-size: 15px;
+            color: #cccccc;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .footer-links {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .footer-links a:hover {
+            color: #8b5cf6;
+        }
+        .version-badge {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        @media only screen and (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+            .header {
+                padding: 40px 20px;
+            }
+            .header h1 {
+                font-size: 26px;
+            }
+            .cta-button {
+                display: block;
+                width: 100%;
+                margin: 10px 0;
+            }
+            .app-badges {
+                flex-direction: column;
+                align-items: center;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="app-icon">📱</div>
+                <h1>Nova Atualização Disponível!</h1>
+                <p>App Zenda - Versão {{ app_version }}</p>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                Olá, {{ user_name }}! 👋
+            </div>
+
+            <div class="message">
+                Temos uma <strong>atualização emocionante</strong> para você! Acabamos de lançar uma nova versão do <strong>App Zenda</strong> com melhorias incríveis, novos recursos e correções importantes.
+            </div>
+
+            <!-- Update Card -->
+            <div class="update-card">
+                <h2>
+                    ✨ O que há de novo?
+                </h2>
+                <p>
+                    Esta atualização traz melhorias significativas na experiência do usuário, novas funcionalidades e correções de bugs para garantir que você tenha a melhor experiência possível ao gerenciar suas finanças e acessar nossos cursos.
+                </p>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🚀</div>
+                    <div class="feature-content">
+                        <h3>Performance Melhorada</h3>
+                        <p>O app está mais rápido e responsivo, com tempos de carregamento otimizados para uma experiência mais fluida.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🎨</div>
+                    <div class="feature-content">
+                        <h3>Interface Atualizada</h3>
+                        <p>Design mais moderno e intuitivo, facilitando a navegação e o acesso às funcionalidades principais.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-content">
+                        <h3>Segurança Reforçada</h3>
+                        <p>Melhorias na segurança e privacidade dos seus dados financeiros e informações pessoais.</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🐛</div>
+                    <div class="feature-content">
+                        <h3>Correções de Bugs</h3>
+                        <p>Vários problemas foram corrigidos para garantir uma experiência mais estável e confiável.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- CTA Section -->
+            <div class="cta-section">
+                <h2 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 15px;">
+                    Atualize Agora e Aproveite! 🎉
+                </h2>
+                <p style="font-size: 16px; color: #666666; margin-bottom: 25px;">
+                    Não perca tempo! Atualize o app agora para ter acesso a todas as melhorias e novos recursos.
+                </p>
+                
+                <div class="app-badges">
+                    <div class="app-badge">
+                        <span class="app-badge-icon">🍎</span>
+                        <span>App Store</span>
+                    </div>
+                    <div class="app-badge">
+                        <span class="app-badge-icon">🤖</span>
+                        <span>Google Play</span>
+                    </div>
+                </div>
+
+                <p style="font-size: 14px; color: #888888; margin-top: 25px;">
+                    A atualização é gratuita e leva apenas alguns minutos. Seu progresso e dados serão preservados automaticamente.
+                </p>
+            </div>
+
+            <div style="margin-top: 35px; padding: 25px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <p style="font-size: 16px; color: #92400e; margin: 0; line-height: 1.7;">
+                    <strong>💡 Dica:</strong> Ative as atualizações automáticas no seu dispositivo para receber sempre as versões mais recentes sem precisar fazer nada!
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-logo">Zenda</div>
+            <p><strong>Rubiane Joaquim Educação Financeira</strong></p>
+            <p>Transformando vidas através da educação financeira</p>
+            <div class="footer-links">
+                <a href="{{ frontend_url }}">Website</a>
+                <a href="{{ frontend_url }}/support">Suporte</a>
+                <a href="mailto:suporte@rubianejoaquim.com">Email</a>
+            </div>
+            <p style="margin-top: 30px; font-size: 12px; color: #888888;">
+                Este é um email automático. Por favor, não responda diretamente.<br>
+                Se você não deseja receber mais emails como este, pode atualizar suas preferências na sua conta.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
