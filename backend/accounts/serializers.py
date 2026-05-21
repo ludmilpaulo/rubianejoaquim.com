@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from .currency_defaults import default_currency_for_region, normalize_currency
 from .models import User
 
 
@@ -11,6 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address',
             'referral_code', 'preferred_locale', 'preferred_currency', 'onboarding_completed',
+            'onboarding_goals', 'finance_level',
             'dark_mode', 'date_joined', 'is_staff', 'is_superuser', 'is_admin',
         ]
         read_only_fields = ['id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code']
@@ -26,6 +28,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'first_name', 'last_name', 'phone', 'address', 'email',
             'preferred_locale', 'preferred_currency', 'onboarding_completed', 'dark_mode',
+            'onboarding_goals', 'finance_level',
         ]
     
     def validate_email(self, value):
@@ -35,22 +38,42 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Este email já está em uso.")
         return value
 
+    def validate_preferred_currency(self, value):
+        return normalize_currency(value)
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, min_length=8)
+    preferred_currency = serializers.CharField(max_length=3, required=False, allow_blank=True)
+    device_region = serializers.CharField(max_length=2, required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'password', 'password_confirm', 'first_name', 'last_name', 'phone']
+        fields = [
+            'email', 'username', 'password', 'password_confirm',
+            'first_name', 'last_name', 'phone',
+            'preferred_currency', 'device_region',
+        ]
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("As palavras-passe não coincidem.")
         return attrs
 
+    def validate_preferred_currency(self, value):
+        if not value:
+            return value
+        return normalize_currency(value)
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
+        device_region = (validated_data.pop('device_region', None) or '').strip() or None
+        preferred = (validated_data.pop('preferred_currency', None) or '').strip() or None
+        if preferred:
+            validated_data['preferred_currency'] = normalize_currency(preferred)
+        else:
+            validated_data['preferred_currency'] = default_currency_for_region(device_region)
         user = User.objects.create_user(**validated_data)
         return user
 

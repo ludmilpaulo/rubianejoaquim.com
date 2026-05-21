@@ -21,7 +21,13 @@ function isNewerVersion(latest: string, current: string): boolean {
 }
 
 export async function checkStoreUpdate(): Promise<void> {
-  const current = Constants.expoConfig?.version ?? (Constants.manifest as any)?.version ?? '1.0.0'
+  const manifestVersion =
+    Constants.expoConfig?.version ??
+    (typeof Constants.manifest === 'object' && Constants.manifest && 'version' in Constants.manifest
+      ? String((Constants.manifest as { version?: string }).version)
+      : undefined) ??
+    '1.0.0'
+  const current = manifestVersion
   try {
     const data = await configApi.getAppVersion()
     const latest = Platform.OS === 'ios' ? data.ios : data.android

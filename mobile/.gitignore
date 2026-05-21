@@ -28,6 +28,9 @@ yarn.lock
 
 # Testing
 coverage/
+playwright-report/
+test-results/
+blob-report/
 
 # Build
 *.apk

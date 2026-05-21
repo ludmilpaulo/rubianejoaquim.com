@@ -6,7 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import * as DocumentPicker from 'expo-document-picker'
 import { useAppSelector } from '../hooks/redux'
-import { coursesApi, lessonsApi, referralApi } from '../services/api'
+import { accessApi, coursesApi, lessonsApi, referralApi } from '../services/api'
+import type { SubscriptionPaymentInfo } from '../types'
+import type { PointsBalanceResponse } from '../types/points'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
+import { getApiErrorMessage } from '../types/api'
+import { logger } from '../utils/logger'
 
 const { width } = Dimensions.get('window')
 
@@ -53,10 +59,11 @@ interface Lesson {
   } | null
 }
 
-const PAYMENT_IBAN = '0040 0000 4047.9796.1015.9'
-const PAYMENT_RECIPIENT = 'Rubiane Patricia Fernando Joaquim'
-
 export default function EducationScreen() {
+  const { t, tw, locale } = useI18n()
+  const dateLoc =
+    locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
+  const alert = useAlert()
   const navigation = useNavigation<any>()
   const { user } = useAppSelector((state) => state.auth)
   const [refreshing, setRefreshing] = useState(false)
@@ -66,6 +73,8 @@ export default function EducationScreen() {
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [uploadNotes, setUploadNotes] = useState<Record<number, string>>({})
   const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
+  const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
 
   useEffect(() => {
     loadData()
@@ -74,14 +83,16 @@ export default function EducationScreen() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [enrollmentsRes, lessonsRes, pointsRes] = await Promise.all([
+      const [enrollmentsRes, lessonsRes, pointsRes, payRes] = await Promise.all([
         coursesApi.myEnrollments(),
         lessonsApi.list(),
-        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 } as PointsBalanceResponse)),
+        accessApi.getSubscriptionPaymentInfo().catch(() => null),
       ])
-      
+      setPaymentInfo(payRes ?? null)
       if (pointsRes?.balance !== undefined) {
         setPointsBalance(pointsRes.balance)
+        setPointsBalanceKz(pointsRes.balance_kz ?? pointsRes.balance * 1000)
       }
       
       // Handle enrollments response
@@ -129,7 +140,7 @@ export default function EducationScreen() {
       
       setRecentLessons(sortedLessons)
     } catch (error) {
-      console.error('Error loading education data:', error)
+      logger.error('Error loading education data:', error)
     } finally {
       setLoading(false)
     }
@@ -161,11 +172,10 @@ export default function EducationScreen() {
       }
       await coursesApi.uploadPaymentProof(enrollmentId, filePayload, uploadNotes[enrollmentId] || undefined)
       setUploadNotes((prev) => ({ ...prev, [enrollmentId]: '' }))
-      Alert.alert('Comprovativo enviado', 'O seu comprovativo foi recebido. O acesso será ativado após aprovação.')
+      alert.success(t('education.proofSentMsg'), t('education.proofSent'))
       await loadData()
-    } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.response?.data?.detail ?? err?.message ?? 'Não foi possível enviar.'
-      Alert.alert('Erro', msg)
+    } catch (err: unknown) {
+      alert.error(getApiErrorMessage(err, 'education.uploadFailed'))
     } finally {
       setUploadingId(null)
     }
@@ -177,13 +187,15 @@ export default function EducationScreen() {
 
   const handleShareCourse = async (courseId: number, courseTitle: string, platform?: string) => {
     if (!user?.referral_code) {
-      Alert.alert('Erro', 'Código de referência não disponível.')
+      alert.error(t('education.referralMissing'))
       return
     }
 
     const baseUrl = 'https://www.rubianejoaquim.com'
     const referralUrl = `${baseUrl}/cursos/${courseId}?ref=${user.referral_code}`
-    const shareMessage = `Confira este curso incrível: ${courseTitle}\n\n${referralUrl}\n\nGanhe pontos quando alguém se inscrever usando este link!`
+    const shareMessage = tw('education.shareMessage', { title: courseTitle, url: referralUrl })
+    const shareTextShort = tw('education.shareTextShort', { title: courseTitle })
+    const shareTitle = tw('education.shareTitle', { title: courseTitle })
 
     try {
       // Track the share in backend
@@ -192,7 +204,7 @@ export default function EducationScreen() {
       if (platform) {
         // Platform-specific sharing
         const encodedUrl = encodeURIComponent(referralUrl)
-        const encodedText = encodeURIComponent(`Confira este curso: ${courseTitle}`)
+        const encodedText = encodeURIComponent(shareTextShort)
         
         const shareUrls: Record<string, string> = {
           facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
@@ -208,7 +220,7 @@ export default function EducationScreen() {
           await Share.share({
             message: shareMessage,
             url: referralUrl,
-            title: `Curso: ${courseTitle}`,
+            title: shareTitle,
           })
           return
         }
@@ -235,13 +247,12 @@ export default function EducationScreen() {
           url: referralUrl,
         })
       }
-    } catch (error: any) {
-      console.error('Error sharing course:', error)
-      // Still try to share even if tracking fails
+    } catch (error: unknown) {
+      logger.error('Error sharing course:', error)
       try {
         await Share.share({ message: shareMessage })
-      } catch (shareError) {
-        Alert.alert('Erro', 'Não foi possível compartilhar.')
+      } catch {
+        alert.error(t('education.shareError'))
       }
     }
   }
@@ -276,10 +287,10 @@ export default function EducationScreen() {
         <View style={styles.header}>
           <View>
             <Text variant="headlineSmall" style={styles.title}>
-              Educação Financeira
+              {t('education.title')}
             </Text>
             <Text variant="bodySmall" style={styles.subtitle}>
-              {totalCourses} curso{totalCourses !== 1 ? 's' : ''} ativo{totalCourses !== 1 ? 's' : ''}
+              {tw('education.activeCoursesCount', { count: totalCourses })}
             </Text>
           </View>
         </View>
@@ -293,10 +304,10 @@ export default function EducationScreen() {
               </View>
               <View style={styles.progressInfo}>
                 <Text variant="titleLarge" style={styles.progressTitle}>
-                  Progresso Geral
+                  {t('education.overallProgress')}
                 </Text>
                 <Text variant="bodyMedium" style={styles.progressSubtitle}>
-                  {completedLessons} de {totalLessons} aulas concluídas
+                  {tw('education.lessonsCompleted', { done: completedLessons, total: totalLessons })}
                 </Text>
               </View>
             </View>
@@ -306,7 +317,7 @@ export default function EducationScreen() {
               style={styles.progressBar} 
             />
             <Text variant="bodySmall" style={styles.progressPercentage}>
-              {overallProgress.toFixed(0)}% completo
+              {tw('education.percentComplete', { pct: overallProgress.toFixed(0) })}
             </Text>
             
             {/* Stats Grid */}
@@ -314,19 +325,19 @@ export default function EducationScreen() {
               <View style={styles.statCard}>
                 <MaterialCommunityIcons name="book-open" size={24} color="#6366f1" />
                 <Text variant="headlineSmall" style={styles.statValue}>{totalCourses}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Cursos</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('education.statCourses')}</Text>
               </View>
               <View style={styles.statCard}>
                 <MaterialCommunityIcons name="play-circle" size={24} color="#10b981" />
                 <Text variant="headlineSmall" style={styles.statValue}>{completedLessons}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Concluídas</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('education.statCompleted')}</Text>
               </View>
               <View style={styles.statCard}>
                 <MaterialCommunityIcons name="certificate" size={24} color="#8b5cf6" />
                 <Text variant="headlineSmall" style={styles.statValue}>
                   {activeEnrollments.filter(e => e.progress && e.progress.percentage === 100).length}
                 </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Certificados</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('education.statCertificates')}</Text>
               </View>
             </View>
             
@@ -335,17 +346,17 @@ export default function EducationScreen() {
               <View style={styles.pointsCard}>
                 <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
                 <View style={styles.pointsInfo}>
-                  <Text variant="bodyMedium" style={styles.pointsLabel}>Pontos Disponíveis</Text>
+                  <Text variant="bodyMedium" style={styles.pointsLabel}>{t('education.pointsAvailable')}</Text>
                   <Text variant="titleLarge" style={styles.pointsValue}>
                     {pointsBalance.toFixed(1)} pts
                   </Text>
                   <Text variant="bodySmall" style={styles.pointsKz}>
-                    = {(pointsBalance * 1000).toFixed(0)} KZ
+                    = {pointsBalanceKz.toFixed(0)} KZ
                   </Text>
                 </View>
               </View>
               <Text variant="bodySmall" style={styles.pointsHint}>
-                Compartilhe cursos e ganhe pontos quando alguém se inscrever!
+                {t('education.pointsShareHint')}
               </Text>
             </View>
           </Card.Content>
@@ -355,7 +366,7 @@ export default function EducationScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              Meus Cursos
+              {t('education.myCourses')}
             </Text>
             {activeEnrollments.length > 0 && (
               <Chip icon="book" compact style={styles.countChip}>
@@ -369,17 +380,17 @@ export default function EducationScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="book-open-outline" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  Nenhum curso iniciado ainda
+                  {t('education.emptyNoCourses')}
                 </Text>
                 <Text variant="bodySmall" style={styles.emptySubtext}>
-                  Explore nossos cursos e comece sua jornada de educação financeira
+                  {t('education.emptyExploreSub')}
                 </Text>
                 <Button
                   mode="contained"
                   onPress={() => navigation.navigate('CourseList')}
                   style={styles.button}
                 >
-                  Explorar Cursos
+                  {t('education.exploreCoursesBtn')}
                 </Button>
               </Card.Content>
             </Card>
@@ -419,11 +430,13 @@ export default function EducationScreen() {
                               textStyle={styles.statusChipText}
                               compact
                             >
-                              {isCompleted ? 'Concluído' : 'Em Progresso'}
+                              {isCompleted ? t('education.statusCompleted') : t('education.statusInProgress')}
                             </Chip>
                             {enrollment.activated_at && (
                               <Text variant="bodySmall" style={styles.activatedDate}>
-                                Iniciado em {new Date(enrollment.activated_at).toLocaleDateString('pt-PT')}
+                                {tw('education.startedOn', {
+                                  date: new Date(enrollment.activated_at).toLocaleDateString(dateLoc),
+                                })}
                               </Text>
                             )}
                           </View>
@@ -436,7 +449,10 @@ export default function EducationScreen() {
                         <View style={styles.courseProgressSection}>
                           <View style={styles.courseProgressHeader}>
                             <Text variant="bodyMedium" style={styles.courseProgressText}>
-                              {progress.completed_lessons} / {progress.total_lessons} aulas
+                              {tw('education.lessonsCount', {
+                                done: progress.completed_lessons,
+                                total: progress.total_lessons,
+                              })}
                             </Text>
                             <Text variant="bodyMedium" style={styles.courseProgressPercentage}>
                               {progress.percentage.toFixed(0)}%
@@ -455,13 +471,15 @@ export default function EducationScreen() {
                         <View style={styles.courseStat}>
                           <MaterialCommunityIcons name="play-circle" size={16} color="#666" />
                           <Text variant="bodySmall" style={styles.courseStatText}>
-                            {progress.completed_lessons} concluídas
+                            {tw('education.lessonsDoneCount', { count: progress.completed_lessons })}
                           </Text>
                         </View>
                         <View style={styles.courseStat}>
                           <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
                           <Text variant="bodySmall" style={styles.courseStatText}>
-                            {progress.total_lessons - progress.completed_lessons} restantes
+                            {tw('education.lessonsLeftCount', {
+                              count: progress.total_lessons - progress.completed_lessons,
+                            })}
                           </Text>
                         </View>
                       </View>
@@ -469,7 +487,7 @@ export default function EducationScreen() {
                       {/* Share Buttons */}
                       <View style={styles.shareSection}>
                         <Text variant="bodySmall" style={styles.shareLabel}>
-                          Compartilhar e ganhar pontos:
+                          {t('education.shareEarn')}
                         </Text>
                         <View style={styles.shareButtons}>
                           <IconButton
@@ -535,7 +553,7 @@ export default function EducationScreen() {
                   style={styles.exploreButton}
                   icon="book-open-outline"
                 >
-                  Explorar mais cursos
+                  {t('education.exploreMore')}
                 </Button>
               )}
             </>
@@ -547,7 +565,7 @@ export default function EducationScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Inscrições Pendentes
+                {t('education.pendingSection')}
               </Text>
               <Chip icon="clock" compact style={styles.countChip}>
                 {pendingEnrollments.length}
@@ -567,26 +585,28 @@ export default function EducationScreen() {
                           {enrollment.course.title}
                         </Text>
                         <Text variant="bodySmall" style={styles.pendingDate}>
-                          Inscrito em {new Date(enrollment.enrolled_at).toLocaleDateString('pt-PT')}
+                          {tw('education.enrolledOn', {
+                            date: new Date(enrollment.enrolled_at).toLocaleDateString(dateLoc),
+                          })}
                         </Text>
                       </View>
                     </View>
                     {!hasProof ? (
                       <View style={styles.paymentInfo}>
                         <Text variant="bodySmall" style={styles.paymentLabel}>
-                          Instruções de pagamento:
+                          {t('education.paymentInstructions')}
                         </Text>
                         <Text variant="bodySmall" style={styles.paymentText}>
-                          IBAN: {PAYMENT_IBAN}
+                          {t('education.ibanLabel')} {paymentInfo?.iban ?? '—'}
                         </Text>
                         <Text variant="bodySmall" style={styles.paymentText}>
-                          Destinatário: {PAYMENT_RECIPIENT}
+                          {t('education.beneficiary')} {paymentInfo?.payee_name ?? '—'}
                         </Text>
                         <Text variant="bodySmall" style={styles.paymentText}>
-                          Valor: {enrollment.course.price || 'Consulte o valor do curso'}
+                          {t('education.amount')} {enrollment.course.price || t('education.priceOnRequest')}
                         </Text>
                         <TextInput
-                          label="Notas (opcional)"
+                          label={t('education.notesOptional')}
                           value={uploadNotes[enrollment.id] || ''}
                           onChangeText={(text) =>
                             setUploadNotes((prev) => ({ ...prev, [enrollment.id]: text }))
@@ -604,14 +624,14 @@ export default function EducationScreen() {
                           style={styles.uploadButton}
                           icon="upload"
                         >
-                          Enviar comprovativo
+                          {t('education.uploadProof')}
                         </Button>
                       </View>
                     ) : proofStatus === 'pending' ? (
                       <View style={styles.pendingStatus}>
                         <MaterialCommunityIcons name="clock-outline" size={24} color="#f59e0b" />
                         <Text variant="bodyMedium" style={styles.pendingStatusText}>
-                          Comprovativo enviado. Aguarde aprovação.
+                          {t('education.proofAwaiting')}
                         </Text>
                       </View>
                     ) : proofStatus === 'rejected' ? (
@@ -619,11 +639,11 @@ export default function EducationScreen() {
                         <View style={styles.rejectedStatus}>
                           <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
                           <Text variant="bodyMedium" style={styles.rejectedText}>
-                            Comprovativo rejeitado. Por favor, envie novamente.
+                            {t('education.proofRejectedMsg')}
                           </Text>
                         </View>
                         <TextInput
-                          label="Notas (opcional)"
+                          label={t('education.notesOptional')}
                           value={uploadNotes[enrollment.id] || ''}
                           onChangeText={(text) =>
                             setUploadNotes((prev) => ({ ...prev, [enrollment.id]: text }))
@@ -641,7 +661,7 @@ export default function EducationScreen() {
                           style={styles.uploadButton}
                           icon="upload"
                         >
-                          Enviar novamente
+                          {t('education.uploadAgain')}
                         </Button>
                       </View>
                     ) : null}
@@ -656,7 +676,7 @@ export default function EducationScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              Aulas Recentes
+              {t('education.recentLessons')}
             </Text>
           </View>
 
@@ -665,10 +685,10 @@ export default function EducationScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="play-circle-outline" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  Nenhuma aula visualizada ainda
+                  {t('education.noRecentLessons')}
                 </Text>
                 <Text variant="bodySmall" style={styles.emptySubtext}>
-                  Comece um curso para ver suas aulas aqui
+                  {t('education.noRecentLessonsHint')}
                 </Text>
               </Card.Content>
             </Card>
@@ -723,7 +743,7 @@ export default function EducationScreen() {
                           textStyle={styles.completedChipText}
                           compact
                         >
-                          Concluída
+                          {t('education.lessonDone')}
                         </Chip>
                       )}
                     </View>

@@ -6,22 +6,28 @@ import PhoneSlideshow from '@/components/PhoneSlideshow'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { useLocale } from '@/contexts/LocaleContext'
 import { publicApi } from '@/lib/public-api'
-import type { FAQ, ZendaContent } from '@/lib/public-types'
+import type { FAQ, SiteSettings, ZendaContent } from '@/lib/public-types'
 
 export default function ZendaLanding() {
   const { locale } = useLocale()
   const [zenda, setZenda] = useState<ZendaContent | null>(null)
+  const [settings, setSettings] = useState<SiteSettings | Record<string, never>>({})
   const [faqs, setFaqs] = useState<FAQ[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    Promise.all([publicApi.getZenda(locale), publicApi.getFaqs(locale, 'zenda')])
-      .then(([z, f]) => {
+    Promise.all([
+      publicApi.getZenda(locale),
+      publicApi.getFaqs(locale, 'zenda'),
+      publicApi.getSiteSettings(locale),
+    ])
+      .then(([z, f, s]) => {
         if (!cancelled) {
           setZenda('headline' in z ? (z as ZendaContent) : null)
           setFaqs(f)
+          setSettings(s)
         }
       })
       .catch(() => {
@@ -56,10 +62,11 @@ export default function ZendaLanding() {
 
   const features = zenda.features ?? []
   const screenshots = zenda.screenshots?.map((s) => s.image_url).filter(Boolean) as string[]
-  const phoneImages =
-    screenshots.length > 0
-      ? screenshots
-      : ['/phone/iphone/0.png', '/phone/iphone/1.png', '/phone/iphone/2.png', '/phone/iphone/3.png']
+  const playLabel = settings.play_store_label || ''
+  const appLabel = settings.app_store_label || ''
+  const whatLabel = settings.what_is_label || ''
+  const whoLabel = settings.who_label || ''
+  const contactLabel = settings.contact_label || ''
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -75,33 +82,46 @@ export default function ZendaLanding() {
             <h1 className="font-display text-4xl md:text-5xl font-bold leading-tight">{zenda.headline}</h1>
             <p className="mt-6 text-lg text-slate-300 leading-relaxed">{zenda.subheadline}</p>
             <div className="mt-10 flex flex-wrap gap-4">
-              {zenda.play_store_url && (
+              {zenda.play_store_url && playLabel && (
                 <a href={zenda.play_store_url} target="_blank" rel="noopener noreferrer" className="btn-primary">
-                  Play Store
+                  {playLabel}
                 </a>
               )}
-              <Link href="/contact" className="btn-secondary">
-                Contact
-              </Link>
+              {zenda.app_store_url && appLabel && (
+                <a href={zenda.app_store_url} target="_blank" rel="noopener noreferrer" className="btn-outline-gold">
+                  {appLabel}
+                </a>
+              )}
+              {contactLabel && (
+                <Link href="/contact" className="btn-secondary">
+                  {contactLabel}
+                </Link>
+              )}
             </div>
           </div>
-          <div className="rounded-2xl bg-gradient-to-br from-indigo-900/40 to-slate-900 p-6 ring-1 ring-white/10">
-            <PhoneSlideshow images={phoneImages} />
-          </div>
+          {screenshots.length > 0 && (
+            <div className="rounded-2xl bg-gradient-to-br from-indigo-900/40 to-slate-900 p-6 ring-1 ring-white/10">
+              <PhoneSlideshow images={screenshots} />
+            </div>
+          )}
         </div>
       </section>
 
       <section className="py-20 bg-slate-900/50">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid sm:grid-cols-2 gap-8 mb-16">
-            <div className="premium-card p-8">
-              <h2 className="text-lg font-bold text-amber-400 mb-3">Zenda</h2>
-              <p className="text-slate-300 leading-relaxed">{zenda.what_is}</p>
-            </div>
-            <div className="premium-card p-8">
-              <h2 className="text-lg font-bold text-amber-400 mb-3">—</h2>
-              <p className="text-slate-300 leading-relaxed">{zenda.who_it_helps}</p>
-            </div>
+            {zenda.what_is && whatLabel && (
+              <div className="premium-card p-8">
+                <h2 className="text-lg font-bold text-amber-400 mb-3">{whatLabel}</h2>
+                <p className="text-slate-300 leading-relaxed">{zenda.what_is}</p>
+              </div>
+            )}
+            {zenda.who_it_helps && whoLabel && (
+              <div className="premium-card p-8">
+                <h2 className="text-lg font-bold text-amber-400 mb-3">{whoLabel}</h2>
+                <p className="text-slate-300 leading-relaxed">{zenda.who_it_helps}</p>
+              </div>
+            )}
           </div>
           {features.length > 0 && (
             <>

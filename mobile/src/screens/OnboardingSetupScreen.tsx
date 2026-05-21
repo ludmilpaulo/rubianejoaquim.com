@@ -2,16 +2,15 @@ import React, { useState } from 'react'
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useI18n } from '../contexts/I18nContext'
 import type { Locale } from '../i18n'
 import { colors, radius, spacing, typography } from '../theme'
 import { authApi } from '../services/api'
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from '../utils/currency'
-
-const GOALS_KEY = 'ZENDA_ONBOARDING_GOALS'
-const LEVEL_KEY = 'ZENDA_FINANCE_LEVEL'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useAppDispatch } from '../hooks/redux'
+import { setUser } from '../store/authSlice'
+import { getDefaultCurrency, SUPPORTED_CURRENCIES, type CurrencyCode } from '../utils/currency'
 
 const GOAL_IDS = ['save', 'debt', 'business', 'learn', 'budget'] as const
 const LEVEL_IDS = ['beginner', 'intermediate', 'advanced'] as const
@@ -20,20 +19,23 @@ interface OnboardingSetupScreenProps {
   onComplete: () => void
 }
 
-export async function getOnboardingPreferences(): Promise<{ goals: string[]; level: string }> {
-  const goalsRaw = await AsyncStorage.getItem(GOALS_KEY)
-  const level = (await AsyncStorage.getItem(LEVEL_KEY)) || 'beginner'
+/** Read onboarding preferences from Django profile (via stored user) or defaults. */
+export function getOnboardingPreferencesFromUser(user: {
+  onboarding_goals?: string[]
+  finance_level?: string
+} | null | undefined): { goals: string[]; level: string } {
   return {
-    goals: goalsRaw ? JSON.parse(goalsRaw) : [],
-    level,
+    goals: Array.isArray(user?.onboarding_goals) ? user.onboarding_goals : [],
+    level: user?.finance_level || 'beginner',
   }
 }
 
 export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScreenProps) {
+  const dispatch = useAppDispatch()
   const { t, locale, setLocale, locales } = useI18n()
   const [step, setStep] = useState(0)
   const [selectedLocale, setSelectedLocale] = useState<Locale>(locale)
-  const [currency, setCurrency] = useState<CurrencyCode>('AOA')
+  const [currency, setCurrency] = useState<CurrencyCode>(() => getDefaultCurrency())
   const [goals, setGoals] = useState<string[]>([])
   const [level, setLevel] = useState<string>('beginner')
   const [saving, setSaving] = useState(false)
@@ -49,12 +51,14 @@ export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScr
       await authApi.updateProfile({
         preferred_locale: selectedLocale,
         preferred_currency: currency,
+        onboarding_goals: goals,
+        finance_level: level,
       })
-      await AsyncStorage.setItem(GOALS_KEY, JSON.stringify(goals))
-      await AsyncStorage.setItem(LEVEL_KEY, level)
+      const user = await authApi.me()
+      dispatch(setUser(user))
+      await AsyncStorage.setItem('user', JSON.stringify(user))
     } catch {
-      await AsyncStorage.setItem(GOALS_KEY, JSON.stringify(goals))
-      await AsyncStorage.setItem(LEVEL_KEY, level)
+      // Locale/currency still applied via setLocale; goals/level retry on next profile edit
     } finally {
       setSaving(false)
       onComplete()
@@ -73,7 +77,9 @@ export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScr
               style={[styles.chip, selectedLocale === code && styles.chipActive]}
               onPress={() => setSelectedLocale(code)}
             >
-              <Text style={[styles.chipText, selectedLocale === code && styles.chipTextActive]}>{code.toUpperCase()}</Text>
+              <Text style={[styles.chipText, selectedLocale === code && styles.chipTextActive]}>
+                {t(`localeNames.${code}`)}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>

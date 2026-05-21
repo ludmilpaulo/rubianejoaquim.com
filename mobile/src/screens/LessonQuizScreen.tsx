@@ -12,6 +12,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { lessonQuizApi, lessonsApi } from '../services/api'
+import { getApiErrorMessage, unwrapEnvelope } from '../types/api'
+import { useI18n } from '../contexts/I18nContext'
 
 interface RouteParams {
   lessonId: number
@@ -41,6 +43,7 @@ interface Quiz {
 }
 
 export default function LessonQuizScreen() {
+  const { t } = useI18n()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { lessonId, quizId } = (route.params as RouteParams) || {}
@@ -82,7 +85,7 @@ export default function LessonQuizScreen() {
     if (!quiz) return
     const questions = quiz.questions || []
     if (questions.length === 0) {
-      Alert.alert('Atenção', 'Este quiz não tem perguntas configuradas.')
+      Alert.alert(t('education.quizAttention'), t('education.quizNoQuestions'))
       return
     }
     const answerList = questions.map(q => ({
@@ -90,14 +93,19 @@ export default function LessonQuizScreen() {
       choice_id: answers[q.question.id],
     })).filter(a => a.choice_id != null)
     if (answerList.length !== questions.length) {
-      Alert.alert('Atenção', 'Responda a todas as perguntas antes de enviar.')
+      Alert.alert(t('education.quizAttention'), t('education.quizAnswerAll'))
       return
     }
     setSubmitting(true)
     try {
       const res = await lessonQuizApi.submit(quiz.id, answerList)
-      const data = res && (res as any).data !== undefined ? (res as any).data : res
-      const passed = !!(data?.passed ?? data?.score >= (quiz.passing_score ?? 0))
+      const data = unwrapEnvelope(res) as {
+        passed?: boolean
+        score?: number
+        correct_answers?: number
+        total_questions?: number
+      }
+      const passed = !!(data?.passed ?? (data?.score != null && data.score >= (quiz.passing_score ?? 0)))
       setResult({
         score: Number(data?.score ?? 0),
         passed,
@@ -107,9 +115,8 @@ export default function LessonQuizScreen() {
       if (passed && lessonId) {
         await lessonsApi.markCompleted(lessonId)
       }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.message ?? 'Erro ao enviar quiz.'
-      Alert.alert('Erro', msg)
+    } catch (err: unknown) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.quizSubmitFailed'))
     } finally {
       setSubmitting(false)
     }

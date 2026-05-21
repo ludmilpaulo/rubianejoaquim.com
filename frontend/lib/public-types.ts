@@ -125,6 +125,24 @@ export interface ZendaContent {
   screenshots: { id: number; image_url: string | null; caption: string }[]
 }
 
+export interface ContactFormLabels {
+  name?: string
+  email?: string
+  phone?: string
+  subject?: string
+  message?: string
+  service_interest?: string
+  budget_range?: string
+  project_type?: string
+  submit?: string
+  submitting?: string
+  success?: string
+  error?: string
+  required?: string
+  whatsapp_label?: string
+  email_label?: string
+}
+
 export interface SiteSettings {
   contact_email: string
   whatsapp_number: string
@@ -135,6 +153,7 @@ export interface SiteSettings {
   tiktok_url?: string
   calendly_url?: string
   og_image_url?: string | null
+  brand_name?: string
   brand_tagline?: string
   footer_description?: string
   footer_rights?: string
@@ -143,6 +162,11 @@ export interface SiteSettings {
   contact_subtitle?: string
   footer_navigation?: string
   footer_contact?: string
+  contact_form?: ContactFormLabels
+  play_store_label?: string
+  app_store_label?: string
+  what_is_label?: string
+  who_label?: string
 }
 
 export interface NavItem {

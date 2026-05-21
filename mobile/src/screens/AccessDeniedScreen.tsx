@@ -7,8 +7,14 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { checkPaidAccess } from '../store/authSlice'
 import { accessApi, referralApi } from '../services/api'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
+import { getApiErrorMessage, isApiError, type UploadFilePayload } from '../types/api'
+import { logger } from '../utils/logger'
 
 export default function AccessDeniedScreen() {
+  const { t, tw } = useI18n()
+  const alert = useAlert()
   const dispatch = useAppDispatch()
   const { user, hasPaidAccess } = useAppSelector((state) => state.auth)
   const [subscribing, setSubscribing] = useState(false)
@@ -40,7 +46,7 @@ export default function AccessDeniedScreen() {
         // If access is found, the state update (hasPaidAccess) will trigger navigation in App.tsx
         // App.tsx will switch to MainNavigator when hasPaidAccess becomes true
       } catch (error) {
-        console.error('Error checking access:', error)
+        logger.error('Error checking access:', error)
       }
     }
     
@@ -62,11 +68,13 @@ export default function AccessDeniedScreen() {
       const [subRes, payRes, pointsRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
-        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 })),
       ])
       setSubscription(subRes?.subscription != null ? subRes.subscription : null)
       setPaymentInfo(payRes ?? null)
-      if (pointsRes?.balance !== undefined) setPointsBalance(pointsRes.balance)
+      if (pointsRes?.balance !== undefined) {
+        setPointsBalance(pointsRes.balance)
+      }
     } catch {
       setSubscription(null)
       setPaymentInfo(null)
@@ -90,10 +98,10 @@ export default function AccessDeniedScreen() {
       if (supported) {
         await Linking.openURL(url)
       } else {
-        Alert.alert('Erro', 'Não foi possível abrir o link.')
+        alert.error(t('access.linkError'))
       }
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível abrir o link.')
+    } catch {
+      alert.error(t('access.linkError'))
     }
   }
 
@@ -112,53 +120,45 @@ export default function AccessDeniedScreen() {
         name: file.name ?? `proof_${Date.now()}.jpg`,
         type: file.mimeType ?? 'image/jpeg',
       }
-      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as any, uploadNotes || undefined)
+      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as UploadFilePayload, uploadNotes || undefined)
       setUploadNotes('')
-      Alert.alert(
-        'Comprovativo enviado',
-        'O seu comprovativo foi recebido. A subscrição será ativada após validação pela nossa equipa. Toque em "Verificar novamente" após a ativação.'
-      )
+      alert.success(t('access.proofSentLong'), t('profile.proofSentTitle'))
       await loadSubscription()
       dispatch(checkPaidAccess())
-    } catch (error: any) {
-      const msg = error?.response?.data?.detail ?? error?.response?.data?.error ?? error?.message ?? 'Não foi possível enviar o ficheiro.'
-      Alert.alert('Erro', msg)
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'profile.uploadFailed'))
     } finally {
       setUploading(false)
     }
   }
 
-  const POINTS_FOR_SUBSCRIPTION = 10
+  const monthlyPriceKz = paymentInfo?.monthly_price_kz ?? 10000
+  const pointsForSubscription = monthlyPriceKz / 1000
 
   const handleRedeemSubscriptionWithPoints = async () => {
-    if (pointsBalance < POINTS_FOR_SUBSCRIPTION) {
-      Alert.alert(
-        'Pontos insuficientes',
-        `Precisa de ${POINTS_FOR_SUBSCRIPTION} pontos para ativar a subscrição (10.000 KZ). Tem ${pointsBalance.toFixed(1)} pontos. Compartilhe cursos para ganhar mais!`
+    if (pointsBalance < pointsForSubscription) {
+      alert.info(
+        t('profile.insufficientPoints'),
+        tw('access.insufficientPointsMsg', { points: pointsForSubscription }),
       )
       return
     }
     Alert.alert(
-      'Usar pontos para subscrição',
-      `Deseja usar ${POINTS_FOR_SUBSCRIPTION} pontos (10.000 KZ) para ativar a subscrição mensal?`,
+      t('profile.redeemConfirmTitle'),
+      tw('access.redeemConfirm', { points: pointsForSubscription }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Sim, usar pontos',
+          text: t('access.yesUsePoints'),
           onPress: async () => {
             setRedeemingSubscription(true)
             try {
               await referralApi.redeemSubscription()
-              Alert.alert('Sucesso', 'Subscrição ativada com pontos!')
+              alert.success(t('profile.redeemSuccess'))
               await loadSubscription()
               dispatch(checkPaidAccess())
-            } catch (err: any) {
-              const msg =
-                err?.response?.data?.error ??
-                err?.response?.data?.detail ??
-                err?.message ??
-                'Não foi possível ativar.'
-              Alert.alert('Erro', msg)
+            } catch (err: unknown) {
+              alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
             } finally {
               setRedeemingSubscription(false)
             }
@@ -174,32 +174,18 @@ export default function AccessDeniedScreen() {
       await accessApi.subscribeToMobileApp()
       const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
       if (hasAccess) {
-        Alert.alert(
-          'Semana grátis ativada',
-          'Tem 7 dias de acesso gratuito ao app. Após esse período, pode subscrever por 10.000 AOA/mês e enviar o comprovativo de pagamento para continuar a usar o Zenda.'
-        )
+        alert.success(t('profile.trialStartedMsg'), t('profile.trialStartedTitle'))
       } else {
-        Alert.alert('Aviso', 'Subscrição criada, mas o acesso ainda não foi atualizado. Toque em "Verificar novamente".')
+        alert.info(t('common.error'), t('profile.accessPending'))
       }
-    } catch (error: any) {
-      if (error?.response?.data?.code === 'trial_already_used') {
+    } catch (error: unknown) {
+      if (isApiError(error) && error.response?.data?.code === 'trial_already_used') {
         await loadSubscription()
-        Alert.alert(
-          'Período de teste terminado',
-          'O seu período de teste já terminou e só pode ser utilizado uma vez. Para continuar a usar o Zenda, efetue o pagamento da subscrição mensal (veja os dados abaixo) e envie o comprovativo de pagamento.',
-          [{ text: 'OK' }]
-        )
+        alert.info(t('access.trialUsedTitle'), t('access.trialUsedMsg'))
         return
       }
-      const msg =
-        error?.response?.data?.detail ||
-        (typeof error?.response?.data?.error === 'string' ? error.response.data.error : null) ||
-        error?.message ||
-        'Não foi possível ativar a semana grátis. Verifique a ligação e tente novamente.'
-      if (__DEV__) {
-        console.warn('Subscribe error:', error?.response?.status, error?.response?.data, msg)
-      }
-      Alert.alert('Erro', msg)
+      logger.warn('Subscribe error:', isApiError(error) ? error.response?.status : error)
+      alert.error(getApiErrorMessage(error, 'access.trialFailed'))
     } finally {
       setSubscribing(false)
     }
@@ -223,29 +209,22 @@ export default function AccessDeniedScreen() {
             </View>
           </View>
           <Text variant="headlineMedium" style={styles.title}>
-            Acesso ao Zenda
+            {t('access.title')}
           </Text>
           <Text variant="bodyLarge" style={styles.message}>
-            Para usar o app, precisa de estar inscrito num curso, ter mentoria aprovada ou ter subscrição do app.
+            {t('access.message')}
           </Text>
           <Text variant="bodyMedium" style={styles.submessage}>
-            Não tem curso? Comece com <Text style={styles.bold}>1 semana grátis</Text>, depois subscreva por <Text style={styles.bold}>10.000 AOA/mês</Text>. O pagamento é ativado após envio do comprovativo.
+            {t('access.submessage')}
           </Text>
           {!subLoading && !subscription && (
             <View style={styles.termsBlock}>
-              <Text variant="labelMedium" style={styles.termsTitle}>Termos da oferta de teste</Text>
-              <Text variant="bodySmall" style={styles.termsText}>
-                • O período de teste dura 7 dias e termina 7 dias após a ativação.{'\n'}
-                • Após o período de teste, a subscrição custa 10.000 AOA/mês.{'\n'}
-                • Pode cancelar a qualquer momento durante o teste: simplesmente não efetue o pagamento. Não será cobrado automaticamente.{'\n'}
-                • Para subscrever após o teste, efetue o pagamento e envie o comprovativo na app.
-              </Text>
+              <Text variant="labelMedium" style={styles.termsTitle}>{t('access.termsTitle')}</Text>
+              <Text variant="bodySmall" style={styles.termsText}>{t('access.termsText')}</Text>
             </View>
           )}
           {!subLoading && !subscription && (
-            <Text variant="bodyMedium" style={styles.ctaHint}>
-              Toque no botão abaixo para ativar a sua semana grátis e começar a usar o Zenda.
-            </Text>
+            <Text variant="bodyMedium" style={styles.ctaHint}>{t('access.ctaHint')}</Text>
           )}
 
           {/* Trial already expired: show pay + upload */}
@@ -254,17 +233,17 @@ export default function AccessDeniedScreen() {
               <View style={styles.expiredBanner}>
                 <MaterialCommunityIcons name="alert-circle-outline" size={24} color="#b91c1c" />
                 <Text variant="titleMedium" style={styles.expiredTitle}>
-                  Período de teste terminado
+                  {t('access.trialUsedTitle')}
                 </Text>
               </View>
               <Text variant="bodyMedium" style={styles.expiredMessage}>
-                O seu período de teste já terminou e só pode ser utilizado uma vez. Para continuar a usar o Zenda, efetue o pagamento da subscrição mensal e envie o comprovativo abaixo.
+                {t('access.trialUsedMsg')}
               </Text>
               {paymentInfo && (
                 <View style={styles.paymentDetails}>
-                  <Text variant="labelLarge" style={styles.paymentDetailsTitle}>Dados para pagamento</Text>
+                  <Text variant="labelLarge" style={styles.paymentDetailsTitle}>{t('access.paymentDetails')}</Text>
                   <View style={styles.paymentRow}>
-                    <Text variant="bodySmall" style={styles.paymentLabel}>Valor</Text>
+                    <Text variant="bodySmall" style={styles.paymentLabel}>{t('access.amount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
                       {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
                     </Text>
@@ -276,14 +255,14 @@ export default function AccessDeniedScreen() {
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text variant="bodySmall" style={styles.paymentLabel}>Beneficiário</Text>
+                    <Text variant="bodySmall" style={styles.paymentLabel}>{t('access.beneficiary')}</Text>
                     <Text variant="bodyMedium" style={styles.paymentValue} selectable>
                       {paymentInfo.payee_name}
                     </Text>
                   </View>
                 </View>
               )}
-              {pointsBalance >= POINTS_FOR_SUBSCRIPTION && (
+              {pointsBalance >= pointsForSubscription && (
                 <Button
                   mode="contained"
                   onPress={handleRedeemSubscriptionWithPoints}
@@ -295,18 +274,20 @@ export default function AccessDeniedScreen() {
                   labelStyle={styles.buttonLabel}
                   icon={() => <MaterialCommunityIcons name="star" size={22} color="#fff" />}
                 >
-                  {redeemingSubscription ? 'A ativar...' : `Usar pontos para subscrição (${POINTS_FOR_SUBSCRIPTION} pts)`}
+                  {redeemingSubscription
+                    ? t('access.activating')
+                    : tw('access.redeemPoints', { points: pointsForSubscription })}
                 </Button>
               )}
               <Text variant="bodySmall" style={styles.payOrPointsHint}>
-                {pointsBalance >= POINTS_FOR_SUBSCRIPTION
-                  ? 'Ou pague por transferência e envie o comprovativo abaixo:'
-                  : 'Efetue o pagamento e envie o comprovativo abaixo:'}
+                {pointsBalance >= pointsForSubscription
+                  ? t('access.payOrPoints')
+                  : t('access.payOnly')}
               </Text>
               <TextInput
                 mode="outlined"
-                label="Notas (opcional)"
-                placeholder="Ex: Referência do transferência"
+                label={t('access.notesOptional')}
+                placeholder={t('access.notesPlaceholder')}
                 value={uploadNotes}
                 onChangeText={setUploadNotes}
                 style={styles.notesInput}
@@ -324,10 +305,10 @@ export default function AccessDeniedScreen() {
                 labelStyle={styles.buttonLabel}
                 icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
               >
-                {uploading ? 'A enviar...' : 'Enviar comprovativo de pagamento'}
+                {uploading ? t('access.uploading') : t('access.uploadProof')}
               </Button>
               <Text variant="bodySmall" style={styles.uploadHint}>
-                Fotografia ou PDF do comprovativo de transferência
+                {t('access.proofHint')}
               </Text>
             </View>
           )}
@@ -346,10 +327,10 @@ export default function AccessDeniedScreen() {
                   labelStyle={styles.buttonLabel}
                   icon={subscribing ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
                 >
-                  {subscribing ? 'A ativar...' : 'Começar a minha semana grátis'}
+                  {subscribing ? t('access.activating') : t('access.startTrial')}
                 </Button>
                 <Text variant="bodySmall" style={styles.buttonHint}>
-                  Toque para ativar o acesso ao app
+                  {t('access.trialButtonHint')}
                 </Text>
               </>
             )}
@@ -361,7 +342,7 @@ export default function AccessDeniedScreen() {
               labelStyle={styles.secondaryButtonLabel}
               icon={() => <MaterialCommunityIcons name="book-open-variant" size={20} color="#6366f1" />}
             >
-              Ver Cursos e Inscrever-se
+              {t('access.browseCourses')}
             </Button>
             <Button
               mode="text"
@@ -371,7 +352,7 @@ export default function AccessDeniedScreen() {
               labelStyle={styles.tertiaryButtonLabel}
               icon={() => <MaterialCommunityIcons name="refresh" size={20} color="#6366f1" />}
             >
-              Verificar novamente
+              {t('access.verifyAgain')}
             </Button>
           </View>
         </Card.Content>

@@ -1,0 +1,23 @@
+# Smoke test via Expo Go (open project first in Expo Go, then run)
+# Usage:
+#   1. npx expo start
+#   2. Open Zenda in Expo Go on emulator/device
+#   3. maestro test .maestro/app-smoke-expo-go.yaml
+appId: host.exp.Exponent
+---
+- launchApp
+
+# Recent project tile — adjust if your Expo Go list differs
+- tapOn:
+    text: Zenda
+    optional: true
+
+- runFlow:
+    file: flows/login.yaml
+
+- tapOn:
+    id: tab-personal
+    optional: true
+- tapOn:
+    id: tab-home
+    optional: true

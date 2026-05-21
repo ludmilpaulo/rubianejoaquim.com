@@ -9,6 +9,8 @@ import { Text, Card, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
+import type { StackNavigationProp } from '@react-navigation/stack'
+import type { PersonalStackParamList } from '../navigation/types'
 
 const SECTIONS = [
   {
@@ -110,11 +112,11 @@ const SECTIONS = [
 ]
 
 export default function OrcamentoPrincipiosScreen() {
-  const navigation = useNavigation<any>()
+  const navigation = useNavigation<StackNavigationProp<PersonalStackParamList>>()
 
   const handleGoToBudgets = () => {
     // Navigate back to PersonalFinanceScreen and switch to budgets tab
-    navigation.navigate('PersonalFinance', { initialTab: 'budgets' })
+    navigation.navigate('PersonalMain', { initialTab: 'budgets' })
   }
 
   return (
@@ -213,7 +215,7 @@ export default function OrcamentoPrincipiosScreen() {
             <Button
               mode="contained"
               icon="arrow-right"
-              onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento')}
+              onPress={() => navigation.navigate('TirarDinheiroOrcamento')}
               style={styles.actionButton}
               buttonColor="#6366f1"
             >

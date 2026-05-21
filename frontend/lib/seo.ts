@@ -17,11 +17,11 @@ export async function fetchPageSeo(pageKey: string, locale?: string): Promise<Pa
 }
 
 export function seoToMetadata(seo: PageSEO | null, fallback: { title: string; description: string }) {
-  const title = seo?.title || seo?.og_title || fallback.title
-  const description = seo?.description || seo?.og_description || fallback.description
+  const title = seo?.title || seo?.og_title || fallback.title || undefined
+  const description = seo?.description || seo?.og_description || fallback.description || undefined
   return {
-    title,
-    description,
+    title: title || undefined,
+    description: description || undefined,
     openGraph: {
       title: seo?.og_title || title,
       description: seo?.og_description || description,

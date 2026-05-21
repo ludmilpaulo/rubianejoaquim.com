@@ -3,13 +3,40 @@ import pt from './locales/pt'
 import en from './locales/en'
 import fr from './locales/fr'
 import es from './locales/es'
+import { commonScreens } from './commonScreens'
 
 export const LOCALES = ['pt', 'en', 'fr', 'es'] as const
 export type Locale = (typeof LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'pt'
 const STORAGE_KEY = 'ZENDA_LOCALE'
 
-const catalogs = { pt, en, fr, es }
+function mergeCatalog<T extends Record<string, unknown>>(base: T, extra: Record<string, unknown>): T {
+  const out = { ...base } as Record<string, unknown>
+  for (const key of Object.keys(extra)) {
+    const baseVal = out[key]
+    const extraVal = extra[key]
+    if (
+      baseVal &&
+      extraVal &&
+      typeof baseVal === 'object' &&
+      typeof extraVal === 'object' &&
+      !Array.isArray(baseVal) &&
+      !Array.isArray(extraVal)
+    ) {
+      out[key] = { ...(baseVal as object), ...(extraVal as object) }
+    } else {
+      out[key] = extraVal
+    }
+  }
+  return out as T
+}
+
+const catalogs = {
+  pt: mergeCatalog(pt, commonScreens.pt),
+  en: mergeCatalog(en, commonScreens.en),
+  fr: mergeCatalog(fr, commonScreens.fr),
+  es: mergeCatalog(es, commonScreens.es),
+}
 
 export type Messages = (typeof catalogs)[Locale]
 
@@ -54,4 +81,35 @@ export function t(messages: Messages, key: string): string {
     }
   }
   return typeof current === 'string' ? current : key
+}
+
+/** Translate API/redux error payloads that use i18n keys (e.g. api.errors.network). */
+export function resolveText(messages: Messages, text: string): string {
+  if (text.includes('.') && !/\s/.test(text)) {
+    const translated = t(messages, text)
+    if (translated !== text) return translated
+  }
+  return text
+}
+
+export function translateForLocale(locale: Locale, key: string): string {
+  return t(getMessages(locale), key)
+}
+
+export function interpolate(
+  template: string,
+  vars: Record<string, string | number>,
+): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
+    vars[name] !== undefined ? String(vars[name]) : `{{${name}}}`,
+  )
+}
+
+export function tWith(
+  messages: Messages,
+  key: string,
+  vars?: Record<string, string | number>,
+): string {
+  const raw = t(messages, key)
+  return vars ? interpolate(raw, vars) : raw
 }

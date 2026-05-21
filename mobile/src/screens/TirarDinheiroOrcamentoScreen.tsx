@@ -12,6 +12,9 @@ import { personalFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
+import { materialIcon } from '../utils/icons'
+import { logger } from '../utils/logger'
+import { getApiErrorMessage } from '../types/api'
 
 interface Budget {
   id: number
@@ -98,7 +101,7 @@ export default function TirarDinheiroOrcamentoScreen() {
         }
       }
     } catch (error) {
-      console.error('Error loading budgets:', error)
+      logger.error('Error loading budgets:', error)
     }
   }
 
@@ -108,7 +111,7 @@ export default function TirarDinheiroOrcamentoScreen() {
       const response = await personalFinanceApi.getBudgetExpenses(budgetId)
       setBudgetExpenses(response.expenses || [])
     } catch (error) {
-      console.error('Error loading budget expenses:', error)
+      logger.error('Error loading budget expenses:', error)
       setBudgetExpenses([])
     } finally {
       setLoadingExpenses(false)
@@ -166,9 +169,9 @@ export default function TirarDinheiroOrcamentoScreen() {
       await loadBudgets()
       await loadBudgetExpenses(selectedBudget.id)
       Alert.alert('Sucesso', 'Despesa adicionada ao orçamento')
-    } catch (error: any) {
-      console.error('Error saving expense:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao adicionar despesa')
+    } catch (error: unknown) {
+      logger.error('Error saving expense:', error)
+      Alert.alert('Erro', getApiErrorMessage(error, 'personal.saveExpenseFailed'))
     }
   }
 
@@ -394,7 +397,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                               { backgroundColor: expense.category_color || '#6366f1' }
                             ]}>
                               <MaterialCommunityIcons 
-                                name={expense.category_icon as any || 'tag'} 
+                                name={materialIcon(expense.category_icon)} 
                                 size={20} 
                                 color="#fff" 
                               />

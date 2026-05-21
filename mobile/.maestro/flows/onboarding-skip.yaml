@@ -1,0 +1,5 @@
+# Skip first-run onboarding when visible (appId inherited from parent flow)
+---
+- tapOn:
+    id: onboarding-skip
+    optional: true

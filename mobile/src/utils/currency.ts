@@ -1,5 +1,20 @@
+import { isDeviceInAngola } from './deviceRegion'
+
 /** Multi-currency formatting for Zenda */
 export const CURRENCY_LABEL = 'AOA'
+
+/** Angola uses AOA; all other regions default to USD. */
+export function getDefaultCurrency(): CurrencyCode {
+  return isDeviceInAngola() ? 'AOA' : 'USD'
+}
+
+/** Resolve display/API currency: profile value or device-based default. */
+export function resolveUserCurrency(preferred?: string | null): CurrencyCode {
+  if (preferred && SUPPORTED_CURRENCIES.includes(preferred as CurrencyCode)) {
+    return preferred as CurrencyCode
+  }
+  return getDefaultCurrency()
+}
 
 const LOCALE_MAP: Record<string, string> = {
   AOA: 'pt-AO',

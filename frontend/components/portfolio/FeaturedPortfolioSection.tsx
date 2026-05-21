@@ -3,19 +3,8 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import type { HomeSection, PortfolioProject, PortfolioCategory } from '@/lib/public-types'
-import { portfolio_category_label } from '@/lib/portfolio-categories'
 import SectionIntro from './SectionIntro'
 import Reveal from './Reveal'
-
-const CATEGORIES: (PortfolioCategory | 'all')[] = [
-  'all',
-  'campaign_videos',
-  'interviews',
-  'social_reels',
-  'canva_designs',
-  'scriptwriting',
-  'zenda_content',
-]
 
 export default function FeaturedPortfolioSection({
   projects,
@@ -24,8 +13,20 @@ export default function FeaturedPortfolioSection({
   projects: PortfolioProject[]
   intro?: HomeSection
 }) {
+  const categories = useMemo(() => {
+    const fromIntro = intro?.category_labels
+      ? (Object.keys(intro.category_labels).filter((k) => k !== 'view_all_label' && k !== 'empty_label') as PortfolioCategory[])
+      : []
+    const fromProjects = [...new Set(projects.map((p) => p.category))]
+    const merged = new Set<PortfolioCategory | 'all'>(['all', ...fromIntro, ...fromProjects])
+    return [...merged]
+  }, [projects, intro])
+
   const [active, setActive] = useState<PortfolioCategory | 'all'>('all')
-  const emptyLabel = intro?.cta_label || '—'
+  const emptyLabel =
+    (intro?.extra_data?.empty_label as string) ||
+    intro?.category_labels?.empty_label ||
+    ''
 
   const filtered = useMemo(() => {
     if (active === 'all') return projects
@@ -34,44 +35,57 @@ export default function FeaturedPortfolioSection({
 
   const categoryLabel = (cat: PortfolioCategory | 'all') => {
     if (cat === 'all') {
-      return intro?.category_labels?.all || 'All'
+      return intro?.category_labels?.all || ''
     }
     const fromIntro = intro?.category_labels?.[cat]
     if (fromIntro) return fromIntro
     const sample = projects.find((p) => p.category === cat)
     if (sample?.category_label) return sample.category_label
-    return portfolio_category_label(cat)
+    return cat
   }
+
+  const viewAllLabel =
+    (intro?.extra_data?.view_all_label as string) ||
+    intro?.category_labels?.view_all_label ||
+    ''
+
+  if (!intro?.title && !projects.length) return null
 
   return (
     <section id="portfolio" className="py-24 md:py-32 section-dark relative">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(251,191,36,0.04),transparent_70%)] pointer-events-none" />
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Reveal>
-          <SectionIntro section={intro} />
-        </Reveal>
+        {intro?.title && (
+          <Reveal>
+            <SectionIntro section={intro} />
+          </Reveal>
+        )}
 
-        <Reveal delay={100}>
-          <div className="flex flex-wrap justify-center gap-2 mb-12 -mt-6">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setActive(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
-                  active === cat
-                    ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-900/30'
-                    : 'bg-white/5 text-slate-400 border border-white/10 hover:border-amber-400/30 hover:text-amber-200'
-                }`}
-              >
-                {categoryLabel(cat)}
-              </button>
-            ))}
-          </div>
-        </Reveal>
+        {categories.length > 1 && (
+          <Reveal delay={100}>
+            <div className="flex flex-wrap justify-center gap-2 mb-12 -mt-6">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setActive(cat)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                    active === cat
+                      ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-900/30'
+                      : 'bg-white/5 text-slate-400 border border-white/10 hover:border-amber-400/30 hover:text-amber-200'
+                  }`}
+                >
+                  {categoryLabel(cat)}
+                </button>
+              ))}
+            </div>
+          </Reveal>
+        )}
 
         {filtered.length === 0 ? (
-          <p className="text-center text-slate-500 py-16">{emptyLabel}</p>
+          emptyLabel ? (
+            <p className="text-center text-slate-500 py-16">{emptyLabel}</p>
+          ) : null
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {filtered.map((project, index) => (
@@ -108,7 +122,9 @@ export default function FeaturedPortfolioSection({
                     {project.client_name && (
                       <p className="text-sm text-amber-400/70 mt-1 font-medium">{project.client_name}</p>
                     )}
-                    <p className="text-sm text-slate-400 mt-3 line-clamp-2 leading-relaxed">{project.description}</p>
+                    <p className="text-sm text-slate-400 mt-3 line-clamp-2 leading-relaxed">
+                      {project.description}
+                    </p>
                   </div>
                 </Link>
               </Reveal>
@@ -116,13 +132,15 @@ export default function FeaturedPortfolioSection({
           </div>
         )}
 
-        <Reveal delay={200}>
-          <div className="text-center mt-14">
-            <Link href="/portfolio" className="btn-secondary inline-flex">
-              {(intro?.extra_data?.view_all_label as string) || 'Portfolio'} →
-            </Link>
-          </div>
-        </Reveal>
+        {viewAllLabel && (
+          <Reveal delay={200}>
+            <div className="text-center mt-14">
+              <Link href="/portfolio" className="btn-secondary inline-flex">
+                {viewAllLabel} →
+              </Link>
+            </div>
+          </Reveal>
+        )}
       </div>
     </section>
   )

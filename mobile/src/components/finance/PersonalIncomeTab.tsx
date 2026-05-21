@@ -6,7 +6,8 @@ import { personalFinanceApi } from '../../services/api'
 import type { IncomePayload } from '../../types/api'
 import { unwrapList } from '../../types/api'
 import { colors, spacing, radius } from '../../theme'
-import { formatCurrency } from '../../utils/currency'
+import { formatCurrency, resolveUserCurrency, type CurrencyCode } from '../../utils/currency'
+import { useAppSelector } from '../../hooks/redux'
 import { getApiErrorMessage } from '../../types/api'
 import type { PeriodState } from '../PeriodSelector'
 
@@ -33,11 +34,13 @@ const SOURCE_OPTIONS: { value: IncomePayload['source_type']; label: string }[] =
 
 interface Props {
   periodState: PeriodState
-  currency?: string
+  currency?: CurrencyCode
   onRefreshParent?: () => void
 }
 
-export default function PersonalIncomeTab({ periodState, currency = 'AOA', onRefreshParent }: Props) {
+export default function PersonalIncomeTab({ periodState, currency: currencyProp, onRefreshParent }: Props) {
+  const { user } = useAppSelector((state) => state.auth)
+  const currency = currencyProp ?? resolveUserCurrency(user?.preferred_currency)
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
   const [summary, setSummary] = useState<{ total?: string; count?: number } | null>(null)
   const [loading, setLoading] = useState(true)

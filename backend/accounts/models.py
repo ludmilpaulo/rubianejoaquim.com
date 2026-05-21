@@ -13,6 +13,13 @@ class User(AbstractUser):
     preferred_locale = models.CharField(max_length=5, default='pt', help_text='pt, en, fr, es')
     preferred_currency = models.CharField(max_length=3, default='AOA')
     onboarding_completed = models.BooleanField(default=False)
+    onboarding_goals = models.JSONField(default=list, blank=True, help_text='Goal ids from onboarding: save, debt, business, learn, budget')
+    finance_level = models.CharField(
+        max_length=20,
+        default='beginner',
+        blank=True,
+        help_text='beginner, intermediate, advanced',
+    )
     profile_photo = models.ImageField(upload_to='profiles/', blank=True, null=True)
     dark_mode = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

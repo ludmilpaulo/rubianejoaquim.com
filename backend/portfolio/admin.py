@@ -10,6 +10,13 @@ from .models import (
     HomeSection,
     SiteSettings,
     ContactMessage,
+    NavItem,
+    FAQ,
+    Resource,
+    HomepageStatistic,
+    ZendaFeature,
+    NewsletterSubscriber,
+    PageSEO,
 )
 
 
@@ -78,3 +85,51 @@ class ContactMessageAdmin(admin.ModelAdmin):
     list_filter = ['status', 'locale']
     readonly_fields = ['created_at']
     list_editable = ['status']
+
+
+@admin.register(NavItem)
+class NavItemAdmin(admin.ModelAdmin):
+    list_display = ['url', 'placement', 'order', 'is_active']
+    list_filter = ['placement', 'is_active']
+    list_editable = ['order', 'is_active']
+
+
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ['category', 'order', 'is_active']
+    list_filter = ['category', 'is_active']
+    list_editable = ['order', 'is_active']
+
+
+@admin.register(Resource)
+class ResourceAdmin(admin.ModelAdmin):
+    list_display = ['slug', 'resource_type', 'category', 'is_featured', 'is_published', 'order']
+    list_filter = ['resource_type', 'category', 'is_featured', 'is_published']
+    list_editable = ['is_featured', 'is_published', 'order']
+    search_fields = ['slug', 'category']
+
+
+@admin.register(HomepageStatistic)
+class HomepageStatisticAdmin(admin.ModelAdmin):
+    list_display = ['value', 'icon', 'order', 'is_active']
+    list_editable = ['order', 'is_active']
+
+
+@admin.register(ZendaFeature)
+class ZendaFeatureAdmin(admin.ModelAdmin):
+    list_display = ['category', 'icon', 'is_premium', 'is_active', 'order']
+    list_filter = ['category', 'is_premium', 'is_active']
+    list_editable = ['is_premium', 'is_active', 'order']
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ['email', 'locale', 'is_active', 'created_at']
+    list_filter = ['locale', 'is_active']
+    readonly_fields = ['created_at']
+
+
+@admin.register(PageSEO)
+class PageSEOAdmin(admin.ModelAdmin):
+    list_display = ['page_key', 'canonical_path', 'updated_at']
+    search_fields = ['page_key', 'canonical_path']

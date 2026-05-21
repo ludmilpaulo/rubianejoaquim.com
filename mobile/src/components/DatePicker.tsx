@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, Platform, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, Platform, TouchableOpacity, type StyleProp, type ViewStyle } from 'react-native'
+import type { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { Text, Button } from 'react-native-paper'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useI18n } from '../contexts/I18nContext'
+import { formatDate as formatLocaleDate, formatTime as formatLocaleTime, getBcp47 } from '../i18n/format'
 
 interface DatePickerProps {
   label: string
@@ -11,7 +14,7 @@ interface DatePickerProps {
   mode?: 'date' | 'time' | 'datetime'
   minimumDate?: Date
   maximumDate?: Date
-  style?: any
+  style?: StyleProp<ViewStyle>
 }
 
 export default function DatePicker({
@@ -23,15 +26,16 @@ export default function DatePicker({
   maximumDate,
   style,
 }: DatePickerProps) {
+  const { t, locale } = useI18n()
   const [show, setShow] = useState(false)
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Selecionar data'
+    if (!date) return mode === 'time' ? t('common.selectTime') : t('common.selectDate')
     
     if (mode === 'time') {
-      return date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+      return formatLocaleTime(locale, date, { hour: '2-digit', minute: '2-digit' })
     } else if (mode === 'datetime') {
-      return date.toLocaleString('pt-PT', {
+      return formatLocaleDate(locale, date, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -39,7 +43,7 @@ export default function DatePicker({
         minute: '2-digit',
       })
     } else {
-      return date.toLocaleDateString('pt-PT', {
+      return formatLocaleDate(locale, date, {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -47,7 +51,7 @@ export default function DatePicker({
     }
   }
 
-  const handleChange = (event: any, selectedDate?: Date) => {
+  const handleChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShow(false)
     }
@@ -93,7 +97,7 @@ export default function DatePicker({
         <>
           {Platform.OS === 'ios' && (
             <View style={styles.iosButtons}>
-              <Button onPress={() => setShow(false)}>Cancelar</Button>
+              <Button onPress={() => setShow(false)}>{t('common.cancel')}</Button>
               <Button
                 mode="contained"
                 onPress={() => {
@@ -103,7 +107,7 @@ export default function DatePicker({
                   setShow(false)
                 }}
               >
-                Confirmar
+                {t('common.confirm')}
               </Button>
             </View>
           )}
@@ -114,23 +118,9 @@ export default function DatePicker({
             onChange={handleChange}
             minimumDate={minimumDate}
             maximumDate={maximumDate}
-            locale="pt-PT"
+            locale={getBcp47(locale)}
           />
         </>
-      )}
-
-      {Platform.OS === 'ios' && show && (
-        <View style={styles.iosButtons}>
-          <Button onPress={() => setShow(false)}>Cancelar</Button>
-          <Button
-            mode="contained"
-            onPress={() => {
-              setShow(false)
-            }}
-          >
-            Confirmar
-          </Button>
-        </View>
       )}
     </View>
   )

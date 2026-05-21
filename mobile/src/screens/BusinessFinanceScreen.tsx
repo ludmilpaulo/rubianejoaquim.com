@@ -8,6 +8,21 @@ import { businessFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
+import {
+  getApiErrorMessage,
+  unwrapList,
+  type BusinessExpensePayload,
+  type BusinessMetrics,
+  type BusinessSalePayload,
+  type ExpenseCategorySummary,
+  type ExpenseSummary,
+} from '../types/api'
+import { materialIcon, type MaterialIconName } from '../utils/icons'
+import { logger } from '../utils/logger'
+
+type BusinessTab = 'overview' | 'sales' | 'expenses'
 
 const { width } = Dimensions.get('window')
 
@@ -43,15 +58,17 @@ interface Category {
 }
 
 export default function BusinessFinanceScreen() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'sales' | 'expenses'>('overview')
+  const { t } = useI18n()
+  const alert = useAlert()
+  const [activeTab, setActiveTab] = useState<BusinessTab>('overview')
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [refreshing, setRefreshing] = useState(false)
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<BusinessExpense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [metrics, setMetrics] = useState<any>(null)
-  const [salesSummary, setSalesSummary] = useState<any>(null)
-  const [expensesSummary, setExpensesSummary] = useState<any>(null)
+  const [metrics, setMetrics] = useState<BusinessMetrics | null>(null)
+  const [salesSummary, setSalesSummary] = useState<ExpenseSummary | null>(null)
+  const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null)
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   
@@ -107,14 +124,14 @@ export default function BusinessFinanceScreen() {
         businessFinanceApi.getExpensesSummary(periodParams),
       ])
       
-      setSales(Array.isArray(salesRes) ? salesRes : salesRes.results || [])
-      setExpenses(Array.isArray(expensesRes) ? expensesRes : expensesRes.results || [])
-      setCategories(Array.isArray(categoriesRes) ? categoriesRes : categoriesRes.results || [])
+      setSales(unwrapList(salesRes as Sale[]))
+      setExpenses(unwrapList(expensesRes as BusinessExpense[]))
+      setCategories(unwrapList(categoriesRes as Category[]))
       setMetrics(metricsRes)
       setSalesSummary(salesSummaryRes)
       setExpensesSummary(expensesSummaryRes)
-    } catch (error) {
-      console.error('Error loading data:', error)
+    } catch (error: unknown) {
+      logger.error('Error loading data:', error)
     }
   }
 
@@ -126,11 +143,15 @@ export default function BusinessFinanceScreen() {
 
   const handleSaveSale = async () => {
     try {
-      const saleData = {
-        ...saleForm,
+      const saleData: BusinessSalePayload = {
+        amount: saleForm.amount,
+        description: saleForm.description,
+        customer_name: saleForm.customer_name,
         date: saleForm.date.toISOString().split('T')[0],
+        payment_method: saleForm.payment_method,
+        invoice_number: saleForm.invoice_number,
       }
-      if (editingItem) {
+      if (editingItem && 'customer_name' in editingItem) {
         await businessFinanceApi.updateSale(editingItem.id, saleData)
       } else {
         await businessFinanceApi.createSale(saleData)
@@ -139,14 +160,15 @@ export default function BusinessFinanceScreen() {
       setEditingItem(null)
       resetSaleForm()
       loadData()
-    } catch (error) {
-      console.error('Error saving sale:', error)
+    } catch (error: unknown) {
+      logger.error('Error saving sale:', error)
+      alert.error(getApiErrorMessage(error, 'business.saveSaleFailed'))
     }
   }
 
   const handleSaveExpense = async () => {
     try {
-      const expenseData: any = {
+      const expenseData: BusinessExpensePayload = {
         amount: expenseForm.amount,
         description: expenseForm.description,
         date: expenseForm.date.toISOString().split('T')[0],
@@ -154,14 +176,10 @@ export default function BusinessFinanceScreen() {
         supplier: expenseForm.supplier,
         invoice_number: expenseForm.invoice_number,
         is_tax_deductible: expenseForm.is_tax_deductible,
+        category: expenseForm.category ? parseInt(expenseForm.category, 10) : undefined,
       }
-      
-      // Add category ID if selected
-      if (expenseForm.category) {
-        expenseData.category = parseInt(expenseForm.category)
-      }
-      
-      if (editingItem) {
+
+      if (editingItem && 'supplier' in editingItem) {
         await businessFinanceApi.updateExpense(editingItem.id, expenseData)
       } else {
         await businessFinanceApi.createExpense(expenseData)
@@ -170,9 +188,9 @@ export default function BusinessFinanceScreen() {
       setEditingItem(null)
       resetExpenseForm()
       loadData()
-    } catch (error: any) {
-      console.error('Error saving expense:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Não foi possível salvar a despesa. Tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error saving expense:', error)
+      alert.error(getApiErrorMessage(error, 'business.saveExpenseFailed'))
     }
   }
 
@@ -185,9 +203,9 @@ export default function BusinessFinanceScreen() {
       setShowCategoryModal(false)
       setCategoryForm({ name: '', icon: 'tag', color: '#ef4444' })
       loadData() // Reload to get new categories
-    } catch (error: any) {
-      console.error('Error saving category:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Não foi possível criar a categoria. Tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error saving category:', error)
+      alert.error(getApiErrorMessage(error, 'business.saveCategoryFailed'))
     }
   }
 
@@ -275,9 +293,9 @@ export default function BusinessFinanceScreen() {
     '#f97316', // Orange
   ]
 
-  const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: any, index: number) => ({
-    name: cat.category__name || 'Outros',
-    amount: parseFloat(cat.total),
+  const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: ExpenseCategorySummary, index: number) => ({
+    name: cat.category__name || cat.category_name || 'Outros',
+    amount: parseFloat(String(cat.total ?? cat.amount ?? 0)),
     color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
@@ -343,17 +361,17 @@ export default function BusinessFinanceScreen() {
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
             {[
-              { key: 'overview', label: 'Visão Geral', icon: 'view-dashboard' },
-              { key: 'sales', label: 'Vendas', icon: 'cash-plus' },
-              { key: 'expenses', label: 'Despesas', icon: 'cash-minus' },
+              { key: 'overview', label: t('business.tabOverview'), icon: 'view-dashboard' },
+              { key: 'sales', label: t('business.tabSales'), icon: 'cash-plus' },
+              { key: 'expenses', label: t('business.tabExpenses'), icon: 'cash-minus' },
             ].map(tab => (
               <TouchableOpacity
                 key={tab.key}
                 style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-                onPress={() => setActiveTab(tab.key as any)}
+                onPress={() => setActiveTab(tab.key as BusinessTab)}
               >
                 <MaterialCommunityIcons
-                  name={tab.icon as any}
+                  name={materialIcon(tab.icon) as MaterialIconName}
                   size={20}
                   color={activeTab === tab.key ? '#10b981' : '#666'}
                 />
@@ -513,7 +531,7 @@ export default function BusinessFinanceScreen() {
                     <View style={styles.expenseHeader}>
                       <View style={styles.expenseLeft}>
                         <View style={[styles.categoryIcon, { backgroundColor: expense.category_color || '#ef4444' }]}>
-                          <MaterialCommunityIcons name={expense.category_icon as any || 'tag'} size={20} color="#fff" />
+                          <MaterialCommunityIcons name={materialIcon(expense.category_icon)} size={20} color="#fff" />
                         </View>
                         <View>
                           <Text variant="titleMedium">{expense.category_name || 'Sem categoria'}</Text>
@@ -576,10 +594,10 @@ export default function BusinessFinanceScreen() {
               value={saleForm.payment_method}
               onValueChange={(value) => setSaleForm({ ...saleForm, payment_method: value })}
               buttons={[
-                { value: 'cash', label: 'Dinheiro' },
-                { value: 'card', label: 'Cartão' },
-                { value: 'transfer', label: 'Transferência' },
-                { value: 'check', label: 'Cheque' },
+                { value: 'cash', label: t('business.paymentCash') },
+                { value: 'card', label: t('business.paymentCard') },
+                { value: 'transfer', label: t('business.paymentTransfer') },
+                { value: 'check', label: t('business.paymentCheck') },
               ]}
             />
             <Button mode="contained" onPress={handleSaveSale} style={styles.modalButton}>
@@ -626,7 +644,7 @@ export default function BusinessFinanceScreen() {
                             return selectedCat ? (
                               <>
                                 <MaterialCommunityIcons
-                                  name={selectedCat.icon as any || 'tag'}
+                                  name={materialIcon(selectedCat.icon)}
                                   size={20}
                                   color={selectedCat.color || '#ef4444'}
                                   style={styles.dropdownIcon}
@@ -668,7 +686,7 @@ export default function BusinessFinanceScreen() {
                     title={category.name}
                     leadingIcon={() => (
                       <MaterialCommunityIcons
-                        name={category.icon as any || 'tag'}
+                        name={materialIcon(category.icon)}
                         size={20}
                         color={category.color || '#ef4444'}
                       />
@@ -691,10 +709,10 @@ export default function BusinessFinanceScreen() {
               value={expenseForm.payment_method}
               onValueChange={(value) => setExpenseForm({ ...expenseForm, payment_method: value })}
               buttons={[
-                { value: 'cash', label: 'Dinheiro' },
-                { value: 'card', label: 'Cartão' },
-                { value: 'transfer', label: 'Transferência' },
-                { value: 'check', label: 'Cheque' },
+                { value: 'cash', label: t('business.paymentCash') },
+                { value: 'card', label: t('business.paymentCard') },
+                { value: 'transfer', label: t('business.paymentTransfer') },
+                { value: 'check', label: t('business.paymentCheck') },
               ]}
             />
             <Button mode="contained" onPress={handleSaveExpense} style={styles.modalButton}>
@@ -739,7 +757,7 @@ export default function BusinessFinanceScreen() {
                   onPress={() => setCategoryForm({ ...categoryForm, icon })}
                 >
                   <MaterialCommunityIcons
-                    name={icon as any}
+                    name={materialIcon(icon)}
                     size={24}
                     color={categoryForm.icon === icon ? categoryForm.color : '#666'}
                   />

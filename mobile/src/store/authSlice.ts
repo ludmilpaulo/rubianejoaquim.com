@@ -2,8 +2,10 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, AuthState } from '../types'
 import { authApi, accessApi } from '../services/api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getApiErrorMessage } from '../types/api'
+import { getApiErrorMessage, type PaidAccessResult } from '../types/api'
 import { logger } from '../utils/logger'
+import { getDefaultCurrency } from '../utils/currency'
+import { getDeviceRegionCode } from '../utils/deviceRegion'
 
 const initialState: AuthState = {
   user: null,
@@ -26,7 +28,7 @@ export const login = createAsyncThunk(
       await AsyncStorage.setItem('user', JSON.stringify(data.user))
       return data
     } catch (error: unknown) {
-      const errorMessage = getApiErrorMessage(error, 'Erro ao fazer login')
+      const errorMessage = getApiErrorMessage(error, 'api.errors.login.failed')
       logger.error('authSlice login error:', errorMessage)
       return rejectWithValue(errorMessage)
     }
@@ -48,12 +50,16 @@ export const register = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const result = await authApi.register(data)
+      const result = await authApi.register({
+        ...data,
+        preferred_currency: getDefaultCurrency(),
+        device_region: getDeviceRegionCode(),
+      })
       await AsyncStorage.setItem('token', result.token)
       await AsyncStorage.setItem('user', JSON.stringify(result.user))
       return { user: result.user, token: result.token }
     } catch (error: unknown) {
-      return rejectWithValue(getApiErrorMessage(error, 'Erro ao criar conta.'))
+      return rejectWithValue(getApiErrorMessage(error, 'api.errors.register.failed'))
     }
   }
 )
@@ -100,7 +106,11 @@ export const logout = createAsyncThunk('auth/logout', async () => {
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {},
+  reducers: {
+    setUser: (state, action: PayloadAction<User | null>) => {
+      state.user = action.payload
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(login.pending, (state) => {
@@ -140,8 +150,8 @@ const authSlice = createSlice({
         state.token = action.payload.token
         state.hasPaidAccess = action.payload.hasPaidAccess
         state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
-        state.planTier = (action.payload as any).planTier || 'premium'
-        state.features = (action.payload as any).features || []
+        state.planTier = action.payload.planTier || 'premium'
+        state.features = action.payload.features || []
         state.isLoading = false
         state.accessChecked = true
       })
@@ -174,4 +184,5 @@ const authSlice = createSlice({
   },
 })
 
+export const { setUser } = authSlice.actions
 export default authSlice.reducer

@@ -14,6 +14,7 @@ from portfolio.models import (
     FAQ,
     HomepageStatistic,
     PageSEO,
+    Resource,
 )
 
 
@@ -36,7 +37,12 @@ class Command(BaseCommand):
         self._seed_navigation()
         self._seed_statistics()
         self._seed_faqs()
+        self._seed_faq_newsletter()
         self._seed_page_seo()
+        self._seed_resources()
+        self._seed_resources_intro()
+        self._seed_contact_intro()
+        self._seed_portfolio_intro_labels()
         self._seed_site_translations()
         self.stdout.write(self.style.SUCCESS('Portfolio data seeded successfully.'))
 
@@ -395,7 +401,7 @@ class Command(BaseCommand):
         )
 
     def _seed_zenda(self):
-        ZendaContent.objects.get_or_create(
+        content, _ = ZendaContent.objects.update_or_create(
             pk=1,
             defaults={
                 'app_store_url': '',
@@ -443,6 +449,43 @@ class Command(BaseCommand):
                 ),
             },
         )
+        features = [
+            ('wallet', 'personal_finance', 'Orcamento inteligente', 'Smart budgeting'),
+            ('store', 'business_finance', 'Financas para negocio', 'Business finance'),
+            ('robot', 'ai_copilot', 'AI Copilot financeiro', 'AI financial copilot'),
+            ('school', 'education', 'Cursos e aulas', 'Courses and lessons'),
+            ('target', 'goals', 'Metas e poupanca', 'Goals and savings'),
+            ('shield', 'security', 'Dados organizados com seguranca', 'Organized and secure data'),
+        ]
+        for i, (icon, category, pt_title, en_title) in enumerate(features):
+            ZendaFeature.objects.update_or_create(
+                zenda_content=content,
+                category=category,
+                order=i,
+                defaults={
+                    'icon': icon,
+                    'is_active': True,
+                    'is_premium': category in {'ai_copilot', 'reports'},
+                    'translations': t(
+                        {
+                            'title': pt_title,
+                            'description': 'Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia.',
+                        },
+                        {
+                            'title': en_title,
+                            'description': 'A mobile experience designed for clearer everyday financial decisions.',
+                        },
+                        {
+                            'title': en_title,
+                            'description': 'Une experience mobile pour des decisions financieres plus claires.',
+                        },
+                        {
+                            'title': en_title,
+                            'description': 'Una experiencia mobile para decisiones financieras mas claras.',
+                        },
+                    ),
+                },
+            )
 
     def _seed_navigation(self):
         items = [
@@ -512,6 +555,165 @@ class Command(BaseCommand):
                 },
             )
 
+    def _seed_legacy_faqs(self):
+        faqs = [
+            (
+                'services',
+                {
+                    'pt': {
+                        'question': 'Que servicos oferece a Rubiane?',
+                        'answer': 'Campanhas em video, entrevistas, roteiros, edicao CapCut, design Canva, reels e estrategia de conteudo.',
+                    },
+                    'en': {
+                        'question': 'What services does Rubiane offer?',
+                        'answer': 'Campaign videos, interviews, scripts, CapCut editing, Canva visuals, reels, and content strategy.',
+                    },
+                    'fr': {
+                        'question': 'Quels services Rubiane propose-t-elle ?',
+                        'answer': 'Videos de campagne, interviews, scripts, montage CapCut, visuels Canva, reels et strategie de contenu.',
+                    },
+                    'es': {
+                        'question': 'Que servicios ofrece Rubiane?',
+                        'answer': 'Videos de campana, entrevistas, guiones, edicion CapCut, visuales Canva, reels y estrategia de contenido.',
+                    },
+                },
+            ),
+            (
+                'services',
+                {
+                    'pt': {
+                        'question': 'Tambem trabalha com marcas internacionais?',
+                        'answer': 'Sim. O portfolio e o processo foram pensados para clientes em portugues, ingles, frances e espanhol.',
+                    },
+                    'en': {
+                        'question': 'Do you work with international brands?',
+                        'answer': 'Yes. The portfolio and production process are prepared for Portuguese, English, French, and Spanish projects.',
+                    },
+                    'fr': {
+                        'question': 'Travaillez-vous avec des marques internationales ?',
+                        'answer': 'Oui. Le portfolio et le processus sont prets pour des projets en portugais, anglais, francais et espagnol.',
+                    },
+                    'es': {
+                        'question': 'Trabajas con marcas internacionales?',
+                        'answer': 'Si. El portfolio y el proceso estan preparados para proyectos en portugues, ingles, frances y espanol.',
+                    },
+                },
+            ),
+            (
+                'zenda',
+                {
+                    'pt': {
+                        'question': 'O que e o Zenda?',
+                        'answer': 'Zenda e a app de financas e educacao criada por Rubiane: orcamentos, metas, cursos, tarefas e AI Copilot.',
+                    },
+                    'en': {
+                        'question': 'What is Zenda?',
+                        'answer': 'Zenda is Rubiane\'s finance and education app: budgets, goals, courses, tasks, and an AI Copilot.',
+                    },
+                    'fr': {
+                        'question': 'Qu\'est-ce que Zenda ?',
+                        'answer': 'Zenda est l\'app finance et education de Rubiane : budgets, objectifs, cours, taches et copilot IA.',
+                    },
+                    'es': {
+                        'question': 'Que es Zenda?',
+                        'answer': 'Zenda es la app de finanzas y educacion de Rubiane: presupuestos, metas, cursos, tareas y copiloto IA.',
+                    },
+                },
+            ),
+            (
+                'zenda',
+                {
+                    'pt': {
+                        'question': 'A app e multilingue?',
+                        'answer': 'Sim. Zenda suporta portugues, ingles, frances e espanhol, com preferencia guardada no perfil.',
+                    },
+                    'en': {
+                        'question': 'Is the app multilingual?',
+                        'answer': 'Yes. Zenda supports Portuguese, English, French, and Spanish, with the preference saved on the profile.',
+                    },
+                    'fr': {
+                        'question': 'L\'application est-elle multilingue ?',
+                        'answer': 'Oui. Zenda prend en charge le portugais, l\'anglais, le francais et l\'espagnol.',
+                    },
+                    'es': {
+                        'question': 'La app es multilingue?',
+                        'answer': 'Si. Zenda soporta portugues, ingles, frances y espanol, con preferencia guardada en el perfil.',
+                    },
+                },
+            ),
+        ]
+        for i, (cat, translations) in enumerate(faqs):
+            FAQ.objects.update_or_create(
+                category=cat,
+                order=i,
+                defaults={
+                    'is_active': True,
+                    'translations': translations,
+                },
+            )
+
+    def _seed_faq_newsletter(self):
+        HomeSection.objects.update_or_create(
+            section_key='faq_newsletter',
+            defaults={
+                'is_active': True,
+                'translations': {
+                    'pt': {
+                        'title': 'Perguntas frequentes e novidades',
+                        'subtitle': 'Respostas rapidas antes de comecarmos e conteudos uteis direto no seu email.',
+                        'body': 'Receba ideias sobre video, marketing, Zenda e educacao financeira.',
+                        'badge': 'FAQ + newsletter',
+                        'cta_label': 'Subscrever',
+                        'extra_data': {
+                            'newsletter_placeholder': 'O seu email',
+                            'newsletter_success': 'Subscricao confirmada. Obrigada!',
+                            'newsletter_error': 'Nao foi possivel subscrever. Tente novamente.',
+                            'newsletter_note': 'Sem spam. Apenas recursos uteis e novidades importantes.',
+                        },
+                    },
+                    'en': {
+                        'title': 'Frequently asked questions and updates',
+                        'subtitle': 'Quick answers before we start, plus useful content in your inbox.',
+                        'body': 'Get ideas about video, marketing, Zenda, and financial education.',
+                        'badge': 'FAQ + newsletter',
+                        'cta_label': 'Subscribe',
+                        'extra_data': {
+                            'newsletter_placeholder': 'Your email',
+                            'newsletter_success': 'Subscription confirmed. Thank you!',
+                            'newsletter_error': 'Could not subscribe. Please try again.',
+                            'newsletter_note': 'No spam. Only useful resources and important updates.',
+                        },
+                    },
+                    'fr': {
+                        'title': 'Questions frequentes et nouveautes',
+                        'subtitle': 'Des reponses rapides et du contenu utile dans votre boite mail.',
+                        'body': 'Recevez des idees sur la video, le marketing, Zenda et l\'education financiere.',
+                        'badge': 'FAQ + newsletter',
+                        'cta_label': 'S\'abonner',
+                        'extra_data': {
+                            'newsletter_placeholder': 'Votre email',
+                            'newsletter_success': 'Inscription confirmee. Merci !',
+                            'newsletter_error': 'Inscription impossible. Reessayez.',
+                            'newsletter_note': 'Pas de spam. Seulement des ressources utiles.',
+                        },
+                    },
+                    'es': {
+                        'title': 'Preguntas frecuentes y novedades',
+                        'subtitle': 'Respuestas rapidas y contenido util en tu email.',
+                        'body': 'Recibe ideas sobre video, marketing, Zenda y educacion financiera.',
+                        'badge': 'FAQ + newsletter',
+                        'cta_label': 'Suscribirse',
+                        'extra_data': {
+                            'newsletter_placeholder': 'Tu email',
+                            'newsletter_success': 'Suscripcion confirmada. Gracias!',
+                            'newsletter_error': 'No se pudo suscribir. Intentalo de nuevo.',
+                            'newsletter_note': 'Sin spam. Solo recursos utiles y novedades importantes.',
+                        },
+                    },
+                },
+            },
+        )
+
     def _seed_page_seo(self):
         PageSEO.objects.update_or_create(
             page_key='home',
@@ -554,12 +756,146 @@ class Command(BaseCommand):
             },
         )
 
+    def _seed_resources(self):
+        samples = [
+            ('guia-orcamento', 'pdf', 'education', 'Guia de orçamento familiar'),
+            ('video-financas-101', 'video', 'education', 'Finanças 101 — vídeo grátis'),
+            ('template-canva-posts', 'template', 'marketing', 'Template Canva para posts'),
+        ]
+        for i, (slug, rtype, cat, pt_title) in enumerate(samples):
+            Resource.objects.update_or_create(
+                slug=slug,
+                defaults={
+                    'resource_type': rtype,
+                    'category': cat,
+                    'is_published': True,
+                    'is_featured': True,
+                    'order': i,
+                    'translations': t(
+                        {'title': pt_title, 'description': 'Recurso gratuito da Rubiane Joaquim.'},
+                        {'title': pt_title, 'description': 'Free resource from Rubiane Joaquim.'},
+                        {'title': pt_title, 'description': 'Ressource gratuite.'},
+                        {'title': pt_title, 'description': 'Recurso gratuito.'},
+                    ),
+                },
+            )
+
+    def _seed_resources_intro(self):
+        HomeSection.objects.update_or_create(
+            section_key='resources_intro',
+            defaults={
+                'is_active': True,
+                'translations': t(
+                    {
+                        'title': 'Conteúdos e recursos grátis',
+                        'subtitle': 'Guias, vídeos e templates para marcas e finanças',
+                        'cta_label': 'Ver todos os recursos',
+                        'extra_data': {'view_all_href': '/conteudos-gratis'},
+                    },
+                    {
+                        'title': 'Free content & resources',
+                        'subtitle': 'Guides, videos, and templates for brands and finance',
+                        'cta_label': 'View all resources',
+                        'extra_data': {'view_all_href': '/conteudos-gratis'},
+                    },
+                    {
+                        'title': 'Contenus et ressources gratuits',
+                        'subtitle': 'Guides, vidéos et modèles',
+                        'cta_label': 'Voir tout',
+                        'extra_data': {'view_all_href': '/conteudos-gratis'},
+                    },
+                    {
+                        'title': 'Contenidos y recursos gratis',
+                        'subtitle': 'Guías, vídeos y plantillas',
+                        'cta_label': 'Ver todo',
+                        'extra_data': {'view_all_href': '/conteudos-gratis'},
+                    },
+                ),
+            },
+        )
+
+    def _seed_contact_intro(self):
+        HomeSection.objects.update_or_create(
+            section_key='contact_intro',
+            defaults={'is_active': True, 'translations': {}},
+        )
+
+    def _seed_portfolio_intro_labels(self):
+        section = HomeSection.objects.filter(section_key='portfolio_intro').first()
+        if not section:
+            return
+        labels_pt = {
+            'all': 'Todos',
+            'campaign_videos': 'Campanhas',
+            'interviews': 'Entrevistas',
+            'social_reels': 'Reels',
+            'canva_designs': 'Canva',
+            'scriptwriting': 'Roteiros',
+            'zenda_content': 'Zenda',
+            'view_all_label': 'Ver portfólio completo',
+            'empty_label': 'Novos projetos em breve.',
+        }
+        labels_en = {
+            'all': 'All',
+            'campaign_videos': 'Campaigns',
+            'interviews': 'Interviews',
+            'social_reels': 'Reels',
+            'canva_designs': 'Canva',
+            'scriptwriting': 'Scripts',
+            'zenda_content': 'Zenda',
+            'view_all_label': 'View full portfolio',
+            'empty_label': 'New projects coming soon.',
+        }
+        trans = dict(section.translations or {})
+        for loc, labels in [('pt', labels_pt), ('en', labels_en), ('fr', labels_en), ('es', labels_en)]:
+            block = dict(trans.get(loc) or {})
+            block['category_labels'] = labels
+            block['extra_data'] = {**(block.get('extra_data') or {}), **labels}
+            trans[loc] = block
+        section.translations = trans
+        section.save(update_fields=['translations'])
+
     def _seed_site_translations(self):
         obj = SiteSettings.objects.first()
         if not obj:
             return
+        contact_form_pt = {
+            'name': 'Nome',
+            'email': 'Email',
+            'phone': 'Telefone',
+            'subject': 'Assunto',
+            'message': 'Mensagem',
+            'service_interest': 'Serviço de interesse',
+            'budget_range': 'Orçamento estimado',
+            'project_type': 'Tipo de projeto',
+            'submit': 'Enviar mensagem',
+            'submitting': 'A enviar…',
+            'success': 'Mensagem enviada. Obrigado!',
+            'error': 'Erro ao enviar. Tente novamente.',
+            'required': 'Obrigatório',
+            'whatsapp_label': 'WhatsApp',
+            'email_label': 'Email',
+        }
+        contact_form_en = {
+            'name': 'Name',
+            'email': 'Email',
+            'phone': 'Phone',
+            'subject': 'Subject',
+            'message': 'Message',
+            'service_interest': 'Service of interest',
+            'budget_range': 'Budget range',
+            'project_type': 'Project type',
+            'submit': 'Send message',
+            'submitting': 'Sending…',
+            'success': 'Message sent. Thank you!',
+            'error': 'Could not send. Please try again.',
+            'required': 'Required',
+            'whatsapp_label': 'WhatsApp',
+            'email_label': 'Email',
+        }
         obj.translations = t(
             {
+                'brand_name': 'Rubiane Joaquim',
                 'brand_tagline': 'Produtora de Vídeo Criativo & Storyteller de Campanhas',
                 'footer_description': 'Produção criativa de vídeo, storytelling de marketing e criadora do Zenda.',
                 'footer_rights': 'Todos os direitos reservados.',
@@ -568,8 +904,14 @@ class Command(BaseCommand):
                 'contact_subtitle': 'Conte-me sobre o seu projeto — respondo em breve.',
                 'footer_navigation': 'Navegação',
                 'footer_contact': 'Contacto',
+                'contact_form': contact_form_pt,
+                'play_store_label': 'Play Store',
+                'app_store_label': 'App Store',
+                'what_is_label': 'O que é',
+                'who_label': 'Para quem',
             },
             {
+                'brand_name': 'Rubiane Joaquim',
                 'brand_tagline': 'Creative Video Producer & Campaign Storyteller',
                 'footer_description': 'Creative video production, marketing storytelling, and creator of Zenda.',
                 'footer_rights': 'All rights reserved.',
@@ -578,6 +920,11 @@ class Command(BaseCommand):
                 'contact_subtitle': 'Tell me about your project — I will reply soon.',
                 'footer_navigation': 'Navigation',
                 'footer_contact': 'Contact',
+                'contact_form': contact_form_en,
+                'play_store_label': 'Play Store',
+                'app_store_label': 'App Store',
+                'what_is_label': 'What it is',
+                'who_label': 'Who it helps',
             },
             {
                 'brand_tagline': 'Productrice Vidéo & Narratrice',

@@ -1,94 +1,185 @@
-import React from 'react'
-import { View, StyleSheet, ScrollView, Linking } from 'react-native'
-import { Text, Card, Button } from 'react-native-paper'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { View, StyleSheet, ScrollView, Linking, RefreshControl } from 'react-native'
+import { Text, Card, Button, ActivityIndicator } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useI18n } from '../contexts/I18nContext'
+import { publicApi } from '../services/api'
+import type { PublicSiteSettings, PublicZendaContent } from '../types/api'
+import { colors, radius, spacing } from '../theme'
+
+const WEBSITE_URL = 'https://www.rubianejoaquim.com'
+const DEFAULT_WHATSAPP = '244944905246'
+const DEFAULT_EMAIL = 'contacto@rubianejoaquim.com'
 
 export default function AboutScreen() {
+  const { t, tw, locale } = useI18n()
+  const [zenda, setZenda] = useState<PublicZendaContent>({})
+  const [settings, setSettings] = useState<PublicSiteSettings>({})
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(false)
+
+  const loadContent = useCallback(async () => {
+    try {
+      setError(false)
+      const [zendaContent, siteSettings] = await Promise.all([
+        publicApi.getZenda(locale),
+        publicApi.getSiteSettings(locale),
+      ])
+      setZenda(zendaContent)
+      setSettings(siteSettings)
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [locale])
+
+  useEffect(() => {
+    setLoading(true)
+    loadContent()
+  }, [loadContent])
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    loadContent()
+  }
+
+  const benefits = useMemo(() => {
+    if (zenda.benefits?.length) return zenda.benefits
+    return [
+      t('about.featurePersonal'),
+      t('about.featureBusiness'),
+      t('about.featureEducation'),
+      t('about.featureGoals'),
+      t('about.featureAiAdvice'),
+    ]
+  }, [zenda.benefits, t])
+
+  const featureCards = zenda.features?.slice(0, 4) ?? []
+  const whatsapp = settings.whatsapp_number || DEFAULT_WHATSAPP
+  const email = settings.contact_email || DEFAULT_EMAIL
+  const title = zenda.headline || t('home.zendaTitle')
+  const subtitle = zenda.subheadline || settings.brand_tagline || t('about.tagline')
+  const intro = zenda.what_is || t('about.aboutIntro')
+  const mission = zenda.who_it_helps || t('about.missionBody')
+
   const handleOpenWebsite = () => {
-    Linking.openURL('https://www.rubianejoaquim.com')
+    Linking.openURL(WEBSITE_URL)
   }
 
   const handleOpenWhatsApp = () => {
-    Linking.openURL('https://wa.me/244944905246')
+    Linking.openURL(`https://wa.me/${whatsapp}`)
   }
 
   const handleOpenEmail = () => {
-    Linking.openURL('mailto:contacto@rubianejoaquim.com')
+    Linking.openURL(`mailto:${email}`)
   }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container}>
-        {/* Logo/Icon Section */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
+        }
+      >
         <View style={styles.logoSection}>
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="wallet" size={64} color="#6366f1" />
+            <MaterialCommunityIcons name="wallet" size={58} color={colors.brand.primary} />
           </View>
-          <Text variant="headlineMedium" style={styles.appName}>Zenda</Text>
-          <Text variant="bodyMedium" style={styles.tagline}>
-            One app. Your money. Your life. Your business.
+          <Text variant="headlineMedium" style={styles.appName}>
+            {title}
           </Text>
+          <Text variant="bodyMedium" style={styles.tagline}>
+            {subtitle}
+          </Text>
+          {loading && <ActivityIndicator style={styles.loading} color={colors.brand.primary} />}
         </View>
 
-        {/* About Section */}
+        {error && (
+          <Card style={[styles.card, styles.errorCard]}>
+            <Card.Content>
+              <Text variant="bodyMedium" style={styles.errorText}>
+                {t('common.error')}
+              </Text>
+              <Button mode="text" onPress={loadContent}>
+                {t('common.retry')}
+              </Button>
+            </Card.Content>
+          </Card>
+        )}
+
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.sectionTitle}>Sobre o Zenda</Text>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              {settings.what_is_label || t('about.aboutTitle')}
+            </Text>
             <Text variant="bodyMedium" style={styles.description}>
-              O Zenda é a sua plataforma completa de gestão financeira pessoal e empresarial. 
-              Desenvolvido por Rubiane Joaquim Educação Financeira, o app ajuda-o a:
+              {intro}
             </Text>
             <View style={styles.featuresList}>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                <Text variant="bodyMedium" style={styles.featureText}>
-                  Gerir despesas e orçamentos pessoais
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                <Text variant="bodyMedium" style={styles.featureText}>
-                  Controlar finanças do seu negócio
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                <Text variant="bodyMedium" style={styles.featureText}>
-                  Acompanhar cursos de educação financeira
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                <Text variant="bodyMedium" style={styles.featureText}>
-                  Definir e alcançar objetivos financeiros
-                </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
-                <Text variant="bodyMedium" style={styles.featureText}>
-                  Receber conselhos personalizados com AI
-                </Text>
-              </View>
+              {benefits.map((feature) => (
+                <View key={feature} style={styles.featureItem}>
+                  <MaterialCommunityIcons name="check-circle" size={20} color={colors.brand.secondary} />
+                  <Text variant="bodyMedium" style={styles.featureText}>
+                    {feature}
+                  </Text>
+                </View>
+              ))}
             </View>
           </Card.Content>
         </Card>
 
-        {/* Mission Section */}
+        {featureCards.length > 0 && (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Text variant="titleLarge" style={styles.sectionTitle}>
+                {t('home.quickActions')}
+              </Text>
+              <View style={styles.featureGrid}>
+                {featureCards.map((feature) => (
+                  <View key={feature.id} style={styles.featureCard}>
+                    <View style={styles.featureIcon}>
+                      <MaterialCommunityIcons name="star-four-points" size={20} color={colors.brand.primary} />
+                    </View>
+                    <Text variant="titleSmall" style={styles.featureCardTitle}>
+                      {feature.title}
+                    </Text>
+                    <Text variant="bodySmall" style={styles.featureCardText}>
+                      {feature.description}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Card.Content>
+          </Card>
+        )}
+
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.sectionTitle}>Missão</Text>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              {settings.who_label || t('about.missionTitle')}
+            </Text>
             <Text variant="bodyMedium" style={styles.description}>
-              Tornar a educação financeira acessível a todos, através de ferramentas práticas 
-              e cursos que ajudam a alcançar a liberdade financeira.
+              {mission}
             </Text>
           </Card.Content>
         </Card>
 
-        {/* Contact Section */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleLarge" style={styles.sectionTitle}>Contacto</Text>
+            <Text variant="titleLarge" style={styles.sectionTitle}>
+              {settings.contact_title || t('about.contactTitle')}
+            </Text>
+            {settings.contact_subtitle && (
+              <Text variant="bodyMedium" style={styles.description}>
+                {settings.contact_subtitle}
+              </Text>
+            )}
             <Button
               mode="outlined"
               icon="web"
@@ -96,17 +187,18 @@ export default function AboutScreen() {
               style={styles.contactButton}
               contentStyle={styles.buttonContent}
             >
-              Visitar Website
+              {t('about.visitWebsite')}
             </Button>
             <Button
-              mode="outlined"
+              mode="contained-tonal"
               icon="whatsapp"
               onPress={handleOpenWhatsApp}
               style={styles.contactButton}
               contentStyle={styles.buttonContent}
-              buttonColor="#25D366"
+              buttonColor="#DCFCE7"
+              textColor="#047857"
             >
-              WhatsApp
+              {t('help.whatsapp')}
             </Button>
             <Button
               mode="outlined"
@@ -115,19 +207,20 @@ export default function AboutScreen() {
               style={styles.contactButton}
               contentStyle={styles.buttonContent}
             >
-              Email
+              {t('help.sendEmail')}
             </Button>
           </Card.Content>
         </Card>
 
-        {/* Version Info */}
         <View style={styles.versionSection}>
-          <Text variant="bodySmall" style={styles.versionText}>Versão 1.0.0</Text>
-          <Text variant="bodySmall" style={styles.copyrightText}>
-            © 2026 Rubiane Joaquim Educação Financeira
+          <Text variant="bodySmall" style={styles.versionText}>
+            {tw('about.version', { version: '1.0.3' })}
           </Text>
           <Text variant="bodySmall" style={styles.copyrightText}>
-            Todos os direitos reservados
+            {tw('about.copyright', { year: String(new Date().getFullYear()) })}
+          </Text>
+          <Text variant="bodySmall" style={styles.copyrightText}>
+            {t('about.rightsReserved')}
           </Text>
         </View>
       </ScrollView>
@@ -138,86 +231,127 @@ export default function AboutScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
   },
   container: {
     flex: 1,
   },
+  content: {
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
   logoSection: {
     alignItems: 'center',
-    padding: 32,
-    paddingTop: 24,
+    marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 30,
-    backgroundColor: '#f0f4ff',
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.md,
     borderWidth: 3,
-    borderColor: '#e0e7ff',
+    borderColor: '#E0E7FF',
   },
   appName: {
     fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    color: '#6b7280',
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
+  tagline: {
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  loading: {
+    marginTop: spacing.md,
+  },
   card: {
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 16,
-    elevation: 2,
-    backgroundColor: '#ffffff',
+    marginBottom: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background.paper,
+  },
+  errorCard: {
+    backgroundColor: '#FEF2F2',
+  },
+  errorText: {
+    color: colors.brand.danger,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-    letterSpacing: -0.3,
+    marginBottom: spacing.sm,
+    color: colors.text.primary,
   },
   description: {
-    color: '#374151',
-    lineHeight: 24,
-    marginBottom: 16,
+    color: colors.text.secondary,
+    lineHeight: 22,
+    marginBottom: spacing.sm,
   },
   featuresList: {
-    gap: 12,
+    gap: spacing.sm,
   },
   featureItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
   },
   featureText: {
     flex: 1,
-    color: '#374151',
+    color: colors.text.primary,
+  },
+  featureGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  featureCard: {
+    width: '48%',
+    minWidth: 140,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: colors.border.light,
+  },
+  featureIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
+    marginBottom: spacing.sm,
+  },
+  featureCardTitle: {
+    color: colors.text.primary,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  featureCardText: {
+    color: colors.text.secondary,
+    lineHeight: 18,
   },
   contactButton: {
-    marginBottom: 12,
-    borderRadius: 12,
+    marginBottom: spacing.sm,
   },
   buttonContent: {
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   versionSection: {
     alignItems: 'center',
-    padding: 24,
-    marginBottom: 16,
+    paddingVertical: spacing.lg,
+    gap: 4,
   },
   versionText: {
-    color: '#6b7280',
-    marginBottom: 8,
+    color: colors.text.muted,
   },
   copyrightText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 4,
+    color: colors.text.muted,
+    textAlign: 'center',
   },
 })

@@ -5,6 +5,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import { coursesApi } from '../services/api'
+import { unwrapEnvelope } from '../types/api'
+import { logger } from '../utils/logger'
 
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://rubianejoaquim.com'
 
@@ -60,10 +62,10 @@ export default function CourseProgressScreen() {
     try {
       setLoading(true)
       const data = await coursesApi.getQuizResults(enrollmentId)
-      const payload = data && (data as any).data !== undefined ? (data as any).data : data
+      const payload = unwrapEnvelope(data)
       setProgress(payload && typeof payload.course_id !== 'undefined' ? payload : null)
     } catch (error) {
-      console.error('Error loading progress:', error)
+      logger.error('Error loading progress:', error)
       setProgress(null)
     } finally {
       setLoading(false)

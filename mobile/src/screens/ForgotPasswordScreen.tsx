@@ -6,10 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { authApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
+import { getApiErrorMessage, isApiError } from '../types/api'
 
 type Props = StackScreenProps<AuthStackParamList, 'ForgotPassword'>
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -18,7 +21,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
   const handleSubmit = async () => {
     const trimmed = email.trim()
     if (!trimmed) {
-      setError('Introduza o seu email.')
+      setError(t('auth.forgotPassword.emailRequired'))
       return
     }
     setError('')
@@ -26,13 +29,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     try {
       await authApi.requestPasswordReset(trimmed)
       setSent(true)
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.error ??
-        err.message ??
-        'Erro ao enviar. Tente novamente.'
-      if (err.response?.status === 503) {
-        setError('O envio de email está temporariamente indisponível. Tente mais tarde.')
+    } catch (err: unknown) {
+      const msg = getApiErrorMessage(err, 'auth.forgotPassword.sendFailed')
+      if (isApiError(err) && err.response?.status === 503) {
+        setError(t('auth.forgotPassword.emailUnavailable'))
       } else {
         setError(msg)
       }
@@ -51,11 +51,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 <MaterialCommunityIcons name="email-check" size={56} color="#10b981" />
               </View>
               <Text variant="titleLarge" style={styles.successTitle}>
-                Verifique o seu email
+                {t('auth.forgotPassword.checkEmailTitle')}
               </Text>
               <Text variant="bodyMedium" style={styles.successText}>
-                Se existir uma conta com esse email, receberá um link para redefinir a palavra-passe.
-                Verifique também a pasta de spam.
+                {t('auth.forgotPassword.successDetail')}
               </Text>
               <Button
                 mode="contained"
@@ -63,7 +62,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 style={styles.button}
                 buttonColor="#6366f1"
               >
-                Voltar ao login
+                {t('auth.forgotPassword.backToLogin')}
               </Button>
             </Card.Content>
           </Card>
@@ -85,10 +84,10 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 <MaterialCommunityIcons name="lock-reset" size={48} color="#6366f1" />
               </View>
               <Text variant="titleLarge" style={styles.title}>
-                Esqueceu a palavra-passe?
+                {t('auth.forgotPassword.forgotTitle')}
               </Text>
               <Text variant="bodyMedium" style={styles.subtitle}>
-                Introduza o email da sua conta e enviaremos um link para redefinir a palavra-passe.
+                {t('auth.forgotPassword.forgotSubtitle')}
               </Text>
 
               {error ? (
@@ -99,14 +98,14 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               ) : null}
 
               <TextInput
-                label="Email"
+                label={t('auth.forgotPassword.email')}
                 value={email}
-                onChangeText={(t) => { setEmail(t); setError('') }}
+                onChangeText={(text) => { setEmail(text); setError('') }}
                 mode="outlined"
                 style={styles.input}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                placeholder="email@exemplo.com"
+                placeholder={t('auth.forgotPassword.emailPlaceholder')}
               />
 
               <Button
@@ -117,7 +116,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 style={styles.button}
                 buttonColor="#6366f1"
               >
-                Enviar link
+                {t('auth.forgotPassword.sendLink')}
               </Button>
 
               <Button
@@ -126,7 +125,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 style={styles.backLink}
                 textColor="#6366f1"
               >
-                ← Voltar ao login
+                ← {t('auth.forgotPassword.backToLogin')}
               </Button>
             </Card.Content>
           </Card>

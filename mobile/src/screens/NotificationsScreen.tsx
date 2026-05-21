@@ -4,6 +4,8 @@ import { Text, Card, Button, Chip, Badge, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
+import { materialIcon } from '../utils/icons'
+import { logger } from '../utils/logger'
 
 interface Notification {
   id: number
@@ -44,7 +46,7 @@ export default function NotificationsScreen() {
       setNotifications(Array.isArray(notificationsRes) ? notificationsRes : notificationsRes.results || [])
       setUnreadCount(countRes.count || 0)
     } catch (error) {
-      console.error('Error loading notifications:', error)
+      logger.error('Error loading notifications:', error)
     }
   }
 
@@ -53,7 +55,7 @@ export default function NotificationsScreen() {
       const countRes = await tasksApi.getUnreadCount()
       setUnreadCount(countRes.count || 0)
     } catch (error) {
-      console.error('Error loading unread count:', error)
+      logger.error('Error loading unread count:', error)
     }
   }
 
@@ -70,7 +72,7 @@ export default function NotificationsScreen() {
       await tasksApi.markNotificationRead(notification.id)
       loadData()
     } catch (error) {
-      console.error('Error marking notification as read:', error)
+      logger.error('Error marking notification as read:', error)
     }
   }
 
@@ -79,7 +81,7 @@ export default function NotificationsScreen() {
       await tasksApi.markAllNotificationsRead()
       loadData()
     } catch (error) {
-      console.error('Error marking all as read:', error)
+      logger.error('Error marking all as read:', error)
     }
   }
 
@@ -219,7 +221,7 @@ export default function NotificationsScreen() {
                       <View style={styles.notificationHeader}>
                         <View style={[styles.iconContainer, { backgroundColor: iconColor + '20' }]}>
                           <MaterialCommunityIcons
-                            name={getNotificationIcon(notification.notification_type) as any}
+                            name={materialIcon(getNotificationIcon(notification.notification_type))}
                             size={24}
                             color={iconColor}
                           />
@@ -244,7 +246,7 @@ export default function NotificationsScreen() {
                           </Text>
                           <View style={styles.notificationFooter}>
                             <Chip
-                              icon={getNotificationIcon(notification.notification_type) as any}
+                              icon={materialIcon(getNotificationIcon(notification.notification_type))}
                               style={[styles.typeChip, { backgroundColor: iconColor + '20' }]}
                               textStyle={{ color: iconColor, fontSize: 11 }}
                               compact

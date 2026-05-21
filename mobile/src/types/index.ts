@@ -10,6 +10,8 @@ export interface User {
   preferred_locale?: string
   preferred_currency?: string
   onboarding_completed?: boolean
+  onboarding_goals?: string[]
+  finance_level?: string
   dark_mode?: boolean
   is_staff: boolean
   is_superuser: boolean

@@ -1,14 +1,17 @@
 import React, { useState } from 'react'
-import { View, StyleSheet, Platform, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, Platform, TouchableOpacity, type StyleProp, type ViewStyle } from 'react-native'
+import type { DateTimePickerEvent } from '@react-native-community/datetimepicker'
 import { Text, Button } from 'react-native-paper'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { useI18n } from '../contexts/I18nContext'
+import { formatTime as formatLocaleTime, getBcp47 } from '../i18n/format'
 
 interface TimePickerProps {
   label: string
   value: Date | null
   onChange: (time: Date | null) => void
-  style?: any
+  style?: StyleProp<ViewStyle>
 }
 
 export default function TimePicker({
@@ -17,14 +20,15 @@ export default function TimePicker({
   onChange,
   style,
 }: TimePickerProps) {
+  const { t, locale } = useI18n()
   const [show, setShow] = useState(false)
 
   const formatTime = (date: Date | null) => {
-    if (!date) return 'Selecionar hora'
-    return date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    if (!date) return t('common.selectTime')
+    return formatLocaleTime(locale, date, { hour: '2-digit', minute: '2-digit' })
   }
 
-  const handleChange = (event: any, selectedTime?: Date) => {
+  const handleChange = (event: DateTimePickerEvent, selectedTime?: Date) => {
     setShow(Platform.OS === 'ios')
     
     if (event.type === 'set' && selectedTime) {
@@ -63,7 +67,7 @@ export default function TimePicker({
         <>
           {Platform.OS === 'ios' && (
             <View style={styles.iosButtons}>
-              <Button onPress={() => setShow(false)}>Cancelar</Button>
+              <Button onPress={() => setShow(false)}>{t('common.cancel')}</Button>
               <Button
                 mode="contained"
                 onPress={() => {
@@ -73,7 +77,7 @@ export default function TimePicker({
                   setShow(false)
                 }}
               >
-                Confirmar
+                {t('common.confirm')}
               </Button>
             </View>
           )}
@@ -82,7 +86,7 @@ export default function TimePicker({
             mode="time"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleChange}
-            locale="pt-PT"
+            locale={getBcp47(locale)}
             is24Hour={true}
           />
         </>

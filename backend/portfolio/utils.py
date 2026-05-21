@@ -13,6 +13,28 @@ def normalize_locale(lang: str | None) -> str:
     return code if code in SUPPORTED_LOCALES else DEFAULT_LOCALE
 
 
+def get_locale_block(translations: dict[str, Any] | None, lang: str | None) -> dict[str, Any]:
+    """Return the locale block, supporting both CMS and legacy field-map shapes."""
+    if not translations:
+        return {}
+    locale = normalize_locale(lang)
+    block = translations.get(locale)
+    if isinstance(block, dict):
+        return block
+    fallback = translations.get(DEFAULT_LOCALE)
+    if isinstance(fallback, dict):
+        return fallback
+
+    # Legacy seed shape: {"title": {"pt": "...", "en": "..."}}.
+    legacy: dict[str, Any] = {}
+    for field, values in translations.items():
+        if isinstance(values, dict):
+            value = values.get(locale) or values.get(DEFAULT_LOCALE)
+            if value is not None:
+                legacy[field] = value
+    return legacy
+
+
 def get_translated(
     translations: dict[str, Any] | None,
     field: str,
@@ -22,11 +44,11 @@ def get_translated(
     """Return translated field with Portuguese fallback."""
     if not translations:
         return fallback
-    locale = normalize_locale(lang)
-    value = translations.get(locale, {}).get(field)
+    block = get_locale_block(translations, lang)
+    value = block.get(field)
     if value:
         return str(value)
-    value = translations.get(DEFAULT_LOCALE, {}).get(field)
+    value = get_locale_block(translations, DEFAULT_LOCALE).get(field)
     return str(value) if value else fallback
 
 

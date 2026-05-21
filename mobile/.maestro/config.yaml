@@ -1,0 +1,8 @@
+# Maestro workspace config — https://maestro.mobile.dev
+flows:
+  - '*.yaml'
+  - 'flows/*.yaml'
+
+env:
+  TEST_EMAIL: Maitland@2025
+  TEST_PASSWORD: Maitland@2025

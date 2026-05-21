@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { personalFinanceApi } from '../services/api'
+import type { ExpensePayload } from '../types/api'
 
 const QUEUE_KEY = 'ZENDA_OFFLINE_EXPENSE_QUEUE'
 
 export interface QueuedExpense {
   id: string
-  payload: Record<string, unknown>
+  payload: ExpensePayload
   createdAt: string
 }
 
@@ -19,7 +20,7 @@ export async function getOfflineQueue(): Promise<QueuedExpense[]> {
   }
 }
 
-export async function queueExpense(payload: Record<string, unknown>): Promise<void> {
+export async function queueExpense(payload: ExpensePayload): Promise<void> {
   const queue = await getOfflineQueue()
   queue.push({
     id: `${Date.now()}`,
@@ -36,7 +37,7 @@ export async function flushOfflineQueue(): Promise<number> {
   let synced = 0
   for (const item of queue) {
     try {
-      await personalFinanceApi.createExpense(item.payload as any)
+      await personalFinanceApi.createExpense(item.payload)
       synced += 1
     } catch {
       remaining.push(item)

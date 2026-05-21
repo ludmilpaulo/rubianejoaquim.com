@@ -1,0 +1,36 @@
+# Sign in with test credentials (requires backend + seeded user)
+---
+- extendedWaitUntil:
+    visible:
+      id: login-screen
+    timeout: 60000
+
+- tapOn:
+    id: login-email
+- eraseText
+- inputText: ${TEST_EMAIL}
+
+- tapOn:
+    id: login-password
+- eraseText
+- inputText: ${TEST_PASSWORD}
+
+- hideKeyboard
+- tapOn:
+    id: login-submit
+
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 45000
+    optional: true
+
+# Home may appear after onboarding
+- runFlow:
+    file: onboarding-skip.yaml
+    optional: true
+
+- extendedWaitUntil:
+    visible:
+      id: home-screen
+    timeout: 30000

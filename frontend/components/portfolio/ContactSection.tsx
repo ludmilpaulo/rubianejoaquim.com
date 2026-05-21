@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocale } from '@/contexts/LocaleContext'
 import { portfolioApi } from '@/lib/portfolio-api'
@@ -9,6 +9,19 @@ import SectionHeader from './SectionHeader'
 import Reveal from './Reveal'
 
 const WHATSAPP_BASE = 'https://wa.me/'
+
+const SERVICE_OPTIONS = [
+  'campaign_videos',
+  'interviews',
+  'scriptwriting',
+  'social_reels',
+  'capcut',
+  'canva',
+  'brand_storytelling',
+  'content_strategy',
+  'zenda',
+  'other',
+] as const
 
 export default function ContactSection({
   settings,
@@ -22,9 +35,18 @@ export default function ContactSection({
   const whatsapp = 'whatsapp_number' in settings ? settings.whatsapp_number : ''
   const email = 'contact_email' in settings ? settings.contact_email : ''
   const phone = 'phone' in settings ? settings.phone : ''
-  const label = settings.contact_label || 'Contact'
+  const label = settings.contact_label || ''
   const title = settings.contact_title || ''
   const subtitle = settings.contact_subtitle || ''
+  const form = settings.contact_form || {}
+
+  const serviceLabels = useMemo(() => {
+    const fromSettings = (settings as SiteSettings).contact_form as Record<string, string> | undefined
+    return SERVICE_OPTIONS.map((key) => ({
+      value: key,
+      label: fromSettings?.[`service_${key}`] || key.replace(/_/g, ' '),
+    }))
+  }, [settings])
 
   const onSubmit = async (data: ContactFormData) => {
     setStatus('loading')
@@ -40,6 +62,8 @@ export default function ContactSection({
       setStatus('error')
     }
   }
+
+  if (!title && !label) return null
 
   return (
     <section id="contact" className="py-24 md:py-32 section-dark border-t border-white/5">
@@ -57,9 +81,13 @@ export default function ContactSection({
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-colors"
                 >
-                  <span className="text-2xl">💬</span>
+                  <span className="text-2xl" aria-hidden>
+                    ◆
+                  </span>
                   <div>
-                    <span className="text-xs uppercase tracking-wider opacity-70">WhatsApp</span>
+                    <span className="text-xs uppercase tracking-wider opacity-70">
+                      {form.whatsapp_label}
+                    </span>
                     <p className="font-semibold text-lg">{phone}</p>
                   </div>
                 </a>
@@ -69,44 +97,89 @@ export default function ContactSection({
                   href={`mailto:${email}`}
                   className="flex items-center gap-4 p-5 rounded-2xl bg-white/5 border border-white/10 text-slate-300 hover:border-amber-400/30 transition-colors"
                 >
-                  <span className="text-2xl">✉</span>
+                  <span className="text-2xl" aria-hidden>
+                    ◆
+                  </span>
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-slate-500">Email</span>
+                    <span className="text-xs uppercase tracking-wider text-slate-500">
+                      {form.email_label}
+                    </span>
                     <p className="font-medium">{email}</p>
                   </div>
                 </a>
               )}
             </div>
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-white/5 space-y-4">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="p-6 sm:p-8 rounded-2xl bg-slate-900/80 border border-white/5 space-y-4"
+            >
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Name</label>
+                <label className="block text-sm text-slate-400 mb-1">{form.name}</label>
                 <input {...register('name', { required: true })} className="input-field" />
-                {errors.name && <span className="text-red-400 text-xs">Required</span>}
+                {errors.name && (
+                  <span className="text-red-400 text-xs">{form.required}</span>
+                )}
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Email</label>
-                  <input type="email" {...register('email', { required: true })} className="input-field" />
+                  <label className="block text-sm text-slate-400 mb-1">{form.email}</label>
+                  <input
+                    type="email"
+                    {...register('email', { required: true })}
+                    className="input-field"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-400 mb-1">Phone</label>
+                  <label className="block text-sm text-slate-400 mb-1">{form.phone}</label>
                   <input {...register('phone')} className="input-field" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Subject</label>
+                <label className="block text-sm text-slate-400 mb-1">{form.service_interest}</label>
+                <select {...register('service_interest')} className="input-field">
+                  <option value="" />
+                  {serviceLabels.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">{form.budget_range}</label>
+                  <input {...register('budget_range')} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">{form.project_type}</label>
+                  <input {...register('project_type')} className="input-field" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">{form.subject}</label>
                 <input {...register('subject', { required: true })} className="input-field" />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Message</label>
-                <textarea {...register('message', { required: true })} rows={5} className="input-field resize-none" />
+                <label className="block text-sm text-slate-400 mb-1">{form.message}</label>
+                <textarea
+                  {...register('message', { required: true })}
+                  rows={5}
+                  className="input-field resize-none"
+                />
               </div>
-              <input type="hidden" {...register('service_interest')} />
-              <button type="submit" disabled={status === 'loading'} className="btn-primary w-full disabled:opacity-60">
-                {status === 'loading' ? '…' : 'Send'}
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="btn-primary w-full disabled:opacity-60"
+              >
+                {status === 'loading' ? form.submitting : form.submit}
               </button>
-              {status === 'success' && <p className="text-emerald-400 text-sm text-center">✓</p>}
-              {status === 'error' && <p className="text-red-400 text-sm text-center">Error</p>}
+              {status === 'success' && (
+                <p className="text-emerald-400 text-sm text-center">{form.success}</p>
+              )}
+              {status === 'error' && (
+                <p className="text-red-400 text-sm text-center">{form.error}</p>
+              )}
             </form>
           </div>
         </Reveal>

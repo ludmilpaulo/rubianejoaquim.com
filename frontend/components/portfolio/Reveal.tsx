@@ -1,5 +1,6 @@
 'use client'
 
+import { motion, useReducedMotion } from 'framer-motion'
 import { useInView } from '@/hooks/useInView'
 
 export default function Reveal({
@@ -12,16 +13,25 @@ export default function Reveal({
   delay?: number
 }) {
   const { ref, visible } = useInView<HTMLDivElement>()
+  const reduceMotion = useReducedMotion()
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>
+  }
 
   return (
-    <div
+    <motion.div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${
-        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-      } ${className}`}
-      style={{ transitionDelay: visible ? `${delay}ms` : '0ms' }}
+      className={className}
+      initial={{ opacity: 0, y: 32 }}
+      animate={visible ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }}
+      transition={{
+        duration: 0.65,
+        delay: visible ? delay / 1000 : 0,
+        ease: [0.22, 1, 0.36, 1],
+      }}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }

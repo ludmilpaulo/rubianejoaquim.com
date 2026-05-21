@@ -8,6 +8,7 @@ import { useI18n } from '../contexts/I18nContext'
 import ZendaCard from '../components/ui/ZendaCard'
 import EmptyState from '../components/ui/EmptyState'
 import { colors, spacing, typography } from '../theme'
+import type { SharedGoalSummary } from '../types/api'
 
 export default function FamilyFinanceScreen() {
   const { t } = useI18n()
@@ -68,10 +69,10 @@ export default function FamilyFinanceScreen() {
             <ZendaCard key={s.id} variant="elevated">
               <Text style={styles.spaceName}>{s.name}</Text>
               <Text style={styles.code}>{t('family.code')}: {s.invite_code}</Text>
-              {(s.shared_goals || []).map((g: any) => (
+              {(s.shared_goals || []).map((g: SharedGoalSummary) => (
                 <View key={g.id} style={styles.goalRow}>
                   <Text>{g.title}</Text>
-                  <Text style={styles.pct}>{Math.round(g.progress_percentage)}%</Text>
+                  <Text style={styles.pct}>{Math.round(g.progress_percentage ?? 0)}%</Text>
                 </View>
               ))}
             </ZendaCard>

@@ -18,12 +18,13 @@ from .models import (
     NewsletterSubscriber,
     PageSEO,
 )
-from .utils import normalize_locale, get_translated, portfolio_category_label
+from .utils import normalize_locale, get_locale_block, get_translated, portfolio_category_label
 
 
 class LocalizedSerializerMixin:
     """Add translated string fields from JSON (not model columns)."""
     text_fields: list[str] = []
+    include_translations = False
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -31,11 +32,13 @@ class LocalizedSerializerMixin:
         lang = normalize_locale(
             request.query_params.get('lang') if request else None
         )
-        translations = data.pop('translations', None) or getattr(instance, 'translations', None) or {}
+        translations = getattr(instance, 'translations', None) or data.get('translations') or {}
+        if not self.include_translations:
+            data.pop('translations', None)
         for field in self.text_fields:
             fallback = data.get(field, '') if isinstance(data.get(field), str) else ''
             data[field] = get_translated(translations, field, lang, fallback)
-        raw_benefits = translations.get(lang, {}).get('benefits') or translations.get('pt', {}).get('benefits')
+        raw_benefits = get_locale_block(translations, lang).get('benefits')
         if raw_benefits is not None and 'benefits' not in data:
             data['benefits'] = raw_benefits if isinstance(raw_benefits, list) else []
         return data
@@ -95,8 +98,7 @@ class ServiceSerializer(LocalizedSerializerMixin, serializers.ModelSerializer):
     def get_features(self, obj: Service) -> list:
         request = self.context.get('request')
         lang = normalize_locale(request.query_params.get('lang') if request else None)
-        translations = obj.translations or {}
-        raw = translations.get(lang, {}).get('features') or translations.get('pt', {}).get('features')
+        raw = get_locale_block(obj.translations or {}, lang).get('features')
         return raw if isinstance(raw, list) else []
 
 
@@ -189,8 +191,7 @@ class ZendaContentSerializer(LocalizedSerializerMixin, serializers.ModelSerializ
     def get_benefits(self, obj: ZendaContent) -> list:
         request = self.context.get('request')
         lang = normalize_locale(request.query_params.get('lang') if request else None)
-        translations = obj.translations or {}
-        raw = translations.get(lang, {}).get('benefits') or translations.get('pt', {}).get('benefits')
+        raw = get_locale_block(obj.translations or {}, lang).get('benefits')
         return raw if isinstance(raw, list) else []
 
     def to_representation(self, instance):
@@ -198,8 +199,7 @@ class ZendaContentSerializer(LocalizedSerializerMixin, serializers.ModelSerializ
         if 'benefits' not in data or not data['benefits']:
             request = self.context.get('request')
             lang = normalize_locale(request.query_params.get('lang') if request else None)
-            translations = instance.translations or {}
-            raw = translations.get(lang, {}).get('benefits') or translations.get('pt', {}).get('benefits')
+            raw = get_locale_block(instance.translations or {}, lang).get('benefits')
             data['benefits'] = raw if isinstance(raw, list) else []
         return data
 
@@ -215,8 +215,11 @@ class HomeSectionSerializer(LocalizedSerializerMixin, serializers.ModelSerialize
         data = super().to_representation(instance)
         request = self.context.get('request')
         lang = normalize_locale(request.query_params.get('lang') if request else None)
-        block = (instance.translations or {}).get(lang) or (instance.translations or {}).get('pt') or {}
-        for key in ('roles', 'ctas', 'trust_items', 'cards'):
+        block = get_locale_block(instance.translations or {}, lang)
+        block_extra = block.get('extra_data')
+        if isinstance(block_extra, dict):
+            data['extra_data'] = {**(data.get('extra_data') or {}), **block_extra}
+        for key in ('roles', 'ctas', 'trust_items', 'cards', 'category_labels'):
             if key in block:
                 data[key] = block[key]
         return data
@@ -224,9 +227,11 @@ class HomeSectionSerializer(LocalizedSerializerMixin, serializers.ModelSerialize
 
 class SiteSettingsSerializer(LocalizedSerializerMixin, serializers.ModelSerializer):
     text_fields = [
-        'brand_tagline', 'footer_description', 'footer_rights',
+        'brand_name', 'brand_tagline', 'footer_description', 'footer_rights',
         'contact_label', 'contact_title', 'contact_subtitle',
         'footer_navigation', 'footer_contact',
+        'play_store_label', 'app_store_label', 'what_is_label', 'who_label',
+        'newsletter_placeholder', 'newsletter_success', 'newsletter_error', 'newsletter_note',
     ]
     og_image_url = serializers.SerializerMethodField()
 
@@ -245,6 +250,15 @@ class SiteSettingsSerializer(LocalizedSerializerMixin, serializers.ModelSerializ
                 return request.build_absolute_uri(obj.og_image.url)
             return obj.og_image.url
         return None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        lang = normalize_locale(request.query_params.get('lang') if request else None)
+        block = get_locale_block(instance.translations or {}, lang)
+        if isinstance(block.get('contact_form'), dict):
+            data['contact_form'] = block['contact_form']
+        return data
 
 
 class ContactMessageSerializer(serializers.ModelSerializer):

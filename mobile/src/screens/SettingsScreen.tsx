@@ -1,32 +1,45 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, Switch, Alert } from 'react-native'
 import { Text, Card, List, Divider } from 'react-native-paper'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
 import { Linking } from 'react-native'
 import { areNotificationsEnabled, setNotificationsEnabled as persistNotificationsEnabled } from '../utils/notifications'
 import { useI18n } from '../contexts/I18nContext'
+import { useAppAppearance } from '../contexts/AppAppearanceContext'
+import { useAlert } from '../hooks/useAlert'
 import type { Locale } from '../i18n'
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from '../utils/currency'
+import { resolveUserCurrency, SUPPORTED_CURRENCIES } from '../utils/currency'
 import { authApi } from '../services/api'
-
-const LOCALE_LABELS: Record<Locale, string> = {
-  pt: 'Português',
-  en: 'English',
-  fr: 'Français',
-  es: 'Español',
-}
+import {
+  authenticateWithBiometric,
+  getBiometricType,
+  isBiometricAppLockEnabled,
+  isBiometricAvailable,
+  setBiometricAppLockEnabled,
+} from '../utils/biometric'
 
 export default function SettingsScreen() {
-  const { locale, setLocale, locales, t } = useI18n()
+  const { locale, setLocale, locales, t, tw } = useI18n()
+  const { isDarkMode, setDarkMode } = useAppAppearance()
+  const alert = useAlert()
   const { user } = useAppSelector((state) => state.auth)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
+  const [biometricAvailable, setBiometricAvailable] = useState(false)
+  const [biometricType, setBiometricType] = useState('Biometric')
 
   useEffect(() => {
     areNotificationsEnabled().then(setNotificationsEnabled)
+    isBiometricAvailable()
+      .then(async (available) => {
+        setBiometricAvailable(available)
+        if (available) {
+          setBiometricType(await getBiometricType())
+        }
+      })
+      .catch(() => setBiometricAvailable(false))
+    isBiometricAppLockEnabled().then(setBiometricEnabled).catch(() => setBiometricEnabled(false))
   }, [])
 
   const handleNotificationsToggle = (value: boolean) => {
@@ -35,24 +48,43 @@ export default function SettingsScreen() {
   }
 
   const handleClearCache = () => {
-    Alert.alert(
-      'Limpar Cache',
-      'Tem certeza que deseja limpar o cache? Isso pode melhorar o desempenho do app.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Limpar',
-          onPress: () => {
-            Alert.alert('Sucesso', 'Cache limpo com sucesso!')
-          },
-        },
-      ]
+    alert.confirm(
+      t('settings.clearCache'),
+      t('settings.clearCacheConfirm'),
+      () => alert.success(t('settings.clearCacheDone')),
+      { confirmLabel: t('settings.clearCache') },
     )
   }
 
   const handleExportData = () => {
-    Alert.alert('Exportar Dados', 'Os seus dados serão exportados em breve.')
+    alert.info(t('settings.exportData'), t('settings.exportSoon'))
   }
+
+  const handleBiometricToggle = async (value: boolean) => {
+    if (value) {
+      if (!biometricAvailable) {
+        alert.info(t('settings.biometricUnavailableTitle'), t('settings.biometricUnavailableBody'))
+        return
+      }
+
+      const authenticated = await authenticateWithBiometric({
+        promptMessage: t('settings.appLockPrompt'),
+        cancelLabel: t('common.cancel'),
+        fallbackLabel: t('settings.biometricFallback'),
+      })
+      if (!authenticated) return
+    }
+
+    await setBiometricAppLockEnabled(value)
+    setBiometricEnabled(value)
+    alert.success(value ? t('settings.biometricEnabled') : t('settings.biometricDisabled'))
+  }
+
+  const handleDarkModeToggle = (value: boolean) => {
+    setDarkMode(value).catch(() => {})
+  }
+
+  const localeLabel = (code: Locale) => t(`localeNames.${code}`)
 
   const handlePrivacyPolicy = () => {
     Linking.openURL('https://www.rubianejoaquim.com/legal')
@@ -64,15 +96,15 @@ export default function SettingsScreen() {
         {/* Account Section */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Conta</Text>
+            <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.account')}</Text>
             <List.Item
-              title="Email"
+              title={t('settings.email')}
               description={user?.email}
               left={(props) => <List.Icon {...props} icon="email" color="#6366f1" />}
             />
             <Divider />
             <List.Item
-              title="Nome"
+              title={t('settings.name')}
               description={`${user?.first_name || ''} ${user?.last_name || ''}`}
               left={(props) => <List.Icon {...props} icon="account" color="#6366f1" />}
             />
@@ -85,14 +117,14 @@ export default function SettingsScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.title')}</Text>
             <List.Item
               title={t('settings.language')}
-              description={LOCALE_LABELS[locale]}
+              description={localeLabel(locale)}
               left={(props) => <List.Icon {...props} icon="translate" color="#6366f1" />}
               onPress={() => {
                 Alert.alert(
                   t('settings.language'),
                   '',
                   locales.map((code) => ({
-                    text: LOCALE_LABELS[code],
+                    text: localeLabel(code),
                     onPress: () => setLocale(code),
                   })),
                 )
@@ -101,7 +133,7 @@ export default function SettingsScreen() {
             <Divider />
             <List.Item
               title={t('settings.currency')}
-              description={user?.preferred_currency || 'AOA'}
+              description={resolveUserCurrency(user?.preferred_currency)}
               left={(props) => <List.Icon {...props} icon="currency-usd" color="#6366f1" />}
               onPress={() => {
                 Alert.alert(
@@ -119,7 +151,7 @@ export default function SettingsScreen() {
             <Divider />
             <List.Item
               title={t('settings.notifications')}
-              description="Lembretes de tarefas atrasadas e metas financeiras (com vibração)"
+              description={t('settings.notificationsDesc')}
               left={(props) => <List.Icon {...props} icon="bell" color="#6366f1" />}
               right={() => (
                 <Switch
@@ -132,30 +164,34 @@ export default function SettingsScreen() {
             />
             <Divider />
             <List.Item
-              title="Autenticação Biométrica"
-              description="Usar impressão digital ou Face ID para login"
+              title={t('settings.biometricTitle')}
+              description={
+                biometricAvailable
+                  ? tw('settings.biometricAppLockDesc', { type: biometricType })
+                  : t('settings.biometricUnavailableBody')
+              }
               left={(props) => <List.Icon {...props} icon="fingerprint" color="#6366f1" />}
               right={() => (
                 <Switch
                   value={biometricEnabled}
-                  onValueChange={setBiometricEnabled}
+                  onValueChange={handleBiometricToggle}
                   trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
                   thumbColor={biometricEnabled ? '#6366f1' : '#f3f4f6'}
+                  disabled={!biometricAvailable}
                 />
               )}
             />
             <Divider />
             <List.Item
-              title="Modo Escuro"
-              description="Ativar tema escuro (em breve)"
+              title={t('settings.darkModeTitle')}
+              description={t('settings.darkModeDesc')}
               left={(props) => <List.Icon {...props} icon="theme-light-dark" color="#6366f1" />}
               right={() => (
                 <Switch
-                  value={darkMode}
-                  onValueChange={setDarkMode}
+                  value={isDarkMode}
+                  onValueChange={handleDarkModeToggle}
                   trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
-                  thumbColor={darkMode ? '#6366f1' : '#f3f4f6'}
-                  disabled
+                  thumbColor={isDarkMode ? '#6366f1' : '#f3f4f6'}
                 />
               )}
             />
@@ -165,17 +201,17 @@ export default function SettingsScreen() {
         {/* Data Section */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Dados</Text>
+            <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.data')}</Text>
             <List.Item
-              title="Exportar Dados"
-              description="Fazer download dos seus dados"
+              title={t('settings.exportData')}
+              description={t('settings.exportDataDesc')}
               left={(props) => <List.Icon {...props} icon="download" color="#10b981" />}
               onPress={handleExportData}
             />
             <Divider />
             <List.Item
-              title="Limpar Cache"
-              description="Liberar espaço de armazenamento"
+              title={t('settings.clearCache')}
+              description={t('settings.clearCacheDesc')}
               left={(props) => <List.Icon {...props} icon="delete-sweep" color="#f59e0b" />}
               onPress={handleClearCache}
             />
@@ -185,18 +221,18 @@ export default function SettingsScreen() {
         {/* Legal Section */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Legal</Text>
+            <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.legal')}</Text>
             <List.Item
-              title="Política de Privacidade"
-              description="Como protegemos os seus dados"
+              title={t('settings.privacy')}
+              description={t('settings.privacyDesc')}
               left={(props) => <List.Icon {...props} icon="shield-lock" color="#8b5cf6" />}
               onPress={handlePrivacyPolicy}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
             />
             <Divider />
             <List.Item
-              title="Termos de Uso"
-              description="Termos e condições do serviço"
+              title={t('settings.terms')}
+              description={t('settings.termsDesc')}
               left={(props) => <List.Icon {...props} icon="file-document" color="#8b5cf6" />}
               onPress={() => Linking.openURL('https://www.rubianejoaquim.com/legal')}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
@@ -206,9 +242,11 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text variant="bodySmall" style={styles.appVersion}>Versão 1.0.0</Text>
+          <Text variant="bodySmall" style={styles.appVersion}>
+            {tw('settings.versionLabel', { version: '1.0.3' })}
+          </Text>
           <Text variant="bodySmall" style={styles.appCopyright}>
-            © 2026 Rubiane Joaquim Educação Financeira
+            {tw('settings.copyright', { year: new Date().getFullYear() })}
           </Text>
         </View>
       </ScrollView>

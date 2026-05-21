@@ -9,8 +9,15 @@ import { logout, checkPaidAccess } from '../store/authSlice'
 import { useNavigation } from '@react-navigation/native'
 import { authApi, accessApi, referralApi } from '../services/api'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
+import { getApiErrorMessage, type UploadFilePayload } from '../types/api'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
 
 export default function ProfileScreen() {
+  const { t, tw, locale } = useI18n()
+  const dateLoc =
+    locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
+  const alert = useAlert()
   const dispatch = useAppDispatch()
   const { user, hasExpiredSubscription } = useAppSelector((state) => state.auth)
   const hasShownExpiryAlert = useRef(false)
@@ -21,6 +28,7 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
   const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
   const [redeemingSubscription, setRedeemingSubscription] = useState(false)
 
   const loadSubscription = useCallback(async () => {
@@ -29,12 +37,13 @@ export default function ProfileScreen() {
       const [subRes, payRes, pointsRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
-        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 })),
       ])
       setSubscription(subRes?.subscription ?? subRes ?? null)
       setPaymentInfo(payRes ?? null)
       if (pointsRes?.balance !== undefined) {
         setPointsBalance(pointsRes.balance)
+        setPointsBalanceKz(pointsRes.balance_kz ?? pointsRes.balance * 1000)
       }
     } catch {
       setSubscription(null)
@@ -52,11 +61,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (hasExpiredSubscription && !hasShownExpiryAlert.current) {
       hasShownExpiryAlert.current = true
-      Alert.alert(
-        'Subscrição expirada',
-        'A sua subscrição expirou. Para continuar a usar o Zenda, efetue o pagamento e envie o comprovativo abaixo.',
-        [{ text: 'OK' }]
-      )
+      alert.info(t('profile.subscriptionExpiredTitle'), t('profile.subscriptionExpiredMsg'))
     }
   }, [hasExpiredSubscription])
 
@@ -79,57 +84,54 @@ export default function ProfileScreen() {
         name: file.name ?? `proof_${Date.now()}.jpg`,
         type: file.mimeType ?? 'image/jpeg',
       }
-      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as any, uploadNotes || undefined)
+      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as UploadFilePayload, uploadNotes || undefined)
       setUploadNotes('')
-      Alert.alert(
-        'Comprovativo enviado',
-        'O seu comprovativo foi recebido. A subscrição será ativada após validação pela nossa equipa. Obrigado!'
-      )
+      alert.success(t('profile.proofSentMsg'), t('profile.proofSentTitle'))
       await loadSubscription()
       dispatch(checkPaidAccess())
-    } catch (error: any) {
-      const msg = error?.response?.data?.detail ?? error?.response?.data?.error ?? error?.message ?? 'Não foi possível enviar o ficheiro.'
-      Alert.alert('Erro', msg)
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'profile.uploadFailed'))
     } finally {
       setUploading(false)
     }
   }
 
   const handleRedeemSubscription = async (usePartial: boolean = false) => {
-    const pointsNeeded = 10.0 // 10 points = 10,000 KZ = monthly subscription
-    
+    const monthlyPriceKz = paymentInfo?.monthly_price_kz ?? 10000
+    const pointsNeeded = monthlyPriceKz / 1000
+
     if (pointsBalance <= 0) {
-      Alert.alert('Sem pontos', 'Não tem pontos disponíveis para usar.')
+      Alert.alert(t('profile.noPointsTitle'), t('profile.noPointsMsg'))
       return
     }
 
     if (usePartial && pointsBalance < pointsNeeded) {
-      // Partial payment
-      const remainingKz = 10000 - (pointsBalance * 1000)
+      const remainingKz = monthlyPriceKz - pointsBalanceKz
       Alert.alert(
-        'Usar pontos parciais',
-        `Deseja usar ${pointsBalance.toFixed(1)} pontos (${(pointsBalance * 1000).toFixed(0)} KZ) e pagar ${remainingKz.toFixed(0)} KZ restantes por transferência?`,
+        t('profile.partialPointsSubTitle'),
+        tw('profile.partialPointsSubMsg', {
+          points: pointsBalance.toFixed(1),
+          pointsKz: pointsBalanceKz.toFixed(0),
+          remainKz: remainingKz.toFixed(0),
+        }),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Confirmar',
+            text: t('common.confirm'),
             onPress: async () => {
               setRedeemingSubscription(true)
               try {
                 const result = await referralApi.redeemSubscription(pointsBalance)
+                const remain = result.remaining_kz ?? remainingKz
                 Alert.alert(
-                  'Pontos aplicados',
-                  result.message || `Pontos aplicados! Resta pagar ${remainingKz.toFixed(0)} KZ e enviar comprovativo abaixo.`
+                  t('profile.pointsAppliedSubTitle'),
+                  result.message ||
+                    tw('profile.pointsAppliedSubRemain', { remainKz: remain.toFixed(0) })
                 )
                 await loadSubscription()
                 dispatch(checkPaidAccess())
-              } catch (err: any) {
-                const msg =
-                  err?.response?.data?.error ??
-                  err?.response?.data?.detail ??
-                  err?.message ??
-                  'Não foi possível resgatar.'
-                Alert.alert('Erro', msg)
+              } catch (err: unknown) {
+                alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
               } finally {
                 setRedeemingSubscription(false)
               }
@@ -140,26 +142,24 @@ export default function ProfileScreen() {
     } else if (pointsBalance >= pointsNeeded) {
       // Full payment
       Alert.alert(
-        'Confirmar resgate',
-        `Deseja usar ${pointsNeeded} pontos (10.000 KZ) para ativar a subscrição mensal?`,
+        t('profile.confirmRedeemSubTitle'),
+        tw('profile.confirmRedeemSubMsg', {
+          points: pointsNeeded.toFixed(1),
+          priceKz: monthlyPriceKz.toFixed(0),
+        }),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Confirmar',
+            text: t('common.confirm'),
             onPress: async () => {
               setRedeemingSubscription(true)
               try {
                 await referralApi.redeemSubscription()
-                Alert.alert('Sucesso', 'Subscrição ativada com pontos!')
+                Alert.alert(t('common.success'), t('profile.subscriptionRedeemSuccess'))
                 await loadSubscription()
                 dispatch(checkPaidAccess())
-              } catch (err: any) {
-                const msg =
-                  err?.response?.data?.error ??
-                  err?.response?.data?.detail ??
-                  err?.message ??
-                  'Não foi possível resgatar.'
-                Alert.alert('Erro', msg)
+              } catch (err: unknown) {
+                alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
               } finally {
                 setRedeemingSubscription(false)
               }
@@ -169,44 +169,44 @@ export default function ProfileScreen() {
       )
     } else {
       Alert.alert(
-        'Pontos insuficientes',
-        `Necessita de ${pointsNeeded} pontos para ativar a subscrição. Tem ${pointsBalance.toFixed(1)} pontos disponíveis.\n\nPode usar seus pontos e pagar o restante por transferência.`
+        t('profile.insufficientPointsSubTitle'),
+        tw('profile.insufficientPointsSubMsg', {
+          needed: pointsNeeded.toFixed(1),
+          have: pointsBalance.toFixed(1),
+        })
       )
     }
   }
 
   const handleRequestAccountDeletion = () => {
     Alert.alert(
-      'Solicitar Exclusão de Conta',
-      'Tem certeza que deseja solicitar a exclusão da sua conta e de todos os dados associados?\n\nEsta ação não pode ser desfeita. Todos os seus dados serão removidos permanentemente.',
+      t('profile.deleteAccountTitle'),
+      t('profile.deleteAccountBody'),
       [
         {
-          text: 'Cancelar',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Solicitar Exclusão',
+          text: t('profile.deleteAccountConfirm'),
           style: 'destructive',
           onPress: async () => {
             try {
               await authApi.requestAccountDeletion()
               Alert.alert(
-                'Solicitação Recebida',
-                'Sua solicitação de exclusão de conta foi recebida. Sua conta e dados associados serão removidos em breve.\n\nVocê será desconectado agora.',
+                t('profile.deleteReceivedTitle'),
+                t('profile.deleteReceivedBody'),
                 [
                   {
-                    text: 'OK',
+                    text: t('common.ok'),
                     onPress: () => {
                       dispatch(logout())
                     },
                   },
                 ]
               )
-            } catch (error: any) {
-              Alert.alert(
-                'Erro',
-                error.response?.data?.error || error.message || 'Erro ao solicitar exclusão de conta. Por favor, tente novamente.'
-              )
+            } catch (error: unknown) {
+              alert.error(getApiErrorMessage(error, 'profile.deleteAccountFailed'))
             }
           },
         },
@@ -252,18 +252,18 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.pointsInfo}>
                 <Text variant="titleLarge" style={styles.pointsTitle}>
-                  Pontos Disponíveis
+                  {t('education.pointsAvailable')}
                 </Text>
                 <Text variant="headlineMedium" style={styles.pointsValue}>
                   {pointsBalance.toFixed(1)} pts
                 </Text>
                 <Text variant="bodyMedium" style={styles.pointsKz}>
-                  = {(pointsBalance * 1000).toFixed(0)} KZ
+                  = {pointsBalanceKz.toFixed(0)} KZ
                 </Text>
               </View>
             </View>
             <Text variant="bodySmall" style={styles.pointsHint}>
-              Compartilhe cursos e ganhe 1 ponto quando alguém se inscrever e pagar!
+              {t('profile.pointsEarnHint')}
             </Text>
             {(subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && pointsBalance > 0 && (
               <>
@@ -277,7 +277,7 @@ export default function ProfileScreen() {
                     buttonColor="#f59e0b"
                     icon="star"
                   >
-                    Resgatar subscrição com pontos (10 pts)
+                    {tw('profile.redeemSubPoints', { points: '10' })}
                   </Button>
                 ) : (
                   <Button
@@ -289,7 +289,7 @@ export default function ProfileScreen() {
                     buttonColor="#f59e0b"
                     icon="star"
                   >
-                    Usar {pointsBalance.toFixed(1)} pts + pagar restante
+                    {tw('profile.redeemSubPartialBtn', { points: pointsBalance.toFixed(1) })}
                   </Button>
                 )}
               </>
@@ -306,7 +306,7 @@ export default function ProfileScreen() {
                 <View style={styles.subscriptionTitleRow}>
                   <MaterialCommunityIcons name="shield-check" size={28} color="#6366f1" />
                   <Text variant="titleLarge" style={styles.subscriptionTitle}>
-                    Minha subscrição
+                    {t('profile.mySubscription')}
                   </Text>
                 </View>
                 {subscription && (
@@ -326,9 +326,10 @@ export default function ProfileScreen() {
                         (subscription.status === 'expired' || subscription.status === 'cancelled') && styles.badgeTextExpired,
                       ]}
                     >
-                      {subscription.status === 'trial' && 'Semana grátis'}
-                      {subscription.status === 'active' && 'Ativo'}
-                      {(subscription.status === 'expired' || subscription.status === 'cancelled') && 'Expirado'}
+                      {subscription.status === 'trial' && t('profile.statusTrial')}
+                      {subscription.status === 'active' && t('profile.statusActive')}
+                      {(subscription.status === 'expired' || subscription.status === 'cancelled') &&
+                        t('profile.statusExpired')}
                     </Text>
                   </View>
                 )}
@@ -338,7 +339,7 @@ export default function ProfileScreen() {
                 <View style={styles.reminderBanner}>
                   <MaterialCommunityIcons name="information" size={20} color="#6366f1" />
                   <Text variant="bodySmall" style={styles.reminderBannerText}>
-                    A sua semana grátis termina em breve. Subscreva agora para continuar a usar o Zenda sem interrupções.
+                    {t('profile.trialEndingBanner')}
                   </Text>
                 </View>
               )}
@@ -349,12 +350,14 @@ export default function ProfileScreen() {
                     <MaterialCommunityIcons name="calendar-clock" size={20} color="#6366f1" />
                     <Text variant="bodyLarge" style={styles.subscriptionStatusText}>
                       {subscription.days_until_expiry != null
-                        ? `${subscription.days_until_expiry} ${subscription.days_until_expiry === 1 ? 'dia' : 'dias'} restantes na sua semana grátis`
-                        : 'Período de teste ativo'}
+                        ? subscription.days_until_expiry === 1
+                          ? t('profile.trialOneDayLeft')
+                          : tw('profile.trialDaysLeft', { days: subscription.days_until_expiry })
+                        : t('profile.trialActivePeriod')}
                     </Text>
                   </View>
                   <Text variant="bodyMedium" style={styles.subscriptionHint}>
-                    Pode passar a subscrição mensal a qualquer momento. Efetue o pagamento e envie o comprovativo abaixo.
+                    {t('profile.trialPayHint')}
                   </Text>
                 </>
               )}
@@ -363,36 +366,42 @@ export default function ProfileScreen() {
                 <View style={styles.subscriptionStatusRow}>
                   <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
                   <Text variant="bodyLarge" style={styles.subscriptionStatusText}>
-                    Subscrição ativa até {new Date(subscription.subscription_ends_at).toLocaleDateString('pt-AO', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {tw('profile.activeSubscriptionUntil', {
+                      date: new Date(subscription.subscription_ends_at).toLocaleDateString(dateLoc, {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      }),
+                    })}
                   </Text>
                 </View>
               )}
 
               {(subscription?.status === 'expired' || subscription?.status === 'cancelled') && (
                 <Text variant="bodyMedium" style={styles.subscriptionHint}>
-                  Envie um comprovativo de pagamento para renovar o acesso ao Zenda.
+                  {t('profile.expiredRenewHint')}
                 </Text>
               )}
 
               {paymentInfo && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && (
                 <View style={styles.paymentDetails}>
                   <Text variant="labelLarge" style={styles.paymentDetailsTitle}>
-                    Dados para pagamento mensal
+                    {t('profile.monthlyPaymentDetails')}
                   </Text>
                   <View style={styles.paymentRow}>
-                    <Text variant="bodySmall" style={styles.paymentLabel}>Valor</Text>
+                    <Text variant="bodySmall" style={styles.paymentLabel}>{t('profile.labelAmount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
                       {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text variant="bodySmall" style={styles.paymentLabel}>IBAN</Text>
+                    <Text variant="bodySmall" style={styles.paymentLabel}>{t('profile.labelIban')}</Text>
                     <Text variant="bodyMedium" style={styles.paymentValue} selectable>
                       {paymentInfo.iban}
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text variant="bodySmall" style={styles.paymentLabel}>Beneficiário</Text>
+                    <Text variant="bodySmall" style={styles.paymentLabel}>{t('profile.labelBeneficiary')}</Text>
                     <Text variant="bodyMedium" style={styles.paymentValue} selectable>
                       {paymentInfo.payee_name}
                     </Text>
@@ -404,8 +413,8 @@ export default function ProfileScreen() {
                 <View style={styles.uploadSection}>
                   <TextInput
                     mode="outlined"
-                    label="Notas (opcional)"
-                    placeholder="Ex: Referência do transferência"
+                    label={t('access.notesOptional')}
+                    placeholder={t('profile.notesPlaceholder')}
                     value={uploadNotes}
                     onChangeText={setUploadNotes}
                     style={styles.notesInput}
@@ -423,10 +432,10 @@ export default function ProfileScreen() {
                     labelStyle={styles.uploadButtonLabel}
                     icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
                   >
-                    {uploading ? 'A enviar...' : 'Enviar comprovativo de pagamento'}
+                    {uploading ? t('access.uploading') : t('access.uploadProof')}
                   </Button>
                   <Text variant="bodySmall" style={styles.uploadHint}>
-                    Fotografia ou PDF do comprovativo de transferência
+                    {t('access.proofHint')}
                   </Text>
                 </View>
               )}
@@ -441,7 +450,7 @@ export default function ProfileScreen() {
               <Card.Content style={styles.subscriptionContent}>
                 <ActivityIndicator size="large" color="#6366f1" style={{ marginVertical: 24 }} />
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#6b7280' }}>
-                  A carregar subscrição...
+                  {t('profile.loadingSubscription')}
                 </Text>
               </Card.Content>
             </View>
@@ -462,10 +471,10 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
-                      Configurações
+                      {t('profile.menuSettings')}
                     </Text>
                     <Text variant="bodySmall" style={styles.menuItemSubtitle}>
-                      Preferências e configurações da conta
+                      {t('profile.menuSettingsSub')}
                     </Text>
                   </View>
                 </View>
@@ -484,10 +493,10 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
-                      Sobre o Zenda
+                      {t('profile.menuAbout')}
                     </Text>
                     <Text variant="bodySmall" style={styles.menuItemSubtitle}>
-                      Informações sobre o app e a missão
+                      {t('profile.menuAboutSub')}
                     </Text>
                   </View>
                 </View>
@@ -506,10 +515,10 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
-                      Ajuda e Suporte
+                      {t('profile.menuHelp')}
                     </Text>
                     <Text variant="bodySmall" style={styles.menuItemSubtitle}>
-                      FAQ e contacto para suporte
+                      {t('profile.menuHelpSub')}
                     </Text>
                   </View>
                 </View>
@@ -528,10 +537,10 @@ export default function ProfileScreen() {
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={[styles.menuItemTitle, styles.deleteTitle]}>
-                      Solicitar Exclusão de Conta
+                      {t('profile.deleteAccountTitle')}
                     </Text>
                     <Text variant="bodySmall" style={styles.menuItemSubtitle}>
-                      Remover conta e todos os dados associados
+                      {t('profile.deleteAccountMenuSub')}
                     </Text>
                   </View>
                 </View>
@@ -552,7 +561,7 @@ export default function ProfileScreen() {
             labelStyle={styles.logoutButtonLabel}
             icon="logout"
           >
-            Sair da Conta
+            {t('profile.logoutButton')}
           </Button>
         </View>
       </ScrollView>

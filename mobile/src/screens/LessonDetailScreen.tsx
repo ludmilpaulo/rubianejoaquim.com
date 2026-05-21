@@ -7,6 +7,9 @@ import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/nativ
 import YoutubePlayer from 'react-native-youtube-iframe'
 import { lessonsApi, lessonQuizApi } from '../services/api'
 import { extractYouTubeVideoId, isYouTubeUrl } from '../utils/youtube'
+import { logger } from '../utils/logger'
+import { getApiErrorMessage } from '../types/api'
+import { useI18n } from '../contexts/I18nContext'
 
 const { width } = Dimensions.get('window')
 const VIDEO_HEIGHT = (width - 32) * 9 / 16 // 16:9 aspect ratio
@@ -44,6 +47,7 @@ interface RouteParams {
 }
 
 export default function LessonDetailScreen() {
+  const { t } = useI18n()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { lessonId } = (route.params as RouteParams) || {}
@@ -92,7 +96,7 @@ export default function LessonDetailScreen() {
       const lessonData = response.data || response
       setLesson(lessonData)
     } catch (error) {
-      console.error('Error loading lesson:', error)
+      logger.error('Error loading lesson:', error)
     } finally {
       setLoading(false)
     }
@@ -106,7 +110,7 @@ export default function LessonDetailScreen() {
       const quizData = data && (data.quiz !== undefined ? data.quiz : data)
       setQuiz(quizData && quizData.id ? quizData : null)
     } catch (error) {
-      console.error('Error loading quiz:', error)
+      logger.error('Error loading quiz:', error)
       setQuiz(null)
     } finally {
       setLoadingQuiz(false)
@@ -121,22 +125,22 @@ export default function LessonDetailScreen() {
       await lessonsApi.markCompleted(lesson.id)
       // Reload lesson to get updated progress
       await loadLesson()
-    } catch (error: any) {
-      console.error('Error marking lesson as complete:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao marcar aula como concluída')
+    } catch (error: unknown) {
+      logger.error('Error marking lesson as complete:', error)
+      Alert.alert(t('common.error'), getApiErrorMessage(error, 'education.markCompleteFailed'))
     } finally {
       setMarkingComplete(false)
     }
   }
 
   const handleOpenAttachment = (url: string) => {
-    Linking.openURL(url).catch(err => console.error('Error opening attachment:', err))
+    Linking.openURL(url).catch(err => logger.error('Error opening attachment:', err))
   }
 
   const handleOpenVideo = (url: string) => {
     // If it's not a YouTube URL, open in browser
     if (!isYouTubeUrl(url)) {
-      Linking.openURL(url).catch(err => console.error('Error opening video:', err))
+      Linking.openURL(url).catch(err => logger.error('Error opening video:', err))
     }
     // YouTube videos are played in-app automatically
   }

@@ -169,11 +169,141 @@ export interface TargetPayload {
 
 export type UploadFilePayload = { uri: string; name: string; type: string }
 
+export interface ExpenseCategorySummary {
+  category_name?: string
+  category__name?: string
+  category_icon?: string
+  total?: string | number
+  amount?: string | number
+  count?: number
+}
+
+export interface ExpenseSummary {
+  total?: string | number
+  total_expenses?: string | number
+  count?: number
+  by_category?: ExpenseCategorySummary[]
+}
+
+export interface BusinessMetrics {
+  total_sales?: string | number
+  total_expenses?: string | number
+  profit?: string | number
+  profit_margin?: string | number
+}
+
+export interface TargetStats {
+  total?: number
+  active?: number
+  completed?: number
+  paused?: number
+}
+
+export interface AnalyticsDebtPayoff {
+  id?: number
+  creditor?: string
+  remaining?: string | number
+  months_to_payoff?: number
+  message?: string
+}
+
+export interface AnalyticsSavingsProjection {
+  id?: number
+  title?: string
+  suggested_monthly?: string | number
+  goal_title?: string
+  projected_date?: string
+  message?: string
+}
+
+export interface AnalyticsSpendingForecast {
+  month?: number
+  year?: number
+  projected_expenses?: string | number
+  category?: string
+  forecast_amount?: string | number
+  message?: string
+}
+
+export interface AnalyticsPayload {
+  debt_payoff?: AnalyticsDebtPayoff[]
+  savings_projection?: AnalyticsSavingsProjection[]
+  spending_forecast?: AnalyticsSpendingForecast[]
+}
+
+export interface SharedGoalSummary {
+  id: number
+  title: string
+  target_amount?: string
+  current_amount?: string
+  progress_percentage?: number
+}
+
+export interface PaidAccessResult {
+  hasAccess: boolean
+  hasExpiredSubscription: boolean
+  planTier: 'free' | 'premium' | 'business' | 'family'
+  features: string[]
+}
+
+export interface PublicZendaFeature {
+  id: number
+  icon?: string
+  image_url?: string | null
+  category: string
+  title: string
+  description: string
+  is_premium?: boolean
+}
+
+export interface PublicZendaContent {
+  id?: number
+  headline?: string
+  subheadline?: string
+  what_is?: string
+  who_it_helps?: string
+  benefits?: string[]
+  features?: PublicZendaFeature[]
+  app_store_url?: string
+  play_store_url?: string
+  monthly_price_kz?: string | number
+  screenshots?: { id: number; image_url: string | null; caption?: string }[]
+}
+
+export interface PublicSiteSettings {
+  contact_email?: string
+  whatsapp_number?: string
+  phone?: string
+  instagram_url?: string
+  linkedin_url?: string
+  youtube_url?: string
+  tiktok_url?: string
+  calendly_url?: string
+  brand_name?: string
+  brand_tagline?: string
+  footer_description?: string
+  contact_label?: string
+  contact_title?: string
+  contact_subtitle?: string
+  play_store_label?: string
+  app_store_label?: string
+  what_is_label?: string
+  who_label?: string
+}
+
+export interface PublicFAQ {
+  id: number
+  category: string
+  question: string
+  answer: string
+  order: number
+}
+
 export function isApiError(error: unknown): error is ApiError {
   return typeof error === 'object' && error !== null && 'isAxiosError' in error
 }
 
-export function getApiErrorMessage(error: unknown, fallback = 'Ocorreu um erro'): string {
+export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generic'): string {
   if (!isApiError(error)) {
     if (error instanceof Error && error.message) return error.message
     return fallback
@@ -192,4 +322,13 @@ export function getApiErrorMessage(error: unknown, fallback = 'Ocorreu um erro')
 export function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
   if (Array.isArray(data)) return data
   return data.results ?? []
+}
+
+/** Some endpoints wrap payload in `{ data: T }`. */
+export function unwrapEnvelope<T>(payload: T | { data?: T }): T {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    const wrapped = payload as { data?: T }
+    if (wrapped.data !== undefined) return wrapped.data
+  }
+  return payload as T
 }

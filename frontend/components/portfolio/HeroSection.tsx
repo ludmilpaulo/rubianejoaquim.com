@@ -18,8 +18,8 @@ export default function HeroSection({ section, showreel, settings, statistics }:
   const roles = section.roles ?? []
   const ctas = section.ctas ?? []
   const trustItems = section.trust_items ?? []
-  const brandName = settings?.brand_tagline ? 'Rubiane Joaquim' : 'Rubiane Joaquim'
-  const tagline = settings?.brand_tagline ?? section.subtitle
+  const brandName = settings?.brand_name || settings?.brand_tagline || ''
+  const tagline = settings?.brand_tagline || section.subtitle || ''
   const thumbUrl = showreel ? getYoutubeThumbnail(showreel.youtube_url) : ''
 
   const btnClass = (variant?: string) => {
@@ -95,12 +95,12 @@ export default function HeroSection({ section, showreel, settings, statistics }:
             )}
             {trustItems.length > 0 && (
               <ul className="mt-10 grid sm:grid-cols-3 gap-4 text-sm">
-                {trustItems.map((text, i) => (
+                {trustItems.map((text) => (
                   <li
                     key={text}
                     className="flex items-center gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/5 text-slate-400"
                   >
-                    <span aria-hidden>{['🎬', '✍️', '⚡'][i] ?? '◆'}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-hidden />
                     <span>{text}</span>
                   </li>
                 ))}
@@ -122,10 +122,14 @@ export default function HeroSection({ section, showreel, settings, statistics }:
             <div className="relative aspect-[4/5] max-w-sm mx-auto lg:ml-auto rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl premium-glow animate-float">
               <RubianeImage />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-black/50 backdrop-blur-md border border-white/10">
-                <p className="text-amber-300 text-xs font-bold uppercase tracking-wider">{brandName}</p>
-                <p className="text-white text-sm font-medium mt-0.5">{tagline}</p>
-              </div>
+              {(brandName || tagline) && (
+                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-black/50 backdrop-blur-md border border-white/10">
+                  {brandName && (
+                    <p className="text-amber-300 text-xs font-bold uppercase tracking-wider">{brandName}</p>
+                  )}
+                  {tagline && <p className="text-white text-sm font-medium mt-0.5">{tagline}</p>}
+                </div>
+              )}
             </div>
             {showreel && thumbUrl && (
               <a

@@ -16,6 +16,7 @@ import { useI18n } from '../contexts/I18nContext'
 import ZendaCard from '../components/ui/ZendaCard'
 import EmptyState from '../components/ui/EmptyState'
 import { colors, radius, spacing, typography } from '../theme'
+import { resolveUserCurrency, type CurrencyCode } from '../utils/currency'
 
 interface ExchangeRateRow {
   id?: number
@@ -34,14 +35,14 @@ const QUICK_PAIRS = [
 export default function MarketScreen() {
   const { t } = useI18n()
   const { user } = useAppSelector((state) => state.auth)
-  const baseCurrency = user?.preferred_currency || 'AOA'
+  const baseCurrency = resolveUserCurrency(user?.preferred_currency)
 
   const [rates, setRates] = useState<ExchangeRateRow[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [amount, setAmount] = useState('100')
   const [fromCur, setFromCur] = useState('USD')
-  const [toCur, setToCur] = useState(baseCurrency)
+  const [toCur, setToCur] = useState<CurrencyCode>(baseCurrency)
   const [convertResult, setConvertResult] = useState<string | null>(null)
   const [converting, setConverting] = useState(false)
 
@@ -139,7 +140,7 @@ export default function MarketScreen() {
                 style={styles.quickChip}
                 onPress={() => {
                   setFromCur(p.from)
-                  setToCur(p.to)
+                  setToCur(p.to as CurrencyCode)
                 }}
               >
                 <Text style={styles.quickChipText}>

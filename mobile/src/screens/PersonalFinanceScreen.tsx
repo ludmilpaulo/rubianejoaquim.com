@@ -11,14 +11,18 @@ import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import PersonalIncomeTab from '../components/finance/PersonalIncomeTab'
 import { colors } from '../theme'
-import { getApiErrorMessage } from '../types/api'
+import { getApiErrorMessage, unwrapList, type BudgetPayload, type ExpensePayload, type ExpenseSummary } from '../types/api'
 import { logger } from '../utils/logger'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
+import type { RouteProp } from '@react-navigation/native'
+import type { StackNavigationProp } from '@react-navigation/stack'
+import type { PersonalStackParamList } from '../navigation/types'
+import type { PersonalFinanceRouteParams, PersonalFinanceTab } from './personalFinanceTypes'
+import { materialIcon, type MaterialIconName } from '../utils/icons'
 
-type PersonalFinanceTab = 'principios' | 'overview' | 'expenses' | 'income' | 'budgets' | 'goals' | 'debts'
-
-type PersonalFinanceRouteParams = {
-  initialTab?: PersonalFinanceTab
-}
+type PersonalFinanceNavigation = StackNavigationProp<PersonalStackParamList, 'PersonalMain'>
+type PersonalFinanceRoute = RouteProp<PersonalStackParamList, 'PersonalMain'>
 
 const { width } = Dimensions.get('window')
 
@@ -90,9 +94,11 @@ interface Category {
 }
 
 export default function PersonalFinanceScreen() {
-  const navigation = useNavigation()
-  const route = useRoute()
-  const routeParams = (route.params as PersonalFinanceRouteParams | undefined) ?? {}
+  const { t, tw, resolve } = useI18n()
+  const alert = useAlert()
+  const navigation = useNavigation<PersonalFinanceNavigation>()
+  const route = useRoute<PersonalFinanceRoute>()
+  const routeParams: PersonalFinanceRouteParams = route.params ?? {}
   const [activeTab, setActiveTab] = useState<PersonalFinanceTab>(
     routeParams.initialTab || 'principios'
   )
@@ -102,7 +108,7 @@ export default function PersonalFinanceScreen() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [debts, setDebts] = useState<Debt[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [summary, setSummary] = useState<any>(null)
+  const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [periodState, setPeriodState] = useState<PeriodState>(() => {
     const now = new Date()
     return { period: 'monthly', month: now.getMonth() + 1, year: now.getFullYear(), dateFrom: null, dateTo: null, dailyDate: null }
@@ -123,7 +129,7 @@ export default function PersonalFinanceScreen() {
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
   const [showBudgetPeriodMenu, setShowBudgetPeriodMenu] = useState(false)
   const [showCategoryMenu, setShowCategoryMenu] = useState(false)
-  const [editingItem, setEditingItem] = useState<any>(null)
+  const [editingItem, setEditingItem] = useState<Expense | Budget | Goal | Debt | null>(null)
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [addMoneyAmount, setAddMoneyAmount] = useState('')
   const [showBudgetExpensesModal, setShowBudgetExpensesModal] = useState(false)
@@ -194,24 +200,15 @@ export default function PersonalFinanceScreen() {
       if (result.status === 'fulfilled') {
         const data = result.value
         switch (name) {
-          case 'expenses': setExpenses(Array.isArray(data) ? data : (data as any).results || []); break
-          case 'budgets': setBudgets(Array.isArray(data) ? data : (data as any).results || []); break
-          case 'goals': setGoals(Array.isArray(data) ? data : (data as any).results || []); break
-          case 'debts': setDebts(Array.isArray(data) ? data : (data as any).results || []); break
-          case 'categories': setCategories(Array.isArray(data) ? data : (data as any).results || []); break
-          case 'summary': setSummary(data); break
+          case 'expenses': setExpenses(unwrapList(data as Expense[])); break
+          case 'budgets': setBudgets(unwrapList(data as Budget[])); break
+          case 'goals': setGoals(unwrapList(data as Goal[])); break
+          case 'debts': setDebts(unwrapList(data as Debt[])); break
+          case 'categories': setCategories(unwrapList(data as Category[])); break
+          case 'summary': setSummary(data as ExpenseSummary); break
         }
       } else {
-        const err = result.reason as any
-        const url = err?.config?.baseURL && err?.config?.url
-          ? `${err.config.baseURL.replace(/\/$/, '')}${err.config.url}`
-          : err?.config?.url ?? err?.request?.responseURL ?? 'unknown'
-        const status = err?.response?.status
-        const body = err?.response?.data
-        console.error(
-          `[PersonalFinance] Endpoint "${name}" failed:`,
-          JSON.stringify({ endpoint: name, url, status, responseBody: body }, null, 2)
-        )
+        logger.error(`[PersonalFinance] Endpoint "${name}" failed:`, result.reason)
       }
     })
   }
@@ -224,19 +221,18 @@ export default function PersonalFinanceScreen() {
 
   const handleSaveExpense = async () => {
     try {
-      const expenseData: any = {
+      const expenseData: ExpensePayload = {
         amount: expenseForm.amount,
         description: expenseForm.description,
         date: expenseForm.date.toISOString().split('T')[0],
         payment_method: expenseForm.payment_method,
       }
-      
-      // Add category ID if selected
+
       if (expenseForm.category) {
-        expenseData.category = parseInt(expenseForm.category)
+        expenseData.category = parseInt(expenseForm.category, 10)
       }
-      
-      if (editingItem) {
+
+      if (editingItem && 'payment_method' in editingItem) {
         await personalFinanceApi.updateExpense(editingItem.id, expenseData)
       } else {
         await personalFinanceApi.createExpense(expenseData)
@@ -249,9 +245,9 @@ export default function PersonalFinanceScreen() {
       if (showBudgetExpensesModal && selectedBudget) {
         await loadBudgetExpenses(selectedBudget.id)
       }
-    } catch (error: any) {
-      console.error('Error saving expense:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Não foi possível salvar a despesa. Tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error saving expense:', error)
+      alert.error(getApiErrorMessage(error, 'personal.saveExpenseFailed'))
     }
   }
 
@@ -272,9 +268,9 @@ export default function PersonalFinanceScreen() {
               if (showBudgetExpensesModal && selectedBudget) {
                 await loadBudgetExpenses(selectedBudget.id)
               }
-            } catch (error: any) {
-              console.error('Error deleting expense:', error)
-              Alert.alert('Erro', error.response?.data?.error || 'Não foi possível excluir a despesa. Tente novamente.')
+            } catch (error: unknown) {
+              logger.error('Error deleting expense:', error)
+              alert.error(getApiErrorMessage(error, 'personal.deleteExpenseFailed'))
             }
           },
         },
@@ -291,19 +287,19 @@ export default function PersonalFinanceScreen() {
       setShowCategoryModal(false)
       setCategoryForm({ name: '', icon: 'tag', color: '#6366f1' })
       loadData() // Reload to get new categories
-    } catch (error: any) {
-      console.error('Error saving category:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Não foi possível criar a categoria. Tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error saving category:', error)
+      alert.error(getApiErrorMessage(error, 'personal.saveCategoryFailed'))
     }
   }
 
   const handleSaveBudget = async () => {
     try {
       // Format budget data based on period type
-      const budgetData: any = {
-        category: budgetForm.category,
+      const budgetData: BudgetPayload & { description?: string } = {
+        category: budgetForm.category ? parseInt(budgetForm.category, 10) : undefined,
         amount: budgetForm.amount,
-        period_type: budgetForm.period_type,
+        period_type: budgetForm.period_type as BudgetPayload['period_type'],
         description: budgetForm.description,
       }
 
@@ -339,7 +335,7 @@ export default function PersonalFinanceScreen() {
       resetBudgetForm()
       loadData()
     } catch (error) {
-      console.error('Error saving budget:', error)
+      logger.error('Error saving budget:', error)
     }
   }
 
@@ -361,13 +357,13 @@ export default function PersonalFinanceScreen() {
       resetGoalForm()
       loadData()
     } catch (error) {
-      console.error('Error saving goal:', error)
+      logger.error('Error saving goal:', error)
     }
   }
 
   const handleAddMoneyToGoal = async () => {
     if (!selectedGoal || !addMoneyAmount || parseFloat(addMoneyAmount) <= 0) {
-      Alert.alert('Erro', 'Por favor, insira um valor válido.')
+      alert.error(t('personal.invalidAmount'))
       return
     }
 
@@ -377,10 +373,10 @@ export default function PersonalFinanceScreen() {
       setSelectedGoal(null)
       setAddMoneyAmount('')
       loadData()
-      Alert.alert('Sucesso', 'Valor adicionado ao objetivo com sucesso!')
+      alert.success(t('personal.goalFunded'))
     } catch (error: unknown) {
       logger.error('Error adding money to goal:', getApiErrorMessage(error))
-      Alert.alert('Erro', getApiErrorMessage(error, 'Não foi possível adicionar o valor. Tente novamente.'))
+      alert.error(getApiErrorMessage(error, t('personal.addGoalFailed')))
     }
   }
 
@@ -408,7 +404,7 @@ export default function PersonalFinanceScreen() {
       resetDebtForm()
       loadData()
     } catch (error) {
-      console.error('Error saving debt:', error)
+      logger.error('Error saving debt:', error)
     }
   }
 
@@ -429,7 +425,7 @@ export default function PersonalFinanceScreen() {
 
   const handlePayDebt = async () => {
     if (!selectedDebt || !paymentAmount || parseFloat(paymentAmount) <= 0) {
-      Alert.alert('Erro', 'Por favor, insira um valor válido para o pagamento.')
+      alert.error(t('personal.invalidPayment'))
       return
     }
 
@@ -439,7 +435,7 @@ export default function PersonalFinanceScreen() {
     const newPaidAmount = currentPaid + paymentValue
 
     if (newPaidAmount > totalAmount) {
-      Alert.alert('Erro', `O valor do pagamento não pode exceder o valor restante de ${formatCurrency(totalAmount - currentPaid)}.`)
+      alert.error(tw('personal.paymentExceeds', { amount: formatCurrency(totalAmount - currentPaid) }))
       return
     }
 
@@ -453,10 +449,10 @@ export default function PersonalFinanceScreen() {
       setPaymentAmount('')
       setSelectedDebt(null)
       await loadData()
-      Alert.alert('Sucesso', `Pagamento de ${formatCurrency(paymentValue)} registado com sucesso!`)
+      alert.success(tw('personal.paymentRecorded', { amount: formatCurrency(paymentValue) }))
     } catch (error: unknown) {
       logger.error('Error paying debt:', getApiErrorMessage(error))
-      Alert.alert('Erro', getApiErrorMessage(error, 'Erro ao registrar pagamento. Por favor, tente novamente.'))
+      alert.error(getApiErrorMessage(error, t('personal.paymentFailed')))
     } finally {
       setPayingDebt(false)
     }
@@ -509,7 +505,7 @@ export default function PersonalFinanceScreen() {
       // Also reload budget data to get updated spent/remaining
       await loadData()
     } catch (error) {
-      console.error('Error loading budget expenses:', error)
+      logger.error('Error loading budget expenses:', error)
       setBudgetExpenses([])
     } finally {
       setLoadingBudgetExpenses(false)
@@ -554,9 +550,9 @@ export default function PersonalFinanceScreen() {
     '#f97316', // Orange
   ]
 
-  const chartData = summary?.by_category?.slice(0, 5).map((cat: any, index: number) => ({
-    name: cat.category__name || 'Outros',
-    amount: parseFloat(cat.total),
+  const chartData = summary?.by_category?.slice(0, 5).map((cat, index: number) => ({
+    name: cat.category__name || cat.category_name || 'Outros',
+    amount: parseFloat(String(cat.total ?? cat.amount ?? 0)),
     color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
@@ -644,7 +640,7 @@ export default function PersonalFinanceScreen() {
                 <View style={styles.summaryStatItem}>
                   <MaterialCommunityIcons name="receipt" size={16} color="#ffffff" />
                   <Text variant="bodySmall" style={styles.summaryStat}>
-                    {summary.count || 0} transações
+                    {tw('personal.transactions', { count: summary.count || 0 })}
                   </Text>
                 </View>
               </View>
@@ -656,13 +652,13 @@ export default function PersonalFinanceScreen() {
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
             {[
-              { key: 'principios', label: 'Regras de Ouro', icon: 'lightbulb-on' },
-              { key: 'overview', label: 'Visão Geral', icon: 'view-dashboard' },
-              { key: 'expenses', label: 'Despesas', icon: 'cash-minus' },
-              { key: 'income', label: 'Receitas', icon: 'cash-plus' },
-              { key: 'budgets', label: 'Orçamentos', icon: 'wallet' },
-              { key: 'goals', label: 'Objetivos', icon: 'target' },
-              { key: 'debts', label: 'Dívidas', icon: 'credit-card' },
+              { key: 'principios', label: t('personal.tabPrinciples'), icon: 'lightbulb-on' },
+              { key: 'overview', label: t('personal.tabOverview'), icon: 'view-dashboard' },
+              { key: 'expenses', label: t('personal.tabExpenses'), icon: 'cash-minus' },
+              { key: 'income', label: t('personal.tabIncome'), icon: 'cash-plus' },
+              { key: 'budgets', label: t('personal.tabBudgets'), icon: 'wallet' },
+              { key: 'goals', label: t('personal.tabGoals'), icon: 'target' },
+              { key: 'debts', label: t('personal.tabDebts'), icon: 'credit-card' },
             ].map(tab => (
               <TouchableOpacity
                 key={tab.key}
@@ -670,7 +666,7 @@ export default function PersonalFinanceScreen() {
                 onPress={() => setActiveTab(tab.key as PersonalFinanceTab)}
               >
                 <MaterialCommunityIcons
-                  name={tab.icon as any}
+                  name={materialIcon(tab.icon) as MaterialIconName}
                   size={20}
                   color={activeTab === tab.key ? '#6366f1' : '#666'}
                 />
@@ -685,7 +681,7 @@ export default function PersonalFinanceScreen() {
         {/* Period Selector - shown for all finance tabs except principios */}
         {activeTab !== 'principios' && (
           <View style={styles.periodSection}>
-            <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+            <Text variant="labelMedium" style={styles.periodLabel}>{t('personal.periodStats')}</Text>
             <PeriodSelector state={periodState} onChange={setPeriodState} />
           </View>
         )}
@@ -842,7 +838,7 @@ export default function PersonalFinanceScreen() {
             {/* Tirar dinheiro do orçamento - functional tool */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento')}
+              onPress={() => navigation.navigate('TirarDinheiroOrcamento')}
             >
               <Card style={[styles.goldenRuleCard, styles.orcamentoCard]}>
                 <Card.Content>
@@ -938,7 +934,7 @@ export default function PersonalFinanceScreen() {
                       <View style={styles.expenseHeader}>
                         <View style={styles.expenseLeft}>
                           <View style={[styles.categoryIcon, { backgroundColor: expense.category_color || '#6366f1' }]}>
-                            <MaterialCommunityIcons name={expense.category_icon as any || 'tag'} size={20} color="#fff" />
+                            <MaterialCommunityIcons name={materialIcon(expense.category_icon)} size={20} color="#fff" />
                           </View>
                           <View>
                             <Text variant="titleMedium">{expense.category_name || 'Sem categoria'}</Text>
@@ -1028,7 +1024,7 @@ export default function PersonalFinanceScreen() {
                       <Button
                         mode="outlined"
                         compact
-                        onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
+                        onPress={() => navigation.navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
                         icon="wallet-outline"
                         style={styles.budgetActionButton}
                       >
@@ -1037,7 +1033,7 @@ export default function PersonalFinanceScreen() {
                       <Button
                         mode="contained"
                         compact
-                        onPress={() => (navigation as any).navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
+                        onPress={() => navigation.navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
                         icon="plus"
                         style={styles.budgetActionButton}
                         buttonColor="#6366f1"
@@ -1120,10 +1116,7 @@ export default function PersonalFinanceScreen() {
 
         {activeTab === 'income' && (
           <View style={styles.content}>
-            <PersonalIncomeTab
-              periodState={periodState}
-              onRefreshParent={() => loadData()}
-            />
+            <PersonalIncomeTab periodState={periodState} onRefreshParent={loadData} />
           </View>
         )}
 
@@ -1289,7 +1282,7 @@ export default function PersonalFinanceScreen() {
                             return selectedCat ? (
                               <>
                                 <MaterialCommunityIcons
-                                  name={selectedCat.icon as any || 'tag'}
+                                  name={materialIcon(selectedCat.icon)}
                                   size={20}
                                   color={selectedCat.color || '#6366f1'}
                                   style={styles.dropdownIcon}
@@ -1331,7 +1324,7 @@ export default function PersonalFinanceScreen() {
                     title={category.name}
                     leadingIcon={() => (
                       <MaterialCommunityIcons
-                        name={category.icon as any || 'tag'}
+                        name={materialIcon(category.icon)}
                         size={20}
                         color={category.color || '#6366f1'}
                       />
@@ -1418,7 +1411,7 @@ export default function PersonalFinanceScreen() {
                 onPress={() => setCategoryForm({ ...categoryForm, icon })}
               >
                 <MaterialCommunityIcons
-                  name={icon as any}
+                  name={materialIcon(icon)}
                   size={24}
                   color={categoryForm.icon === icon ? categoryForm.color : '#666'}
                 />
@@ -1926,7 +1919,7 @@ export default function PersonalFinanceScreen() {
                             {expense.category_icon && (
                               <View style={[styles.categoryIcon, { backgroundColor: (expense.category_color || '#6366f1') + '20' }]}>
                                 <MaterialCommunityIcons
-                                  name={expense.category_icon as any}
+                                  name={materialIcon(expense.category_icon)}
                                   size={20}
                                   color={expense.category_color || '#6366f1'}
                                 />

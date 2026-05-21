@@ -33,6 +33,8 @@ const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
 
 function HomeStack() {
+  const { t } = useI18n()
+  const headerStyle = { backgroundColor: '#6366f1' as const }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -43,37 +45,39 @@ function HomeStack() {
       <Stack.Screen 
         name="ToDoList" 
         component={ToDoListScreen}
-        options={{ title: 'Lista de Tarefas', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.todoList'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="Targets" 
         component={TargetsScreen}
-        options={{ title: 'Metas', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.targets'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="Notifications" 
         component={NotificationsScreen}
-        options={{ title: 'Notificações', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.notifications'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="AICopilot" 
         component={AICopilotScreen}
-        options={{ title: 'AI Financial Copilot', headerStyle: { backgroundColor: '#8b5cf6' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.aiCopilot'), headerStyle: { backgroundColor: '#8b5cf6' }, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="Market" 
         component={MarketScreen}
-        options={{ title: 'Mercado Global', headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.market'), headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }}
       />
-      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: 'Saúde financeira', headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }} />
-      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Analytics', headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }} />
-      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: 'Família', headerStyle: { backgroundColor: colors.brand.accent }, headerTintColor: '#fff' }} />
-      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: 'Recibos', headerStyle: { backgroundColor: colors.brand.secondary }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle: { backgroundColor: colors.brand.accent }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle: { backgroundColor: colors.brand.secondary }, headerTintColor: '#fff' }} />
     </Stack.Navigator>
   )
 }
 
 function EducationStack() {
+  const { t } = useI18n()
+  const headerStyle = { backgroundColor: '#6366f1' as const }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -84,33 +88,34 @@ function EducationStack() {
       <Stack.Screen 
         name="CourseLessons" 
         component={CourseLessonsScreen}
-        options={{ title: 'Aulas do Curso', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.courseLessons'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="CourseProgress" 
         component={CourseProgressScreen}
-        options={{ title: 'Progresso', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.progress'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="LessonDetail" 
         component={LessonDetailScreen}
-        options={{ title: 'Aula', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.lesson'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="LessonQuiz" 
         component={LessonQuizScreen}
-        options={{ title: 'Quiz', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.quiz'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="CourseList" 
         component={CourseListScreen}
-        options={{ title: 'Explorar Cursos', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.exploreCourses'), headerStyle, headerTintColor: '#fff' }}
       />
     </Stack.Navigator>
   )
 }
 
 function PersonalStack() {
+  const { t } = useI18n()
   return (
     <Stack.Navigator>
       <Stack.Screen
@@ -122,7 +127,7 @@ function PersonalStack() {
         name="OrcamentoPrincipios"
         component={OrcamentoPrincipiosScreen}
         options={{
-          title: 'Tirar dinheiro do orçamento',
+          title: t('navigation.budgetPrinciples'),
           headerStyle: { backgroundColor: '#6366f1' },
           headerTintColor: '#fff',
         }}
@@ -139,6 +144,8 @@ function PersonalStack() {
 }
 
 function ProfileStack() {
+  const { t } = useI18n()
+  const headerStyle = { backgroundColor: '#6366f1' as const }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -149,17 +156,17 @@ function ProfileStack() {
       <Stack.Screen 
         name="Settings" 
         component={SettingsScreen}
-        options={{ title: 'Configurações', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.settings'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="About" 
         component={AboutScreen}
-        options={{ title: 'Sobre o Zenda', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.about'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="HelpSupport" 
         component={HelpSupportScreen}
-        options={{ title: 'Ajuda e Suporte', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.help'), headerStyle, headerTintColor: '#fff' }}
       />
     </Stack.Navigator>
   )
@@ -205,27 +212,27 @@ export default function MainNavigator() {
       <Tab.Screen 
         name="Home" 
         component={HomeStack}
-        options={{ title: t('home.zendaTitle'), headerShown: false }}
+        options={{ title: t('home.zendaTitle'), headerShown: false, tabBarButtonTestID: 'tab-home' }}
       />
       <Tab.Screen 
         name="Personal" 
         component={PersonalStack}
-        options={{ title: t('tabs.personal'), headerShown: false }}
+        options={{ title: t('tabs.personal'), headerShown: false, tabBarButtonTestID: 'tab-personal' }}
       />
       <Tab.Screen 
         name="Business" 
         component={BusinessFinanceScreen}
-        options={{ title: t('tabs.business') }}
+        options={{ title: t('tabs.business'), tabBarButtonTestID: 'tab-business' }}
       />
       <Tab.Screen 
         name="Education" 
         component={EducationStack}
-        options={{ title: t('tabs.education'), headerShown: false }}
+        options={{ title: t('tabs.education'), headerShown: false, tabBarButtonTestID: 'tab-education' }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileStack}
-        options={{ title: t('tabs.profile'), headerShown: false }}
+        options={{ title: t('tabs.profile'), headerShown: false, tabBarButtonTestID: 'tab-profile' }}
       />
     </Tab.Navigator>
   )

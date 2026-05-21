@@ -14,6 +14,8 @@ import ZendaSection from './ZendaSection'
 import CaseStudiesSection from './CaseStudiesSection'
 import TestimonialsSection from './TestimonialsSection'
 import EducationBanner from './EducationBanner'
+import ResourcesSection from './ResourcesSection'
+import FaqNewsletterSection from './FaqNewsletterSection'
 import FinalContactCta from './FinalContactCta'
 import ContactSection from './ContactSection'
 
@@ -50,31 +52,44 @@ function HomeLoading() {
   )
 }
 
+function HomeApiError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="min-h-[40vh] flex flex-col items-center justify-center px-4 bg-slate-950 text-center">
+      <p className="text-slate-400 max-w-md">
+        Content could not be loaded from the server. Check that the API is running.
+      </p>
+      <button type="button" onClick={onRetry} className="btn-primary mt-6">
+        Retry
+      </button>
+    </div>
+  )
+}
+
 export default function HomePage() {
   const { locale } = useLocale()
   const [data, setData] = useState<PublicHomepageData>(emptyHome)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
-  useEffect(() => {
-    let cancelled = false
+  const load = () => {
     setLoading(true)
+    setLoadError(false)
     publicApi
       .getHomepage(locale)
-      .then((res) => {
-        if (!cancelled) setData(res)
-      })
+      .then((res) => setData(res))
       .catch(() => {
-        if (!cancelled) setData(emptyHome)
+        setData(emptyHome)
+        setLoadError(true)
       })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    load()
   }, [locale])
 
   if (loading) return <HomeLoading />
+  if (loadError && !data.sections.length) return <HomeApiError onRetry={load} />
 
   const ctx = buildHomeContext(data)
   const primaryShowreel = data.showreel.find((v) => v.is_primary) ?? data.showreel[0] ?? null
@@ -91,23 +106,23 @@ export default function HomePage() {
           statistics={data.statistics}
         />
       )}
+      {isSectionVisible(ctx.visibility, 'showreel') && (
+        <ShowreelSection videos={data.showreel} intro={ctx.showreelIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'about') && (
+        <AboutSection section={ctx.about} statistics={data.statistics} />
+      )}
+      {isSectionVisible(ctx.visibility, 'services_intro') && (
+        <ServicesSection services={data.services} intro={ctx.servicesIntro} />
+      )}
       {isSectionVisible(ctx.visibility, 'portfolio_intro') && (
         <FeaturedPortfolioSection
           projects={data.featured_projects}
           intro={ctx.portfolioIntro}
         />
       )}
-      {isSectionVisible(ctx.visibility, 'showreel') && (
-        <ShowreelSection videos={data.showreel} intro={ctx.showreelIntro} />
-      )}
-      {isSectionVisible(ctx.visibility, 'services_intro') && (
-        <ServicesSection services={data.services} intro={ctx.servicesIntro} />
-      )}
       {isSectionVisible(ctx.visibility, 'zenda') && (
-        <ZendaSection zenda={data.zenda} intro={ctx.zendaIntro} />
-      )}
-      {isSectionVisible(ctx.visibility, 'about') && (
-        <AboutSection section={ctx.about} statistics={data.statistics} />
+        <ZendaSection zenda={data.zenda} intro={ctx.zendaIntro} settings={settings} />
       )}
       {isSectionVisible(ctx.visibility, 'case_studies_intro') && (
         <CaseStudiesSection caseStudies={data.case_studies} intro={ctx.caseStudiesIntro} />
@@ -118,10 +133,18 @@ export default function HomePage() {
       {isSectionVisible(ctx.visibility, 'education') && (
         <EducationBanner section={ctx.education} />
       )}
+      {isSectionVisible(ctx.visibility, 'resources_intro') && (
+        <ResourcesSection resources={data.resources} intro={ctx.resourcesIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'faq_newsletter') && (
+        <FaqNewsletterSection faqs={data.faqs} intro={ctx.faqNewsletter} />
+      )}
       {isSectionVisible(ctx.visibility, 'final_cta') && (
         <FinalContactCta section={ctx.finalCta} settings={data.settings} />
       )}
-      <ContactSection settings={data.settings} />
+      {isSectionVisible(ctx.visibility, 'contact_intro') && (
+        <ContactSection settings={data.settings} />
+      )}
     </>
   )
 }

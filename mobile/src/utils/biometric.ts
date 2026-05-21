@@ -3,10 +3,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const BIOMETRIC_ENABLED_KEY = '@biometric_enabled'
 const BIOMETRIC_CREDENTIALS_KEY = '@biometric_credentials'
+const BIOMETRIC_APP_LOCK_KEY = '@biometric_app_lock_enabled'
 
 export interface BiometricCredentials {
   emailOrUsername: string
   password: string
+}
+
+export interface BiometricPromptCopy {
+  promptMessage?: string
+  cancelLabel?: string
+  fallbackLabel?: string
 }
 
 /**
@@ -52,13 +59,13 @@ export async function getBiometricType(): Promise<string> {
 /**
  * Authenticate using biometrics (Face ID, Touch ID, etc.)
  */
-export async function authenticateWithBiometric(): Promise<boolean> {
+export async function authenticateWithBiometric(copy: BiometricPromptCopy = {}): Promise<boolean> {
   try {
     const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Autentique-se para continuar',
-      cancelLabel: 'Cancelar',
+      promptMessage: copy.promptMessage || 'Authenticate to continue',
+      cancelLabel: copy.cancelLabel || 'Cancel',
       disableDeviceFallback: false,
-      fallbackLabel: 'Usar senha',
+      fallbackLabel: copy.fallbackLabel || 'Use passcode',
     })
 
     return result.success
@@ -78,6 +85,33 @@ export async function isBiometricEnabled(): Promise<boolean> {
   } catch (error) {
     console.error('Error checking biometric enabled:', error)
     return false
+  }
+}
+
+/**
+ * App lock is separate from biometric login credentials. It protects an
+ * already-authenticated session without storing the user's password.
+ */
+export async function isBiometricAppLockEnabled(): Promise<boolean> {
+  try {
+    const enabled = await AsyncStorage.getItem(BIOMETRIC_APP_LOCK_KEY)
+    return enabled === 'true'
+  } catch (error) {
+    console.error('Error checking biometric app lock:', error)
+    return false
+  }
+}
+
+export async function setBiometricAppLockEnabled(enabled: boolean): Promise<void> {
+  try {
+    if (enabled) {
+      await AsyncStorage.setItem(BIOMETRIC_APP_LOCK_KEY, 'true')
+    } else {
+      await AsyncStorage.removeItem(BIOMETRIC_APP_LOCK_KEY)
+    }
+  } catch (error) {
+    console.error('Error updating biometric app lock:', error)
+    throw error
   }
 }
 

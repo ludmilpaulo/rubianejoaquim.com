@@ -5,6 +5,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { lessonsApi, coursesApi } from '../services/api'
+import { unwrapList } from '../types/api'
+import { logger } from '../utils/logger'
+
+interface EnrollmentRow {
+  id: number
+  course: { id: number }
+  status: string
+}
 
 interface Lesson {
   id: number
@@ -47,17 +55,12 @@ export default function CourseLessonsScreen() {
       const [lessonsRes, courseRes, enrollmentRes] = await Promise.all([
         lessonsApi.list(courseId),
         coursesApi.get(courseId),
-        enrollmentId ? coursesApi.myEnrollments().then(res => {
-          let enrollments: any[] = []
-          if (Array.isArray(res)) {
-            enrollments = res
-          } else if (res.results) {
-            enrollments = res.results
-          } else if (res.data) {
-            enrollments = Array.isArray(res.data) ? res.data : res.data.results || []
-          }
-          return enrollments.find((e: any) => e.id === enrollmentId)
-        }) : Promise.resolve(null),
+        enrollmentId
+          ? coursesApi.myEnrollments().then((res) => {
+              const enrollments = unwrapList(res as EnrollmentRow[])
+              return enrollments.find((e) => e.id === enrollmentId) ?? null
+            })
+          : Promise.resolve(null),
       ])
       
       // Handle lessons response
@@ -82,7 +85,7 @@ export default function CourseLessonsScreen() {
       
       setEnrollment(enrollmentRes)
     } catch (error) {
-      console.error('Error loading course lessons:', error)
+      logger.error('Error loading course lessons:', error)
     } finally {
       setLoading(false)
     }

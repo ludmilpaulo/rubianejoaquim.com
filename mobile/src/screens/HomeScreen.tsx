@@ -18,32 +18,61 @@ import FinancialHealthCard from '../components/dashboard/FinancialHealthCard'
 import ZendaCard from '../components/ui/ZendaCard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import { colors, spacing, radius } from '../theme'
-import { formatCurrency } from '../utils/currency'
+import { formatCurrency, resolveUserCurrency } from '../utils/currency'
 import { fetchWithCache } from '../utils/apiCache'
+import { flushOfflineQueue, getQueueCount } from '../utils/offlineQueue'
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
   const navigation = useNavigation<{ navigate: (name: string) => void; getParent: () => { navigate: (tab: string) => void } | undefined }>()
-  const { t, locale, messages } = useI18n()
+  const { t, tw, messages } = useI18n()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
+  const [offlineCount, setOfflineCount] = useState(0)
+  const [syncingOffline, setSyncingOffline] = useState(false)
+  const [lastSyncedCount, setLastSyncedCount] = useState(0)
 
-  const currency = user?.preferred_currency || dashboard?.currency || 'AOA'
+  const currency = resolveUserCurrency(user?.preferred_currency || dashboard?.currency)
+
+  const syncQueuedExpenses = useCallback(async () => {
+    try {
+      const count = await getQueueCount()
+      setOfflineCount(count)
+      if (!count) return 0
+
+      setSyncingOffline(true)
+      const synced = await flushOfflineQueue()
+      const remaining = await getQueueCount()
+      setOfflineCount(remaining)
+      setLastSyncedCount(synced)
+      return synced
+    } catch {
+      return 0
+    } finally {
+      setSyncingOffline(false)
+    }
+  }, [])
 
   const loadDashboard = useCallback(async () => {
     try {
       setError(false)
       const data = await fetchWithCache('dashboard', () => personalFinanceApi.getDashboard(), 120000)
       setDashboard(data as DashboardData)
+      const synced = await syncQueuedExpenses()
+      if (synced > 0) {
+        const freshData = await personalFinanceApi.getDashboard()
+        setDashboard(freshData as DashboardData)
+      }
     } catch {
       setError(true)
+      getQueueCount().then(setOfflineCount).catch(() => {})
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [syncQueuedExpenses])
 
   useFocusEffect(
     useCallback(() => {
@@ -65,6 +94,56 @@ export default function HomeScreen() {
   const tipIndex = new Date().getDate() % messages.tips.length
   const dailyTip = messages.tips[tipIndex]
 
+  const topCategory = dashboard?.expenses_by_category?.[0]
+  const budgetPressure = dashboard?.budgets
+    ?.slice()
+    .sort((a, b) => Number(b.percentage_used || 0) - Number(a.percentage_used || 0))[0]
+  const highestDebt = dashboard?.debts
+    ?.slice()
+    .sort((a, b) => Number(b.remaining_amount || 0) - Number(a.remaining_amount || 0))[0]
+  const leadingGoal = dashboard?.goals
+    ?.slice()
+    .sort((a, b) => Number(b.progress_percentage || 0) - Number(a.progress_percentage || 0))[0]
+
+  const commandInsights = dashboard
+    ? [
+        {
+          icon: 'chart-donut' as const,
+          label: t('home.topCategory'),
+          value: topCategory
+            ? `${topCategory.name}: ${formatCurrency(topCategory.total, currency)}`
+            : t('home.noCategoryData'),
+          color: topCategory?.color || colors.brand.primary,
+        },
+        {
+          icon: 'wallet-outline' as const,
+          label: t('home.budgetWatch'),
+          value: budgetPressure
+            ? `${budgetPressure.category || t('home.remainingBudget')}: ${tw('home.budgetUsed', {
+                percent: Math.round(Number(budgetPressure.percentage_used || 0)),
+              })}`
+            : t('home.noBudgetRisk'),
+          color: Number(budgetPressure?.percentage_used || 0) >= 90 ? colors.brand.danger : colors.brand.accent,
+        },
+        {
+          icon: 'credit-card-clock-outline' as const,
+          label: t('home.debtFocus'),
+          value: highestDebt
+            ? `${highestDebt.creditor}: ${formatCurrency(highestDebt.remaining_amount, currency)}`
+            : t('home.noDebtFocus'),
+          color: colors.brand.danger,
+        },
+        {
+          icon: 'flag-checkered' as const,
+          label: t('home.goalFocus'),
+          value: leadingGoal
+            ? `${leadingGoal.title}: ${Math.round(Number(leadingGoal.progress_percentage || 0))}%`
+            : t('home.noGoalFocus'),
+          color: colors.brand.secondary,
+        },
+      ]
+    : []
+
   type QuickAction =
     | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; tab: string }
     | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; route: string }
@@ -75,6 +154,8 @@ export default function HomeScreen() {
     { icon: 'chart-pie', label: t('home.createBudget'), color: colors.brand.primary, tab: 'Personal' },
     { icon: 'flag-checkered', label: t('home.createGoal'), color: colors.brand.accent, tab: 'Personal' },
     { icon: 'robot-outline', label: t('home.askAi'), color: colors.brand.ai, route: 'AICopilot' },
+    { icon: 'chart-areaspline', label: t('home.viewAnalytics'), color: colors.brand.ai, route: 'Analytics' },
+    { icon: 'receipt', label: t('home.scanReceipt'), color: colors.brand.secondary, route: 'ReceiptScanner' },
     { icon: 'school-outline', label: t('home.viewCourses'), color: colors.brand.accent, tab: 'Education' },
   ]
 
@@ -87,7 +168,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView testID="home-screen" style={styles.safe} edges={['top']}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -96,7 +177,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text variant="headlineSmall" style={styles.greeting}>
-              {t('home.greeting')}, {user?.first_name || 'Zenda'} 👋
+              {t('home.greeting')}, {user?.first_name || 'Zenda'}
             </Text>
             <Text variant="bodyMedium" style={styles.subtitle}>
               {t('home.subtitle')}
@@ -113,6 +194,44 @@ export default function HomeScreen() {
             <TouchableOpacity onPress={loadDashboard}>
               <Text style={styles.retryLink}>{t('common.retry')}</Text>
             </TouchableOpacity>
+          </ZendaCard>
+        )}
+
+        {(syncingOffline || offlineCount > 0 || lastSyncedCount > 0) && (
+          <ZendaCard style={styles.offlineCard} accentColor={offlineCount > 0 ? colors.brand.accent : colors.brand.secondary}>
+            <View style={styles.offlineRow}>
+              <View style={styles.offlineIcon}>
+                <MaterialCommunityIcons
+                  name={offlineCount > 0 ? 'cloud-sync-outline' : 'cloud-check-outline'}
+                  size={22}
+                  color={offlineCount > 0 ? colors.brand.accent : colors.brand.secondary}
+                />
+              </View>
+              <View style={styles.offlineTextWrap}>
+                <Text variant="labelMedium" style={styles.offlineTitle}>
+                  {syncingOffline ? t('home.offlineSyncing') : t('home.offlineStatus')}
+                </Text>
+                <Text variant="bodySmall" style={styles.offlineBody}>
+                  {syncingOffline
+                    ? t('home.offlineSyncingBody')
+                    : offlineCount > 0
+                      ? tw('home.offlineQueue', { count: offlineCount })
+                      : tw('home.offlineSynced', { count: lastSyncedCount })}
+                </Text>
+              </View>
+              {offlineCount > 0 && (
+                <TouchableOpacity
+                  style={styles.offlineAction}
+                  onPress={async () => {
+                    const synced = await syncQueuedExpenses()
+                    if (synced > 0) loadDashboard()
+                  }}
+                  disabled={syncingOffline}
+                >
+                  <Text style={styles.offlineActionText}>{t('home.syncNow')}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </ZendaCard>
         )}
 
@@ -153,6 +272,42 @@ export default function HomeScreen() {
                   {t('home.businessProfit')}: {formatCurrency(dashboard.summary.business_profit, currency)}
                 </Text>
               )}
+            </ZendaCard>
+
+            <ZendaCard variant="elevated" style={styles.commandCard}>
+              <View style={styles.commandHeader}>
+                <View style={styles.commandTitleWrap}>
+                  <Text variant="labelLarge" style={styles.commandEyebrow}>{t('home.commandCenter')}</Text>
+                  <Text variant="bodySmall" style={styles.commandSubtitle}>{t('home.commandSubtitle')}</Text>
+                </View>
+                <View style={styles.healthPill}>
+                  <MaterialCommunityIcons name="pulse" size={16} color={colors.brand.secondary} />
+                  <Text style={styles.healthPillText}>{dashboard.health.score}/100</Text>
+                </View>
+              </View>
+              <View style={styles.insightGrid}>
+                {commandInsights.map((item) => (
+                  <View key={item.label} style={styles.insightItem}>
+                    <View style={[styles.insightIcon, { backgroundColor: `${item.color}18` }]}>
+                      <MaterialCommunityIcons name={item.icon} size={20} color={item.color} />
+                    </View>
+                    <View style={styles.insightCopy}>
+                      <Text variant="labelSmall" style={styles.insightLabel}>{item.label}</Text>
+                      <Text variant="bodySmall" style={styles.insightValue} numberOfLines={2}>{item.value}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.commandActions}>
+                <TouchableOpacity style={styles.commandBtn} onPress={() => navigation.navigate('Analytics')}>
+                  <MaterialCommunityIcons name="chart-line" size={18} color="#fff" />
+                  <Text style={styles.commandBtnText}>{t('home.viewAnalytics')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.commandBtn, styles.commandBtnAlt]} onPress={() => navigation.navigate('AICopilot')}>
+                  <MaterialCommunityIcons name="robot-outline" size={18} color={colors.brand.ai} />
+                  <Text style={styles.commandBtnAltText}>{t('home.openReports')}</Text>
+                </TouchableOpacity>
+              </View>
             </ZendaCard>
 
             <Text variant="labelLarge" style={styles.sectionTitle}>{t('home.quickActions')}</Text>
@@ -317,7 +472,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0,
   },
   summaryRow: { flexDirection: 'row', gap: spacing.sm },
   summaryCard: { alignItems: 'flex-start', gap: 4 },
@@ -385,4 +540,139 @@ const styles = StyleSheet.create({
   errorCard: { backgroundColor: '#FEF2F2', alignItems: 'center' },
   errorText: { color: colors.brand.danger },
   retryLink: { color: colors.brand.primary, fontWeight: '600', marginTop: 8 },
+  offlineCard: {
+    backgroundColor: '#FFFFFF',
+  },
+  offlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  offlineIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineTextWrap: {
+    flex: 1,
+  },
+  offlineTitle: {
+    color: colors.text.primary,
+    fontWeight: '700',
+  },
+  offlineBody: {
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  offlineAction: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+    backgroundColor: '#FFF7ED',
+  },
+  offlineActionText: {
+    color: colors.brand.accent,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  commandCard: {
+    backgroundColor: '#FFFFFF',
+  },
+  commandHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  commandTitleWrap: {
+    flex: 1,
+  },
+  commandEyebrow: {
+    color: colors.text.primary,
+    fontWeight: '800',
+  },
+  commandSubtitle: {
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  healthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: '#ECFDF5',
+  },
+  healthPillText: {
+    color: colors.brand.secondary,
+    fontWeight: '800',
+    fontSize: 12,
+  },
+  insightGrid: {
+    gap: spacing.sm,
+  },
+  insightItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: '#F8FAFC',
+  },
+  insightIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightCopy: {
+    flex: 1,
+  },
+  insightLabel: {
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0,
+  },
+  insightValue: {
+    color: colors.text.primary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  commandActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  commandBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brand.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.sm,
+  },
+  commandBtnAlt: {
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  commandBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  commandBtnAltText: {
+    color: colors.brand.ai,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 })

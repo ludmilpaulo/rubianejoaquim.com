@@ -7,6 +7,11 @@ import { tasksApi } from '../services/api'
 import DatePicker from '../components/DatePicker'
 import TimePicker from '../components/TimePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
+import { materialIcon, type MaterialIconName } from '../utils/icons'
+import { logger } from '../utils/logger'
+import { getApiErrorMessage, unwrapList } from '../types/api'
+
+type TaskFilter = 'all' | 'today' | 'upcoming' | 'overdue' | 'completed'
 
 interface Task {
   id: number
@@ -32,7 +37,7 @@ interface TaskCategory {
 
 export default function ToDoListScreen() {
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
-  const [activeFilter, setActiveFilter] = useState<'all' | 'today' | 'upcoming' | 'overdue' | 'completed'>('all')
+  const [activeFilter, setActiveFilter] = useState<TaskFilter>('all')
   const [refreshing, setRefreshing] = useState(false)
   const [tasks, setTasks] = useState<Task[]>([])
   const [todayTasks, setTodayTasks] = useState<Task[]>([])
@@ -79,7 +84,7 @@ export default function ToDoListScreen() {
       setCategories(Array.isArray(categoriesRes) ? categoriesRes : categoriesRes.results || [])
       setStats(statsRes)
     } catch (error) {
-      console.error('Error loading tasks:', error)
+      logger.error('Error loading tasks:', error)
     }
   }
 
@@ -112,7 +117,7 @@ export default function ToDoListScreen() {
       resetTaskForm()
       loadData()
     } catch (error) {
-      console.error('Error saving task:', error)
+      logger.error('Error saving task:', error)
     }
   }
 
@@ -121,7 +126,7 @@ export default function ToDoListScreen() {
       await tasksApi.completeTask(task.id)
       loadData()
     } catch (error) {
-      console.error('Error completing task:', error)
+      logger.error('Error completing task:', error)
     }
   }
 
@@ -130,7 +135,7 @@ export default function ToDoListScreen() {
       await tasksApi.deleteTask(taskId)
       loadData()
     } catch (error) {
-      console.error('Error deleting task:', error)
+      logger.error('Error deleting task:', error)
     }
   }
 
@@ -287,10 +292,10 @@ export default function ToDoListScreen() {
               <TouchableOpacity
                 key={filter.key}
                 style={[styles.filterChip, activeFilter === filter.key && styles.filterChipActive]}
-                onPress={() => setActiveFilter(filter.key as any)}
+                onPress={() => setActiveFilter(filter.key as TaskFilter)}
               >
                 <MaterialCommunityIcons
-                  name={filter.icon as any}
+                  name={materialIcon(filter.icon) as MaterialIconName}
                   size={18}
                   color={activeFilter === filter.key ? '#6366f1' : '#666'}
                 />
@@ -369,7 +374,7 @@ export default function ToDoListScreen() {
                   <View style={styles.taskFooter}>
                     {task.category_name && (
                       <Chip
-                        icon={task.category_icon as any || 'tag'}
+                        icon={materialIcon(task.category_icon)}
                         style={[styles.categoryChip, { backgroundColor: task.category_color || '#6366f1' + '20' }]}
                         textStyle={{ color: task.category_color || '#6366f1' }}
                         compact

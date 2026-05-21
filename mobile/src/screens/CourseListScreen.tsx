@@ -14,6 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { useAppSelector } from '../hooks/redux'
 import { coursesApi, referralApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
+import { getApiErrorMessage } from '../types/api'
+import { logger } from '../utils/logger'
 
 interface Course {
   id: number
@@ -33,6 +36,7 @@ interface Enrollment {
 }
 
 export default function CourseListScreen() {
+  const { t, tw } = useI18n()
   const navigation = useNavigation<any>()
   const { user } = useAppSelector((state) => state.auth)
   const [courses, setCourses] = useState<Course[]>([])
@@ -41,6 +45,7 @@ export default function CourseListScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [enrollingId, setEnrollingId] = useState<number | null>(null)
   const [pointsBalance, setPointsBalance] = useState<number>(0)
+  const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
   const [redeemingId, setRedeemingId] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
@@ -48,11 +53,12 @@ export default function CourseListScreen() {
       const [coursesRes, enrollmentsRes, pointsRes] = await Promise.all([
         coursesApi.list(),
         coursesApi.myEnrollments(),
-        referralApi.getPointsBalance().catch(() => ({ balance: 0 })),
+        referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 })),
       ])
-      
+
       if (pointsRes?.balance !== undefined) {
         setPointsBalance(pointsRes.balance)
+        setPointsBalanceKz(pointsRes.balance_kz ?? pointsRes.balance * 1000)
       }
       const coursesList = Array.isArray(coursesRes)
         ? coursesRes
@@ -63,7 +69,7 @@ export default function CourseListScreen() {
         : enrollmentsRes?.results ?? enrollmentsRes?.data?.results ?? enrollmentsRes?.data ?? []
       setEnrollments(Array.isArray(enrollmentsList) ? enrollmentsList : [])
     } catch (e) {
-      console.error('Error loading courses:', e)
+      logger.error('Error loading courses:', e)
       setCourses([])
       setEnrollments([])
     } finally {
@@ -91,10 +97,7 @@ export default function CourseListScreen() {
       return
     }
     if (existing?.status === 'pending') {
-      Alert.alert(
-        'Inscrição pendente',
-        'Já tem uma inscrição pendente neste curso. Volte à aba Educação para enviar o comprovativo de pagamento.'
-      )
+      Alert.alert(t('education.pendingEnrollmentTitle'), t('education.pendingEnrollmentMsg'))
       return
     }
     setEnrollingId(course.id)
@@ -102,19 +105,11 @@ export default function CourseListScreen() {
       // Use referral code from shared link if available, otherwise use user's referral code
       const referralCode = referralCodeFromShare || undefined
       await coursesApi.enroll(course.id, referralCode)
-      Alert.alert(
-        'Inscrição criada',
-        'Agora efetue o pagamento e envie o comprovativo na aba Educação. O acesso será ativado após aprovação.'
-      )
+      Alert.alert(t('education.enrollCreatedTitle'), t('education.enrollCreatedMsg'))
       await loadData()
       navigation.navigate('EducationMain')
-    } catch (err: any) {
-      const msg =
-        err?.response?.data?.error ??
-        err?.response?.data?.detail ??
-        err?.message ??
-        'Não foi possível inscrever.'
-      Alert.alert('Erro', msg)
+    } catch (err: unknown) {
+      Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.enrollFailed'))
     } finally {
       setEnrollingId(null)
     }
@@ -125,37 +120,38 @@ export default function CourseListScreen() {
     const pointsNeeded = coursePriceKz / 1000 // 1 point = 1000 KZ
     
     if (pointsBalance <= 0) {
-      Alert.alert('Sem pontos', 'Não tem pontos disponíveis para usar.')
+      Alert.alert(t('education.noPointsTitle'), t('education.noPointsMsg'))
       return
     }
 
     if (usePartial && pointsBalance < pointsNeeded) {
       // Partial payment
-      const remainingKz = coursePriceKz - (pointsBalance * 1000)
+      const remainingKz = coursePriceKz - pointsBalanceKz
       Alert.alert(
-        'Usar pontos parciais',
-        `Deseja usar ${pointsBalance.toFixed(1)} pontos (${(pointsBalance * 1000).toFixed(0)} KZ) e pagar ${remainingKz.toFixed(0)} KZ restantes por transferência?`,
+        t('education.partialPointsTitle'),
+        tw('education.partialPointsMsg', {
+          points: pointsBalance.toFixed(1),
+          pointsKz: pointsBalanceKz.toFixed(0),
+          remainKz: remainingKz.toFixed(0),
+        }),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Confirmar',
+            text: t('common.confirm'),
             onPress: async () => {
               setRedeemingId(course.id)
               try {
                 const result = await referralApi.redeemCourse(course.id, pointsBalance)
+                const remain = result.remaining_kz ?? remainingKz
                 Alert.alert(
-                  'Pontos aplicados',
-                  result.message || `Pontos aplicados! Resta pagar ${remainingKz.toFixed(0)} KZ e enviar comprovativo na aba Educação.`
+                  t('education.pointsAppliedTitle'),
+                  result.message ||
+                    tw('education.pointsAppliedRemain', { remainKz: remain.toFixed(0) })
                 )
                 await loadData()
                 navigation.navigate('EducationMain')
-              } catch (err: any) {
-                const msg =
-                  err?.response?.data?.error ??
-                  err?.response?.data?.detail ??
-                  err?.message ??
-                  'Não foi possível resgatar.'
-                Alert.alert('Erro', msg)
+              } catch (err: unknown) {
+                Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.redeemFailed'))
               } finally {
                 setRedeemingId(null)
               }
@@ -166,26 +162,25 @@ export default function CourseListScreen() {
     } else if (pointsBalance >= pointsNeeded) {
       // Full payment
       Alert.alert(
-        'Confirmar compra',
-        `Deseja usar ${pointsNeeded.toFixed(1)} pontos (${coursePriceKz.toFixed(0)} KZ) para adquirir "${course.title}"?`,
+        t('education.confirmPurchaseTitle'),
+        tw('education.confirmPurchaseMsg', {
+          points: pointsNeeded.toFixed(1),
+          priceKz: coursePriceKz.toFixed(0),
+          title: course.title,
+        }),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Confirmar',
+            text: t('common.confirm'),
             onPress: async () => {
               setRedeemingId(course.id)
               try {
                 await referralApi.redeemCourse(course.id)
-                Alert.alert('Sucesso', 'Curso adquirido com pontos!')
+                Alert.alert(t('common.success'), t('education.courseRedeemSuccess'))
                 await loadData()
                 navigation.navigate('EducationMain')
-              } catch (err: any) {
-                const msg =
-                  err?.response?.data?.error ??
-                  err?.response?.data?.detail ??
-                  err?.message ??
-                  'Não foi possível resgatar.'
-                Alert.alert('Erro', msg)
+              } catch (err: unknown) {
+                Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.redeemFailed'))
               } finally {
                 setRedeemingId(null)
               }
@@ -195,8 +190,11 @@ export default function CourseListScreen() {
       )
     } else {
       Alert.alert(
-        'Pontos insuficientes',
-        `Necessita de ${pointsNeeded.toFixed(1)} pontos para este curso. Tem ${pointsBalance.toFixed(1)} pontos disponíveis.\n\nPode usar seus pontos e pagar o restante por transferência.`
+        t('education.insufficientPointsTitle'),
+        tw('education.insufficientPointsMsg', {
+          needed: pointsNeeded.toFixed(1),
+          have: pointsBalance.toFixed(1),
+        })
       )
     }
   }
@@ -207,7 +205,7 @@ export default function CourseListScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#6366f1" />
           <Text variant="bodyLarge" style={styles.loadingText}>
-            A carregar cursos...
+            {t('education.loadingCourses')}
           </Text>
         </View>
       </SafeAreaView>
@@ -231,10 +229,13 @@ export default function CourseListScreen() {
                 <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
                 <View style={styles.pointsInfo}>
                   <Text variant="bodyMedium" style={styles.pointsLabel}>
-                    Pontos Disponíveis
+                    {t('education.pointsAvailable')}
                   </Text>
                   <Text variant="titleLarge" style={styles.pointsValue}>
-                    {pointsBalance.toFixed(1)} pts ({(pointsBalance * 1000).toFixed(0)} KZ)
+                    {tw('education.pointsDisplay', {
+                      points: pointsBalance.toFixed(1),
+                      kz: pointsBalanceKz.toFixed(0),
+                    })}
                   </Text>
                 </View>
               </View>
@@ -243,14 +244,14 @@ export default function CourseListScreen() {
         )}
         
         <Text variant="titleMedium" style={styles.intro}>
-          Escolha o curso. Se tiver pontos, pode usá-los para comprar. Caso contrário, pague por transferência e envie o comprovativo na aba Educação.
+          {t('education.catalogIntro')}
         </Text>
         {courses.length === 0 ? (
           <Card style={styles.card}>
             <Card.Content style={styles.emptyContent}>
               <MaterialCommunityIcons name="book-open-outline" size={56} color="#999" />
               <Text variant="bodyLarge" style={styles.emptyText}>
-                Nenhum curso disponível
+                {t('education.noCoursesAvailable')}
               </Text>
             </Card.Content>
           </Card>
@@ -287,7 +288,7 @@ export default function CourseListScreen() {
                       onPress={() => navigation.navigate('EducationMain')}
                       style={styles.btn}
                     >
-                      Já tem acesso
+                      {t('education.alreadyEnrolled')}
                     </Button>
                   ) : isPending ? (
                     <Button
@@ -295,7 +296,7 @@ export default function CourseListScreen() {
                       onPress={() => navigation.navigate('EducationMain')}
                       style={styles.btn}
                     >
-                      Enviar comprovativo na aba Educação
+                      {t('education.goUploadProof')}
                     </Button>
                   ) : (
                     <View style={styles.buttonGroup}>
@@ -310,7 +311,7 @@ export default function CourseListScreen() {
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
-                              Usar pontos para este curso
+                              {t('education.redeemWithPoints')}
                             </Button>
                           ) : (
                             <Button
@@ -321,7 +322,7 @@ export default function CourseListScreen() {
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
-                              Usar {pointsBalance.toFixed(1)} pts + pagar restante
+                              {tw('education.redeemPartialBtn', { points: pointsBalance.toFixed(1) })}
                             </Button>
                           )}
                         </>
@@ -333,7 +334,7 @@ export default function CourseListScreen() {
                         disabled={isEnrolling || redeemingId === course.id}
                         style={styles.btn}
                       >
-                        Pagar por transferência
+                        {t('education.payTransfer')}
                       </Button>
                     </View>
                   )}

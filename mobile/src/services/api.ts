@@ -15,12 +15,16 @@ import type {
   GoalContributionPayload,
   DebtPaymentPayload,
   IncomePayload,
+  ApiErrorBody,
   LoginResponse,
+  PublicFAQ,
+  PublicSiteSettings,
+  PublicZendaContent,
   TargetPayload,
   TaskPayload,
   UploadFilePayload,
 } from '../types/api'
-import { getApiErrorMessage, isApiError } from '../types/api'
+import { getApiErrorMessage, isApiError, unwrapList } from '../types/api'
 
 const API_BASE_URL = getApiBaseUrl()
 logger.info('API Base URL configured')
@@ -104,27 +108,51 @@ export const configApi = {
   },
 }
 
+// Public CMS content shared with the website. Django localizes by the lang query.
+export const publicApi = {
+  getZenda: async (locale: string) => {
+    const response = await api.get<PublicZendaContent>('/public/zenda/', {
+      params: { lang: locale },
+      timeout: 10000,
+    })
+    return response.data || {}
+  },
+
+  getSiteSettings: async (locale: string) => {
+    const response = await api.get<PublicSiteSettings>('/public/site-settings/', {
+      params: { lang: locale },
+      timeout: 10000,
+    })
+    return response.data || {}
+  },
+
+  getFaqs: async (locale: string, category?: string) => {
+    const response = await api.get<PublicFAQ[] | { results?: PublicFAQ[] }>('/public/faqs/', {
+      params: { lang: locale, category },
+      timeout: 10000,
+    })
+    return unwrapList(response.data)
+  },
+}
+
 // Auth API
 export const authApi = {
   login: async (emailOrUsername: string, password: string) => {
     try {
-      logger.info('🔐 Attempting login to:', API_BASE_URL + '/auth/login/')
-      logger.info('📧 Email/Username:', emailOrUsername)
-      
+      logger.info('Attempting login')
+
       const response = await api.post('/auth/login/', {
         email: emailOrUsername,
         password,
       })
-      
-      logger.info('✅ Login response status:', response.status)
-      logger.info('✅ Login response data:', response.data)
+
+      logger.info('Login response status:', response.status)
       
       if (response.status >= 200 && response.status < 300) {
-        return response.data
+        return response.data as LoginResponse
       } else {
-        // Handle non-2xx responses
-        const errorData = response.data || {}
-        const errorMsg = errorData.email?.[0] || 
+        const errorData = (response.data || {}) as ApiErrorBody
+        const errorMsg = errorData.email?.[0] ||
                         errorData.password?.[0] ||
                         errorData.non_field_errors?.[0] ||
                         errorData.error ||
@@ -140,13 +168,11 @@ export const authApi = {
           error.message?.includes('Network Error') ||
           error.message?.includes('timeout')
         ) {
-          throw new Error(
-            `Não foi possível conectar ao servidor (${API_BASE_URL}). Verifique a sua ligação à internet.`,
-          )
+          throw new Error('api.errors.network')
         }
-        throw new Error(getApiErrorMessage(error, 'Erro ao fazer login'))
+        throw new Error(getApiErrorMessage(error, 'api.errors.login.failed'))
       }
-      throw new Error(getApiErrorMessage(error, 'Erro desconhecido ao fazer login'))
+      throw new Error(getApiErrorMessage(error, 'api.errors.login.unknown'))
     }
   },
   
@@ -158,6 +184,8 @@ export const authApi = {
     first_name: string
     last_name: string
     phone?: string
+    preferred_currency?: string
+    device_region?: string
   }) => {
     const response = await api.post('/auth/register/', data)
     return response.data
@@ -277,7 +305,7 @@ export const accessApi = {
         (typeof response.data?.error === 'string' ? response.data.error : null) ||
         response.data?.message ||
         `Erro ao ativar (${response.status})`
-      throw new Error(msg || 'Não foi possível ativar a semana grátis.')
+      throw new Error(msg || 'api.errors.subscription.trialFailed')
     }
     return response.data
   },
@@ -828,6 +856,10 @@ export const receiptApi = {
     const response = await api.post('/finance/receipts/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return response.data
+  },
+  reprocess: async (id: number) => {
+    const response = await api.post(`/finance/receipts/${id}/reprocess/`)
     return response.data
   },
 }

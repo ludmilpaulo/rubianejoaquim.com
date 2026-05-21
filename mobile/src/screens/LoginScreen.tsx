@@ -7,6 +7,11 @@ import { useAppDispatch } from '../hooks/redux'
 import { login } from '../store/authSlice'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
+import { useI18n } from '../contexts/I18nContext'
+import { getApiBaseUrl } from '../config/api'
+import { getThunkErrorMessage } from '../utils/thunkError'
+import { logger } from '../utils/logger'
+import { isApiError } from '../types/api'
 
 type Props = StackScreenProps<AuthStackParamList, 'Login'>
 import {
@@ -19,8 +24,39 @@ import {
   clearBiometricCredentials,
 } from '../utils/biometric'
 
+function isUserNotFound(msg: string) {
+  return (
+    msg.includes('não encontrado') ||
+    msg.includes('not found') ||
+    msg.includes('introuvable') ||
+    msg.includes('no encontrado')
+  )
+}
+
+function isWrongPassword(msg: string) {
+  return (
+    msg.includes('incorreta') ||
+    msg.includes('incorrect') ||
+    msg.includes('incorrecte') ||
+    msg.includes('incorrecta')
+  )
+}
+
+function isConnectionError(msg: string) {
+  return (
+    msg === 'api.errors.network' ||
+    msg.includes('conectar') ||
+    msg.includes('connect') ||
+    msg.includes('connexion') ||
+    msg.includes('conectar al servidor') ||
+    msg.includes('Network Error') ||
+    msg.includes('timeout')
+  )
+}
+
 export default function LoginScreen({ navigation }: Props) {
   const dispatch = useAppDispatch()
+  const { t, tw, resolve } = useI18n()
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -31,31 +67,62 @@ export default function LoginScreen({ navigation }: Props) {
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [enableBiometricOption, setEnableBiometricOption] = useState(false)
 
-  // Initialize biometric availability on mount
   useEffect(() => {
     const checkBiometric = async () => {
       try {
         const available = await isBiometricAvailable()
         setBiometricAvailable(available)
-        
+
         if (available) {
           const type = await getBiometricType()
           setBiometricType(type)
-          
+
           const enabled = await isBiometricEnabled()
           setBiometricEnabled(enabled)
         }
-      } catch (error) {
-        console.error('Error checking biometric:', error)
+      } catch (err) {
+        logger.error('Error checking biometric:', err)
       }
     }
-    
+
     checkBiometric()
   }, [])
 
+  const formatError = (raw: string) => {
+    if (raw === 'api.errors.network') {
+      return tw('api.errors.network', { url: getApiBaseUrl() })
+    }
+    return resolve(raw)
+  }
+
+  const showLoginErrorAlert = (errorMessage: string) => {
+    const msg = formatError(errorMessage)
+    if (isUserNotFound(msg) || isUserNotFound(errorMessage)) {
+      Alert.alert(
+        t('auth.login.userNotFoundTitle'),
+        t('auth.login.userNotFoundMessage'),
+        [{ text: t('common.ok'), style: 'default' }],
+      )
+    } else if (isWrongPassword(msg) || isWrongPassword(errorMessage)) {
+      Alert.alert(
+        t('auth.login.wrongPasswordTitle'),
+        t('auth.login.wrongPasswordMessage'),
+        [{ text: t('common.ok'), style: 'default' }],
+      )
+    } else if (isConnectionError(msg) || isConnectionError(errorMessage)) {
+      Alert.alert(
+        t('auth.login.connectionTitle'),
+        `${msg}\n\n${t('auth.login.connectionHints')}`,
+        [{ text: t('common.ok'), style: 'default' }],
+      )
+    } else {
+      Alert.alert(t('auth.login.loginErrorTitle'), msg, [{ text: t('common.ok'), style: 'default' }])
+    }
+  }
+
   const handleLogin = async () => {
     if (!emailOrUsername || !password) {
-      setError('Por favor, preencha todos os campos')
+      setError(t('auth.login.fillAllFields'))
       return
     }
 
@@ -64,74 +131,19 @@ export default function LoginScreen({ navigation }: Props) {
 
     try {
       await dispatch(login({ emailOrUsername, password })).unwrap()
-      
-      // If user checked "Enable biometric", save credentials
+
       if (enableBiometricOption && biometricAvailable) {
         try {
           await enableBiometric(emailOrUsername, password)
           setBiometricEnabled(true)
         } catch (err) {
-          console.error('Error enabling biometric:', err)
-          // Don't show error to user, login was successful
+          logger.error('Error enabling biometric:', err)
         }
       }
-    } catch (err: any) {
-      let errorMessage = 'Erro ao fazer login. Verifique suas credenciais.'
-      
-      console.error('🔴 Login error object:', JSON.stringify(err, null, 2))
-      console.error('🔴 Error type:', typeof err)
-      console.error('🔴 Error keys:', Object.keys(err || {}))
-      
-      // Extract error message from Redux thunk rejection
-      // Redux Toolkit thunks reject with the value passed to rejectWithValue
-      if (err.payload) {
-        errorMessage = typeof err.payload === 'string' ? err.payload : JSON.stringify(err.payload)
-        console.log('📦 Error from payload:', err.payload)
-      } else if (err.message) {
-        errorMessage = err.message
-        console.log('📝 Error from message:', err.message)
-      } else if (typeof err === 'string') {
-        errorMessage = err
-        console.log('📄 Error is string:', err)
-      } else {
-        // Try to extract from error object
-        const errorStr = err.toString()
-        if (errorStr !== '[object Object]') {
-          errorMessage = errorStr
-        }
-        console.log('🔍 Error string representation:', errorStr)
-      }
-      
-      setError(errorMessage)
-      console.error('❌ Final error message:', errorMessage)
-      
-      // Show specific alerts based on error type
-      if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
-        Alert.alert(
-          '❌ Utilizador não encontrado',
-          'O utilizador que introduziu não existe.\n\nVerifique o email ou username e tente novamente.',
-          [{ text: 'OK', style: 'default' }]
-        )
-      } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
-        Alert.alert(
-          '⚠️ Palavra-passe incorreta',
-          'O utilizador existe, mas a palavra-passe está incorreta.\n\nTente novamente.',
-          [{ text: 'OK', style: 'default' }]
-        )
-      } else if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error') || errorMessage.includes('timeout') || errorMessage.includes('conectar ao servidor')) {
-        Alert.alert(
-          '🔌 Erro de Conexão',
-          errorMessage + '\n\nVerifique:\n• Ligação à internet\n• URL do servidor está correta\n• Servidor está online',
-          [{ text: 'OK', style: 'default' }]
-        )
-      } else {
-        // Show generic error alert
-        Alert.alert(
-          '❌ Erro ao fazer login',
-          errorMessage,
-          [{ text: 'OK', style: 'default' }]
-        )
-      }
+    } catch (err: unknown) {
+      const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
+      setError(formatError(errorMessage))
+      showLoginErrorAlert(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -140,8 +152,8 @@ export default function LoginScreen({ navigation }: Props) {
   const handleBiometricLogin = async () => {
     if (!biometricEnabled) {
       Alert.alert(
-        'Biometria não habilitada',
-        'Por favor, faça login normalmente e marque a opção para habilitar biometria.'
+        t('auth.login.biometricDisabledTitle'),
+        t('auth.login.biometricDisabledMessage'),
       )
       return
     }
@@ -153,7 +165,7 @@ export default function LoginScreen({ navigation }: Props) {
 
     const credentials = await getBiometricCredentials()
     if (!credentials) {
-      Alert.alert('Erro', 'Credenciais biométricas não encontradas. Faça login normalmente.')
+      Alert.alert(t('common.error'), t('auth.login.biometricCredentialsMissing'))
       return
     }
 
@@ -162,41 +174,12 @@ export default function LoginScreen({ navigation }: Props) {
 
     try {
       await dispatch(login(credentials)).unwrap()
-    } catch (err: any) {
-      let errorMessage = 'Erro ao fazer login. Verifique suas credenciais.'
-      
-      // Extract error message from payload (Redux thunk rejection)
-      if (err.payload) {
-        errorMessage = err.payload
-      } else if (err.message) {
-        errorMessage = err.message
-      }
-      
-      setError(errorMessage)
-      
-      // Show specific alerts based on error type
-      if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
-        Alert.alert(
-          '❌ Utilizador não encontrado',
-          'O utilizador que introduziu não existe.\n\nVerifique o email ou username e tente novamente.',
-          [{ text: 'OK', style: 'default' }]
-        )
-      } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
-        Alert.alert(
-          '⚠️ Palavra-passe incorreta',
-          'O utilizador existe, mas a palavra-passe está incorreta.\n\nTente novamente.',
-          [{ text: 'OK', style: 'default' }]
-        )
-      } else {
-        // Generic error for biometric login
-        Alert.alert(
-          'Erro ao fazer login',
-          errorMessage
-        )
-      }
-      
-      // If credentials are invalid, clear biometric data
-      if (err.response?.status === 401 || err.response?.status === 400) {
+    } catch (err: unknown) {
+      const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
+      setError(formatError(errorMessage))
+      showLoginErrorAlert(errorMessage)
+
+      if (isApiError(err) && (err.response?.status === 401 || err.response?.status === 400)) {
         await clearBiometricCredentials()
         setBiometricEnabled(false)
       }
@@ -205,8 +188,17 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
+  const displayError = error
+  const errorStyle = displayError
+    ? isUserNotFound(displayError)
+      ? styles.errorWarning
+      : isWrongPassword(displayError)
+        ? styles.errorInfo
+        : styles.errorDanger
+    : null
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView testID="login-screen" style={styles.safeArea} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -216,168 +208,156 @@ export default function LoginScreen({ navigation }: Props) {
           <View style={styles.circle2} />
         </View>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Card style={styles.card} elevation={8 as 0 | 1 | 2 | 3 | 4 | 5}>
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <MaterialCommunityIcons name="wallet" size={40} color="#6366f1" />
+          <Card style={styles.card} elevation={8 as 0 | 1 | 2 | 3 | 4 | 5}>
+            <Card.Content style={styles.cardContent}>
+              <View style={styles.logoContainer}>
+                <View style={styles.logoCircle}>
+                  <MaterialCommunityIcons name="wallet" size={40} color="#6366f1" />
+                </View>
               </View>
-            </View>
-            <Text variant="headlineMedium" style={styles.title}>
-              Zenda
-            </Text>
-            <Text variant="bodyMedium" style={styles.subtitle}>
-              One app. Your money. Your life. Your business.
-            </Text>
+              <Text variant="headlineMedium" style={styles.title}>
+                {t('home.zendaTitle')}
+              </Text>
+              <Text variant="bodyMedium" style={styles.subtitle}>
+                {t('auth.login.subtitle')}
+              </Text>
 
-            {error ? (
-              <View style={[
-                styles.errorContainer,
-                error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                  ? styles.errorWarning
-                  : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                  ? styles.errorInfo
-                  : styles.errorDanger
-              ]}>
-                <MaterialCommunityIcons
-                  name={
-                    error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                      ? 'account-remove'
-                      : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                      ? 'lock-alert'
-                      : 'alert-circle'
-                  }
-                  size={20}
-                  color={
-                    error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                      ? '#f97316'
-                      : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                      ? '#eab308'
-                      : '#d32f2f'
+              {displayError ? (
+                <View style={[styles.errorContainer, errorStyle]}>
+                  <MaterialCommunityIcons
+                    name={
+                      isUserNotFound(displayError)
+                        ? 'account-remove'
+                        : isWrongPassword(displayError)
+                          ? 'lock-alert'
+                          : 'alert-circle'
+                    }
+                    size={20}
+                    color={
+                      isUserNotFound(displayError)
+                        ? '#f97316'
+                        : isWrongPassword(displayError)
+                          ? '#eab308'
+                          : '#d32f2f'
+                    }
+                  />
+                  <Text style={[styles.error, errorStyle && styles.errorDangerText]}>
+                    {displayError}
+                  </Text>
+                </View>
+              ) : null}
+
+              <TextInput
+                testID="login-email"
+                label={t('auth.login.emailOrUsername')}
+                value={emailOrUsername}
+                onChangeText={setEmailOrUsername}
+                mode="outlined"
+                style={styles.input}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  testID="login-password"
+                  label={t('auth.login.password')}
+                  value={password}
+                  onChangeText={setPassword}
+                  mode="outlined"
+                  secureTextEntry={!showPassword}
+                  style={styles.passwordInput}
+                  right={
+                    <TextInput.Icon
+                      icon={showPassword ? 'eye-off' : 'eye'}
+                      onPress={() => setShowPassword(!showPassword)}
+                    />
                   }
                 />
-                <Text style={[
-                  styles.error,
-                  error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                    ? styles.errorWarningText
-                    : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                    ? styles.errorInfoText
-                    : styles.errorDangerText
-                ]}>
-                  {error}
-                </Text>
+                <TouchableOpacity
+                  style={styles.forgotLink}
+                  onPress={() => navigation.navigate('ForgotPassword')}
+                  disabled={loading}
+                >
+                  <Text style={styles.forgotLinkText}>{t('auth.login.forgotPassword')}</Text>
+                </TouchableOpacity>
               </View>
-            ) : null}
 
-            <TextInput
-              label="Email ou Username"
-              value={emailOrUsername}
-              onChangeText={setEmailOrUsername}
-              mode="outlined"
-              style={styles.input}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+              {biometricAvailable && biometricEnabled && (
+                <Button
+                  mode="outlined"
+                  onPress={handleBiometricLogin}
+                  loading={loading}
+                  disabled={loading}
+                  style={styles.biometricButton}
+                  icon={() => (
+                    <MaterialCommunityIcons
+                      name={biometricType === 'Face ID' ? 'face-recognition' : 'fingerprint'}
+                      size={24}
+                      color="#6366f1"
+                    />
+                  )}
+                >
+                  {tw('auth.login.signInWith', { type: biometricType })}
+                </Button>
+              )}
 
-            <View style={styles.passwordContainer}>
-              <TextInput
-                label="Password"
-                value={password}
-                onChangeText={setPassword}
-                mode="outlined"
-                secureTextEntry={!showPassword}
-                style={styles.passwordInput}
-                right={
-                  <TextInput.Icon
-                    icon={showPassword ? 'eye-off' : 'eye'}
-                    onPress={() => setShowPassword(!showPassword)}
-                  />
-                }
-              />
-              <TouchableOpacity
-                style={styles.forgotLink}
-                onPress={() => navigation.navigate('ForgotPassword')}
-                disabled={loading}
-              >
-                <Text style={styles.forgotLinkText}>Esqueceu a palavra-passe?</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.divider}>
+                {biometricAvailable && biometricEnabled && (
+                  <>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>{t('auth.login.or')}</Text>
+                    <View style={styles.dividerLine} />
+                  </>
+                )}
+              </View>
 
-            {biometricAvailable && biometricEnabled && (
               <Button
-                mode="outlined"
-                onPress={handleBiometricLogin}
+                testID="login-submit"
+                mode="contained"
+                onPress={handleLogin}
                 loading={loading}
                 disabled={loading}
-                style={styles.biometricButton}
-                icon={() => (
-                  <MaterialCommunityIcons
-                    name={biometricType === 'Face ID' ? 'face-recognition' : 'fingerprint'}
-                    size={24}
+                style={styles.button}
+                buttonColor="#6366f1"
+                contentStyle={styles.buttonContent}
+                labelStyle={styles.buttonLabel}
+              >
+                {t('auth.login.signIn')}
+              </Button>
+
+              {biometricAvailable && (
+                <TouchableOpacity
+                  style={styles.biometricOption}
+                  onPress={() => setEnableBiometricOption(!enableBiometricOption)}
+                  disabled={loading}
+                >
+                  <Checkbox
+                    status={enableBiometricOption ? 'checked' : 'unchecked'}
+                    onPress={() => setEnableBiometricOption(!enableBiometricOption)}
                     color="#6366f1"
                   />
-                )}
-              >
-                Entrar com {biometricType}
-              </Button>
-            )}
-
-            <View style={styles.divider}>
-              {biometricAvailable && biometricEnabled && (
-                <>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>ou</Text>
-                  <View style={styles.dividerLine} />
-                </>
+                  <Text style={styles.biometricOptionText}>
+                    {tw('auth.login.enableBiometric', { type: biometricType })}
+                  </Text>
+                </TouchableOpacity>
               )}
-            </View>
 
-            <Button
-              mode="contained"
-              onPress={handleLogin}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-              buttonColor="#6366f1"
-              contentStyle={styles.buttonContent}
-              labelStyle={styles.buttonLabel}
-            >
-              Entrar
-            </Button>
-
-            {biometricAvailable && (
               <TouchableOpacity
-                style={styles.biometricOption}
-                onPress={() => setEnableBiometricOption(!enableBiometricOption)}
+                testID="login-register-link"
+                style={styles.registerLink}
+                onPress={() => navigation.navigate('Register')}
                 disabled={loading}
               >
-                <Checkbox
-                  status={enableBiometricOption ? 'checked' : 'unchecked'}
-                  onPress={() => setEnableBiometricOption(!enableBiometricOption)}
-                  color="#6366f1"
-                />
-                <Text style={styles.biometricOptionText}>
-                  Habilitar login com {biometricType}
-                </Text>
+                <Text style={styles.registerLinkText}>{t('auth.login.noAccount')} </Text>
+                <Text style={styles.registerLinkBold}>{t('auth.login.register')}</Text>
               </TouchableOpacity>
-            )}
 
-            <TouchableOpacity
-              style={styles.registerLink}
-              onPress={() => navigation.navigate('Register')}
-              disabled={loading}
-            >
-              <Text style={styles.registerLinkText}>Não tem conta? </Text>
-              <Text style={styles.registerLinkBold}>Registar</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.note}>
-              Registe-se para 1 semana grátis ou inscreva-se num curso no site.
-            </Text>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <Text style={styles.note}>{t('auth.login.trialNote')}</Text>
+            </Card.Content>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
@@ -552,12 +532,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     textAlign: 'left',
-  },
-  errorWarningText: {
-    color: '#c2410c',
-  },
-  errorInfoText: {
-    color: '#854d0e',
   },
   errorDangerText: {
     color: '#d32f2f',

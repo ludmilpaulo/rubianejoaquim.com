@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { aiCopilotApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import { formatTime } from '../i18n/format'
 import ZendaCard from '../components/ui/ZendaCard'
 import { colors, spacing, typography } from '../theme'
 import { logger } from '../utils/logger'
+import { ChatMessageDto, getApiErrorMessage, isApiError } from '../types/api'
 
 interface Message {
   id?: number
@@ -22,7 +24,7 @@ interface RouteParams {
 }
 
 export default function AICopilotScreen() {
-  const { t, messages: localeMessages } = useI18n()
+  const { t, locale, messages: localeMessages } = useI18n()
   const navigation = useNavigation<{ goBack: () => void }>()
   const route = useRoute()
   const { conversationId: initialConversationId } = (route.params as RouteParams) || {}
@@ -105,7 +107,7 @@ export default function AICopilotScreen() {
           ? conversation.messages 
           : conversation.messages.results || []
         // Ensure messages have correct format
-        const formattedMessages: Message[] = messagesData.map((msg: any) => ({
+        const formattedMessages: Message[] = messagesData.map((msg: ChatMessageDto & { message?: string }) => ({
           id: msg.id,
           role: msg.role || 'assistant',
           content: msg.content || msg.message || '',
@@ -113,14 +115,13 @@ export default function AICopilotScreen() {
         }))
         setMessages(formattedMessages)
       }
-    } catch (error: any) {
-      console.error('Error loading conversation:', error)
-      // Show error message
-      let errorMsg = 'Erro ao carregar conversa. Por favor, tente novamente.'
-      if (error.response?.status === 404) {
-        errorMsg = 'Conversa não encontrada.'
-      } else if (error.response?.status === 401) {
-        errorMsg = 'Sessão expirada. Por favor, faça login novamente.'
+    } catch (error: unknown) {
+      logger.error('Error loading conversation:', error)
+      let errorMsg = t('aiErrors.loadConversation')
+      if (isApiError(error) && error.response?.status === 404) {
+        errorMsg = t('aiErrors.conversationNotFound')
+      } else if (isApiError(error) && error.response?.status === 401) {
+        errorMsg = t('aiErrors.sessionExpired')
       }
       setMessages([{
         role: 'assistant',
@@ -202,11 +203,11 @@ export default function AICopilotScreen() {
         logger.info('Assistant message received')
         setMessages(prev => [...prev, message])
       } else {
-        console.warn('⚠️ Unexpected response format:', responseData)
+        logger.warn('Unexpected AI response format')
         // Fallback: show error message
         const message: Message = {
           role: 'assistant',
-          content: 'Desculpe, recebi uma resposta em formato inesperado. Por favor, tente novamente.',
+          content: t('aiErrors.unexpectedFormat'),
           created_at: new Date().toISOString(),
         }
         setMessages(prev => [...prev, message])
@@ -216,27 +217,14 @@ export default function AICopilotScreen() {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true })
       }, 100)
-    } catch (error: any) {
-      console.error('❌ Error sending message:', error)
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      })
-      
-      // Provide more helpful error message
-      let errorMessage = 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.'
-      
-      if (error.response?.status === 401) {
-        errorMessage = 'Sessão expirada. Por favor, faça login novamente.'
-      } else if (error.response?.status === 403) {
-        errorMessage = 'Você não tem permissão para usar esta funcionalidade.'
-      } else if (error.response?.status === 500) {
-        errorMessage = 'Erro no servidor. O AI Copilot pode estar temporariamente indisponível. Tente novamente em alguns instantes.'
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error
-      } else if (error.message) {
-        errorMessage = `Erro: ${error.message}`
+    } catch (error: unknown) {
+      logger.error('Error sending message:', error)
+
+      let errorMessage = getApiErrorMessage(error, 'aiErrors.processFailed')
+      if (isApiError(error)) {
+        if (error.response?.status === 401) errorMessage = t('aiErrors.sessionExpired')
+        else if (error.response?.status === 403) errorMessage = t('aiErrors.noPermission')
+        else if (error.response?.status === 500) errorMessage = t('aiErrors.serverUnavailable')
       }
       
       // Add error message
@@ -249,10 +237,10 @@ export default function AICopilotScreen() {
     }
   }
 
-  const formatTime = (dateString?: string) => {
+  const formatMessageTime = (dateString?: string) => {
     if (!dateString) return ''
     const date = new Date(dateString)
-    return date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })
+    return formatTime(locale, date, { hour: '2-digit', minute: '2-digit' })
   }
 
   return (
@@ -271,10 +259,10 @@ export default function AICopilotScreen() {
               </View>
               <View style={styles.headerText}>
                 <Text variant="titleLarge" style={styles.headerTitle}>
-                  AI Financial Copilot
+                  {t('ai.title')}
                 </Text>
                 <Text variant="bodySmall" style={styles.headerSubtitle}>
-                  Seu assistente financeiro pessoal
+                  {t('ai.headerSubtitle')}
                 </Text>
               </View>
             </View>
@@ -318,7 +306,7 @@ export default function AICopilotScreen() {
                 {(['monthly', 'savings', 'debt'] as const).map((key) => (
                   <TouchableOpacity key={key} style={styles.reportChip} onPress={() => loadReport(key)}>
                     <Text style={styles.reportChipText}>
-                      {key === 'monthly' ? t('ai.monthlyReport') : key === 'savings' ? '💰' : '📉'}
+                      {key === 'monthly' ? t('ai.monthlyReport') : key === 'savings' ? t('aiErrors.reportSavings') : t('aiErrors.reportDebt')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -371,7 +359,7 @@ export default function AICopilotScreen() {
                     </Text>
                     {message.created_at && (
                       <Text variant="bodySmall" style={styles.messageTime}>
-                        {formatTime(message.created_at)}
+                        {formatMessageTime(message.created_at)}
                       </Text>
                     )}
                   </Card.Content>
@@ -408,7 +396,7 @@ export default function AICopilotScreen() {
             <TextInput
               ref={inputRef}
               mode="outlined"
-              placeholder="Digite sua pergunta sobre finanças..."
+              placeholder={t('aiErrors.placeholder')}
               value={inputText}
               onChangeText={setInputText}
               multiline
@@ -429,11 +417,11 @@ export default function AICopilotScreen() {
               buttonColor="#8b5cf6"
               icon="send"
             >
-              Enviar
+              {t('common.send')}
             </Button>
           </View>
           <Text variant="bodySmall" style={styles.inputHint}>
-            💡 O AI pode ajudá-lo com orçamento, poupança, dívidas e muito mais
+            {t('ai.inputHint')}
           </Text>
         </View>
       </KeyboardAvoidingView>

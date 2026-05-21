@@ -60,9 +60,9 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView testID="onboarding-screen" style={styles.safe}>
       <View style={styles.topBar}>
-        <Button mode="text" onPress={finish}>
+        <Button testID="onboarding-skip" mode="text" onPress={finish}>
           {t('onboarding.skip')}
         </Button>
       </View>

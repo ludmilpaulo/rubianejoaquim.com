@@ -4,9 +4,12 @@
  */
 import React, { useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { SegmentedButtons, Menu, Text, Chip } from 'react-native-paper'
-import { MaterialCommunityIcons } from '@expo/vector-icons'
+import { SegmentedButtons, Menu, Chip } from 'react-native-paper'
 import DatePicker from './DatePicker'
+import { useI18n } from '../contexts/I18nContext'
+import { formatDate as formatLocaleDate } from '../i18n/format'
+import type { Locale } from '../i18n'
+import type { Messages } from '../i18n'
 
 export type PeriodType = 'daily' | 'monthly' | 'yearly' | 'custom'
 
@@ -51,20 +54,20 @@ export function getPeriodParams(state: PeriodState): Record<string, string | num
   return params
 }
 
-export function getPeriodLabel(state: PeriodState): string {
+export function getPeriodLabel(state: PeriodState, locale: Locale, periodMessages: Messages['period']): string {
   if (state.period === 'daily') {
     const d = state.dailyDate || new Date()
-    return d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' })
+    return formatLocaleDate(locale, d, { day: '2-digit', month: 'short', year: 'numeric' })
   }
   if (state.period === 'monthly') {
-    const m = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][state.month]
+    const m = periodMessages.months[state.month] ?? String(state.month)
     return `${m} ${state.year}`
   }
   if (state.period === 'yearly') return String(state.year)
   if (state.period === 'custom' && state.dateFrom && state.dateTo) {
-    return `${state.dateFrom.toLocaleDateString('pt-PT')} - ${state.dateTo.toLocaleDateString('pt-PT')}`
+    return `${formatLocaleDate(locale, state.dateFrom)} - ${formatLocaleDate(locale, state.dateTo)}`
   }
-  return 'Período'
+  return periodMessages.label
 }
 
 interface PeriodSelectorProps {
@@ -75,13 +78,11 @@ interface PeriodSelectorProps {
 }
 
 export default function PeriodSelector({ state, onChange, showCustom = true, compact }: PeriodSelectorProps) {
+  const { t, locale, messages } = useI18n()
   const [showMonthMenu, setShowMonthMenu] = useState(false)
   const [showYearMenu, setShowYearMenu] = useState(false)
 
-  const months = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-  ]
+  const months = messages.period.monthNames
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
@@ -104,10 +105,10 @@ export default function PeriodSelector({ state, onChange, showCustom = true, com
         value={state.period}
         onValueChange={handlePeriodChange}
         buttons={[
-          { value: 'daily', label: 'Diário', icon: 'calendar-today' },
-          { value: 'monthly', label: 'Mensal', icon: 'calendar-month' },
-          { value: 'yearly', label: 'Anual', icon: 'calendar' },
-          ...(showCustom ? [{ value: 'custom' as const, label: 'Custom', icon: 'calendar-range' as const }] : []),
+          { value: 'daily', label: t('period.daily'), icon: 'calendar-today' },
+          { value: 'monthly', label: t('period.monthly'), icon: 'calendar-month' },
+          { value: 'yearly', label: t('period.yearly'), icon: 'calendar' },
+          ...(showCustom ? [{ value: 'custom' as const, label: t('period.custom'), icon: 'calendar-range' as const }] : []),
         ]}
         style={styles.segmented}
       />
@@ -166,7 +167,7 @@ export default function PeriodSelector({ state, onChange, showCustom = true, com
       {state.period === 'daily' && (
         <View style={styles.row}>
           <DatePicker
-            label="Data"
+            label={t('period.date')}
             value={state.dailyDate || new Date()}
             onChange={(d) => onChange({ ...state, dailyDate: d || new Date() })}
           />
@@ -201,12 +202,12 @@ export default function PeriodSelector({ state, onChange, showCustom = true, com
       {state.period === 'custom' && (
         <View style={styles.row}>
           <DatePicker
-            label="De"
+            label={t('period.from')}
             value={state.dateFrom || new Date()}
             onChange={(d) => onChange({ ...state, dateFrom: d || new Date() })}
           />
           <DatePicker
-            label="Até"
+            label={t('period.to')}
             value={state.dateTo || new Date()}
             onChange={(d) => onChange({ ...state, dateTo: d || new Date() })}
           />

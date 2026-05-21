@@ -15,30 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale()
   const seo = await fetchPageSeo('home', locale)
   return seoToMetadata(seo, {
-    title: 'Rubiane Joaquim | Creative Video Producer & Zenda',
-    description: 'Creative video production, marketing storytelling, and Zenda.',
+    title: seo?.title || '',
+    description: seo?.description || '',
   })
 }
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.rubianejoaquim.com'
-
-const personSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: 'Rubiane Joaquim',
-  jobTitle: 'Creative Video Content Producer',
-  url: SITE_URL,
-  image: `${SITE_URL}/images/Rubiane.jpeg`,
-}
-
 export default function Home() {
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personSchema) }}
-      />
-      <HomePage />
-    </>
-  )
+  return <HomePage />
 }

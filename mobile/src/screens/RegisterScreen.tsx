@@ -8,11 +8,13 @@ import { register } from '../store/authSlice'
 import { checkPaidAccess } from '../store/authSlice'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
+import { useI18n } from '../contexts/I18nContext'
 
 type Props = StackScreenProps<AuthStackParamList, 'Register'>
 
 export default function RegisterScreen({ navigation }: Props) {
   const dispatch = useAppDispatch()
+  const { t, resolve } = useI18n()
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -26,15 +28,15 @@ export default function RegisterScreen({ navigation }: Props) {
   const handleRegister = async () => {
     setError('')
     if (!email.trim() || !username.trim() || !password || !passwordConfirm || !firstName.trim() || !lastName.trim()) {
-      setError('Por favor, preencha todos os campos.')
+      setError(t('auth.register.fillAllFields'))
       return
     }
     if (password.length < 8) {
-      setError('A palavra-passe deve ter pelo menos 8 caracteres.')
+      setError(t('auth.register.passwordMinLength'))
       return
     }
     if (password !== passwordConfirm) {
-      setError('As palavras-passe não coincidem.')
+      setError(t('auth.register.passwordsMismatch'))
       return
     }
 
@@ -51,15 +53,16 @@ export default function RegisterScreen({ navigation }: Props) {
         })
       ).unwrap()
       await dispatch(checkPaidAccess()).unwrap()
-      Alert.alert(
-        'Conta criada',
-        'Na próxima ecrã, toque em «Começar a minha semana grátis» para ativar o acesso ao app. Depois terá 7 dias grátis.'
-      )
+      Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
       navigation.replace('AccessDenied')
-    } catch (err: any) {
-      const msg = err?.payload || err?.message || 'Erro ao criar conta. Tente novamente.'
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
-      Alert.alert('Erro ao criar conta', typeof msg === 'string' ? msg : 'Verifique os dados e tente novamente.')
+    } catch (err: unknown) {
+      const raw =
+        (err && typeof err === 'object' && 'payload' in err && (err as { payload?: string }).payload) ||
+        (err instanceof Error ? err.message : null) ||
+        'api.errors.register.failed'
+      const msg = typeof raw === 'string' ? resolve(raw) : JSON.stringify(raw)
+      setError(msg)
+      Alert.alert(t('auth.register.errorTitle'), typeof raw === 'string' ? msg : t('auth.register.verifyData'))
     } finally {
       setLoading(false)
     }
@@ -91,10 +94,10 @@ export default function RegisterScreen({ navigation }: Props) {
                 </View>
               </View>
               <Text variant="headlineMedium" style={styles.title}>
-                Criar conta
+                {t('auth.register.title')}
               </Text>
               <Text variant="bodyMedium" style={styles.subtitle}>
-                Registe-se no Zenda para ter 1 semana grátis e depois 10.000 AOA/mês.
+                {t('auth.register.subtitle')}
               </Text>
 
               {error ? (
@@ -105,7 +108,7 @@ export default function RegisterScreen({ navigation }: Props) {
               ) : null}
 
               <TextInput
-                label="Nome"
+                label={t('auth.register.firstName')}
                 value={firstName}
                 onChangeText={setFirstName}
                 mode="outlined"
@@ -113,7 +116,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="words"
               />
               <TextInput
-                label="Apelido"
+                label={t('auth.register.lastName')}
                 value={lastName}
                 onChangeText={setLastName}
                 mode="outlined"
@@ -121,7 +124,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="words"
               />
               <TextInput
-                label="Email"
+                label={t('auth.register.email')}
                 value={email}
                 onChangeText={setEmail}
                 mode="outlined"
@@ -130,7 +133,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="none"
               />
               <TextInput
-                label="Username"
+                label={t('auth.register.username')}
                 value={username}
                 onChangeText={setUsername}
                 mode="outlined"
@@ -138,7 +141,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 autoCapitalize="none"
               />
               <TextInput
-                label="Palavra-passe"
+                label={t('auth.register.password')}
                 value={password}
                 onChangeText={setPassword}
                 mode="outlined"
@@ -152,7 +155,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 }
               />
               <TextInput
-                label="Confirmar palavra-passe"
+                label={t('auth.register.confirmPassword')}
                 value={passwordConfirm}
                 onChangeText={setPasswordConfirm}
                 mode="outlined"
@@ -170,7 +173,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
-                Registar
+                {t('auth.register.createAccount')}
               </Button>
 
               <TouchableOpacity
@@ -178,8 +181,8 @@ export default function RegisterScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('Login')}
                 disabled={loading}
               >
-                <Text style={styles.loginLinkText}>Já tem conta? </Text>
-                <Text style={styles.loginLinkBold}>Entrar</Text>
+                <Text style={styles.loginLinkText}>{t('auth.register.hasAccount')} </Text>
+                <Text style={styles.loginLinkBold}>{t('auth.register.signIn')}</Text>
               </TouchableOpacity>
             </Card.Content>
           </Card>

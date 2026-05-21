@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { AppState } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
+import { AppState, StyleSheet, View } from 'react-native'
 import { Provider } from 'react-redux'
 import { NavigationContainer } from '@react-navigation/native'
 import { StatusBar } from 'expo-status-bar'
-import { PaperProvider } from 'react-native-paper'
+import { Button, PaperProvider, Text } from 'react-native-paper'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { store } from './src/store'
 import { checkAuth, checkPaidAccess } from './src/store/authSlice'
 import { useAppDispatch, useAppSelector } from './src/hooks/redux'
@@ -16,16 +17,57 @@ import OnboardingScreen, { isOnboardingComplete } from './src/screens/Onboarding
 import { setupNotifications } from './src/utils/notifications'
 import { checkStoreUpdate } from './src/utils/storeUpdate'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
-import { I18nProvider } from './src/contexts/I18nContext'
-import { zendaLightTheme } from './src/theme/paperTheme'
+import { I18nProvider, useI18n } from './src/contexts/I18nContext'
+import { AppAppearanceProvider, useAppAppearance } from './src/contexts/AppAppearanceContext'
+import { zendaDarkTheme, zendaLightTheme } from './src/theme/paperTheme'
 import { flushOfflineQueue } from './src/utils/offlineQueue'
+import {
+  authenticateWithBiometric,
+  isBiometricAppLockEnabled,
+  isBiometricAvailable,
+  setBiometricAppLockEnabled,
+} from './src/utils/biometric'
 
 function AppContent() {
   const dispatch = useAppDispatch()
+  const { t } = useI18n()
+  const { isDarkMode, ready: appearanceReady } = useAppAppearance()
   const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector(
     (state) => state.auth,
   )
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null)
+  const [appLocked, setAppLocked] = useState(false)
+  const [unlocking, setUnlocking] = useState(false)
+
+  const unlockWithBiometrics = useCallback(async () => {
+    if (!user) {
+      setAppLocked(false)
+      return true
+    }
+
+    const enabled = await isBiometricAppLockEnabled()
+    if (!enabled) {
+      setAppLocked(false)
+      return true
+    }
+
+    const available = await isBiometricAvailable()
+    if (!available) {
+      await setBiometricAppLockEnabled(false)
+      setAppLocked(false)
+      return true
+    }
+
+    setUnlocking(true)
+    const authenticated = await authenticateWithBiometric({
+      promptMessage: t('settings.appLockPrompt'),
+      cancelLabel: t('common.cancel'),
+      fallbackLabel: t('settings.biometricFallback'),
+    })
+    setUnlocking(false)
+    setAppLocked(!authenticated)
+    return authenticated
+  }, [t, user])
 
   useEffect(() => {
     dispatch(checkAuth())
@@ -46,10 +88,25 @@ function AppContent() {
       if (state === 'active' && user) {
         dispatch(checkPaidAccess()).catch(() => {})
         flushOfflineQueue().catch(() => {})
+        unlockWithBiometrics().catch(() => setAppLocked(false))
+      } else if ((state === 'background' || state === 'inactive') && user) {
+        isBiometricAppLockEnabled()
+          .then((enabled) => {
+            if (enabled) setAppLocked(true)
+          })
+          .catch(() => {})
       }
     })
     return () => sub.remove()
-  }, [user, dispatch])
+  }, [user, dispatch, unlockWithBiometrics])
+
+  useEffect(() => {
+    if (user) {
+      unlockWithBiometrics().catch(() => setAppLocked(false))
+    } else {
+      setAppLocked(false)
+    }
+  }, [user, unlockWithBiometrics])
 
   useEffect(() => {
     if (user && !accessChecked) {
@@ -76,7 +133,7 @@ function AppContent() {
     }
   }, [user, hasPaidAccess])
 
-  if (isLoading || showOnboarding === null) {
+  if (!appearanceReady || isLoading || showOnboarding === null) {
     return <LoadingScreen />
   }
 
@@ -88,29 +145,93 @@ function AppContent() {
     return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
   }
 
+  const theme = isDarkMode ? zendaDarkTheme : zendaLightTheme
+  const statusBarStyle = isDarkMode ? 'light' : 'dark'
+
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={zendaLightTheme}>
-        <NavigationContainer>
-          {user && hasPaidAccess ? (
-            <MainNavigator />
-          ) : user && hasExpiredSubscription ? (
-            <ProfileOnlyNavigator />
-          ) : (
-            <AuthNavigator />
-          )}
-          <StatusBar style="auto" />
-        </NavigationContainer>
+      <PaperProvider theme={theme}>
+        {appLocked ? (
+          <View style={[styles.lockScreen, isDarkMode && styles.lockScreenDark]}>
+            <View style={styles.lockIcon}>
+              <MaterialCommunityIcons name="shield-lock" size={42} color="#6366f1" />
+            </View>
+            <Text style={[styles.lockTitle, isDarkMode && styles.lockTitleDark]}>
+              {t('settings.appLockedTitle')}
+            </Text>
+            <Text style={[styles.lockBody, isDarkMode && styles.lockBodyDark]}>
+              {t('settings.appLockedBody')}
+            </Text>
+            <Button mode="contained" icon="fingerprint" onPress={unlockWithBiometrics} loading={unlocking}>
+              {t('settings.unlockApp')}
+            </Button>
+          </View>
+        ) : (
+          <NavigationContainer>
+            {user && hasPaidAccess ? (
+              <MainNavigator />
+            ) : user && hasExpiredSubscription ? (
+              <ProfileOnlyNavigator />
+            ) : (
+              <AuthNavigator />
+            )}
+          </NavigationContainer>
+        )}
+        <StatusBar style={statusBarStyle} />
       </PaperProvider>
     </SafeAreaProvider>
   )
 }
 
+const styles = StyleSheet.create({
+  lockScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#F8FAFC',
+  },
+  lockScreenDark: {
+    backgroundColor: '#0F172A',
+  },
+  lockIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    backgroundColor: '#EEF2FF',
+  },
+  lockTitle: {
+    color: '#0F172A',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lockTitleDark: {
+    color: '#F8FAFC',
+  },
+  lockBody: {
+    color: '#64748B',
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  lockBodyDark: {
+    color: '#CBD5E1',
+  },
+})
+
 export default function App() {
   return (
     <Provider store={store}>
       <I18nProvider>
-        <AppContent />
+        <AppAppearanceProvider>
+          <AppContent />
+        </AppAppearanceProvider>
       </I18nProvider>
     </Provider>
   )

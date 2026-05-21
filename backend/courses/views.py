@@ -802,9 +802,9 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
         """Redeem points for app subscription (full or partial)"""
         from decimal import Decimal
         
-        # Subscription costs 10,000 KZ = 10 points
-        subscription_price_kz = Decimal('10000')
-        points_equivalent = Decimal('10.0')
+        from django.conf import settings
+        subscription_price_kz = Decimal(str(getattr(settings, 'SUBSCRIPTION_MONTHLY_PRICE_KZ', 10000)))
+        points_equivalent = subscription_price_kz / Decimal('1000')
         points_to_use = request.data.get('points_to_use', None)  # Optional: partial payment
         
         current_balance = UserPoints.get_user_balance(request.user)

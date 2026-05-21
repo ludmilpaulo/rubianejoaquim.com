@@ -7,6 +7,13 @@ import { tasksApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
+import { useI18n } from '../contexts/I18nContext'
+import { useAlert } from '../hooks/useAlert'
+import { getApiErrorMessage, type TargetPayload, type TargetStats, unwrapList } from '../types/api'
+import { materialIcon, type MaterialIconName } from '../utils/icons'
+import { logger } from '../utils/logger'
+
+type TargetFilter = 'all' | 'active' | 'completed' | 'paused'
 
 const { width } = Dimensions.get('window')
 
@@ -27,11 +34,13 @@ interface Target {
 }
 
 export default function TargetsScreen() {
+  const { t } = useI18n()
+  const alert = useAlert()
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'completed' | 'paused'>('all')
+  const [activeFilter, setActiveFilter] = useState<TargetFilter>('all')
   const [refreshing, setRefreshing] = useState(false)
   const [targets, setTargets] = useState<Target[]>([])
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<TargetStats | null>(null)
   
   // Modal states
   const [showTargetModal, setShowTargetModal] = useState(false)
@@ -63,10 +72,10 @@ export default function TargetsScreen() {
         tasksApi.getTargets(statusFilter),
         tasksApi.getTargetStats(getPeriodParams(periodState)),
       ])
-      setTargets(Array.isArray(targetsRes) ? targetsRes : targetsRes.results || [])
-      setStats(statsRes)
-    } catch (error) {
-      console.error('Error loading targets:', error)
+      setTargets(unwrapList(targetsRes as Target[]))
+      setStats(statsRes as TargetStats)
+    } catch (error: unknown) {
+      logger.error('Error loading targets:', error)
     }
   }
 
@@ -79,18 +88,18 @@ export default function TargetsScreen() {
   const handleSaveTarget = async () => {
     // Validation
     if (!targetForm.title.trim()) {
-      Alert.alert('Erro', 'Por favor, preencha o título da meta.')
+      alert.error(t('tasks.titleRequired'))
       return
     }
     
     if (!targetForm.target_date) {
-      Alert.alert('Erro', 'Por favor, selecione a data alvo.')
+      alert.error(t('tasks.dateRequired'))
       return
     }
     
     try {
       // Format dates for API
-      const targetData: any = {
+      const targetData: TargetPayload = {
         title: targetForm.title.trim(),
         description: targetForm.description.trim(),
         target_type: targetForm.target_type,
@@ -99,11 +108,10 @@ export default function TargetsScreen() {
         status: targetForm.status,
         start_date: targetForm.start_date.toISOString().split('T')[0],
         target_date: targetForm.target_date.toISOString().split('T')[0],
-      }
-      
-      // Add optional fields
-      if (targetForm.target_value && targetForm.target_value.trim()) {
-        targetData.target_value = targetForm.target_value
+        target_value:
+          targetForm.target_value && targetForm.target_value.trim()
+            ? targetForm.target_value
+            : undefined,
       }
       
       if (editingTarget) {
@@ -115,14 +123,9 @@ export default function TargetsScreen() {
       setEditingTarget(null)
       resetTargetForm()
       loadData()
-    } catch (error: any) {
-      console.error('Error saving target:', error)
-      const errorMessage = error.response?.data 
-        ? (typeof error.response.data === 'string' 
-            ? error.response.data 
-            : Object.values(error.response.data).flat().join(', '))
-        : 'Não foi possível salvar a meta. Verifique os campos obrigatórios.'
-      Alert.alert('Erro', errorMessage)
+    } catch (error: unknown) {
+      logger.error('Error saving target:', error)
+      alert.error(getApiErrorMessage(error, 'tasks.saveFailed'))
     }
   }
 
@@ -134,8 +137,9 @@ export default function TargetsScreen() {
       setSelectedTarget(null)
       setProgressValue('')
       loadData()
-    } catch (error) {
-      console.error('Error updating progress:', error)
+    } catch (error: unknown) {
+      logger.error('Error updating progress:', error)
+      alert.error(getApiErrorMessage(error, 'tasks.updateProgressFailed'))
     }
   }
 
@@ -152,9 +156,9 @@ export default function TargetsScreen() {
             try {
               await tasksApi.deleteTarget(targetId)
               loadData()
-            } catch (error) {
-              console.error('Error deleting target:', error)
-              Alert.alert('Erro', 'Não foi possível excluir a meta. Tente novamente.')
+            } catch (error: unknown) {
+              logger.error('Error deleting target:', error)
+              alert.error(t('tasks.deleteFailed'))
             }
           },
         },
@@ -264,7 +268,7 @@ export default function TargetsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text variant="headlineSmall" style={styles.title}>Minhas Metas</Text>
+            <Text variant="headlineSmall" style={styles.title}>{t('tasks.screenTitle')}</Text>
             <Text variant="bodySmall" style={styles.subtitle}>
               {targets.filter(t => t.status === 'active').length} metas ativas
             </Text>
@@ -314,10 +318,10 @@ export default function TargetsScreen() {
               <TouchableOpacity
                 key={filter.key}
                 style={[styles.filterChip, activeFilter === filter.key && styles.filterChipActive]}
-                onPress={() => setActiveFilter(filter.key as any)}
+                onPress={() => setActiveFilter(filter.key as TargetFilter)}
               >
                 <MaterialCommunityIcons
-                  name={filter.icon as any}
+                  name={materialIcon(filter.icon) as MaterialIconName}
                   size={18}
                   color={activeFilter === filter.key ? '#6366f1' : '#666'}
                 />
@@ -355,7 +359,7 @@ export default function TargetsScreen() {
                       <View style={styles.targetLeft}>
                         <View style={[styles.typeIcon, { backgroundColor: typeColor + '20' }]}>
                           <MaterialCommunityIcons
-                            name={getTargetTypeIcon(target.target_type) as any}
+                            name={materialIcon(getTargetTypeIcon(target.target_type))}
                             size={24}
                             color={typeColor}
                           />
@@ -508,7 +512,7 @@ export default function TargetsScreen() {
                   >
                     <View style={styles.dropdownContent}>
                       <MaterialCommunityIcons
-                        name={getTargetTypeIcon(targetForm.target_type) as any}
+                        name={materialIcon(getTargetTypeIcon(targetForm.target_type))}
                         size={20}
                         color={getTargetTypeColor(targetForm.target_type)}
                         style={styles.dropdownIcon}

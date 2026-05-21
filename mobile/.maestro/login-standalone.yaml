@@ -1,0 +1,6 @@
+# Login only (dev build) — maestro test .maestro/login-standalone.yaml
+appId: com.rubianejoaquim.zenda
+---
+- launchApp:
+    clearState: true
+- runFlow: flows/login.yaml

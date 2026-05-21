@@ -1,0 +1,25 @@
+# Full smoke: login + main tabs (development build / release APK)
+# Usage: maestro test .maestro/app-smoke-dev.yaml
+appId: com.rubianejoaquim.zenda
+---
+- launchApp:
+    clearState: true
+
+- runFlow: flows/login.yaml
+
+- assertVisible:
+    id: tab-home
+- tapOn:
+    id: tab-personal
+- assertVisible:
+    id: tab-personal
+- tapOn:
+    id: tab-business
+- tapOn:
+    id: tab-education
+- tapOn:
+    id: tab-profile
+- tapOn:
+    id: tab-home
+- assertVisible:
+    id: home-screen
