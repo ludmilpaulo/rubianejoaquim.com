@@ -1,0 +1,82 @@
+[
+{
+  "model": "finance.exchangerate",
+  "pk": 1,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "EUR",
+    "rate": "0.92000000",
+    "updated_at": "2026-05-21T17:31:41.899Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 2,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "GBP",
+    "rate": "0.79000000",
+    "updated_at": "2026-05-21T17:31:42.020Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 3,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "AOA",
+    "rate": "830.00000000",
+    "updated_at": "2026-05-21T17:31:42.132Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 4,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "MZN",
+    "rate": "63.50000000",
+    "updated_at": "2026-05-21T17:31:42.220Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 5,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "ZAR",
+    "rate": "18.20000000",
+    "updated_at": "2026-05-21T17:31:42.357Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 6,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "BRL",
+    "rate": "4.95000000",
+    "updated_at": "2026-05-21T17:31:42.453Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 7,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "CAD",
+    "rate": "1.36000000",
+    "updated_at": "2026-05-21T17:31:42.545Z"
+  }
+},
+{
+  "model": "finance.exchangerate",
+  "pk": 8,
+  "fields": {
+    "base_currency": "USD",
+    "target_currency": "USD",
+    "rate": "1.00000000",
+    "updated_at": "2026-05-21T17:31:42.631Z"
+  }
+}
+]

@@ -8,16 +8,25 @@
       "developmentClient": true,
       "distribution": "internal",
       "autoIncrement": true,
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_USE_DEV_API": "true"
+      }
     },
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ludmilpaulo.pythonanywhere.com/api"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://ludmilpaulo.pythonanywhere.com/api"
+      }
     }
   },
   "submit": {

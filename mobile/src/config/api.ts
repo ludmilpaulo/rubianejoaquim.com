@@ -2,10 +2,12 @@ import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 import { logger } from '../utils/logger'
 
+/** Django API used in production (PythonAnywhere). */
+export const PRODUCTION_API_DEFAULT = 'https://ludmilpaulo.pythonanywhere.com/api'
+
 /**
- * API base URL — set EXPO_PUBLIC_API_URL in .env or EAS secrets.
- * Example: https://your-domain.com/api
- * Dev example: http://192.168.1.100:8000/api
+ * API base URL — override with EXPO_PUBLIC_API_URL in .env or EAS secrets.
+ * Physical devices and release builds use production unless EXPO_PUBLIC_USE_DEV_API=true.
  */
 function resolveDevApiHost(): string {
   const fromEnv = process.env.EXPO_PUBLIC_DEV_API_HOST?.trim()
@@ -28,22 +30,35 @@ function resolveDevApiHost(): string {
   return '127.0.0.1'
 }
 
+function resolveFromExpoExtra(): string | null {
+  const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined
+  const url = extra?.apiUrl?.trim()
+  return url ? url.replace(/\/$/, '') : null
+}
+
 export function getApiBaseUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim()
   if (fromEnv) {
     return fromEnv.replace(/\/$/, '')
   }
 
+  const fromExtra = resolveFromExpoExtra()
+  if (fromExtra) {
+    return fromExtra
+  }
+
+  const useDevApi = process.env.EXPO_PUBLIC_USE_DEV_API === 'true'
   const isDevContext = typeof __DEV__ === 'undefined' || __DEV__
-  if (isDevContext) {
+
+  // Dev API only when explicitly requested, or on emulator/simulator (not physical device)
+  if (isDevContext && (useDevApi || !Constants.isDevice)) {
     const devHost = resolveDevApiHost()
     const devPort = process.env.EXPO_PUBLIC_DEV_API_PORT || '8000'
     const url = `http://${devHost}:${devPort}/api`
-    logger.info('API (dev fallback):', url)
+    logger.info('API (dev):', url)
     return url
   }
 
-  throw new Error(
-    'EXPO_PUBLIC_API_URL is not set. Add it to mobile/.env or EAS environment variables.',
-  )
+  logger.info('API (production):', PRODUCTION_API_DEFAULT)
+  return PRODUCTION_API_DEFAULT
 }

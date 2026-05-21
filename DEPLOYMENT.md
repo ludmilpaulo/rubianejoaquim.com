@@ -45,7 +45,14 @@
    python manage.py createsuperuser  # if needed
    ```
 
-6. **Reload** the PythonAnywhere web app after changes.
+6. **CMS & course content** (JSON fixtures):
+   ```bash
+   python manage.py load_production_data
+   ```
+   Or: `loaddata portfolio_cms`, `loaddata courses_content`, `loaddata exchange_rates`.  
+   See `backend/fixtures/README.md`.
+
+7. **Reload** the PythonAnywhere web app after changes.
 
 ---
 
@@ -76,17 +83,45 @@ npm run start
 
 ## Mobile app (Expo)
 
-- **Development**: `src/services/api.ts` uses local/dev URLs (e.g. `localhost`, device IP).
-- **Production**: when `__DEV__` is false (release/standalone build), the app uses:
-  `https://ludmilpaulo.pythonanywhere.com/api`
+- **Production API** (default): `https://ludmilpaulo.pythonanywhere.com/api`  
+  Used on physical devices, preview/production EAS builds, and when `EXPO_PUBLIC_API_URL` is unset.
+- **Local backend**: set in `mobile/.env`:
+  ```env
+  EXPO_PUBLIC_USE_DEV_API=true
+  EXPO_PUBLIC_DEV_API_HOST=192.168.1.100
+  ```
+  Emulator uses `10.0.2.2:8000` (Android) or `127.0.0.1:8000` automatically when `EXPO_PUBLIC_USE_DEV_API=true`.
 
-No extra config needed for production; the built app already points to the PythonAnywhere API.
+EAS `production` and `preview` profiles set `EXPO_PUBLIC_API_URL` in `mobile/eas.json`.
+
+---
+
+## Portfolio CMS content (production)
+
+After migrations, load the default site content (homepage sections, services, portfolio samples, Zenda copy, navigation, FAQs, SEO):
+
+```bash
+cd backend   # or your PythonAnywhere project path
+python manage.py migrate
+python manage.py loaddata portfolio_cms
+```
+
+Fixture file: `backend/portfolio/fixtures/portfolio_cms.json` (60 records, PT/EN/FR/ES translations).
+
+To regenerate the fixture after editing `seed_portfolio_data`:
+
+```bash
+python manage.py generate_portfolio_fixtures
+```
+
+**Note:** `loaddata` expects primary keys that do not conflict with existing rows. On a **fresh** database (or empty portfolio tables), it is safe. If you already have portfolio data, use `seed_portfolio_data` instead (upserts) or clear portfolio tables before loading.
 
 ---
 
 ## Checklist
 
 - [ ] Backend: `DEBUG=False`, `SECRET_KEY` and `ALLOWED_HOSTS` set on PythonAnywhere.
+- [ ] Backend: `python manage.py loaddata portfolio_cms` on first deploy (or `seed_portfolio_data`).
 - [ ] Backend: CORS includes `https://www.rubianejoaquim.com` and `https://rubianejoaquim.com`.
 - [ ] Frontend: `NEXT_PUBLIC_API_URL=https://ludmilpaulo.pythonanywhere.com/api` in production (or default in code).
 - [ ] Domain `www.rubianejoaquim.com` points to the frontend host.

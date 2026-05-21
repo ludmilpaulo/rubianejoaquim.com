@@ -1,0 +1,2251 @@
+[
+{
+  "model": "portfolio.sitesettings",
+  "pk": 1,
+  "fields": {
+    "contact_email": "contacto@rubianejoaquim.com",
+    "whatsapp_number": "244944905246",
+    "phone": "+244 944 905246",
+    "instagram_url": "",
+    "linkedin_url": "",
+    "youtube_url": "",
+    "tiktok_url": "",
+    "calendly_url": "",
+    "og_image": "",
+    "translations": {
+      "pt": {
+        "brand_name": "Rubiane Joaquim",
+        "brand_tagline": "Produtora de Vídeo Criativo & Storyteller de Campanhas",
+        "footer_description": "Produção criativa de vídeo, storytelling de marketing e criadora do Zenda.",
+        "footer_rights": "Todos os direitos reservados.",
+        "contact_label": "Contacto",
+        "contact_title": "Vamos trabalhar juntos",
+        "contact_subtitle": "Conte-me sobre o seu projeto — respondo em breve.",
+        "footer_navigation": "Navegação",
+        "footer_contact": "Contacto",
+        "contact_form": {
+          "name": "Nome",
+          "email": "Email",
+          "phone": "Telefone",
+          "subject": "Assunto",
+          "message": "Mensagem",
+          "service_interest": "Serviço de interesse",
+          "budget_range": "Orçamento estimado",
+          "project_type": "Tipo de projeto",
+          "submit": "Enviar mensagem",
+          "submitting": "A enviar…",
+          "success": "Mensagem enviada. Obrigado!",
+          "error": "Erro ao enviar. Tente novamente.",
+          "required": "Obrigatório",
+          "whatsapp_label": "WhatsApp",
+          "email_label": "Email"
+        },
+        "play_store_label": "Play Store",
+        "app_store_label": "App Store",
+        "what_is_label": "O que é",
+        "who_label": "Para quem"
+      },
+      "en": {
+        "brand_name": "Rubiane Joaquim",
+        "brand_tagline": "Creative Video Producer & Campaign Storyteller",
+        "footer_description": "Creative video production, marketing storytelling, and creator of Zenda.",
+        "footer_rights": "All rights reserved.",
+        "contact_label": "Contact",
+        "contact_title": "Let's work together",
+        "contact_subtitle": "Tell me about your project — I will reply soon.",
+        "footer_navigation": "Navigation",
+        "footer_contact": "Contact",
+        "contact_form": {
+          "name": "Name",
+          "email": "Email",
+          "phone": "Phone",
+          "subject": "Subject",
+          "message": "Message",
+          "service_interest": "Service of interest",
+          "budget_range": "Budget range",
+          "project_type": "Project type",
+          "submit": "Send message",
+          "submitting": "Sending…",
+          "success": "Message sent. Thank you!",
+          "error": "Could not send. Please try again.",
+          "required": "Required",
+          "whatsapp_label": "WhatsApp",
+          "email_label": "Email"
+        },
+        "play_store_label": "Play Store",
+        "app_store_label": "App Store",
+        "what_is_label": "What it is",
+        "who_label": "Who it helps"
+      },
+      "fr": {
+        "brand_tagline": "Productrice Vidéo & Narratrice",
+        "footer_description": "Production vidéo créative et Zenda.",
+        "footer_rights": "Tous droits réservés."
+      },
+      "es": {
+        "brand_tagline": "Productora de Video & Storytelling",
+        "footer_description": "Producción de video y Zenda.",
+        "footer_rights": "Todos los derechos reservados."
+      }
+    },
+    "updated_at": "2026-05-21T17:29:23.835Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 14,
+  "fields": {
+    "section_key": "education",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "pt": {
+        "title": "Cursos, mentoria e conteúdos grátis",
+        "subtitle": "Além da produção criativa, Rubiane ensina finanças e empreendedorismo",
+        "cards": [
+          {
+            "title": "Cursos",
+            "description": "Cursos online com certificado.",
+            "href": "/cursos",
+            "cta": "Explorar cursos"
+          },
+          {
+            "title": "Mentoria",
+            "description": "Acompanhamento individual.",
+            "href": "/mentoria",
+            "cta": "Saber mais"
+          },
+          {
+            "title": "Conteúdos Grátis",
+            "description": "Recursos gratuitos.",
+            "href": "/conteudos-gratis",
+            "cta": "Ver conteúdos"
+          }
+        ]
+      },
+      "en": {
+        "title": "Courses, mentorship & free content",
+        "subtitle": "Beyond creative production, Rubiane teaches finance and entrepreneurship",
+        "cards": [
+          {
+            "title": "Courses",
+            "description": "Online courses with certificates.",
+            "href": "/cursos",
+            "cta": "Explore courses"
+          },
+          {
+            "title": "Mentorship",
+            "description": "One-on-one guidance.",
+            "href": "/mentoria",
+            "cta": "Learn more"
+          },
+          {
+            "title": "Free Content",
+            "description": "Free resources.",
+            "href": "/conteudos-gratis",
+            "cta": "View content"
+          }
+        ]
+      }
+    },
+    "updated_at": "2026-05-21T17:29:19.549Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 15,
+  "fields": {
+    "section_key": "final_cta",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "pt": {
+        "title": "Pronto para criar conteúdo poderoso para a sua marca?",
+        "subtitle": "Campanhas em vídeo, entrevistas, roteiros e conteúdo social — com qualidade internacional.",
+        "ctas": [
+          {
+            "key": "whatsapp",
+            "label": "WhatsApp",
+            "url": "https://wa.me/244944905246",
+            "variant": "whatsapp"
+          },
+          {
+            "key": "message",
+            "label": "Enviar Mensagem",
+            "url": "/contact",
+            "variant": "primary"
+          },
+          {
+            "key": "call",
+            "label": "Marcar Chamada",
+            "url": "/contact",
+            "variant": "secondary"
+          }
+        ]
+      },
+      "en": {
+        "title": "Ready to create powerful content for your brand?",
+        "subtitle": "Video campaigns, interviews, scripts, and social content — international quality.",
+        "ctas": [
+          {
+            "key": "whatsapp",
+            "label": "WhatsApp",
+            "url": "https://wa.me/244944905246",
+            "variant": "whatsapp"
+          },
+          {
+            "key": "message",
+            "label": "Send Message",
+            "url": "/contact",
+            "variant": "primary"
+          },
+          {
+            "key": "call",
+            "label": "Book a Call",
+            "url": "/contact",
+            "variant": "secondary"
+          }
+        ]
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.125Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 16,
+  "fields": {
+    "section_key": "hero",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "pt": {
+        "title": "Produtora de Vídeo Criativo",
+        "subtitle": "& Marketing Campaign Storyteller",
+        "badge": "Creative Video · Marketing · Storytelling",
+        "body": "Ajudo marcas a criar campanhas em vídeo, entrevistas, reels, roteiros e narrativas que conectam com audiências internacionais.",
+        "roles": [
+          "Produtora de Vídeo",
+          "Roteirista",
+          "Entrevistas",
+          "CapCut & Canva",
+          "Redes Sociais",
+          "Criadora do Zenda"
+        ],
+        "ctas": [
+          {
+            "key": "showreel",
+            "label": "Ver Showreel",
+            "url": "#showreel",
+            "variant": "primary"
+          },
+          {
+            "key": "portfolio",
+            "label": "Ver Portfólio",
+            "url": "/portfolio",
+            "variant": "secondary"
+          },
+          {
+            "key": "work",
+            "label": "Trabalhar Comigo",
+            "url": "/contact",
+            "variant": "secondary"
+          },
+          {
+            "key": "zenda",
+            "label": "Explorar Zenda",
+            "url": "/zenda",
+            "variant": "outline"
+          }
+        ],
+        "trust_items": [
+          "Campanhas & Entrevistas",
+          "Roteiros & Edição",
+          "Criadora do Zenda"
+        ]
+      },
+      "en": {
+        "title": "Creative Video Content Producer",
+        "subtitle": "& Marketing Campaign Storyteller",
+        "badge": "Creative Video · Marketing · Storytelling",
+        "body": "I help brands create campaign videos, interviews, reels, scripts, and stories that connect with international audiences.",
+        "roles": [
+          "Video Producer",
+          "Scriptwriter",
+          "Interviews",
+          "CapCut & Canva",
+          "Social Media",
+          "Creator of Zenda"
+        ],
+        "ctas": [
+          {
+            "key": "showreel",
+            "label": "Watch Showreel",
+            "url": "#showreel",
+            "variant": "primary"
+          },
+          {
+            "key": "portfolio",
+            "label": "View Portfolio",
+            "url": "/portfolio",
+            "variant": "secondary"
+          },
+          {
+            "key": "work",
+            "label": "Work With Me",
+            "url": "/contact",
+            "variant": "secondary"
+          },
+          {
+            "key": "zenda",
+            "label": "Explore Zenda",
+            "url": "/zenda",
+            "variant": "outline"
+          }
+        ],
+        "trust_items": [
+          "Campaigns & Interviews",
+          "Scripts & Editing",
+          "Creator of Zenda"
+        ]
+      },
+      "fr": {
+        "title": "Productrice de Contenu Vidéo Créatif",
+        "subtitle": "& narratrice de campagnes marketing",
+        "badge": "Vidéo créative · Marketing · Storytelling",
+        "body": "J'aide les marques à créer des campagnes vidéo, interviews, reels, scripts et récits pour un public international.",
+        "roles": [
+          "Productrice vidéo",
+          "Scénariste",
+          "Interviews",
+          "CapCut & Canva",
+          "Réseaux sociaux",
+          "Créatrice de Zenda"
+        ],
+        "ctas": [
+          {
+            "key": "showreel",
+            "label": "Watch Showreel",
+            "url": "#showreel",
+            "variant": "primary"
+          },
+          {
+            "key": "portfolio",
+            "label": "View Portfolio",
+            "url": "/portfolio",
+            "variant": "secondary"
+          },
+          {
+            "key": "work",
+            "label": "Work With Me",
+            "url": "/contact",
+            "variant": "secondary"
+          },
+          {
+            "key": "zenda",
+            "label": "Explore Zenda",
+            "url": "/zenda",
+            "variant": "outline"
+          }
+        ],
+        "trust_items": [
+          "Campagnes & interviews",
+          "Scripts & montage",
+          "Créatrice de Zenda"
+        ]
+      },
+      "es": {
+        "title": "Productora de Contenido de Video Creativo",
+        "subtitle": "y narradora de campañas de marketing",
+        "badge": "Video creativo · Marketing · Storytelling",
+        "body": "Ayudo a marcas a crear videos de campaña, entrevistas, reels, guiones e historias para audiencias internacionales.",
+        "roles": [
+          "Productora de video",
+          "Guionista",
+          "Entrevistas",
+          "CapCut y Canva",
+          "Redes sociales",
+          "Creadora de Zenda"
+        ],
+        "ctas": [
+          {
+            "key": "showreel",
+            "label": "Watch Showreel",
+            "url": "#showreel",
+            "variant": "primary"
+          },
+          {
+            "key": "portfolio",
+            "label": "View Portfolio",
+            "url": "/portfolio",
+            "variant": "secondary"
+          },
+          {
+            "key": "work",
+            "label": "Work With Me",
+            "url": "/contact",
+            "variant": "secondary"
+          },
+          {
+            "key": "zenda",
+            "label": "Explore Zenda",
+            "url": "/zenda",
+            "variant": "outline"
+          }
+        ],
+        "trust_items": [
+          "Campañas y entrevistas",
+          "Guiones y edición",
+          "Creadora de Zenda"
+        ]
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.968Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 17,
+  "fields": {
+    "section_key": "about",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "Quem é a",
+        "en": "Meet",
+        "fr": "Qui est",
+        "es": "Conoce a"
+      },
+      "subtitle": {
+        "pt": "Criatividade audiovisual com visão de marketing e produto digital",
+        "en": "Audiovisual creativity with marketing vision and digital product leadership",
+        "fr": "Créativité audiovisuelle et vision marketing",
+        "es": "Creatividad audiovisual y visión de marketing"
+      },
+      "body": {
+        "pt": "Produtora de conteúdo audiovisual e storyteller de marketing que ajuda marcas a comunicar com clareza, emoção e impacto visual. Do roteiro à edição final.",
+        "en": "Audiovisual producer and marketing storyteller helping brands communicate with clarity, emotion, and visual impact.",
+        "fr": "Productrice audiovisuelle et narratrice marketing pour des marques exigeantes.",
+        "es": "Productora audiovisual y narradora de marketing para marcas exigentes."
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.314Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 18,
+  "fields": {
+    "section_key": "services_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "O que posso criar para a sua marca",
+        "en": "What I can create for your brand",
+        "fr": "Ce que je crée pour votre marque",
+        "es": "Lo que puedo crear para tu marca"
+      },
+      "subtitle": {
+        "pt": "Produção criativa completa — da ideia ao vídeo publicado",
+        "en": "Full creative production — from idea to published video",
+        "fr": "Production créative complète",
+        "es": "Producción creativa completa"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.387Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 19,
+  "fields": {
+    "section_key": "portfolio_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "Trabalhos selecionados",
+        "en": "Selected work",
+        "fr": "Travaux sélectionnés",
+        "es": "Trabajos seleccionados"
+      },
+      "subtitle": {
+        "pt": "Campanhas, entrevistas, reels, design e conteúdo Zenda",
+        "en": "Campaigns, interviews, reels, design, and Zenda content",
+        "fr": "Campagnes, interviews, reels et contenu Zenda",
+        "es": "Campañas, entrevistas, reels y contenido Zenda"
+      },
+      "pt": {
+        "category_labels": {
+          "all": "Todos",
+          "campaign_videos": "Campanhas",
+          "interviews": "Entrevistas",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Roteiros",
+          "zenda_content": "Zenda",
+          "view_all_label": "Ver portfólio completo",
+          "empty_label": "Novos projetos em breve."
+        },
+        "extra_data": {
+          "all": "Todos",
+          "campaign_videos": "Campanhas",
+          "interviews": "Entrevistas",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Roteiros",
+          "zenda_content": "Zenda",
+          "view_all_label": "Ver portfólio completo",
+          "empty_label": "Novos projetos em breve."
+        }
+      },
+      "en": {
+        "category_labels": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        },
+        "extra_data": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        }
+      },
+      "fr": {
+        "category_labels": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        },
+        "extra_data": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        }
+      },
+      "es": {
+        "category_labels": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        },
+        "extra_data": {
+          "all": "All",
+          "campaign_videos": "Campaigns",
+          "interviews": "Interviews",
+          "social_reels": "Reels",
+          "canva_designs": "Canva",
+          "scriptwriting": "Scripts",
+          "zenda_content": "Zenda",
+          "view_all_label": "View full portfolio",
+          "empty_label": "New projects coming soon."
+        }
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.481Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 20,
+  "fields": {
+    "section_key": "showreel",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "Showreel em destaque",
+        "en": "Featured showreel",
+        "fr": "Showreel en vedette",
+        "es": "Showreel destacado"
+      },
+      "subtitle": {
+        "pt": "Uma amostra do trabalho criativo — campanhas, entrevistas e storytelling",
+        "en": "A sample of creative work — campaigns, interviews, and storytelling",
+        "fr": "Un aperçu du travail créatif",
+        "es": "Una muestra del trabajo creativo"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.577Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 21,
+  "fields": {
+    "section_key": "zenda",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "Zenda — a sua app de finanças",
+        "en": "Zenda — your finance app",
+        "fr": "Zenda — votre app finance",
+        "es": "Zenda — tu app de finanzas"
+      },
+      "subtitle": {
+        "pt": "Finanças pessoais, negócio, educação e AI Copilot num só lugar",
+        "en": "Personal finance, business, education, and AI Copilot in one place",
+        "fr": "Finances personnelles, business et copilot IA",
+        "es": "Finanzas personales, negocio y copiloto IA"
+      },
+      "badge": {
+        "pt": "Produto digital · Fintech · Educação",
+        "en": "Digital product · Fintech · Education",
+        "fr": "Produit digital · Fintech",
+        "es": "Producto digital · Fintech"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.687Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 22,
+  "fields": {
+    "section_key": "case_studies_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "Estudos de caso",
+        "en": "Case studies",
+        "fr": "Études de cas",
+        "es": "Casos de estudio"
+      },
+      "subtitle": {
+        "pt": "Resultados reais para marcas e projetos",
+        "en": "Real outcomes for brands and projects",
+        "fr": "Résultats concrets pour les marques",
+        "es": "Resultados reales para marcas"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.777Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 23,
+  "fields": {
+    "section_key": "testimonials_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "title": {
+        "pt": "O que dizem os clientes",
+        "en": "What clients say",
+        "fr": "Ce que disent les clients",
+        "es": "Lo que dicen los clientes"
+      },
+      "subtitle": {
+        "pt": "Confiança construída em cada entrega",
+        "en": "Trust built on every delivery",
+        "fr": "La confiance à chaque livraison",
+        "es": "Confianza en cada entrega"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:20.869Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 24,
+  "fields": {
+    "section_key": "faq_newsletter",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "pt": {
+        "title": "Perguntas frequentes e novidades",
+        "subtitle": "Respostas rapidas antes de comecarmos e conteudos uteis direto no seu email.",
+        "body": "Receba ideias sobre video, marketing, Zenda e educacao financeira.",
+        "badge": "FAQ + newsletter",
+        "cta_label": "Subscrever",
+        "extra_data": {
+          "newsletter_placeholder": "O seu email",
+          "newsletter_success": "Subscricao confirmada. Obrigada!",
+          "newsletter_error": "Nao foi possivel subscrever. Tente novamente.",
+          "newsletter_note": "Sem spam. Apenas recursos uteis e novidades importantes."
+        }
+      },
+      "en": {
+        "title": "Frequently asked questions and updates",
+        "subtitle": "Quick answers before we start, plus useful content in your inbox.",
+        "body": "Get ideas about video, marketing, Zenda, and financial education.",
+        "badge": "FAQ + newsletter",
+        "cta_label": "Subscribe",
+        "extra_data": {
+          "newsletter_placeholder": "Your email",
+          "newsletter_success": "Subscription confirmed. Thank you!",
+          "newsletter_error": "Could not subscribe. Please try again.",
+          "newsletter_note": "No spam. Only useful resources and important updates."
+        }
+      },
+      "fr": {
+        "title": "Questions frequentes et nouveautes",
+        "subtitle": "Des reponses rapides et du contenu utile dans votre boite mail.",
+        "body": "Recevez des idees sur la video, le marketing, Zenda et l'education financiere.",
+        "badge": "FAQ + newsletter",
+        "cta_label": "S'abonner",
+        "extra_data": {
+          "newsletter_placeholder": "Votre email",
+          "newsletter_success": "Inscription confirmee. Merci !",
+          "newsletter_error": "Inscription impossible. Reessayez.",
+          "newsletter_note": "Pas de spam. Seulement des ressources utiles."
+        }
+      },
+      "es": {
+        "title": "Preguntas frecuentes y novedades",
+        "subtitle": "Respuestas rapidas y contenido util en tu email.",
+        "body": "Recibe ideas sobre video, marketing, Zenda y educacion financiera.",
+        "badge": "FAQ + newsletter",
+        "cta_label": "Suscribirse",
+        "extra_data": {
+          "newsletter_placeholder": "Tu email",
+          "newsletter_success": "Suscripcion confirmada. Gracias!",
+          "newsletter_error": "No se pudo suscribir. Intentalo de nuevo.",
+          "newsletter_note": "Sin spam. Solo recursos utiles y novedades importantes."
+        }
+      }
+    },
+    "updated_at": "2026-05-21T17:29:22.884Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 25,
+  "fields": {
+    "section_key": "resources_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {
+      "pt": {
+        "title": "Conteúdos e recursos grátis",
+        "subtitle": "Guias, vídeos e templates para marcas e finanças",
+        "cta_label": "Ver todos os recursos",
+        "extra_data": {
+          "view_all_href": "/conteudos-gratis"
+        }
+      },
+      "en": {
+        "title": "Free content & resources",
+        "subtitle": "Guides, videos, and templates for brands and finance",
+        "cta_label": "View all resources",
+        "extra_data": {
+          "view_all_href": "/conteudos-gratis"
+        }
+      },
+      "fr": {
+        "title": "Contenus et ressources gratuits",
+        "subtitle": "Guides, vidéos et modèles",
+        "cta_label": "Voir tout",
+        "extra_data": {
+          "view_all_href": "/conteudos-gratis"
+        }
+      },
+      "es": {
+        "title": "Contenidos y recursos gratis",
+        "subtitle": "Guías, vídeos y plantillas",
+        "cta_label": "Ver todo",
+        "extra_data": {
+          "view_all_href": "/conteudos-gratis"
+        }
+      }
+    },
+    "updated_at": "2026-05-21T17:29:23.524Z"
+  }
+},
+{
+  "model": "portfolio.homesection",
+  "pk": 26,
+  "fields": {
+    "section_key": "contact_intro",
+    "is_active": true,
+    "extra_data": {},
+    "translations": {},
+    "updated_at": "2026-05-21T17:29:23.609Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 9,
+  "fields": {
+    "slug": "video",
+    "icon": "video",
+    "category": "",
+    "image": "",
+    "order": 0,
+    "is_active": true,
+    "is_featured": true,
+    "translations": {
+      "pt": {
+        "title": "Conteúdo de campanhas de marketing",
+        "description": "Serviço profissional: Conteúdo de campanhas de marketing."
+      },
+      "en": {
+        "title": "Marketing campaign content",
+        "description": "Professional service: Marketing campaign content."
+      },
+      "fr": {
+        "title": "Marketing campaign content",
+        "description": "Service professionnel : Marketing campaign content."
+      },
+      "es": {
+        "title": "Marketing campaign content",
+        "description": "Servicio profesional: Marketing campaign content."
+      }
+    },
+    "created_at": "2026-05-21T17:21:35.921Z",
+    "updated_at": "2026-05-21T17:29:21.068Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 10,
+  "fields": {
+    "slug": "script",
+    "icon": "script",
+    "category": "",
+    "image": "",
+    "order": 1,
+    "is_active": true,
+    "is_featured": true,
+    "translations": {
+      "pt": {
+        "title": "Roteiros e copy para vídeo",
+        "description": "Serviço profissional: Roteiros e copy para vídeo."
+      },
+      "en": {
+        "title": "Scriptwriting / Roteiros",
+        "description": "Professional service: Scriptwriting / Roteiros."
+      },
+      "fr": {
+        "title": "Scriptwriting / Roteiros",
+        "description": "Service professionnel : Scriptwriting / Roteiros."
+      },
+      "es": {
+        "title": "Scriptwriting / Roteiros",
+        "description": "Servicio profesional: Scriptwriting / Roteiros."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.061Z",
+    "updated_at": "2026-05-21T17:29:21.178Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 11,
+  "fields": {
+    "slug": "interview",
+    "icon": "interview",
+    "category": "",
+    "image": "",
+    "order": 2,
+    "is_active": true,
+    "is_featured": true,
+    "translations": {
+      "pt": {
+        "title": "Planeamento e produção de entrevistas",
+        "description": "Serviço profissional: Planeamento e produção de entrevistas."
+      },
+      "en": {
+        "title": "Interview planning & production",
+        "description": "Professional service: Interview planning & production."
+      },
+      "fr": {
+        "title": "Interview planning & production",
+        "description": "Service professionnel : Interview planning & production."
+      },
+      "es": {
+        "title": "Interview planning & production",
+        "description": "Servicio profesional: Interview planning & production."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.188Z",
+    "updated_at": "2026-05-21T17:29:21.280Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 12,
+  "fields": {
+    "slug": "capcut",
+    "icon": "capcut",
+    "category": "",
+    "image": "",
+    "order": 3,
+    "is_active": true,
+    "is_featured": true,
+    "translations": {
+      "pt": {
+        "title": "Edição de vídeo com CapCut",
+        "description": "Serviço profissional: Edição de vídeo com CapCut."
+      },
+      "en": {
+        "title": "CapCut video editing",
+        "description": "Professional service: CapCut video editing."
+      },
+      "fr": {
+        "title": "CapCut video editing",
+        "description": "Service professionnel : CapCut video editing."
+      },
+      "es": {
+        "title": "CapCut video editing",
+        "description": "Servicio profesional: CapCut video editing."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.317Z",
+    "updated_at": "2026-05-21T17:29:21.388Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 13,
+  "fields": {
+    "slug": "canva",
+    "icon": "canva",
+    "category": "",
+    "image": "",
+    "order": 4,
+    "is_active": true,
+    "is_featured": false,
+    "translations": {
+      "pt": {
+        "title": "Conteúdo visual com Canva",
+        "description": "Serviço profissional: Conteúdo visual com Canva."
+      },
+      "en": {
+        "title": "Canva visual content",
+        "description": "Professional service: Canva visual content."
+      },
+      "fr": {
+        "title": "Canva visual content",
+        "description": "Service professionnel : Canva visual content."
+      },
+      "es": {
+        "title": "Canva visual content",
+        "description": "Servicio profesional: Canva visual content."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.505Z",
+    "updated_at": "2026-05-21T17:29:21.528Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 14,
+  "fields": {
+    "slug": "reels",
+    "icon": "reels",
+    "category": "",
+    "image": "",
+    "order": 5,
+    "is_active": true,
+    "is_featured": false,
+    "translations": {
+      "pt": {
+        "title": "Reels TikTok / YouTube Shorts",
+        "description": "Serviço profissional: Reels TikTok / YouTube Shorts."
+      },
+      "en": {
+        "title": "Social media reels",
+        "description": "Professional service: Social media reels."
+      },
+      "fr": {
+        "title": "Social media reels",
+        "description": "Service professionnel : Social media reels."
+      },
+      "es": {
+        "title": "Social media reels",
+        "description": "Servicio profesional: Social media reels."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.628Z",
+    "updated_at": "2026-05-21T17:29:21.632Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 15,
+  "fields": {
+    "slug": "story",
+    "icon": "story",
+    "category": "",
+    "image": "",
+    "order": 6,
+    "is_active": true,
+    "is_featured": false,
+    "translations": {
+      "pt": {
+        "title": "Storytelling de marca",
+        "description": "Serviço profissional: Storytelling de marca."
+      },
+      "en": {
+        "title": "Brand storytelling",
+        "description": "Professional service: Brand storytelling."
+      },
+      "fr": {
+        "title": "Brand storytelling",
+        "description": "Service professionnel : Brand storytelling."
+      },
+      "es": {
+        "title": "Brand storytelling",
+        "description": "Servicio profesional: Brand storytelling."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.744Z",
+    "updated_at": "2026-05-21T17:29:21.758Z"
+  }
+},
+{
+  "model": "portfolio.service",
+  "pk": 16,
+  "fields": {
+    "slug": "strategy",
+    "icon": "strategy",
+    "category": "",
+    "image": "",
+    "order": 7,
+    "is_active": true,
+    "is_featured": false,
+    "translations": {
+      "pt": {
+        "title": "Estratégia de conteúdo",
+        "description": "Serviço profissional: Estratégia de conteúdo."
+      },
+      "en": {
+        "title": "Content strategy",
+        "description": "Professional service: Content strategy."
+      },
+      "fr": {
+        "title": "Content strategy",
+        "description": "Service professionnel : Content strategy."
+      },
+      "es": {
+        "title": "Content strategy",
+        "description": "Servicio profesional: Content strategy."
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.872Z",
+    "updated_at": "2026-05-21T17:29:21.866Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 7,
+  "fields": {
+    "category": "campaign_videos",
+    "slug": "campaign-launch-2025",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Brand X",
+    "tools_used": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 0,
+    "translations": {
+      "pt": {
+        "title": "Campanha de lançamento",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Campanha de lançamento",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Campanha de lançamento",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Campanha de lançamento",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:36.999Z",
+    "updated_at": "2026-05-21T17:29:21.968Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 8,
+  "fields": {
+    "category": "interviews",
+    "slug": "ceo-interview-series",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Tech Co",
+    "tools_used": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 1,
+    "translations": {
+      "pt": {
+        "title": "Série de entrevistas",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Série de entrevistas",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Série de entrevistas",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Série de entrevistas",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.117Z",
+    "updated_at": "2026-05-21T17:29:22.064Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 9,
+  "fields": {
+    "category": "social_reels",
+    "slug": "instagram-reels-pack",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Beauty Brand",
+    "tools_used": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 2,
+    "translations": {
+      "pt": {
+        "title": "Pack de reels",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Pack de reels",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Pack de reels",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Pack de reels",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.232Z",
+    "updated_at": "2026-05-21T17:29:22.168Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 10,
+  "fields": {
+    "category": "canva_designs",
+    "slug": "canva-social-kit",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Startup",
+    "tools_used": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 3,
+    "translations": {
+      "pt": {
+        "title": "Kit visual Canva",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Kit visual Canva",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Kit visual Canva",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Kit visual Canva",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.339Z",
+    "updated_at": "2026-05-21T17:29:22.279Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 11,
+  "fields": {
+    "category": "scriptwriting",
+    "slug": "documentary-script",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Media House",
+    "tools_used": "",
+    "is_featured": false,
+    "is_published": true,
+    "order": 4,
+    "translations": {
+      "pt": {
+        "title": "Roteiro documental",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Roteiro documental",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Roteiro documental",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Roteiro documental",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.461Z",
+    "updated_at": "2026-05-21T17:29:22.394Z"
+  }
+},
+{
+  "model": "portfolio.portfolioproject",
+  "pk": 12,
+  "fields": {
+    "category": "zenda_content",
+    "slug": "zenda-promo-reel",
+    "thumbnail": "",
+    "video_url": "",
+    "external_url": "",
+    "client_name": "Zenda",
+    "tools_used": "",
+    "is_featured": false,
+    "is_published": true,
+    "order": 5,
+    "translations": {
+      "pt": {
+        "title": "Reel promocional Zenda",
+        "description": "Projeto de destaque no portfólio.",
+        "role": "Produtora & editora"
+      },
+      "en": {
+        "title": "Reel promocional Zenda",
+        "description": "Featured portfolio project.",
+        "role": "Producer & editor"
+      },
+      "fr": {
+        "title": "Reel promocional Zenda",
+        "description": "Projet portfolio en vedette.",
+        "role": "Productrice & monteuse"
+      },
+      "es": {
+        "title": "Reel promocional Zenda",
+        "description": "Proyecto destacado del portafolio.",
+        "role": "Productora y editora"
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.592Z",
+    "updated_at": "2026-05-21T17:29:22.513Z"
+  }
+},
+{
+  "model": "portfolio.showreelvideo",
+  "pk": 2,
+  "fields": {
+    "title": "Showreel 2025",
+    "youtube_url": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "is_primary": true,
+    "is_published": true,
+    "order": 0,
+    "translations": {
+      "pt": {
+        "title": "Showreel Profissional",
+        "description": "Melhores momentos de campanhas e entrevistas."
+      },
+      "en": {
+        "title": "Professional Showreel",
+        "description": "Highlights from campaigns and interviews."
+      },
+      "fr": {
+        "title": "Showreel Professionnel",
+        "description": "Meilleurs moments des campagnes et interviews."
+      },
+      "es": {
+        "title": "Showreel Profesional",
+        "description": "Mejores momentos de campañas y entrevistas."
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.705Z"
+  }
+},
+{
+  "model": "portfolio.testimonial",
+  "pk": 4,
+  "fields": {
+    "client_name": "Maria Santos",
+    "client_role": "Marketing Director",
+    "client_company": "Retail Co",
+    "avatar": "",
+    "rating": 5,
+    "order": 0,
+    "is_published": true,
+    "translations": {
+      "pt": {
+        "quote": "Trabalho excecional em vídeo e storytelling. Recomendo para campanhas internacionais."
+      },
+      "en": {
+        "quote": "Exceptional video and storytelling work. Highly recommended for international campaigns."
+      },
+      "fr": {
+        "quote": "Travail vidéo et narration exceptionnels. Recommandé pour les campagnes internationales."
+      },
+      "es": {
+        "quote": "Trabajo excepcional en video y narrativa. Muy recomendable para campañas internacionales."
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.817Z"
+  }
+},
+{
+  "model": "portfolio.testimonial",
+  "pk": 5,
+  "fields": {
+    "client_name": "João Silva",
+    "client_role": "Founder",
+    "client_company": "Tech Startup",
+    "avatar": "",
+    "rating": 5,
+    "order": 1,
+    "is_published": true,
+    "translations": {
+      "pt": {
+        "quote": "Trabalho excecional em vídeo e storytelling. Recomendo para campanhas internacionais."
+      },
+      "en": {
+        "quote": "Exceptional video and storytelling work. Highly recommended for international campaigns."
+      },
+      "fr": {
+        "quote": "Travail vidéo et narration exceptionnels. Recommandé pour les campagnes internationales."
+      },
+      "es": {
+        "quote": "Trabajo excepcional en video y narrativa. Muy recomendable para campañas internacionales."
+      }
+    },
+    "created_at": "2026-05-21T17:21:37.917Z"
+  }
+},
+{
+  "model": "portfolio.testimonial",
+  "pk": 6,
+  "fields": {
+    "client_name": "Ana Costa",
+    "client_role": "Brand Manager",
+    "client_company": "Agency",
+    "avatar": "",
+    "rating": 5,
+    "order": 2,
+    "is_published": true,
+    "translations": {
+      "pt": {
+        "quote": "Trabalho excecional em vídeo e storytelling. Recomendo para campanhas internacionais."
+      },
+      "en": {
+        "quote": "Exceptional video and storytelling work. Highly recommended for international campaigns."
+      },
+      "fr": {
+        "quote": "Travail vidéo et narration exceptionnels. Recommandé pour les campagnes internationales."
+      },
+      "es": {
+        "quote": "Trabajo excepcional en video y narrativa. Muy recomendable para campañas internacionales."
+      }
+    },
+    "created_at": "2026-05-21T17:21:38.033Z"
+  }
+},
+{
+  "model": "portfolio.casestudy",
+  "pk": 2,
+  "fields": {
+    "slug": "brand-campaign-q1",
+    "client_name": "Global Brand",
+    "image": "",
+    "tools_used": "CapCut, Canva, YouTube",
+    "order": 0,
+    "is_published": true,
+    "translations": {
+      "pt": {
+        "title": "Campanha de lançamento Q1",
+        "goal": "Aumentar awareness da marca em redes sociais.",
+        "role": "Roteiro, produção, edição e estratégia de conteúdo.",
+        "result": "+40% engagement e vídeo hero para paid media."
+      },
+      "en": {
+        "title": "Q1 Launch Campaign",
+        "goal": "Increase brand awareness on social media.",
+        "role": "Script, production, editing, and content strategy.",
+        "result": "+40% engagement and hero video for paid media."
+      },
+      "fr": {
+        "title": "Campagne de lancement T1",
+        "goal": "Augmenter la notoriété de la marque sur les réseaux.",
+        "role": "Script, production, montage et stratégie de contenu.",
+        "result": "+40% d'engagement et vidéo hero pour paid media."
+      },
+      "es": {
+        "title": "Campaña de lanzamiento Q1",
+        "goal": "Aumentar el awareness de marca en redes sociales.",
+        "role": "Guion, producción, edición y estrategia de contenido.",
+        "result": "+40% engagement y video hero para paid media."
+      }
+    },
+    "created_at": "2026-05-21T17:21:38.142Z",
+    "updated_at": "2026-05-21T17:29:22.631Z"
+  }
+},
+{
+  "model": "portfolio.zendacontent",
+  "pk": 1,
+  "fields": {
+    "app_store_url": "",
+    "play_store_url": "https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda",
+    "monthly_price_kz": "10000.00",
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "headline": "Zenda — A sua app de finanças pessoais",
+        "subheadline": "Criada por Rubiane Joaquim para ajudar famílias a gerir dinheiro com clareza.",
+        "what_is": "Zenda é uma app mobile de educação e gestão financeira com orçamento, metas e cursos.",
+        "who_it_helps": "Famílias e profissionais que querem controlo financeiro diário.",
+        "benefits": [
+          "Orçamento e despesas",
+          "Metas e poupança",
+          "Cursos de educação financeira",
+          "Tarefas e lembretes"
+        ]
+      },
+      "en": {
+        "headline": "Zenda — Your personal finance app",
+        "subheadline": "Created by Rubiane Joaquim to help families manage money with clarity.",
+        "what_is": "Zenda is a mobile app for financial education and daily money management.",
+        "who_it_helps": "Families and professionals who want daily financial control.",
+        "benefits": [
+          "Budget and expenses",
+          "Goals and savings",
+          "Financial education courses",
+          "Tasks and reminders"
+        ]
+      },
+      "fr": {
+        "headline": "Zenda — Votre app de finances personnelles",
+        "subheadline": "Créée par Rubiane Joaquim pour aider les familles à gérer leur argent.",
+        "what_is": "Zenda est une application mobile d'éducation et de gestion financière.",
+        "who_it_helps": "Familles et professionnels souhaitant un contrôle financier quotidien.",
+        "benefits": [
+          "Budget",
+          "Objectifs",
+          "Cours",
+          "Tâches"
+        ]
+      },
+      "es": {
+        "headline": "Zenda — Tu app de finanzas personales",
+        "subheadline": "Creada por Rubiane Joaquim para ayudar a las familias a gestionar su dinero.",
+        "what_is": "Zenda es una app móvil de educación y gestión financiera.",
+        "who_it_helps": "Familias y profesionales que buscan control financiero diario.",
+        "benefits": [
+          "Presupuesto",
+          "Metas",
+          "Cursos",
+          "Tareas"
+        ]
+      }
+    },
+    "updated_at": "2026-05-21T17:29:22.747Z"
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 7,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "wallet",
+    "image": "",
+    "category": "personal_finance",
+    "order": 0,
+    "is_active": true,
+    "is_premium": false,
+    "translations": {
+      "pt": {
+        "title": "Orcamento inteligente",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "Smart budgeting",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "Smart budgeting",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "Smart budgeting",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 8,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "store",
+    "image": "",
+    "category": "business_finance",
+    "order": 1,
+    "is_active": true,
+    "is_premium": false,
+    "translations": {
+      "pt": {
+        "title": "Financas para negocio",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "Business finance",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "Business finance",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "Business finance",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 9,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "robot",
+    "image": "",
+    "category": "ai_copilot",
+    "order": 2,
+    "is_active": true,
+    "is_premium": true,
+    "translations": {
+      "pt": {
+        "title": "AI Copilot financeiro",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "AI financial copilot",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "AI financial copilot",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "AI financial copilot",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 10,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "school",
+    "image": "",
+    "category": "education",
+    "order": 3,
+    "is_active": true,
+    "is_premium": false,
+    "translations": {
+      "pt": {
+        "title": "Cursos e aulas",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "Courses and lessons",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "Courses and lessons",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "Courses and lessons",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 11,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "target",
+    "image": "",
+    "category": "goals",
+    "order": 4,
+    "is_active": true,
+    "is_premium": false,
+    "translations": {
+      "pt": {
+        "title": "Metas e poupanca",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "Goals and savings",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "Goals and savings",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "Goals and savings",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.zendafeature",
+  "pk": 12,
+  "fields": {
+    "zenda_content": 1,
+    "icon": "shield",
+    "image": "",
+    "category": "security",
+    "order": 5,
+    "is_active": true,
+    "is_premium": false,
+    "translations": {
+      "pt": {
+        "title": "Dados organizados com seguranca",
+        "description": "Uma experiencia mobile pensada para decisoes financeiras claras no dia a dia."
+      },
+      "en": {
+        "title": "Organized and secure data",
+        "description": "A mobile experience designed for clearer everyday financial decisions."
+      },
+      "fr": {
+        "title": "Organized and secure data",
+        "description": "Une experience mobile pour des decisions financieres plus claires."
+      },
+      "es": {
+        "title": "Organized and secure data",
+        "description": "Una experiencia mobile para decisiones financieras mas claras."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 9,
+  "fields": {
+    "url": "/",
+    "order": 0,
+    "placement": "both",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Início"
+      },
+      "en": {
+        "label": "Home"
+      },
+      "fr": {
+        "label": "Home"
+      },
+      "es": {
+        "label": "Home"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 10,
+  "fields": {
+    "url": "/#services",
+    "order": 1,
+    "placement": "header",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Serviços"
+      },
+      "en": {
+        "label": "Services"
+      },
+      "fr": {
+        "label": "Services"
+      },
+      "es": {
+        "label": "Services"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 11,
+  "fields": {
+    "url": "/portfolio",
+    "order": 2,
+    "placement": "both",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Portfólio"
+      },
+      "en": {
+        "label": "Portfolio"
+      },
+      "fr": {
+        "label": "Portfolio"
+      },
+      "es": {
+        "label": "Portfolio"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 12,
+  "fields": {
+    "url": "/zenda",
+    "order": 3,
+    "placement": "both",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Zenda"
+      },
+      "en": {
+        "label": "Zenda"
+      },
+      "fr": {
+        "label": "Zenda"
+      },
+      "es": {
+        "label": "Zenda"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 13,
+  "fields": {
+    "url": "/cursos",
+    "order": 4,
+    "placement": "both",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Cursos"
+      },
+      "en": {
+        "label": "Courses"
+      },
+      "fr": {
+        "label": "Courses"
+      },
+      "es": {
+        "label": "Courses"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 14,
+  "fields": {
+    "url": "/mentoria",
+    "order": 5,
+    "placement": "footer",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Mentoria"
+      },
+      "en": {
+        "label": "Mentorship"
+      },
+      "fr": {
+        "label": "Mentorship"
+      },
+      "es": {
+        "label": "Mentorship"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 15,
+  "fields": {
+    "url": "/conteudos-gratis",
+    "order": 6,
+    "placement": "footer",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Conteúdos Grátis"
+      },
+      "en": {
+        "label": "Free Content"
+      },
+      "fr": {
+        "label": "Free Content"
+      },
+      "es": {
+        "label": "Free Content"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.navitem",
+  "pk": 16,
+  "fields": {
+    "url": "/contact",
+    "order": 7,
+    "placement": "both",
+    "open_in_new_tab": false,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Contacto"
+      },
+      "en": {
+        "label": "Contact"
+      },
+      "fr": {
+        "label": "Contact"
+      },
+      "es": {
+        "label": "Contact"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.homepagestatistic",
+  "pk": 4,
+  "fields": {
+    "value": "50+",
+    "icon": "chart",
+    "order": 0,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Projetos entregues"
+      },
+      "en": {
+        "label": "Projects delivered"
+      },
+      "fr": {
+        "label": "Projects delivered"
+      },
+      "es": {
+        "label": "Projects delivered"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.homepagestatistic",
+  "pk": 5,
+  "fields": {
+    "value": "5+",
+    "icon": "clock",
+    "order": 1,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Anos de experiência"
+      },
+      "en": {
+        "label": "Years of experience"
+      },
+      "fr": {
+        "label": "Years of experience"
+      },
+      "es": {
+        "label": "Years of experience"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.homepagestatistic",
+  "pk": 6,
+  "fields": {
+    "value": "98%",
+    "icon": "star",
+    "order": 2,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "label": "Satisfação dos clientes"
+      },
+      "en": {
+        "label": "Client satisfaction"
+      },
+      "fr": {
+        "label": "Client satisfaction"
+      },
+      "es": {
+        "label": "Client satisfaction"
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.faq",
+  "pk": 6,
+  "fields": {
+    "category": "services",
+    "order": 0,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "question": "Que servicos oferece a Rubiane?",
+        "answer": "Campanhas em video, entrevistas, roteiros, edicao CapCut, design Canva, reels e estrategia de conteudo."
+      },
+      "en": {
+        "question": "What services does Rubiane offer?",
+        "answer": "Campaign videos, interviews, scripts, CapCut editing, Canva visuals, reels, and content strategy."
+      },
+      "fr": {
+        "question": "Quels services Rubiane propose-t-elle ?",
+        "answer": "Videos de campagne, interviews, scripts, montage CapCut, visuels Canva, reels et strategie de contenu."
+      },
+      "es": {
+        "question": "Que servicios ofrece Rubiane?",
+        "answer": "Videos de campana, entrevistas, guiones, edicion CapCut, visuales Canva, reels y estrategia de contenido."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.faq",
+  "pk": 7,
+  "fields": {
+    "category": "services",
+    "order": 1,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "question": "Tambem trabalha com marcas internacionais?",
+        "answer": "Sim. O portfolio e o processo foram pensados para clientes em portugues, ingles, frances e espanhol."
+      },
+      "en": {
+        "question": "Do you work with international brands?",
+        "answer": "Yes. The portfolio and production process are prepared for Portuguese, English, French, and Spanish projects."
+      },
+      "fr": {
+        "question": "Travaillez-vous avec des marques internationales ?",
+        "answer": "Oui. Le portfolio et le processus sont prets pour des projets en portugais, anglais, francais et espagnol."
+      },
+      "es": {
+        "question": "Trabajas con marcas internacionales?",
+        "answer": "Si. El portfolio y el proceso estan preparados para proyectos en portugues, ingles, frances y espanol."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.faq",
+  "pk": 8,
+  "fields": {
+    "category": "zenda",
+    "order": 2,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "question": "O que e o Zenda?",
+        "answer": "Zenda e a app de financas e educacao criada por Rubiane: orcamentos, metas, cursos, tarefas e AI Copilot."
+      },
+      "en": {
+        "question": "What is Zenda?",
+        "answer": "Zenda is Rubiane's finance and education app: budgets, goals, courses, tasks, and an AI Copilot."
+      },
+      "fr": {
+        "question": "Qu'est-ce que Zenda ?",
+        "answer": "Zenda est l'app finance et education de Rubiane : budgets, objectifs, cours, taches et copilot IA."
+      },
+      "es": {
+        "question": "Que es Zenda?",
+        "answer": "Zenda es la app de finanzas y educacion de Rubiane: presupuestos, metas, cursos, tareas y copiloto IA."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.faq",
+  "pk": 9,
+  "fields": {
+    "category": "zenda",
+    "order": 3,
+    "is_active": true,
+    "translations": {
+      "pt": {
+        "question": "A app e multilingue?",
+        "answer": "Sim. Zenda suporta portugues, ingles, frances e espanhol, com preferencia guardada no perfil."
+      },
+      "en": {
+        "question": "Is the app multilingual?",
+        "answer": "Yes. Zenda supports Portuguese, English, French, and Spanish, with the preference saved on the profile."
+      },
+      "fr": {
+        "question": "L'application est-elle multilingue ?",
+        "answer": "Oui. Zenda prend en charge le portugais, l'anglais, le francais et l'espagnol."
+      },
+      "es": {
+        "question": "La app es multilingue?",
+        "answer": "Si. Zenda soporta portugues, ingles, frances y espanol, con preferencia guardada en el perfil."
+      }
+    }
+  }
+},
+{
+  "model": "portfolio.resource",
+  "pk": 4,
+  "fields": {
+    "slug": "guia-orcamento",
+    "resource_type": "pdf",
+    "category": "education",
+    "thumbnail": "",
+    "file": "",
+    "video_url": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 0,
+    "translations": {
+      "pt": {
+        "title": "Guia de orçamento familiar",
+        "description": "Recurso gratuito da Rubiane Joaquim."
+      },
+      "en": {
+        "title": "Guia de orçamento familiar",
+        "description": "Free resource from Rubiane Joaquim."
+      },
+      "fr": {
+        "title": "Guia de orçamento familiar",
+        "description": "Ressource gratuite."
+      },
+      "es": {
+        "title": "Guia de orçamento familiar",
+        "description": "Recurso gratuito."
+      }
+    },
+    "created_at": "2026-05-21T17:21:41.047Z",
+    "updated_at": "2026-05-21T17:29:23.194Z"
+  }
+},
+{
+  "model": "portfolio.resource",
+  "pk": 5,
+  "fields": {
+    "slug": "video-financas-101",
+    "resource_type": "video",
+    "category": "education",
+    "thumbnail": "",
+    "file": "",
+    "video_url": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 1,
+    "translations": {
+      "pt": {
+        "title": "Finanças 101 — vídeo grátis",
+        "description": "Recurso gratuito da Rubiane Joaquim."
+      },
+      "en": {
+        "title": "Finanças 101 — vídeo grátis",
+        "description": "Free resource from Rubiane Joaquim."
+      },
+      "fr": {
+        "title": "Finanças 101 — vídeo grátis",
+        "description": "Ressource gratuite."
+      },
+      "es": {
+        "title": "Finanças 101 — vídeo grátis",
+        "description": "Recurso gratuito."
+      }
+    },
+    "created_at": "2026-05-21T17:21:41.180Z",
+    "updated_at": "2026-05-21T17:29:23.304Z"
+  }
+},
+{
+  "model": "portfolio.resource",
+  "pk": 6,
+  "fields": {
+    "slug": "template-canva-posts",
+    "resource_type": "template",
+    "category": "marketing",
+    "thumbnail": "",
+    "file": "",
+    "video_url": "",
+    "is_featured": true,
+    "is_published": true,
+    "order": 2,
+    "translations": {
+      "pt": {
+        "title": "Template Canva para posts",
+        "description": "Recurso gratuito da Rubiane Joaquim."
+      },
+      "en": {
+        "title": "Template Canva para posts",
+        "description": "Free resource from Rubiane Joaquim."
+      },
+      "fr": {
+        "title": "Template Canva para posts",
+        "description": "Ressource gratuite."
+      },
+      "es": {
+        "title": "Template Canva para posts",
+        "description": "Recurso gratuito."
+      }
+    },
+    "created_at": "2026-05-21T17:21:41.277Z",
+    "updated_at": "2026-05-21T17:29:23.409Z"
+  }
+},
+{
+  "model": "portfolio.pageseo",
+  "pk": 3,
+  "fields": {
+    "page_key": "home",
+    "canonical_path": "/",
+    "og_image": "",
+    "translations": {
+      "pt": {
+        "title": "Rubiane Joaquim | Produtora de Vídeo Criativo & Zenda",
+        "description": "Campanhas em vídeo, entrevistas, roteiros, CapCut, Canva e criadora do Zenda.",
+        "og_title": "Rubiane Joaquim — Creative Video & Zenda"
+      },
+      "en": {
+        "title": "Rubiane Joaquim | Creative Video Producer & Zenda",
+        "description": "Campaign videos, interviews, scripts, CapCut, Canva, and creator of Zenda.",
+        "og_title": "Rubiane Joaquim — Creative Video & Zenda"
+      },
+      "fr": {
+        "title": "Rubiane Joaquim | Productrice Vidéo & Zenda",
+        "description": "Vidéo, interviews, scripts et Zenda.",
+        "og_title": "Rubiane Joaquim"
+      },
+      "es": {
+        "title": "Rubiane Joaquim | Video Creativo & Zenda",
+        "description": "Videos, entrevistas, guiones y Zenda.",
+        "og_title": "Rubiane Joaquim"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:23.003Z"
+  }
+},
+{
+  "model": "portfolio.pageseo",
+  "pk": 4,
+  "fields": {
+    "page_key": "zenda",
+    "canonical_path": "/zenda",
+    "og_image": "",
+    "translations": {
+      "pt": {
+        "title": "Zenda App | Finanças & Educação",
+        "description": "App Zenda — finanças pessoais e negócio."
+      },
+      "en": {
+        "title": "Zenda App | Finance & Education",
+        "description": "Zenda app — personal and business finance."
+      },
+      "fr": {
+        "title": "Zenda",
+        "description": "Zenda app"
+      },
+      "es": {
+        "title": "Zenda",
+        "description": "Zenda app"
+      }
+    },
+    "updated_at": "2026-05-21T17:29:23.113Z"
+  }
+}
+]
