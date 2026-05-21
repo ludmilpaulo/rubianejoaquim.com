@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'tasks',
     'ai_copilot',
     'subscriptions',
+    'portfolio',
 ]
 
 MIDDLEWARE = [

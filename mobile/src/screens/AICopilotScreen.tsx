@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { aiCopilotApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Message {
   id?: number
@@ -18,7 +19,8 @@ interface RouteParams {
 }
 
 export default function AICopilotScreen() {
-  const navigation = useNavigation<any>()
+  const { t, messages: localeMessages } = useI18n()
+  const navigation = useNavigation<{ goBack: () => void }>()
   const route = useRoute()
   const { conversationId: initialConversationId } = (route.params as RouteParams) || {}
   
@@ -256,43 +258,23 @@ export default function AICopilotScreen() {
                 <MaterialCommunityIcons name="robot" size={64} color="#8b5cf6" />
               </View>
               <Text variant="headlineSmall" style={styles.welcomeTitle}>
-                Olá! Sou o AI Financial Copilot
+                {t('ai.title')}
               </Text>
               <Text variant="bodyLarge" style={styles.welcomeText}>
-                Estou aqui para ajudá-lo com suas finanças. Posso ajudá-lo com:
+                {t('ai.disclaimer')}
               </Text>
               <View style={styles.suggestionsContainer}>
-                <Text variant="bodyMedium" style={styles.suggestionsTitle}>
-                  Tente perguntar sobre:
-                </Text>
                 <View style={styles.suggestionChips}>
-                  <TouchableOpacity
-                    style={styles.suggestionChip}
-                    onPress={() => {
-                      setInputText('Como criar um orçamento?')
-                    }}
-                  >
-                    <MaterialCommunityIcons name="wallet-outline" size={18} color="#8b5cf6" />
-                    <Text style={styles.suggestionText}>Orçamento</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.suggestionChip}
-                    onPress={() => {
-                      setInputText('Como economizar dinheiro?')
-                    }}
-                  >
-                    <MaterialCommunityIcons name="piggy-bank-outline" size={18} color="#8b5cf6" />
-                    <Text style={styles.suggestionText}>Poupança</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.suggestionChip}
-                    onPress={() => {
-                      setInputText('Como pagar dívidas?')
-                    }}
-                  >
-                    <MaterialCommunityIcons name="credit-card-outline" size={18} color="#8b5cf6" />
-                    <Text style={styles.suggestionText}>Dívidas</Text>
-                  </TouchableOpacity>
+                  {localeMessages.ai.suggestions.map((prompt) => (
+                    <TouchableOpacity
+                      key={prompt}
+                      style={styles.suggestionChip}
+                      onPress={() => setInputText(prompt)}
+                    >
+                      <MaterialCommunityIcons name="chat-outline" size={18} color="#8b5cf6" />
+                      <Text style={styles.suggestionText} numberOfLines={2}>{prompt}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             </View>

@@ -1,8 +1,8 @@
 from rest_framework import serializers
 from decimal import Decimal
 from .models import (
-    Category, PersonalExpense, Budget, Goal, Debt,
-    Sale, BusinessExpense
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
+    Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
 )
 
 
@@ -32,9 +32,38 @@ class PersonalExpenseSerializer(serializers.ModelSerializer):
         model = PersonalExpense
         fields = [
             'id', 'category', 'category_name', 'category_icon', 'category_color',
-            'amount', 'description', 'date', 'payment_method', 'created_at', 'updated_at'
+            'amount', 'description', 'date', 'currency', 'is_recurring', 'recurrence',
+            'notes', 'receipt_url', 'payment_method', 'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+
+class PersonalIncomeSerializer(serializers.ModelSerializer):
+    category_name = serializers.SerializerMethodField()
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category else None
+
+    class Meta:
+        model = PersonalIncome
+        fields = [
+            'id', 'category', 'category_name', 'amount', 'description', 'date',
+            'source_type', 'currency', 'is_recurring', 'recurrence', 'notes',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class ExchangeRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExchangeRate
+        fields = ['id', 'base_currency', 'target_currency', 'rate', 'updated_at']
+
+
+class UserFavoriteCurrencySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserFavoriteCurrency
+        fields = ['id', 'currency_code', 'order']
 
 
 class BudgetSerializer(serializers.ModelSerializer):

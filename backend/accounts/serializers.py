@@ -8,7 +8,11 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address', 'referral_code', 'date_joined', 'is_staff', 'is_superuser', 'is_admin']
+        fields = [
+            'id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address',
+            'referral_code', 'preferred_locale', 'preferred_currency', 'onboarding_completed',
+            'dark_mode', 'date_joined', 'is_staff', 'is_superuser', 'is_admin',
+        ]
         read_only_fields = ['id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code']
     
     def get_is_admin(self, obj):
@@ -19,7 +23,10 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     """Serializer para atualização de perfil do usuário"""
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'phone', 'address', 'email']
+        fields = [
+            'first_name', 'last_name', 'phone', 'address', 'email',
+            'preferred_locale', 'preferred_currency', 'onboarding_completed', 'dark_mode',
+        ]
     
     def validate_email(self, value):
         """Verificar se o email não está em uso por outro usuário"""

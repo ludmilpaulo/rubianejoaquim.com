@@ -7,6 +7,10 @@ export interface User {
   last_name: string
   phone?: string
   referral_code?: string
+  preferred_locale?: string
+  preferred_currency?: string
+  onboarding_completed?: boolean
+  dark_mode?: boolean
   is_staff: boolean
   is_superuser: boolean
   is_admin: boolean

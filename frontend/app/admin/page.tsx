@@ -180,6 +180,14 @@ export default function AdminDashboard() {
           </Link>
 
           <Link
+            href="/admin/portfolio"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Portfolio & Site CMS</h3>
+            <p className="text-gray-600 text-sm">Projetos, serviços, testemunhos, Zenda e mensagens de contacto</p>
+          </Link>
+
+          <Link
             href="/admin/enrollments"
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >

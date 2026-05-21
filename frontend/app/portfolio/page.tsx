@@ -1,0 +1,123 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useLocale, useTranslations } from '@/contexts/LocaleContext'
+import { portfolioApi } from '@/lib/portfolio-api'
+import type { PortfolioProject, PortfolioCategory } from '@/lib/portfolio-types'
+import SectionHeader from '@/components/portfolio/SectionHeader'
+import { getYoutubeEmbedUrl } from '@/lib/youtube'
+
+const CATEGORIES: PortfolioCategory[] = [
+  'campaign_videos',
+  'interviews',
+  'social_reels',
+  'canva_designs',
+  'scriptwriting',
+  'zenda_content',
+]
+
+export default function PortfolioPage() {
+  const { locale } = useLocale()
+  const t = useTranslations()
+  const [projects, setProjects] = useState<PortfolioProject[]>([])
+  const [filter, setFilter] = useState<PortfolioCategory | 'all'>('all')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    portfolioApi
+      .getProjects(locale)
+      .then(setProjects)
+      .finally(() => setLoading(false))
+  }, [locale])
+
+  const filtered =
+    filter === 'all' ? projects : projects.filter((p) => p.category === filter)
+
+  return (
+    <div className="bg-slate-950 min-h-screen pt-8 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <SectionHeader
+          label={t('portfolio.label')}
+          title={t('portfolio.title')}
+          subtitle={t('portfolio.subtitle')}
+        />
+        <div className="flex flex-wrap gap-2 justify-center mb-12 -mt-6">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              filter === 'all'
+                ? 'bg-amber-400 text-slate-950'
+                : 'bg-white/5 text-slate-400 hover:text-white'
+            }`}
+          >
+            All
+          </button>
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setFilter(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                filter === cat
+                  ? 'bg-amber-400 text-slate-950'
+                  : 'bg-white/5 text-slate-400 hover:text-white'
+              }`}
+            >
+              {t(`portfolio.categories.${cat}`)}
+            </button>
+          ))}
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-16">
+            {filtered.map((project) => (
+              <article
+                key={project.id}
+                id={project.slug}
+                className="scroll-mt-24 grid md:grid-cols-2 gap-8 p-6 sm:p-8 rounded-2xl bg-slate-900/50 border border-white/5"
+              >
+                <div className="aspect-video rounded-xl overflow-hidden bg-black ring-1 ring-white/10">
+                  {project.video_url ? (
+                    <iframe
+                      src={getYoutubeEmbedUrl(project.video_url)}
+                      title={project.title}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  ) : project.thumbnail_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={project.thumbnail_url} alt={project.title} className="w-full h-full object-cover" />
+                  ) : null}
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                    {t(`portfolio.categories.${project.category}`)}
+                  </span>
+                  <h2 className="text-2xl font-display font-bold text-white mt-2">{project.title}</h2>
+                  {project.client_name && (
+                    <p className="text-slate-500 mt-1">{project.client_name}</p>
+                  )}
+                  <p className="text-slate-300 mt-4 leading-relaxed">{project.description}</p>
+                  {project.role && (
+                    <p className="text-sm text-slate-400 mt-4">
+                      <strong className="text-slate-300">Role:</strong> {project.role}
+                    </p>
+                  )}
+                  {project.tools_used && (
+                    <p className="text-sm text-slate-400 mt-2">
+                      <strong className="text-slate-300">Tools:</strong> {project.tools_used}
+                    </p>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

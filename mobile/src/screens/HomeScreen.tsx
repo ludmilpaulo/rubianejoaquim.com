@@ -1,454 +1,351 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, AppState } from 'react-native'
-import { Text, Card, Badge } from 'react-native-paper'
+import React, { useCallback, useEffect, useState } from 'react'
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native'
+import { Text, Badge } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
-import { useNavigation } from '@react-navigation/native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
-import { tasksApi, personalFinanceApi } from '../services/api'
-import { notifyOverdueOrDueTasks, notifyFinanceGoalsReminder } from '../utils/notifications'
-
-const REMINDER_DELAY_MS = 2500
-const REMINDER_COOLDOWN_MS = 5 * 60 * 1000 // 5 minutes
+import { personalFinanceApi } from '../services/api'
+import type { DashboardData } from '../types/dashboard'
+import { useI18n } from '../contexts/I18nContext'
+import FinancialHealthCard from '../components/dashboard/FinancialHealthCard'
+import ZendaCard from '../components/ui/ZendaCard'
+import { DashboardSkeleton } from '../components/ui/Skeleton'
+import { colors, spacing, radius } from '../theme'
+import { formatCurrency } from '../utils/currency'
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
-  const navigation = useNavigation<any>()
-  const [unreadCount, setUnreadCount] = useState(0)
-  const lastReminderCheck = useRef<number>(0)
+  const navigation = useNavigation<{ navigate: (name: string) => void; getParent: () => { navigate: (tab: string) => void } | undefined }>()
+  const { t, locale, messages } = useI18n()
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState(false)
 
-  useEffect(() => {
-    loadUnreadCount()
-    const interval = setInterval(() => {
-      loadUnreadCount()
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [])
+  const currency = user?.preferred_currency || dashboard?.currency || 'AOA'
 
-  const runReminderCheck = async () => {
-    const now = Date.now()
-    if (now - lastReminderCheck.current < REMINDER_COOLDOWN_MS) return
-    lastReminderCheck.current = now
+  const loadDashboard = useCallback(async () => {
     try {
-      const [overdueRes, todayRes, goalsRes] = await Promise.all([
-        tasksApi.getTasks(undefined, undefined, undefined, true),
-        tasksApi.getTodayTasks(),
-        personalFinanceApi.getGoals('active').catch(() => []),
-      ])
-      const overdueList = Array.isArray(overdueRes) ? overdueRes : overdueRes?.results ?? []
-      const todayList = Array.isArray(todayRes) ? todayRes : todayRes?.results ?? []
-      const goalsList = Array.isArray(goalsRes) ? goalsRes : goalsRes?.results ?? []
-
-      const incomplete = (t: { status?: string }) =>
-        t.status !== 'completed' && t.status !== 'cancelled'
-      const overdueIncomplete = overdueList.filter(incomplete)
-      const todayIncomplete = todayList.filter(incomplete)
-      const firstOverdue = overdueIncomplete[0] as { title?: string } | undefined
-      const firstToday = todayIncomplete[0] as { title?: string } | undefined
-      const firstTaskTitle = firstOverdue?.title ?? firstToday?.title
-
-      await notifyOverdueOrDueTasks(
-        overdueIncomplete.length,
-        todayIncomplete.length,
-        firstTaskTitle
-      )
-
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      const inDays = (d: string) => Math.floor((new Date(d).getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
-      const goalsWithDeadline = goalsList
-        .filter((g: { status?: string; target_date?: string }) => g.status === 'active' && g.target_date)
-        .map((g: { title: string; target_date: string }) => ({
-          title: g.title,
-          target_date: g.target_date,
-          daysRemaining: inDays(g.target_date),
-        }))
-        .filter((g: { daysRemaining: number }) => g.daysRemaining <= 7)
-        .sort((a: { daysRemaining: number }, b: { daysRemaining: number }) => a.daysRemaining - b.daysRemaining)
-      if (goalsWithDeadline.length > 0) {
-        await notifyFinanceGoalsReminder(goalsWithDeadline)
-      }
-    } catch (e) {
-      if (__DEV__) console.warn('Reminder check failed:', e)
-    }
-  }
-
-  useEffect(() => {
-    const t = setTimeout(runReminderCheck, REMINDER_DELAY_MS)
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        const t2 = setTimeout(runReminderCheck, REMINDER_DELAY_MS)
-        return () => clearTimeout(t2)
-      }
-    })
-    return () => {
-      clearTimeout(t)
-      sub.remove()
+      setError(false)
+      const data = await personalFinanceApi.getDashboard()
+      setDashboard(data as DashboardData)
+    } catch {
+      setError(true)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
   }, [])
 
-  const loadUnreadCount = async () => {
-    try {
-      const countRes = await tasksApi.getUnreadCount()
-      setUnreadCount(countRes.count || 0)
-    } catch (error) {
-      console.error('Error loading unread count:', error)
-    }
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true)
+      loadDashboard()
+    }, [loadDashboard]),
+  )
+
+  const onRefresh = () => {
+    setRefreshing(true)
+    loadDashboard()
   }
 
   const navigateToTab = (tabName: string) => {
-    // Navigate to parent tab navigator
     const parent = navigation.getParent()
-    if (parent) {
-      parent.navigate(tabName)
-    } else {
-      // Fallback: try direct navigation
-      navigation.navigate(tabName as never)
-    }
+    parent?.navigate(tabName)
+  }
+
+  const tipIndex = new Date().getDate() % messages.tips.length
+  const dailyTip = messages.tips[tipIndex]
+
+  const quickActions = [
+    { icon: 'minus-circle-outline' as const, label: t('home.addExpense'), color: colors.brand.danger, tab: 'Personal' },
+    { icon: 'plus-circle-outline' as const, label: t('home.addIncome'), color: colors.brand.secondary, tab: 'Personal' },
+    { icon: 'chart-pie' as const, label: t('home.createBudget'), color: colors.brand.primary, tab: 'Personal' },
+    { icon: 'flag-checkered' as const, label: t('home.createGoal'), color: colors.brand.accent, tab: 'Personal' },
+    { icon: 'robot-outline' as const, label: t('home.askAi'), color: colors.brand.ai, route: 'AICopilot' },
+    { icon: 'school-outline' as const, label: t('home.viewCourses'), color: colors.brand.accent, tab: 'Education' },
+  ]
+
+  if (loading && !dashboard) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <DashboardSkeleton />
+      </SafeAreaView>
+    )
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />}
+      >
         <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.greetingContainer}>
-              <Text variant="headlineMedium" style={styles.greeting}>
-                Olá, {user?.first_name || 'Utilizador'}! 👋
-              </Text>
-              <Text variant="bodyMedium" style={styles.subtitle}>
-                Bem-vindo ao Zenda
-              </Text>
-            </View>
-            <View style={styles.headerIcon}>
-              <MaterialCommunityIcons name="wallet" size={32} color="#6366f1" />
-            </View>
+          <View>
+            <Text variant="headlineSmall" style={styles.greeting}>
+              {t('home.greeting')}, {user?.first_name || 'Zenda'} 👋
+            </Text>
+            <Text variant="bodyMedium" style={styles.subtitle}>
+              {t('home.subtitle')}
+            </Text>
+          </View>
+          <View style={styles.logoBadge}>
+            <MaterialCommunityIcons name="shield-check" size={28} color={colors.brand.primary} />
           </View>
         </View>
 
-      <View style={styles.cards}>
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={[styles.quickActionCard, styles.quickActionCard1]}
-            onPress={() => navigation.navigate('ToDoList')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: '#f0f4ff' }]}>
-              <MaterialCommunityIcons name="check-circle" size={28} color="#6366f1" />
+        {error && (
+          <ZendaCard style={styles.errorCard}>
+            <Text style={styles.errorText}>{t('common.error')}</Text>
+            <TouchableOpacity onPress={loadDashboard}>
+              <Text style={styles.retryLink}>{t('common.retry')}</Text>
+            </TouchableOpacity>
+          </ZendaCard>
+        )}
+
+        {dashboard && (
+          <>
+            <FinancialHealthCard health={dashboard.health} />
+
+            <Text variant="labelLarge" style={styles.sectionTitle}>
+              {t('home.thisMonth')}
+            </Text>
+            <View style={styles.summaryRow}>
+              <ZendaCard style={[styles.summaryCard, { flex: 1 }]}>
+                <MaterialCommunityIcons name="arrow-down-circle" size={22} color={colors.brand.secondary} />
+                <Text variant="labelSmall" style={styles.summaryLabel}>{t('home.income')}</Text>
+                <Text variant="titleMedium" style={styles.summaryValue}>
+                  {formatCurrency(dashboard.summary.income, currency)}
+                </Text>
+              </ZendaCard>
+              <ZendaCard style={[styles.summaryCard, { flex: 1 }]}>
+                <MaterialCommunityIcons name="arrow-up-circle" size={22} color={colors.brand.danger} />
+                <Text variant="labelSmall" style={styles.summaryLabel}>{t('home.expenses')}</Text>
+                <Text variant="titleMedium" style={styles.summaryValue}>
+                  {formatCurrency(dashboard.summary.expenses, currency)}
+                </Text>
+              </ZendaCard>
             </View>
-            <Text variant="bodyMedium" style={styles.quickActionLabel}>Tarefas</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickActionCard, styles.quickActionCard2]}
-            onPress={() => navigation.navigate('Targets')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.quickActionIcon, { backgroundColor: '#ecfdf5' }]}>
-              <MaterialCommunityIcons name="target" size={28} color="#10b981" />
-            </View>
-            <Text variant="bodyMedium" style={styles.quickActionLabel}>Metas</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.quickActionCard, styles.quickActionCard3]}
-            onPress={() => navigation.navigate('Notifications')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.notificationIconContainer}>
-              <View style={[styles.quickActionIcon, { backgroundColor: '#fffbeb' }]}>
-                <MaterialCommunityIcons name="bell" size={28} color="#f59e0b" />
-              </View>
-              {unreadCount > 0 && (
-                <Badge style={styles.notificationBadge}>{unreadCount}</Badge>
+
+            <ZendaCard accentColor={dashboard.summary.balance >= 0 ? colors.brand.secondary : colors.brand.danger}>
+              <Text variant="labelMedium" style={styles.summaryLabel}>{t('home.balance')}</Text>
+              <Text variant="headlineSmall" style={styles.balanceValue}>
+                {formatCurrency(dashboard.summary.balance, currency)}
+              </Text>
+              {dashboard.summary.business_profit !== 0 && (
+                <Text variant="bodySmall" style={styles.businessLine}>
+                  {t('home.businessProfit')}: {formatCurrency(dashboard.summary.business_profit, currency)}
+                </Text>
               )}
+            </ZendaCard>
+
+            <Text variant="labelLarge" style={styles.sectionTitle}>{t('home.quickActions')}</Text>
+            <View style={styles.quickGrid}>
+              {quickActions.map((action) => (
+                <TouchableOpacity
+                  key={action.label}
+                  style={styles.quickItem}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    if ('route' in action && action.route) {
+                      navigation.navigate(action.route)
+                    } else if ('tab' in action) {
+                      navigateToTab(action.tab)
+                    }
+                  }}
+                >
+                  <View style={[styles.quickIcon, { backgroundColor: `${action.color}18` }]}>
+                    <MaterialCommunityIcons name={action.icon} size={26} color={action.color} />
+                  </View>
+                  <Text variant="labelSmall" style={styles.quickLabel} numberOfLines={2}>
+                    {action.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Text variant="bodyMedium" style={styles.quickActionLabel}>Notificações</Text>
+
+            <View style={styles.statsRow}>
+              <TouchableOpacity style={styles.statChip} onPress={() => navigation.navigate('ToDoList')}>
+                <MaterialCommunityIcons name="checkbox-marked-circle-outline" size={20} color={colors.brand.primary} />
+                <Text variant="bodySmall">{dashboard.tasks_today} {t('home.tasksToday')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.statChip} onPress={() => navigation.navigate('Notifications')}>
+                <MaterialCommunityIcons name="bell-outline" size={20} color={colors.brand.accent} />
+                <Text variant="bodySmall">{t('home.notifications')}</Text>
+                {dashboard.unread_notifications > 0 && (
+                  <Badge style={styles.badge}>{dashboard.unread_notifications}</Badge>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {dashboard.goals.length > 0 && (
+              <>
+                <Text variant="labelLarge" style={styles.sectionTitle}>{t('home.savings')}</Text>
+                {dashboard.goals.map((goal) => (
+                  <ZendaCard key={goal.id}>
+                    <View style={styles.goalRow}>
+                      <Text variant="titleSmall" style={styles.goalTitle}>{goal.title}</Text>
+                      <Text variant="labelSmall">{Math.round(goal.progress_percentage)}%</Text>
+                    </View>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: `${Math.min(100, goal.progress_percentage)}%` }]} />
+                    </View>
+                  </ZendaCard>
+                ))}
+              </>
+            )}
+
+            <ZendaCard style={styles.aiCard}>
+              <View style={styles.aiHeader}>
+                <MaterialCommunityIcons name="robot" size={24} color={colors.brand.ai} />
+                <Text variant="titleSmall" style={styles.aiTitle}>{t('home.aiInsight')}</Text>
+              </View>
+              <Text variant="bodySmall" style={styles.aiBody} numberOfLines={3}>
+                {dashboard.health.tips[0] ? t(`health.tip_${dashboard.health.tips[0]}`) : dailyTip}
+              </Text>
+              <TouchableOpacity style={styles.aiBtn} onPress={() => navigation.navigate('AICopilot')}>
+                <Text style={styles.aiBtnText}>{t('home.askAi')}</Text>
+              </TouchableOpacity>
+            </ZendaCard>
+
+            <ZendaCard style={styles.tipCard}>
+              <Text variant="labelMedium" style={styles.tipLabel}>{t('home.tipOfDay')}</Text>
+              <Text variant="bodyMedium" style={styles.tipText}>{dailyTip}</Text>
+            </ZendaCard>
+          </>
+        )}
+
+        <View style={styles.hubSection}>
+          <Text variant="labelLarge" style={styles.sectionTitle}>{t('finance.personal')}</Text>
+          {[
+            { tab: 'Personal', icon: 'wallet', title: t('finance.personal'), color: colors.brand.primary },
+            { tab: 'Business', icon: 'store', title: t('finance.business'), color: colors.brand.secondary },
+            { tab: 'Education', icon: 'school', title: t('finance.education'), color: colors.brand.accent },
+          ].map((item) => (
+            <TouchableOpacity key={item.tab} onPress={() => navigateToTab(item.tab)} activeOpacity={0.8}>
+              <ZendaCard accentColor={item.color}>
+                <View style={styles.hubRow}>
+                  <MaterialCommunityIcons name={item.icon} size={28} color={item.color} />
+                  <Text variant="titleMedium" style={styles.hubTitle}>{item.title}</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+                </View>
+              </ZendaCard>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity onPress={() => navigation.navigate('Market')} activeOpacity={0.8}>
+            <ZendaCard accentColor={colors.brand.danger}>
+              <View style={styles.hubRow}>
+                <MaterialCommunityIcons name="chart-line" size={28} color={colors.brand.danger} />
+                <Text variant="titleMedium" style={styles.hubTitle}>{t('finance.market')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+              </View>
+            </ZendaCard>
           </TouchableOpacity>
         </View>
-
-        <Card 
-          style={[styles.card, styles.cardPersonal]} 
-          onPress={() => navigateToTab('Personal')}
-          mode="elevated"
-        >
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#f0f4ff' }]}>
-                <MaterialCommunityIcons name="wallet" size={28} color="#6366f1" />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text variant="titleLarge" style={styles.cardTitle}>
-                  Finanças Pessoais
-                </Text>
-                <Text variant="bodyMedium" style={styles.cardText}>
-                  Rastreie despesas, orçamentos e objetivos
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card 
-          style={[styles.card, styles.cardBusiness]} 
-          onPress={() => navigateToTab('Business')}
-          mode="elevated"
-        >
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#ecfdf5' }]}>
-                <MaterialCommunityIcons name="store" size={28} color="#10b981" />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text variant="titleLarge" style={styles.cardTitle}>
-                  Finanças do Negócio
-                </Text>
-                <Text variant="bodyMedium" style={styles.cardText}>
-                  Gerencie vendas, despesas e lucros
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card 
-          style={[styles.card, styles.cardEducation]} 
-          onPress={() => navigateToTab('Education')}
-          mode="elevated"
-        >
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#fffbeb' }]}>
-                <MaterialCommunityIcons name="school" size={28} color="#f59e0b" />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text variant="titleLarge" style={styles.cardTitle}>
-                  Educação Financeira
-                </Text>
-                <Text variant="bodyMedium" style={styles.cardText}>
-                  Aulas, progresso e certificados
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card
-          style={[styles.card, styles.cardAI]}
-          onPress={() => {
-            navigation.navigate('AICopilot')
-          }}
-          mode="elevated"
-        >
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#f5f3ff' }]}>
-                <MaterialCommunityIcons name="robot" size={28} color="#8b5cf6" />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text variant="titleLarge" style={styles.cardTitle}>
-                  AI Financial Copilot
-                </Text>
-                <Text variant="bodyMedium" style={styles.cardText}>
-                  Conselhos personalizados baseados nos seus dados
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
-            </View>
-          </Card.Content>
-        </Card>
-
-        <Card
-          style={[styles.card, styles.cardMarket]}
-          onPress={() => {
-            navigation.navigate('Market')
-          }}
-          mode="elevated"
-        >
-          <Card.Content style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconContainer, { backgroundColor: '#fef2f2' }]}>
-                <MaterialCommunityIcons name="chart-line" size={28} color="#ef4444" />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text variant="titleLarge" style={styles.cardTitle}>
-                  Mercado Global & Câmbio
-                </Text>
-                <Text variant="bodyMedium" style={styles.cardText}>
-                  Acompanhe índices globais e taxas de câmbio em tempo real
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
-            </View>
-          </Card.Content>
-        </Card>
-      </View>
       </ScrollView>
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  safe: { flex: 1, backgroundColor: colors.background.default },
+  scroll: { flex: 1 },
+  content: { padding: spacing.md, paddingBottom: spacing.xxl },
   header: {
-    padding: 20,
-    paddingTop: 12,
-    paddingBottom: 24,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
   },
-  greetingContainer: {
-    flex: 1,
-  },
-  greeting: {
-    fontWeight: '700',
-    marginBottom: 4,
-    color: '#1f2937',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    color: '#6b7280',
-    fontSize: 15,
-  },
-  headerIcon: {
+  greeting: { fontWeight: '700', color: colors.text.primary },
+  subtitle: { color: colors.text.secondary, marginTop: 4 },
+  logoBadge: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f0f4ff',
-    justifyContent: 'center',
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  cards: {
-    padding: 16,
+  sectionTitle: {
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    paddingHorizontal: 4,
+  summaryRow: { flexDirection: 'row', gap: spacing.sm },
+  summaryCard: { alignItems: 'flex-start', gap: 4 },
+  summaryLabel: { color: colors.text.muted, marginTop: 4 },
+  summaryValue: { fontWeight: '700', color: colors.text.primary },
+  balanceValue: { fontWeight: '700', color: colors.text.primary, marginTop: 4 },
+  businessLine: { color: colors.text.secondary, marginTop: 8 },
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  quickItem: {
+    width: '30%',
+    minWidth: 100,
+    backgroundColor: colors.background.paper,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  quickActionCard: {
+  quickIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  quickLabel: { textAlign: 'center', color: colors.text.primary, fontWeight: '600' },
+  statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  statChip: {
     flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 6,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-  },
-  quickActionCard1: {
-    marginLeft: 0,
-  },
-  quickActionCard2: {
-    marginHorizontal: 6,
-  },
-  quickActionCard3: {
-    marginRight: 0,
-  },
-  quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  quickActionLabel: {
-    fontWeight: '600',
-    color: '#1f2937',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  notificationIconContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: '#ef4444',
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    zIndex: 10,
-  },
-  card: {
-    marginBottom: 16,
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-  },
-  cardPersonal: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
-  },
-  cardBusiness: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
-  },
-  cardEducation: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-  },
-  cardAI: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#8b5cf6',
-  },
-  cardContent: {
-    padding: 16,
-  },
-  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.background.paper,
+    padding: spacing.sm,
+    borderRadius: radius.md,
   },
-  cardIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+  badge: { backgroundColor: colors.brand.danger },
+  goalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  goalTitle: { fontWeight: '600', flex: 1 },
+  progressTrack: { height: 8, backgroundColor: colors.border.light, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.brand.primary, borderRadius: 4 },
+  aiCard: { backgroundColor: '#F5F3FF' },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  aiTitle: { fontWeight: '600' },
+  aiBody: { color: colors.text.secondary, lineHeight: 20 },
+  aiBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.brand.ai,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
   },
-  cardTextContainer: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  cardText: {
-    color: '#6b7280',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  cardMarket: {},
+  aiBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  tipCard: { backgroundColor: '#FFFBEB' },
+  tipLabel: { color: colors.brand.accent, marginBottom: 4 },
+  tipText: { color: colors.text.primary, lineHeight: 22 },
+  hubSection: { marginTop: spacing.md },
+  hubRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  hubTitle: { flex: 1, fontWeight: '600' },
+  errorCard: { backgroundColor: '#FEF2F2', alignItems: 'center' },
+  errorText: { color: colors.brand.danger },
+  retryLink: { color: colors.brand.primary, fontWeight: '600', marginTop: 8 },
 })

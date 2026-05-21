@@ -44,14 +44,18 @@ def get_period_dates(request):
     return start, end
 
 
+from rest_framework.permissions import AllowAny
+
 from .models import (
-    Category, PersonalExpense, Budget, Goal, Debt,
-    Sale, BusinessExpense
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
+    Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
 )
 from .serializers import (
-    CategorySerializer, PersonalExpenseSerializer, BudgetSerializer,
-    GoalSerializer, DebtSerializer, SaleSerializer, BusinessExpenseSerializer
+    CategorySerializer, PersonalExpenseSerializer, PersonalIncomeSerializer,
+    BudgetSerializer, GoalSerializer, DebtSerializer, SaleSerializer,
+    BusinessExpenseSerializer, ExchangeRateSerializer, UserFavoriteCurrencySerializer,
 )
+from .services import build_dashboard, compute_financial_health
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -74,6 +78,38 @@ class CategoryViewSet(viewsets.ModelViewSet):
 
 
 # ==================== PERSONAL FINANCE ====================
+
+class PersonalIncomeViewSet(viewsets.ModelViewSet):
+    serializer_class = PersonalIncomeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = PersonalIncome.objects.filter(user=self.request.user)
+        month = self.request.query_params.get('month')
+        year = self.request.query_params.get('year')
+        if month:
+            queryset = queryset.filter(date__month=month)
+        if year:
+            queryset = queryset.filter(date__year=year)
+        return queryset.order_by('-date', '-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def summary(self, request):
+        user = request.user
+        start, end = get_period_dates(request)
+        incomes = PersonalIncome.objects.filter(user=user, date__gte=start, date__lte=end)
+        total = incomes.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
+        by_source = incomes.values('source_type').annotate(total=Sum('amount'), count=Count('id'))
+        return Response({
+            'total': str(total),
+            'by_source': list(by_source),
+            'count': incomes.count(),
+            'period': {'start': str(start), 'end': str(end)},
+        })
+
 
 class PersonalExpenseViewSet(viewsets.ModelViewSet):
     """ViewSet para despesas pessoais"""
@@ -439,3 +475,70 @@ class BusinessMetricsViewSet(viewsets.ViewSet):
             'profit': {'total': str(profit), 'is_positive': profit >= 0},
             'period': {'start': str(start), 'end': str(end)},
         })
+
+
+class DashboardViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        return Response(build_dashboard(request.user))
+
+    @action(detail=False, methods=['get'])
+    def health_score(self, request):
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        return Response(
+            compute_financial_health(
+                request.user,
+                int(month) if month else None,
+                int(year) if year else None,
+            )
+        )
+
+
+class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ExchangeRate.objects.all()
+    serializer_class = ExchangeRateSerializer
+    permission_classes = [AllowAny]
+
+    @action(detail=False, methods=['get'])
+    def convert(self, request):
+        amount = Decimal(request.query_params.get('amount', '0'))
+        from_cur = request.query_params.get('from', 'USD').upper()
+        to_cur = request.query_params.get('to', 'AOA').upper()
+        if from_cur == to_cur:
+            return Response({'amount': str(amount), 'from': from_cur, 'to': to_cur, 'rate': '1'})
+        rate_obj = ExchangeRate.objects.filter(
+            base_currency=from_cur, target_currency=to_cur
+        ).first()
+        if not rate_obj:
+            inverse = ExchangeRate.objects.filter(
+                base_currency=to_cur, target_currency=from_cur
+            ).first()
+            if inverse and inverse.rate != 0:
+                converted = amount / inverse.rate
+                return Response({
+                    'amount': str(converted.quantize(Decimal('0.01'))),
+                    'from': from_cur,
+                    'to': to_cur,
+                    'rate': str((Decimal('1') / inverse.rate).quantize(Decimal('0.00000001'))),
+                })
+            return Response({'error': 'Rate not found'}, status=status.HTTP_404_NOT_FOUND)
+        converted = amount * rate_obj.rate
+        return Response({
+            'amount': str(converted.quantize(Decimal('0.01'))),
+            'from': from_cur,
+            'to': to_cur,
+            'rate': str(rate_obj.rate),
+        })
+
+
+class UserFavoriteCurrencyViewSet(viewsets.ModelViewSet):
+    serializer_class = UserFavoriteCurrencySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserFavoriteCurrency.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

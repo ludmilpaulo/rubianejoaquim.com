@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
-    Category, PersonalExpense, Budget, Goal, Debt,
-    Sale, BusinessExpense
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
+    Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
 )
 
 
@@ -10,6 +10,23 @@ class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'icon', 'is_personal', 'is_business', 'created_at']
     list_filter = ['is_personal', 'is_business']
     search_fields = ['name']
+
+
+@admin.register(PersonalIncome)
+class PersonalIncomeAdmin(admin.ModelAdmin):
+    list_display = ['user', 'amount', 'source_type', 'date', 'currency', 'is_recurring']
+    list_filter = ['source_type', 'currency', 'is_recurring']
+    search_fields = ['user__email', 'description']
+
+
+@admin.register(ExchangeRate)
+class ExchangeRateAdmin(admin.ModelAdmin):
+    list_display = ['base_currency', 'target_currency', 'rate', 'updated_at']
+
+
+@admin.register(UserFavoriteCurrency)
+class UserFavoriteCurrencyAdmin(admin.ModelAdmin):
+    list_display = ['user', 'currency_code', 'order']
 
 
 @admin.register(PersonalExpense)

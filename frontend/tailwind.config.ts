@@ -16,7 +16,16 @@ const config: Config = {
       '2xl': '1536px',
     },
     extend: {
+      fontFamily: {
+        display: ['var(--font-playfair)', 'Georgia', 'serif'],
+        sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
+      },
       colors: {
+        cinema: {
+          dark: '#020617',
+          card: '#0f172a',
+          accent: '#fbbf24',
+        },
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',

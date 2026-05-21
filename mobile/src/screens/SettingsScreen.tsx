@@ -6,8 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
 import { Linking } from 'react-native'
 import { areNotificationsEnabled, setNotificationsEnabled as persistNotificationsEnabled } from '../utils/notifications'
+import { useI18n } from '../contexts/I18nContext'
+import type { Locale } from '../i18n'
+import { SUPPORTED_CURRENCIES, type CurrencyCode } from '../utils/currency'
+import { authApi } from '../services/api'
+
+const LOCALE_LABELS: Record<Locale, string> = {
+  pt: 'Português',
+  en: 'English',
+  fr: 'Français',
+  es: 'Español',
+}
 
 export default function SettingsScreen() {
+  const { locale, setLocale, locales, t } = useI18n()
   const { user } = useAppSelector((state) => state.auth)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [biometricEnabled, setBiometricEnabled] = useState(false)
@@ -70,9 +82,43 @@ export default function SettingsScreen() {
         {/* Preferences Section */}
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>Preferências</Text>
+            <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.title')}</Text>
             <List.Item
-              title="Notificações"
+              title={t('settings.language')}
+              description={LOCALE_LABELS[locale]}
+              left={(props) => <List.Icon {...props} icon="translate" color="#6366f1" />}
+              onPress={() => {
+                Alert.alert(
+                  t('settings.language'),
+                  '',
+                  locales.map((code) => ({
+                    text: LOCALE_LABELS[code],
+                    onPress: () => setLocale(code),
+                  })),
+                )
+              }}
+            />
+            <Divider />
+            <List.Item
+              title={t('settings.currency')}
+              description={user?.preferred_currency || 'AOA'}
+              left={(props) => <List.Icon {...props} icon="currency-usd" color="#6366f1" />}
+              onPress={() => {
+                Alert.alert(
+                  t('settings.currency'),
+                  '',
+                  SUPPORTED_CURRENCIES.map((code) => ({
+                    text: code,
+                    onPress: () => {
+                      authApi.updateProfile({ preferred_currency: code }).catch(() => {})
+                    },
+                  })),
+                )
+              }}
+            />
+            <Divider />
+            <List.Item
+              title={t('settings.notifications')}
               description="Lembretes de tarefas atrasadas e metas financeiras (com vibração)"
               left={(props) => <List.Icon {...props} icon="bell" color="#6366f1" />}
               right={() => (

@@ -17,6 +17,7 @@ urlpatterns = [
     path('api/tasks/', include('tasks.urls')),
     path('api/ai-copilot/', include('ai_copilot.urls')),
     path('api/subscriptions/', include('subscriptions.urls')),
+    path('api/portfolio/', include('portfolio.urls')),
 ]
 
 if settings.DEBUG:

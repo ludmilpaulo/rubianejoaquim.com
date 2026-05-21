@@ -320,4 +320,41 @@ export const adminApi = {
       reject: (id: number) => api.post(`/mentorship/admin/payment-proofs/${id}/reject/`),
     },
   },
+
+  portfolio: {
+    projects: {
+      list: () => api.get('/portfolio/admin/projects/'),
+      create: (data: Record<string, unknown>) => api.post('/portfolio/admin/projects/', data),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/projects/${id}/`, data),
+      delete: (id: number) => api.delete(`/portfolio/admin/projects/${id}/`),
+    },
+    services: {
+      list: () => api.get('/portfolio/admin/services/'),
+      create: (data: Record<string, unknown>) => api.post('/portfolio/admin/services/', data),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/services/${id}/`, data),
+      delete: (id: number) => api.delete(`/portfolio/admin/services/${id}/`),
+    },
+    testimonials: {
+      list: () => api.get('/portfolio/admin/testimonials/'),
+    },
+    showreel: {
+      list: () => api.get('/portfolio/admin/showreel/'),
+    },
+    caseStudies: {
+      list: () => api.get('/portfolio/admin/case-studies/'),
+    },
+    zenda: {
+      list: () => api.get('/portfolio/admin/zenda/'),
+    },
+    homeSections: {
+      list: () => api.get('/portfolio/admin/home-sections/'),
+    },
+    contactMessages: {
+      list: () => api.get('/portfolio/admin/contact-messages/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/contact-messages/${id}/`, data),
+    },
+  },
 }

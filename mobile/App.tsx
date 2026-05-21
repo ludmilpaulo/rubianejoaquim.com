@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 import { Provider } from 'react-redux'
 import { NavigationContainer } from '@react-navigation/native'
@@ -12,19 +12,34 @@ import AuthNavigator from './src/navigation/AuthNavigator'
 import MainNavigator from './src/navigation/MainNavigator'
 import ProfileOnlyNavigator from './src/navigation/ProfileOnlyNavigator'
 import LoadingScreen from './src/screens/LoadingScreen'
+import OnboardingScreen, { isOnboardingComplete } from './src/screens/OnboardingScreen'
 import { setupNotifications } from './src/utils/notifications'
 import { checkStoreUpdate } from './src/utils/storeUpdate'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
+import { I18nProvider } from './src/contexts/I18nContext'
+import { zendaLightTheme } from './src/theme/paperTheme'
 
 function AppContent() {
   const dispatch = useAppDispatch()
-  const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector((state) => state.auth)
+  const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector(
+    (state) => state.auth,
+  )
+  const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null)
 
   useEffect(() => {
     dispatch(checkAuth())
   }, [dispatch])
 
-  // Re-check access when app returns to foreground (trial/subscription may have expired)
+  useEffect(() => {
+    if (user && hasPaidAccess) {
+      isOnboardingComplete().then((done) => {
+        setShowOnboarding(!done && !user.onboarding_completed)
+      })
+    } else {
+      setShowOnboarding(false)
+    }
+  }, [user, hasPaidAccess])
+
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active' && user) {
@@ -35,8 +50,6 @@ function AppContent() {
   }, [user, dispatch])
 
   useEffect(() => {
-    // After login/register, accessChecked is false until we confirm access.
-    // Show LoadingScreen during this phase to prevent AccessDenied flicker.
     if (user && !accessChecked) {
       dispatch(checkPaidAccess()).catch(() => {})
     }
@@ -49,13 +62,11 @@ function AppContent() {
   }, [user, hasPaidAccess, hasExpiredSubscription])
 
   useEffect(() => {
-    // Check for OTA updates on app load (works in production builds)
     checkAndApplyUpdates().catch(() => {})
   }, [])
 
   useEffect(() => {
     if (user && hasPaidAccess) {
-      // Check for store updates (for major version changes that require app store update)
       const t = setTimeout(() => {
         checkStoreUpdate().catch(() => {})
       }, 3000)
@@ -63,18 +74,21 @@ function AppContent() {
     }
   }, [user, hasPaidAccess])
 
-  if (isLoading) {
+  if (isLoading || showOnboarding === null) {
     return <LoadingScreen />
   }
 
-  // Prevent AccessDenied flash: if user exists but access isn't checked yet, keep showing loader
   if (user && !accessChecked) {
     return <LoadingScreen />
   }
 
+  if (user && hasPaidAccess && showOnboarding) {
+    return <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+  }
+
   return (
     <SafeAreaProvider>
-      <PaperProvider>
+      <PaperProvider theme={zendaLightTheme}>
         <NavigationContainer>
           {user && hasPaidAccess ? (
             <MainNavigator />
@@ -93,7 +107,9 @@ function AppContent() {
 export default function App() {
   return (
     <Provider store={store}>
-      <AppContent />
+      <I18nProvider>
+        <AppContent />
+      </I18nProvider>
     </Provider>
   )
 }

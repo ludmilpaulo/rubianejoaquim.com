@@ -26,13 +26,57 @@ class Category(models.Model):
 
 # ==================== PERSONAL FINANCE ====================
 
+class PersonalIncome(models.Model):
+    """Receita / entrada de dinheiro pessoal"""
+    SOURCE_CHOICES = [
+        ('salary', 'Salário'),
+        ('freelance', 'Freelance'),
+        ('business', 'Negócio'),
+        ('investment', 'Investimento'),
+        ('gift', 'Presente'),
+        ('other', 'Outro'),
+    ]
+    RECURRENCE_CHOICES = [
+        ('none', 'Única'),
+        ('weekly', 'Semanal'),
+        ('monthly', 'Mensal'),
+        ('yearly', 'Anual'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personal_incomes')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='personal_incomes')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    description = models.TextField()
+    date = models.DateField()
+    source_type = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='salary')
+    currency = models.CharField(max_length=3, default='AOA')
+    is_recurring = models.BooleanField(default=False)
+    recurrence = models.CharField(max_length=20, choices=RECURRENCE_CHOICES, default='none')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-date', '-created_at']
+
+    def __str__(self) -> str:
+        return f'{self.user_id} +{self.amount} {self.currency}'
+
+
 class PersonalExpense(models.Model):
     """Despesa pessoal"""
+    RECURRENCE_CHOICES = PersonalIncome.RECURRENCE_CHOICES
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personal_expenses')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='personal_expenses')
-    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     description = models.TextField(help_text="Descrição da despesa")
     date = models.DateField(help_text="Data da despesa")
+    currency = models.CharField(max_length=3, default='AOA')
+    is_recurring = models.BooleanField(default=False)
+    recurrence = models.CharField(max_length=20, choices=RECURRENCE_CHOICES, default='none')
+    notes = models.TextField(blank=True)
+    receipt_url = models.CharField(max_length=500, blank=True)
     payment_method = models.CharField(
         max_length=50,
         choices=[
@@ -52,7 +96,32 @@ class PersonalExpense(models.Model):
         ordering = ['-date', '-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.amount} AOA - {self.date}"
+        return f"{self.user.username} - {self.amount} {self.currency} - {self.date}"
+
+
+class ExchangeRate(models.Model):
+    """Cached FX rates (base → target)."""
+    base_currency = models.CharField(max_length=3, default='USD')
+    target_currency = models.CharField(max_length=3)
+    rate = models.DecimalField(max_digits=18, decimal_places=8)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['base_currency', 'target_currency']
+        ordering = ['target_currency']
+
+    def __str__(self) -> str:
+        return f'{self.base_currency}/{self.target_currency}={self.rate}'
+
+
+class UserFavoriteCurrency(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='favorite_currencies')
+    currency_code = models.CharField(max_length=3)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        unique_together = ['user', 'currency_code']
+        ordering = ['order']
 
 
 class Budget(models.Model):

@@ -10,6 +10,11 @@ class User(AbstractUser):
     address = models.TextField(blank=True, help_text="Endereço completo")
     referral_code = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Código de referência único")
     referred_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='referrals', help_text="Usuário que indicou este usuário")
+    preferred_locale = models.CharField(max_length=5, default='pt', help_text='pt, en, fr, es')
+    preferred_currency = models.CharField(max_length=3, default='AOA')
+    onboarding_completed = models.BooleanField(default=False)
+    profile_photo = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    dark_mode = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

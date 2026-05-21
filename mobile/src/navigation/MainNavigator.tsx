@@ -22,6 +22,7 @@ import MarketScreen from '../screens/MarketScreen'
 import SettingsScreen from '../screens/SettingsScreen'
 import AboutScreen from '../screens/AboutScreen'
 import HelpSupportScreen from '../screens/HelpSupportScreen'
+import { useI18n } from '../contexts/I18nContext'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -156,6 +157,8 @@ function ProfileStack() {
 }
 
 export default function MainNavigator() {
+  const { t } = useI18n()
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -193,27 +196,27 @@ export default function MainNavigator() {
       <Tab.Screen 
         name="Home" 
         component={HomeStack}
-        options={{ title: 'Zenda', headerShown: false }}
+        options={{ title: t('home.zendaTitle'), headerShown: false }}
       />
       <Tab.Screen 
         name="Personal" 
         component={PersonalStack}
-        options={{ title: 'Pessoal', headerShown: false }}
+        options={{ title: t('tabs.personal'), headerShown: false }}
       />
       <Tab.Screen 
         name="Business" 
         component={BusinessFinanceScreen}
-        options={{ title: 'Negócio' }}
+        options={{ title: t('tabs.business') }}
       />
       <Tab.Screen 
         name="Education" 
         component={EducationStack}
-        options={{ title: 'Educação', headerShown: false }}
+        options={{ title: t('tabs.education'), headerShown: false }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileStack}
-        options={{ title: 'Perfil', headerShown: false }}
+        options={{ title: t('tabs.profile'), headerShown: false }}
       />
     </Tab.Navigator>
   )

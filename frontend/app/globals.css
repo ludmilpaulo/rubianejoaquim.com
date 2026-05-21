@@ -123,4 +123,36 @@ img {
       font-size: 15px;
     }
   }
+
+  .font-display {
+    font-family: var(--font-playfair), Georgia, serif;
+  }
+
+  .cinematic-hero {
+    background: linear-gradient(165deg, #020617 0%, #0f172a 45%, #1e1b4b 100%);
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent;
+  }
+
+  .film-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3.5 rounded-xl font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 transition-all duration-300 shadow-lg shadow-amber-900/30 hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3.5 rounded-xl font-semibold text-white border-2 border-white/20 hover:border-amber-400/50 hover:bg-white/5 transition-all duration-300;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-6 py-3.5 rounded-xl font-semibold text-amber-300/90 hover:text-amber-200 transition-colors;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400/30 transition-colors;
+  }
 }

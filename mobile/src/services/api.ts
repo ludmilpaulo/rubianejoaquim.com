@@ -199,6 +199,11 @@ export const authApi = {
     const response = await api.get('/auth/me/')
     return response.data
   },
+
+  updateProfile: async (data: Record<string, unknown>) => {
+    const response = await api.patch('/auth/profile/', data)
+    return response.data
+  },
   
   requestAccountDeletion: async () => {
     const response = await api.post('/auth/request-deletion/')
@@ -478,6 +483,48 @@ export const personalFinanceApi = {
   
   deleteDebt: async (id: number) => {
     const response = await api.delete(`/finance/personal/debts/${id}/`)
+    return response.data
+  },
+
+  getDashboard: async () => {
+    const response = await api.get('/finance/dashboard/')
+    return response.data
+  },
+
+  getHealthScore: async (month?: number, year?: number) => {
+    const response = await api.get('/finance/dashboard/health_score/', {
+      params: { month, year },
+    })
+    return response.data
+  },
+
+  getIncome: async (month?: number, year?: number) => {
+    const params: Record<string, number> = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.get('/finance/personal/income/', { params })
+    return response.data
+  },
+
+  createIncome: async (data: Record<string, unknown>) => {
+    const response = await api.post('/finance/personal/income/', data)
+    return response.data
+  },
+
+  getIncomeSummary: async (params?: { period?: string; month?: number; year?: number }) => {
+    const response = await api.get('/finance/personal/income/summary/', { params: params || {} })
+    return response.data
+  },
+
+  getExchangeRates: async () => {
+    const response = await api.get('/finance/exchange-rates/')
+    return response.data
+  },
+
+  convertCurrency: async (amount: number, from: string, to: string) => {
+    const response = await api.get('/finance/exchange-rates/convert/', {
+      params: { amount, from, to },
+    })
     return response.data
   },
 }

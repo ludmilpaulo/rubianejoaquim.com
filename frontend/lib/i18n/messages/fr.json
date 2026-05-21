@@ -1,0 +1,154 @@
+{
+  "brand": {
+    "name": "Rubiane Joaquim",
+    "tagline": "Productrice Vidéo Créative & Narratrice de Campagnes"
+  },
+  "nav": {
+    "portfolio": "Portfolio",
+    "services": "Services",
+    "zenda": "Zenda",
+    "courses": "Cours",
+    "mentorship": "Mentorat",
+    "freeContent": "Contenu gratuit",
+    "contact": "Contact",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "studentArea": "Espace étudiant",
+    "admin": "Admin",
+    "logout": "Déconnexion",
+    "workWithMe": "Travailler avec moi"
+  },
+  "hero": {
+    "badge": "Vidéo créative · Marketing · Storytelling",
+    "title": "Productrice de contenu vidéo créatif",
+    "titleAccent": "& narratrice de campagnes marketing",
+    "subtitle": "J'aide les marques à créer des campagnes vidéo, interviews, reels, scripts et récits qui touchent un public international.",
+    "ctaPortfolio": "Voir le portfolio",
+    "ctaWork": "Travailler avec moi",
+    "ctaZenda": "Découvrir Zenda",
+    "trust1": "Campagnes & interviews",
+    "trust2": "Scripts & montage",
+    "trust3": "Créatrice de Zenda"
+  },
+  "about": {
+    "label": "À propos",
+    "title": "Qui est",
+    "name": "Rubiane Joaquim",
+    "p1": "Productrice audiovisuelle et narratrice marketing qui aide les marques à communiquer avec clarté, émotion et impact visuel.",
+    "p2": "Du script au montage final — campagnes, interviews, réseaux sociaux et stratégie de contenu pour des clients exigeants.",
+    "stat1": "Projets livrés",
+    "stat2": "Années d'expérience",
+    "stat3": "Satisfaction client"
+  },
+  "services": {
+    "label": "Services",
+    "title": "Ce que je peux créer pour votre marque",
+    "subtitle": "Production créative complète — de l'idée à la vidéo publiée"
+  },
+  "portfolio": {
+    "label": "Portfolio",
+    "title": "Travaux sélectionnés",
+    "subtitle": "Campagnes, interviews, reels, design et contenu Zenda",
+    "viewAll": "Voir le portfolio complet",
+    "categories": {
+      "campaign_videos": "Vidéos de campagne",
+      "interviews": "Interviews",
+      "social_reels": "Reels & Shorts",
+      "canva_designs": "Designs Canva",
+      "scriptwriting": "Scénarios",
+      "zenda_content": "Contenu Zenda"
+    }
+  },
+  "showreel": {
+    "label": "Showreel",
+    "title": "Vidéo en vedette"
+  },
+  "zenda": {
+    "label": "Produit",
+    "title": "Zenda — App de finances personnelles",
+    "learnMore": "En savoir plus",
+    "download": "Télécharger l'app",
+    "whatIs": "Qu'est-ce que c'est",
+    "whoHelps": "Pour qui"
+  },
+  "caseStudies": {
+    "label": "Études de cas",
+    "title": "Projets avec résultats",
+    "goal": "Objectif",
+    "role": "Rôle",
+    "tools": "Outils",
+    "result": "Résultat"
+  },
+  "testimonials": {
+    "label": "Témoignages",
+    "title": "Ce que disent les clients"
+  },
+  "contact": {
+    "label": "Contact",
+    "title": "Créons quelque chose de mémorable",
+    "subtitle": "Envoyez un message ou contactez-nous sur WhatsApp",
+    "name": "Nom",
+    "email": "Email",
+    "phone": "Téléphone",
+    "subject": "Sujet",
+    "message": "Message",
+    "send": "Envoyer",
+    "sending": "Envoi...",
+    "success": "Message envoyé avec succès !",
+    "error": "Échec de l'envoi. Réessayez.",
+    "whatsapp": "WhatsApp"
+  },
+  "cta": {
+    "title": "Prêt à élever votre marque ?",
+    "subtitle": "Campagnes vidéo, interviews et contenu social de qualité internationale.",
+    "button": "Démarrer un projet"
+  },
+  "footer": {
+    "description": "Production vidéo créative, storytelling marketing et créatrice de Zenda.",
+    "navigation": "Navigation",
+    "contact": "Contact",
+    "rights": "Tous droits réservés."
+  },
+  "education": {
+    "title": "Éducation financière",
+    "subtitle": "Cours et mentorat — continuez à apprendre avec Rubiane"
+  },
+  "zenda": {
+    "hero": {
+      "title": "Zenda — Finances, éducation et IA",
+      "subtitle": "Application premium pour finances personnelles et business, cours et Copilot IA.",
+      "download": "Télécharger sur Play Store",
+      "contact": "Nous contacter"
+    },
+    "features": {
+      "title": "Tout en une app",
+      "personal": "Finances personnelles",
+      "personalDesc": "Revenus, dépenses, budgets, objectifs et dettes.",
+      "business": "Finances entreprise",
+      "businessDesc": "Ventes, dépenses, profit et métriques PME.",
+      "education": "Éducation financière",
+      "educationDesc": "Cours, vidéos, quiz et certificats.",
+      "ai": "Copilot financier IA",
+      "aiDesc": "Conseils éducatifs basés sur vos données.",
+      "fx": "Change global",
+      "fxDesc": "Taux et conversion multi-devises.",
+      "health": "Santé financière",
+      "healthDesc": "Score intelligent et recommandations."
+    },
+    "pricing": {
+      "title": "Abonnement simple",
+      "subtitle": "Accès complet à Zenda",
+      "monthly": "par mois",
+      "trial": "7 jours d'essai gratuit"
+    },
+    "faq": {
+      "title": "FAQ",
+      "q1": "Zenda remplace-t-il un conseiller ?",
+      "a1": "Non. Zenda offre éducation et outils. Pour des conseils réglementés, consultez un professionnel.",
+      "q2": "Comment payer ?",
+      "a2": "Virement bancaire et preuve de paiement. Essai gratuit disponible.",
+      "q3": "Quelles langues ?",
+      "a3": "Portugais, anglais, français et espagnol."
+    }
+  }
+}
