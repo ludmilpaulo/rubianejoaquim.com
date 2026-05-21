@@ -23,9 +23,17 @@
     "title": "Productora de contenido de video creativo",
     "titleAccent": "y narradora de campañas de marketing",
     "subtitle": "Ayudo a marcas a crear videos de campaña, entrevistas, reels, guiones e historias que conectan con audiencias internacionales.",
+    "ctaShowreel": "Ver showreel",
     "ctaPortfolio": "Ver portafolio",
     "ctaWork": "Trabajar conmigo",
     "ctaZenda": "Explorar Zenda",
+    "showreelPreview": "Clic para ver el showreel completo",
+    "role1": "Productora de video",
+    "role2": "Guionista",
+    "role3": "Entrevistas",
+    "role4": "CapCut y Canva",
+    "role5": "Redes sociales",
+    "role6": "Creadora de Zenda",
     "trust1": "Campañas y entrevistas",
     "trust2": "Guiones y edición",
     "trust3": "Creadora de Zenda"
@@ -33,6 +41,7 @@
   "about": {
     "label": "Sobre",
     "title": "Conoce a",
+    "subtitle": "Creatividad audiovisual con visión de marketing y producto digital",
     "name": "Rubiane Joaquim",
     "p1": "Productora audiovisual y narradora de marketing que ayuda a las marcas a comunicar con claridad, emoción e impacto visual.",
     "p2": "Del guion a la edición final: campañas, entrevistas, redes sociales y estrategia de contenido para clientes exigentes.",
@@ -43,13 +52,26 @@
   "services": {
     "label": "Servicios",
     "title": "Lo que puedo crear para tu marca",
-    "subtitle": "Producción creativa completa — de la idea al video publicado"
+    "subtitle": "Producción creativa completa — de la idea al video publicado",
+    "cta": "Solicitar propuesta",
+    "fallback": {
+      "s1": { "title": "Videos de campaña de marketing", "desc": "Campañas en video que venden, inspiran y posicionan tu marca." },
+      "s2": { "title": "Guiones / Scriptwriting", "desc": "Guiones profesionales para anuncios, documentales, entrevistas y redes." },
+      "s3": { "title": "Producción de entrevistas", "desc": "Planificación, grabación y edición de entrevistas para marcas y líderes." },
+      "s4": { "title": "Contenido para redes sociales", "desc": "Reels, shorts y packs de contenido para Instagram, TikTok y YouTube." },
+      "s5": { "title": "Edición CapCut", "desc": "Edición dinámica y moderna optimizada para móvil y social." },
+      "s6": { "title": "Contenido visual Canva", "desc": "Posts, carruseles, presentaciones y kits visuales alineados a la marca." },
+      "s7": { "title": "Brand storytelling", "desc": "Narrativas de marca que humanizan y diferencian tu negocio." },
+      "s8": { "title": "Estrategia de contenido", "desc": "Calendario editorial, formatos y mensajes para crecer con consistencia." }
+    }
   },
   "portfolio": {
     "label": "Portafolio",
     "title": "Trabajos seleccionados",
     "subtitle": "Campañas, entrevistas, reels, diseño y contenido Zenda",
     "viewAll": "Ver portafolio completo",
+    "all": "Todos",
+    "empty": "Nuevos proyectos pronto. Contáctame para ver más trabajos.",
     "categories": {
       "campaign_videos": "Videos de campaña",
       "interviews": "Entrevistas",
@@ -61,19 +83,13 @@
   },
   "showreel": {
     "label": "Showreel",
-    "title": "Video destacado"
-  },
-  "zenda": {
-    "label": "Producto",
-    "title": "Zenda — App de finanzas personales",
-    "learnMore": "Saber más",
-    "download": "Descargar app",
-    "whatIs": "Qué es",
-    "whoHelps": "Para quién"
+    "title": "Video destacado",
+    "subtitle": "Una muestra de mi trabajo creativo — campañas, entrevistas y storytelling"
   },
   "caseStudies": {
     "label": "Casos de estudio",
     "title": "Proyectos con resultados",
+    "subtitle": "Objetivos claros, ejecución profesional e impacto medible",
     "goal": "Objetivo",
     "role": "Rol",
     "tools": "Herramientas",
@@ -81,7 +97,16 @@
   },
   "testimonials": {
     "label": "Testimonios",
-    "title": "Lo que dicen los clientes"
+    "title": "Lo que dicen los clientes",
+    "subtitle": "Alianzas con marcas, emprendedores y equipos creativos"
+  },
+  "finalCta": {
+    "title": "¿Listo para crear contenido poderoso para tu marca?",
+    "subtitle": "Campañas en video, entrevistas, guiones y contenido social — con calidad internacional.",
+    "whatsapp": "WhatsApp",
+    "sendMessage": "Enviar mensaje",
+    "bookCall": "Reservar llamada",
+    "whatsappPrefill": "¡Hola Rubiane! Me gustaría trabajar contigo en un proyecto de contenido."
   },
   "contact": {
     "label": "Contacto",
@@ -110,10 +135,61 @@
     "rights": "Todos los derechos reservados."
   },
   "education": {
-    "title": "Educación financiera",
-    "subtitle": "Cursos y mentoría — sigue aprendiendo con Rubiane"
+    "label": "Aprendizaje",
+    "title": "Cursos, mentoría y contenido gratis",
+    "subtitle": "Además de la producción creativa, Rubiane enseña finanzas y emprendimiento",
+    "coursesDesc": "Cursos online con certificado — finanzas personales y negocio.",
+    "mentorshipDesc": "Acompañamiento individual para metas financieras y de carrera.",
+    "freeDesc": "Artículos, videos y recursos gratuitos para empezar hoy.",
+    "exploreCourses": "Explorar cursos",
+    "bookMentorship": "Saber más",
+    "viewFree": "Ver contenidos"
   },
   "zenda": {
+    "label": "Producto",
+    "title": "Zenda — App de finanzas personales",
+    "badge": "App · IA · Educación financiera",
+    "explore": "Explorar Zenda",
+    "waitlist": "Lista de espera",
+    "whatIsFallback": "Zenda es la app de finanzas y educación: gestión del dinero, AI Copilot y cursos — para Angola y el mundo.",
+    "whoHelpsFallback": "Para familias, freelancers, PYMES y quien quiera gastos, metas y negocio en un solo lugar.",
+    "learnMore": "Saber más",
+    "download": "Descargar app",
+    "features": {
+      "f1": "Finanzas personales y de negocio",
+      "f2": "AI Financial Copilot",
+      "f3": "Presupuestos, metas y deudas",
+      "f4": "Cursos y certificados",
+      "f5": "Conversor de monedas global",
+      "f6": "Multilingüe (PT, EN, FR, ES)"
+    },
+    "screenshotPlaceholders": {
+      "0": "Dashboard",
+      "1": "Presupuestos",
+      "2": "AI Copilot",
+      "3": "Cursos"
+    },
+    "whatIs": "Qué es",
+    "whoHelps": "Para quién",
+    "positioning": {
+      "tagline": "Más que un control de gastos",
+      "headline": "Tu coach financiero con IA — vida, aprendizaje y negocio",
+      "sub": "Zenda combina gestión inteligente del dinero, educación financiera y herramientas para pymes — para Angola y el mundo."
+    },
+    "tiers": {
+      "title": "Planes para cada etapa",
+      "subtitle": "Empieza gratis, crece con Premium, escala con Business y Family",
+      "free": "Gratis",
+      "premium": "Premium",
+      "business": "Business",
+      "family": "Family",
+      "comingSoon": "Próximamente",
+      "current": "Disponible ahora",
+      "freeFeatures": "Seguimiento básico, metas limitadas, vista previa de cursos",
+      "premiumFeatures": "Copilot IA, salud financiera, multimoneda, metas ilimitadas, cursos completos",
+      "businessFeatures": "Panel PYME, flujo de caja, recibos, métricas de equipo",
+      "familyFeatures": "Presupuestos, metas, deudas y aportes compartidos"
+    },
     "hero": {
       "title": "Zenda — Finanzas, educación e IA",
       "subtitle": "App premium para finanzas personales y de negocio, cursos y Copilot IA.",
@@ -143,12 +219,22 @@
     },
     "faq": {
       "title": "Preguntas frecuentes",
-      "q1": "¿Zenda sustituye a un asesor?",
-      "a1": "No. Zenda ofrece educación y herramientas. Para asesoramiento regulado, consulte un profesional.",
-      "q2": "¿Cómo funciona el pago?",
-      "a2": "Transferencia bancaria y comprobante. Prueba gratis disponible.",
-      "q3": "¿Qué idiomas?",
-      "a3": "Portugués, inglés, francés y español."
+      "q1": "¿Qué es Zenda y para quién es?",
+      "a1": "Zenda es la app de finanzas y educación de Rubiane Joaquim: gestione dinero personal y de negocio, presupuestos, metas y deudas, aprenda con cursos y use el AI Financial Copilot. Para quien quiere ordenar sus finanzas día a día, en Angola y más allá.",
+      "q2": "¿Zenda sustituye a un asesor financiero?",
+      "a2": "No. Zenda es una herramienta educativa y de gestión. El AI Copilot ofrece orientación general según sus datos — no es asesoramiento financiero, fiscal ni jurídico regulado. Para decisiones importantes, consulte a un profesional.",
+      "q3": "¿Cómo funcionan la suscripción y el pago?",
+      "a3": "Al registrarse obtiene 7 días de prueba gratis. La suscripción mensual cuesta 10 000 Kz. Transfiera por banco, envíe el comprobante en Perfil de la app y el equipo activa el acceso tras validar. Los puntos de fidelidad (si hay) pueden cubrir parte o todo el mes.",
+      "q4": "¿Qué idiomas y monedas admite?",
+      "a4": "La app está en portugués, inglés, francés y español (Ajustes → Idioma). Elija su moneda preferida (AOA, USD, EUR, etc.); el panel y el conversor de divisas usan tipos actualizados.",
+      "q5": "¿Puedo gestionar finanzas personales y del negocio?",
+      "a5": "Sí. En Finanzas personales registre ingresos, gastos, presupuestos, metas y deudas, con gráficos y reglas de oro (50/30/20 y regla 3×). En Finanzas del negocio registre ventas y gastos y vea beneficio y métricas para su PYME.",
+      "q6": "¿Qué hace el AI Financial Copilot?",
+      "a6": "Analiza su panorama financiero (ingresos, gastos, presupuestos, metas) y responde sobre ahorro, deudas y hábitos. Puede sugerir cursos. Es solo educativo — no ejecuta transacciones ni recomienda inversiones.",
+      "q7": "¿Qué es la puntuación de salud financiera?",
+      "a7": "Una puntuación de 0 a 100 en inicio, según gastos vs ingresos, cumplimiento de presupuestos, metas y deudas activas. Muestra un grado (excelente a crítico) y consejos para mejorar el mes.",
+      "q8": "¿Cómo funcionan los cursos, la app y el certificado?",
+      "a8": "En Educación hay cursos con vídeos, materiales y quizzes por lección; al terminar puede ver el progreso y obtener el certificado en el navegador. Descargue en Google Play (Android), entre con la misma cuenta del sitio y gestione la suscripción en Perfil."
     }
   }
 }

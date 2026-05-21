@@ -11,7 +11,7 @@ const STORAGE_KEY = 'ZENDA_LOCALE'
 
 const catalogs = { pt, en, fr, es }
 
-export type Messages = typeof pt
+export type Messages = (typeof catalogs)[Locale]
 
 export function isLocale(value: string): value is Locale {
   return LOCALES.includes(value as Locale)

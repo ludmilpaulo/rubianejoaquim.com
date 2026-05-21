@@ -1,18 +1,27 @@
 from rest_framework import serializers
 from .models import MobileAppSubscription, MobileAppSubscriptionPaymentProof
+from .tiers import effective_tier, tier_features
 
 
 class MobileAppSubscriptionSerializer(serializers.ModelSerializer):
     has_access = serializers.BooleanField(read_only=True)
     days_until_expiry = serializers.IntegerField(read_only=True, allow_null=True)
+    effective_tier = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField()
 
     class Meta:
         model = MobileAppSubscription
         fields = [
-            'id', 'status', 'trial_ends_at', 'subscription_ends_at',
-            'has_access', 'days_until_expiry',
+            'id', 'status', 'plan_tier', 'trial_ends_at', 'subscription_ends_at',
+            'has_access', 'days_until_expiry', 'effective_tier', 'features',
             'created_at', 'updated_at'
         ]
+
+    def get_effective_tier(self, obj):
+        return effective_tier(obj)
+
+    def get_features(self, obj):
+        return tier_features(effective_tier(obj))
         read_only_fields = ['status', 'trial_ends_at', 'subscription_ends_at', 'created_at', 'updated_at']
 
 

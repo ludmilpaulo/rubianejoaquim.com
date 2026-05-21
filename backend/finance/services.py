@@ -158,6 +158,8 @@ def build_dashboard(user) -> dict[str, Any]:
         BusinessExpense.objects.filter(user=user, date__month=month, date__year=year).aggregate(s=Sum('amount'))['s']
     )
 
+    record_health_snapshot(user, health)
+
     return {
         'health': health,
         'month': month,
@@ -212,3 +214,114 @@ def build_dashboard(user) -> dict[str, Any]:
         'tasks_today': today_tasks,
         'unread_notifications': unread_notifications,
     }
+
+
+def record_health_snapshot(user, health: dict[str, Any]) -> None:
+    from .models import FinancialHealthSnapshot
+
+    FinancialHealthSnapshot.objects.update_or_create(
+        user=user,
+        month=health['month'],
+        year=health['year'],
+        defaults={
+            'score': health['score'],
+            'grade': health['grade'],
+            'components': health.get('components', {}),
+        },
+    )
+
+
+def get_health_history(user, months: int = 6) -> list[dict[str, Any]]:
+    from .models import FinancialHealthSnapshot
+
+    qs = FinancialHealthSnapshot.objects.filter(user=user).order_by('-year', '-month')[:months]
+    return [
+        {
+            'month': s.month,
+            'year': s.year,
+            'score': float(s.score),
+            'grade': s.grade,
+            'components': s.components,
+        }
+        for s in reversed(list(qs))
+    ]
+
+
+def build_analytics(user) -> dict[str, Any]:
+    """Debt payoff timeline, savings projection, spending forecast."""
+    today = timezone.now().date()
+    month, year = today.month, today.year
+
+    debts = Debt.objects.filter(user=user, status='active')
+    debt_timelines = []
+    for d in debts:
+        remaining = float(d.remaining_amount)
+        balance = remaining
+        timeline = []
+        month_idx = 0
+        while balance > 0.01 and month_idx < 48:
+            payment = max(balance * 0.1, min(500, balance))
+            balance = max(0, balance - payment)
+            timeline.append({'month': month_idx + 1, 'balance': round(balance, 2)})
+            month_idx += 1
+        debt_timelines.append({
+            'id': d.id,
+            'creditor': d.creditor,
+            'remaining': remaining,
+            'months_to_payoff': len(timeline),
+            'timeline': timeline[:24],
+        })
+
+    goals = Goal.objects.filter(user=user, status='active')
+    savings_projection = []
+    for g in goals:
+        remaining = float(g.target_amount) - float(g.current_amount)
+        monthly_need = remaining / 6 if remaining > 0 else 0
+        savings_projection.append({
+            'id': g.id,
+            'title': g.title,
+            'remaining': round(remaining, 2),
+            'suggested_monthly': round(monthly_need, 2),
+            'projected_completion_months': 6 if monthly_need > 0 else 0,
+        })
+
+    # 3-month average expenses forecast
+    forecast = []
+    for i in range(3):
+        m = month - i
+        y = year
+        if m <= 0:
+            m += 12
+            y -= 1
+        total = _decimal(
+            PersonalExpense.objects.filter(user=user, date__month=m, date__year=y).aggregate(s=Sum('amount'))['s']
+        )
+        forecast.append({'month': m, 'year': y, 'projected_expenses': float(total)})
+    forecast.reverse()
+
+    health = compute_financial_health(user, month, year)
+    return {
+        'debt_payoff': debt_timelines,
+        'savings_projection': savings_projection,
+        'spending_forecast': forecast,
+        'health': health,
+    }
+
+
+def process_receipt_ocr(receipt) -> None:
+    """Lightweight OCR stub: extract amount from filename or notes until full OCR service."""
+    import re
+
+    text = receipt.scanned_text or ''
+    if receipt.file and not text:
+        text = receipt.file.name
+    match = re.search(r'(\d+[.,]\d{2})', text.replace(',', '.'))
+    if match and not receipt.amount:
+        try:
+            receipt.amount = Decimal(match.group(1).replace(',', '.'))
+        except Exception:
+            pass
+    if not receipt.merchant and receipt.file:
+        receipt.merchant = receipt.file.name.split('/')[-1][:80]
+    receipt.status = 'processed'
+    receipt.save(update_fields=['amount', 'merchant', 'status'])

@@ -273,6 +273,17 @@ class Goal(models.Model):
         return max(self.target_amount - self.current_amount, 0)
 
 
+class GoalContribution(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goal_contributions')
+    goal = models.ForeignKey(Goal, on_delete=models.CASCADE, related_name='contributions')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class Debt(models.Model):
     """Dívida"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='debts')
@@ -315,6 +326,17 @@ class Debt(models.Model):
         return (self.paid_amount / self.total_amount) * 100
 
 
+class DebtPayment(models.Model):
+    debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='payments')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_date = models.DateField()
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+
+
 # ==================== BUSINESS FINANCE ====================
 
 class Sale(models.Model):
@@ -346,6 +368,46 @@ class Sale(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.amount} AOA - {self.date}"
+
+
+class FinancialHealthSnapshot(models.Model):
+    """Monthly health score history for trends."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='health_snapshots')
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    score = models.DecimalField(max_digits=5, decimal_places=1)
+    grade = models.CharField(max_length=32)
+    components = models.JSONField(default=dict, blank=True)
+    recorded_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'month', 'year']
+        ordering = ['-year', '-month']
+
+
+class Receipt(models.Model):
+    """Scanned receipt / invoice for expenses."""
+    STATUS_CHOICES = [
+        ('pending', 'Pendente'),
+        ('processed', 'Processado'),
+        ('failed', 'Falhou'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='receipts')
+    file = models.FileField(upload_to='receipts/%Y/%m/')
+    merchant = models.CharField(max_length=200, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    currency = models.CharField(max_length=3, default='AOA')
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    scanned_text = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    linked_expense = models.ForeignKey(
+        'PersonalExpense', on_delete=models.SET_NULL, null=True, blank=True, related_name='receipts'
+    )
+    is_business = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class BusinessExpense(models.Model):

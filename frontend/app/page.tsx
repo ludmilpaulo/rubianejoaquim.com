@@ -1,46 +1,26 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import HomePage from '@/components/portfolio/HomePage'
+import { defaultLocale, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n/config'
+import { fetchPageSeo, seoToMetadata } from '@/lib/seo'
+
+async function getServerLocale(): Promise<Locale> {
+  const cookieStore = await cookies()
+  const value = cookieStore.get(LOCALE_COOKIE)?.value
+  if (value && isLocale(value)) return value
+  return defaultLocale
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getServerLocale()
+  const seo = await fetchPageSeo('home', locale)
+  return seoToMetadata(seo, {
+    title: 'Rubiane Joaquim | Creative Video Producer & Zenda',
+    description: 'Creative video production, marketing storytelling, and Zenda.',
+  })
+}
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.rubianejoaquim.com'
-
-export const metadata: Metadata = {
-  title: 'Creative Video Content Producer & Marketing Storyteller | Rubiane Joaquim',
-  description:
-    'Rubiane Joaquim — creative video producer, campaign storyteller, interview producer, scriptwriter, and creator of Zenda. Portfolio, services, and contact for international clients.',
-  openGraph: {
-    title: 'Rubiane Joaquim | Creative Video & Marketing Storytelling',
-    description:
-      'Professional video production, interviews, scripts, CapCut/Canva content, and Zenda app — multilingual portfolio for global brands.',
-    url: '/',
-    siteName: 'Rubiane Joaquim',
-    images: [
-      {
-        url: '/images/Rubiane.jpeg',
-        width: 1200,
-        height: 630,
-        alt: 'Rubiane Joaquim — Creative Video Content Producer',
-      },
-    ],
-    locale: 'pt_PT',
-    alternateLocale: ['en_US', 'fr_FR', 'es_ES'],
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Rubiane Joaquim | Creative Video Producer',
-    description: 'Campaign videos, interviews, reels, scripts & Zenda — work with Rubiane.',
-    images: ['/images/Rubiane.jpeg'],
-  },
-  alternates: {
-    canonical: '/',
-    languages: {
-      pt: '/',
-      en: '/',
-      fr: '/',
-      es: '/',
-    },
-  },
-}
 
 const personSchema = {
   '@context': 'https://schema.org',
@@ -49,14 +29,6 @@ const personSchema = {
   jobTitle: 'Creative Video Content Producer',
   url: SITE_URL,
   image: `${SITE_URL}/images/Rubiane.jpeg`,
-  knowsAbout: [
-    'Video Production',
-    'Marketing Campaigns',
-    'Interview Production',
-    'Scriptwriting',
-    'Brand Storytelling',
-  ],
-  creator: { '@type': 'SoftwareApplication', name: 'Zenda' },
 }
 
 export default function Home() {

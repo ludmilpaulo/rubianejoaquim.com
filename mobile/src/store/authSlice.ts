@@ -2,6 +2,8 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User, AuthState } from '../types'
 import { authApi, accessApi } from '../services/api'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getApiErrorMessage } from '../types/api'
+import { logger } from '../utils/logger'
 
 const initialState: AuthState = {
   user: null,
@@ -10,6 +12,8 @@ const initialState: AuthState = {
   hasPaidAccess: false,
   hasExpiredSubscription: false,
   accessChecked: false,
+  planTier: 'premium',
+  features: [],
 }
 
 // Async thunks
@@ -21,42 +25,9 @@ export const login = createAsyncThunk(
       await AsyncStorage.setItem('token', data.token)
       await AsyncStorage.setItem('user', JSON.stringify(data.user))
       return data
-    } catch (error: any) {
-      // Extract specific error message
-      // The authApi.login already throws Error objects with descriptive messages
-      let errorMessage = 'Erro ao fazer login'
-      
-      console.log('🔴 authSlice login error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-      })
-      
-      // First check if it's an Error object with a message (from authApi.login)
-      if (error.message) {
-        errorMessage = error.message
-      } 
-      // Then check response data (for direct API errors)
-      else if (error.response?.data) {
-        if (error.response.data.email) {
-          errorMessage = Array.isArray(error.response.data.email) 
-            ? error.response.data.email[0] 
-            : error.response.data.email
-        } else if (error.response.data.password) {
-          errorMessage = Array.isArray(error.response.data.password) 
-            ? error.response.data.password[0] 
-            : error.response.data.password
-        } else if (error.response.data.non_field_errors) {
-          errorMessage = Array.isArray(error.response.data.non_field_errors) 
-            ? error.response.data.non_field_errors[0] 
-            : error.response.data.non_field_errors
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error
-        }
-      }
-      
-      console.log('📤 Rejecting with error message:', errorMessage)
+    } catch (error: unknown) {
+      const errorMessage = getApiErrorMessage(error, 'Erro ao fazer login')
+      logger.error('authSlice login error:', errorMessage)
       return rejectWithValue(errorMessage)
     }
   }
@@ -81,16 +52,8 @@ export const register = createAsyncThunk(
       await AsyncStorage.setItem('token', result.token)
       await AsyncStorage.setItem('user', JSON.stringify(result.user))
       return { user: result.user, token: result.token }
-    } catch (error: any) {
-      let errorMessage = 'Erro ao criar conta.'
-      if (error.response?.data) {
-        const d = error.response.data
-        if (d.email) errorMessage = Array.isArray(d.email) ? d.email[0] : d.email
-        else if (d.username) errorMessage = Array.isArray(d.username) ? d.username[0] : d.username
-        else if (d.password) errorMessage = Array.isArray(d.password) ? d.password[0] : d.password
-        else if (d.non_field_errors) errorMessage = Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors
-      } else if (error.message) errorMessage = error.message
-      return rejectWithValue(errorMessage)
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error, 'Erro ao criar conta.'))
     }
   }
 )
@@ -103,8 +66,15 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async () => {
   
   try {
     const user = await authApi.me()
-    const { hasAccess, hasExpiredSubscription } = await accessApi.checkPaidAccess()
-    return { user, token, hasPaidAccess: hasAccess, hasExpiredSubscription }
+    const access = await accessApi.checkPaidAccess()
+    return {
+      user,
+      token,
+      hasPaidAccess: access.hasAccess,
+      hasExpiredSubscription: access.hasExpiredSubscription,
+      planTier: access.planTier || 'premium',
+      features: access.features || [],
+    }
   } catch (error) {
     await AsyncStorage.removeItem('token')
     await AsyncStorage.removeItem('user')
@@ -170,6 +140,8 @@ const authSlice = createSlice({
         state.token = action.payload.token
         state.hasPaidAccess = action.payload.hasPaidAccess
         state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
+        state.planTier = (action.payload as any).planTier || 'premium'
+        state.features = (action.payload as any).features || []
         state.isLoading = false
         state.accessChecked = true
       })
@@ -188,6 +160,8 @@ const authSlice = createSlice({
       .addCase(checkPaidAccess.fulfilled, (state, action) => {
         state.hasPaidAccess = action.payload.hasAccess
         state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
+        state.planTier = action.payload.planTier || 'premium'
+        state.features = action.payload.features || []
         state.accessChecked = true
       })
       .addCase(logout.fulfilled, (state) => {

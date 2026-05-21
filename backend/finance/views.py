@@ -47,15 +47,23 @@ def get_period_dates(request):
 from rest_framework.permissions import AllowAny
 
 from .models import (
-    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
-    Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
+    Debt, DebtPayment,
+    Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency, Receipt,
 )
 from .serializers import (
     CategorySerializer, PersonalExpenseSerializer, PersonalIncomeSerializer,
     BudgetSerializer, GoalSerializer, DebtSerializer, SaleSerializer,
     BusinessExpenseSerializer, ExchangeRateSerializer, UserFavoriteCurrencySerializer,
+    ReceiptSerializer,
 )
-from .services import build_dashboard, compute_financial_health
+from .services import (
+    build_dashboard,
+    compute_financial_health,
+    get_health_history,
+    build_analytics,
+    process_receipt_ocr,
+)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -328,14 +336,20 @@ class GoalViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Adicionar ao valor atual
+            note = str(request.data.get('note', '') or '')[:255]
+            GoalContribution.objects.create(
+                user=request.user,
+                goal=goal,
+                amount=amount_decimal,
+                note=note,
+            )
+
             goal.current_amount += amount_decimal
-            
-            # Verificar se objetivo foi alcançado
+
             if goal.current_amount >= goal.target_amount:
                 goal.status = 'completed'
-                goal.current_amount = goal.target_amount  # Garantir que não ultrapasse
-            
+                goal.current_amount = goal.target_amount
+
             goal.save()
             
             serializer = self.get_serializer(goal)
@@ -365,6 +379,51 @@ class DebtViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='pay')
+    def pay(self, request, pk=None):
+        """Registar pagamento de dívida"""
+        debt = self.get_object()
+        if debt.user != request.user:
+            return Response({'error': 'Não autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+
+        amount = request.data.get('amount')
+        if not amount:
+            return Response({'error': 'Valor é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            amount_decimal = Decimal(str(amount))
+            if amount_decimal <= 0:
+                return Response(
+                    {'error': 'Valor deve ser maior que zero.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            payment_date = request.data.get('payment_date')
+            if payment_date:
+                from datetime import datetime as dt
+                payment_date = dt.strptime(str(payment_date), '%Y-%m-%d').date()
+            else:
+                payment_date = timezone.now().date()
+
+            note = str(request.data.get('note', '') or '')
+            DebtPayment.objects.create(
+                debt=debt,
+                amount=amount_decimal,
+                payment_date=payment_date,
+                note=note,
+            )
+
+            debt.paid_amount += amount_decimal
+            if debt.paid_amount >= debt.total_amount:
+                debt.paid_amount = debt.total_amount
+                debt.status = 'paid'
+            debt.save()
+
+            serializer = self.get_serializer(debt)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except (ValueError, TypeError):
+            return Response({'error': 'Valor inválido.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ==================== BUSINESS FINANCE ====================
@@ -494,6 +553,33 @@ class DashboardViewSet(viewsets.ViewSet):
                 int(year) if year else None,
             )
         )
+
+    @action(detail=False, methods=['get'], url_path='health-history')
+    def health_history(self, request):
+        months = int(request.query_params.get('months', 6))
+        return Response({'history': get_health_history(request.user, months)})
+
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        return Response(build_analytics(request.user))
+
+
+class ReceiptViewSet(viewsets.ModelViewSet):
+    serializer_class = ReceiptSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Receipt.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        receipt = serializer.save(user=self.request.user)
+        process_receipt_ocr(receipt)
+
+    @action(detail=True, methods=['post'], url_path='reprocess')
+    def reprocess(self, request, pk=None):
+        receipt = self.get_object()
+        process_receipt_ocr(receipt)
+        return Response(self.get_serializer(receipt).data)
 
 
 class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):

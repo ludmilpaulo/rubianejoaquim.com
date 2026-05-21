@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from decimal import Decimal
 from .models import (
-    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
+    Debt, DebtPayment,
     Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
+    FinancialHealthSnapshot, Receipt,
 )
 
 
@@ -155,30 +157,46 @@ class BudgetSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
 
+class GoalContributionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GoalContribution
+        fields = ['id', 'amount', 'note', 'created_at']
+        read_only_fields = ['created_at']
+
+
 class GoalSerializer(serializers.ModelSerializer):
     progress_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
     remaining_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    contributions = GoalContributionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Goal
         fields = [
             'id', 'title', 'description', 'target_amount', 'current_amount',
             'target_date', 'status', 'progress_percentage', 'remaining_amount',
-            'created_at', 'updated_at'
+            'contributions', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+
+class DebtPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DebtPayment
+        fields = ['id', 'amount', 'payment_date', 'note', 'created_at']
+        read_only_fields = ['created_at']
 
 
 class DebtSerializer(serializers.ModelSerializer):
     remaining_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     progress_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    payments = DebtPaymentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Debt
         fields = [
             'id', 'creditor', 'total_amount', 'paid_amount', 'interest_rate',
             'due_date', 'description', 'status', 'remaining_amount', 'progress_percentage',
-            'created_at', 'updated_at'
+            'payments', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -217,3 +235,19 @@ class BusinessExpenseSerializer(serializers.ModelSerializer):
             'invoice_number', 'is_tax_deductible', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+
+class FinancialHealthSnapshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinancialHealthSnapshot
+        fields = ['id', 'month', 'year', 'score', 'grade', 'components', 'recorded_at']
+
+
+class ReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Receipt
+        fields = [
+            'id', 'file', 'merchant', 'amount', 'currency', 'category',
+            'scanned_text', 'status', 'linked_expense', 'is_business', 'created_at',
+        ]
+        read_only_fields = ['status', 'linked_expense', 'created_at']

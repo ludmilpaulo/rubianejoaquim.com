@@ -17,6 +17,12 @@ class MobileAppSubscription(models.Model):
         ('expired', 'Expirado'),
         ('cancelled', 'Cancelado'),
     ]
+    PLAN_TIER_CHOICES = [
+        ('free', 'Free'),
+        ('premium', 'Premium'),
+        ('business', 'Business'),
+        ('family', 'Family'),
+    ]
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
@@ -24,6 +30,12 @@ class MobileAppSubscription(models.Model):
         related_name='mobile_app_subscription'
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trial')
+    plan_tier = models.CharField(
+        max_length=20,
+        choices=PLAN_TIER_CHOICES,
+        default='premium',
+        help_text='Feature tier: free, premium, business, family',
+    )
     trial_ends_at = models.DateTimeField(
         null=True,
         blank=True,

@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useLocale, useTranslations } from '@/contexts/LocaleContext'
+import { useLocale } from '@/contexts/LocaleContext'
 import { portfolioApi } from '@/lib/portfolio-api'
-import type { PortfolioProject, PortfolioCategory } from '@/lib/portfolio-types'
-import SectionHeader from '@/components/portfolio/SectionHeader'
+import type { HomeSection, PortfolioProject, PortfolioCategory } from '@/lib/public-types'
+import { sectionByKey } from '@/lib/cms'
+import SectionIntro from '@/components/portfolio/SectionIntro'
 import { getYoutubeEmbedUrl } from '@/lib/youtube'
+import { portfolio_category_label } from '@/lib/portfolio-categories'
 
 const CATEGORIES: PortfolioCategory[] = [
   'campaign_videos',
@@ -18,40 +20,42 @@ const CATEGORIES: PortfolioCategory[] = [
 
 export default function PortfolioPage() {
   const { locale } = useLocale()
-  const t = useTranslations()
   const [projects, setProjects] = useState<PortfolioProject[]>([])
+  const [intro, setIntro] = useState<HomeSection | undefined>()
   const [filter, setFilter] = useState<PortfolioCategory | 'all'>('all')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    portfolioApi
-      .getProjects(locale)
-      .then(setProjects)
+    setLoading(true)
+    Promise.all([portfolioApi.getProjects(locale), portfolioApi.getHomepage(locale)])
+      .then(([projs, home]) => {
+        setProjects(projs)
+        setIntro(sectionByKey(home.sections, 'portfolio_intro'))
+      })
       .finally(() => setLoading(false))
   }, [locale])
 
-  const filtered =
-    filter === 'all' ? projects : projects.filter((p) => p.category === filter)
+  const filtered = filter === 'all' ? projects : projects.filter((p) => p.category === filter)
+
+  const categoryLabel = (cat: PortfolioCategory | 'all') => {
+    if (cat === 'all') return intro?.category_labels?.all || 'All'
+    const sample = projects.find((p) => p.category === cat)
+    return intro?.category_labels?.[cat] || sample?.category_label || portfolio_category_label(cat)
+  }
 
   return (
     <div className="bg-slate-950 min-h-screen pt-8 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          label={t('portfolio.label')}
-          title={t('portfolio.title')}
-          subtitle={t('portfolio.subtitle')}
-        />
+        <SectionIntro section={intro} />
         <div className="flex flex-wrap gap-2 justify-center mb-12 -mt-6">
           <button
             type="button"
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              filter === 'all'
-                ? 'bg-amber-400 text-slate-950'
-                : 'bg-white/5 text-slate-400 hover:text-white'
+              filter === 'all' ? 'bg-amber-400 text-slate-950' : 'bg-white/5 text-slate-400 hover:text-white'
             }`}
           >
-            All
+            {categoryLabel('all')}
           </button>
           {CATEGORIES.map((cat) => (
             <button
@@ -59,12 +63,10 @@ export default function PortfolioPage() {
               type="button"
               onClick={() => setFilter(cat)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                filter === cat
-                  ? 'bg-amber-400 text-slate-950'
-                  : 'bg-white/5 text-slate-400 hover:text-white'
+                filter === cat ? 'bg-amber-400 text-slate-950' : 'bg-white/5 text-slate-400 hover:text-white'
               }`}
             >
-              {t(`portfolio.categories.${cat}`)}
+              {categoryLabel(cat)}
             </button>
           ))}
         </div>
@@ -72,6 +74,8 @@ export default function PortfolioPage() {
           <div className="flex justify-center py-20">
             <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
           </div>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-slate-500 py-16">{intro?.cta_label || '—'}</p>
         ) : (
           <div className="space-y-16">
             {filtered.map((project) => (
@@ -95,12 +99,10 @@ export default function PortfolioPage() {
                 </div>
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                    {t(`portfolio.categories.${project.category}`)}
+                    {project.category_label || categoryLabel(project.category)}
                   </span>
                   <h2 className="text-2xl font-display font-bold text-white mt-2">{project.title}</h2>
-                  {project.client_name && (
-                    <p className="text-slate-500 mt-1">{project.client_name}</p>
-                  )}
+                  {project.client_name && <p className="text-slate-500 mt-1">{project.client_name}</p>}
                   <p className="text-slate-300 mt-4 leading-relaxed">{project.description}</p>
                   {project.role && (
                     <p className="text-sm text-slate-400 mt-4">

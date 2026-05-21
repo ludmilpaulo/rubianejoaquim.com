@@ -1,83 +1,73 @@
 'use client'
 
 import Link from 'next/link'
-import { useTranslations } from '@/contexts/LocaleContext'
+import { useSiteData, navByPlacement } from '@/contexts/SiteDataContext'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
-const WHATSAPP_NUMBER = '244944905246'
-const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`
-
 export default function Footer() {
-  const t = useTranslations()
-
-  const navLinks = [
-    { href: '/portfolio', label: t('nav.portfolio') },
-    { href: '/#services', label: t('nav.services') },
-    { href: '/zenda', label: t('nav.zenda') },
-    { href: '/contact', label: t('nav.contact') },
-    { href: '/cursos', label: t('nav.courses') },
-    { href: '/mentoria', label: t('nav.mentorship') },
-    { href: '/conteudos-gratis', label: t('nav.freeContent') },
-  ]
+  const { settings, navigation } = useSiteData()
+  const navLinks = navByPlacement(navigation, 'footer')
+  const email = settings.contact_email || ''
+  const phone = settings.phone || ''
+  const whatsapp = settings.whatsapp_number || ''
+  const description = settings.footer_description || ''
+  const rights = settings.footer_rights || ''
+  const navTitle = settings.footer_navigation || 'Navigation'
+  const contactTitle = settings.footer_contact || 'Contact'
 
   return (
-    <footer className="bg-slate-950 text-white mt-0 relative overflow-hidden border-t border-white/5">
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-      <div
-        className="max-w-7xl mx-auto py-12 md:py-16 relative px-4 sm:px-6 lg:px-8"
-        style={{
-          paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
-          paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
-        }}
-      >
+    <footer className="bg-slate-950 text-white border-t border-white/5">
+      <div className="max-w-7xl mx-auto py-12 md:py-16 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-8">
           <div className="md:col-span-5">
-            <h3 className="font-display text-xl font-bold text-white mb-3">{t('brand.name')}</h3>
-            <p className="text-slate-400 text-sm leading-relaxed max-w-sm">{t('footer.description')}</p>
+            <h3 className="font-display text-xl font-bold text-white mb-3">Rubiane Joaquim</h3>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-sm">{description}</p>
             <div className="mt-6">
               <LanguageSwitcher />
             </div>
           </div>
           <div className="md:col-span-3">
-            <h4 className="font-semibold text-slate-300 mb-4 text-xs uppercase tracking-wider">
-              {t('footer.navigation')}
-            </h4>
+            <h4 className="font-semibold text-slate-300 mb-4 text-xs uppercase tracking-wider">{navTitle}</h4>
             <ul className="space-y-2">
-              {navLinks.map(({ href, label }) => (
-                <li key={href}>
-                  <Link href={href} className="text-slate-400 hover:text-amber-300 text-sm transition-colors">
-                    {label}
+              {navLinks.map((item) => (
+                <li key={item.id}>
+                  <Link href={item.url} className="text-slate-400 hover:text-amber-300 text-sm transition-colors">
+                    {item.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
           <div className="md:col-span-4">
-            <h4 className="font-semibold text-slate-300 mb-4 text-xs uppercase tracking-wider">
-              {t('footer.contact')}
-            </h4>
+            <h4 className="font-semibold text-slate-300 mb-4 text-xs uppercase tracking-wider">{contactTitle}</h4>
             <div className="space-y-3 text-sm">
-              <a href="mailto:contacto@rubianejoaquim.com" className="block text-slate-400 hover:text-white">
-                contacto@rubianejoaquim.com
-              </a>
-              <a href="tel:+244944905246" className="block text-slate-400 hover:text-white">
-                +244 944 905246
-              </a>
-              <a
-                href={WHATSAPP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-              >
-                {t('contact.whatsapp')}
-              </a>
+              {email && (
+                <a href={`mailto:${email}`} className="block text-slate-400 hover:text-white">
+                  {email}
+                </a>
+              )}
+              {phone && (
+                <a href={`tel:${phone.replace(/\s/g, '')}`} className="block text-slate-400 hover:text-white">
+                  {phone}
+                </a>
+              )}
+              {whatsapp && (
+                <a
+                  href={`https://wa.me/${whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400"
+                >
+                  WhatsApp
+                </a>
+              )}
             </div>
           </div>
         </div>
-        <div className="border-t border-white/5 mt-10 pt-8 flex flex-col sm:flex-row justify-between gap-4 text-slate-500 text-sm">
+        <div className="border-t border-white/5 mt-10 pt-8 text-slate-500 text-sm">
           <p>
-            &copy; {new Date().getFullYear()} {t('brand.name')}. {t('footer.rights')}{' '}
-            <Link href="/legal" className="hover:text-amber-300 underline underline-offset-2">
+            &copy; {new Date().getFullYear()} Rubiane Joaquim. {rights}{' '}
+            <Link href="/legal" className="hover:text-amber-300 underline">
               Legal
             </Link>
           </p>

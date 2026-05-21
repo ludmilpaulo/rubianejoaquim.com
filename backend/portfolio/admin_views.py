@@ -9,9 +9,16 @@ from .models import (
     CaseStudy,
     ZendaScreenshot,
     ZendaContent,
+    ZendaFeature,
     HomeSection,
     SiteSettings,
     ContactMessage,
+    NavItem,
+    FAQ,
+    Resource,
+    HomepageStatistic,
+    NewsletterSubscriber,
+    PageSEO,
 )
 from .serializers import (
     PortfolioProjectSerializer,
@@ -20,9 +27,16 @@ from .serializers import (
     ShowreelVideoSerializer,
     CaseStudySerializer,
     ZendaContentSerializer,
+    ZendaFeatureSerializer,
     HomeSectionSerializer,
     SiteSettingsSerializer,
     ContactMessageAdminSerializer,
+    NavItemSerializer,
+    FAQSerializer,
+    ResourceSerializer,
+    HomepageStatisticSerializer,
+    NewsletterSubscriberSerializer,
+    PageSEOSerializer,
 )
 from rest_framework import serializers
 
@@ -97,3 +111,45 @@ class AdminContactMessageViewSet(viewsets.ModelViewSet):
     serializer_class = ContactMessageAdminSerializer
     permission_classes = [IsAdminUser]
     http_method_names = ['get', 'head', 'options', 'patch', 'put', 'delete']
+
+
+class AdminNavItemViewSet(viewsets.ModelViewSet):
+    queryset = NavItem.objects.all()
+    serializer_class = NavItemSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminFAQViewSet(viewsets.ModelViewSet):
+    queryset = FAQ.objects.all()
+    serializer_class = FAQSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminResourceViewSet(viewsets.ModelViewSet):
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminHomepageStatisticViewSet(viewsets.ModelViewSet):
+    queryset = HomepageStatistic.objects.all()
+    serializer_class = HomepageStatisticSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminZendaFeatureViewSet(viewsets.ModelViewSet):
+    queryset = ZendaFeature.objects.all()
+    serializer_class = ZendaFeatureSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminNewsletterViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = NewsletterSubscriber.objects.all()
+    serializer_class = NewsletterSubscriberSerializer
+    permission_classes = [IsAdminUser]
+
+
+class AdminPageSEOViewSet(viewsets.ModelViewSet):
+    queryset = PageSEO.objects.all()
+    serializer_class = PageSEOSerializer
+    permission_classes = [IsAdminUser]

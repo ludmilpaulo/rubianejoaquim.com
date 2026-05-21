@@ -4,6 +4,7 @@
  */
 import * as Updates from 'expo-updates'
 import { Alert, Platform } from 'react-native'
+import { logger } from './logger'
 
 /**
  * Check for and apply OTA updates automatically
@@ -12,7 +13,7 @@ import { Alert, Platform } from 'react-native'
 export async function checkAndApplyUpdates(): Promise<void> {
   // Only check for updates in production builds, not in development
   if (__DEV__) {
-    console.log('Skipping update check in development mode')
+    logger.info('Skipping update check in development mode')
     return
   }
 
@@ -21,7 +22,7 @@ export async function checkAndApplyUpdates(): Promise<void> {
     const update = await Updates.checkForUpdateAsync()
 
     if (update.isAvailable) {
-      console.log('Update available, downloading...')
+      logger.info('Update available, downloading...')
       
       // Download the update
       await Updates.fetchUpdateAsync()
@@ -41,7 +42,7 @@ export async function checkAndApplyUpdates(): Promise<void> {
         { cancelable: false }
       )
     } else {
-      console.log('App is up to date')
+      logger.info('App is up to date')
     }
   } catch (error) {
     console.error('Error checking for updates:', error)
@@ -62,9 +63,9 @@ export async function checkUpdatesInBackground(): Promise<void> {
     const update = await Updates.checkForUpdateAsync()
 
     if (update.isAvailable) {
-      console.log('Background update available, downloading...')
+      logger.info('Background update available, downloading...')
       await Updates.fetchUpdateAsync()
-      console.log('Update downloaded, will apply on next app restart')
+      logger.info('Update downloaded, will apply on next app restart')
     }
   } catch (error) {
     console.error('Error checking for background updates:', error)

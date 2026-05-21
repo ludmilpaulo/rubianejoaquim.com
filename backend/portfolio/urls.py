@@ -11,8 +11,16 @@ router.register(r'case-studies', views.CaseStudyViewSet, basename='portfolio-cas
 router.register(r'zenda', views.ZendaContentViewSet, basename='portfolio-zenda')
 router.register(r'home-sections', views.HomeSectionViewSet, basename='portfolio-home-section')
 router.register(r'settings', views.SiteSettingsViewSet, basename='portfolio-settings')
+router.register(r'site-settings', views.SiteSettingsViewSet, basename='portfolio-site-settings')
 router.register(r'contact', views.ContactMessageViewSet, basename='portfolio-contact')
 router.register(r'home', views.PortfolioHomeViewSet, basename='portfolio-home')
+router.register(r'homepage', views.PortfolioHomeViewSet, basename='portfolio-homepage')
+router.register(r'navigation', views.NavItemViewSet, basename='portfolio-navigation')
+router.register(r'faqs', views.FAQViewSet, basename='portfolio-faq')
+router.register(r'resources', views.ResourceViewSet, basename='portfolio-resource')
+router.register(r'statistics', views.HomepageStatisticViewSet, basename='portfolio-statistic')
+router.register(r'page-seo', views.PageSEOViewSet, basename='portfolio-page-seo')
+router.register(r'newsletter', views.NewsletterViewSet, basename='portfolio-newsletter')
 
 admin_router = DefaultRouter()
 admin_router.register(r'projects', admin_views.AdminPortfolioProjectViewSet, basename='admin-portfolio-project')
@@ -25,6 +33,13 @@ admin_router.register(r'zenda-screenshots', admin_views.AdminZendaScreenshotView
 admin_router.register(r'home-sections', admin_views.AdminHomeSectionViewSet, basename='admin-portfolio-home-section')
 admin_router.register(r'settings', admin_views.AdminSiteSettingsViewSet, basename='admin-portfolio-settings')
 admin_router.register(r'contact-messages', admin_views.AdminContactMessageViewSet, basename='admin-contact-message')
+admin_router.register(r'navigation', admin_views.AdminNavItemViewSet, basename='admin-navigation')
+admin_router.register(r'faqs', admin_views.AdminFAQViewSet, basename='admin-faq')
+admin_router.register(r'resources', admin_views.AdminResourceViewSet, basename='admin-resource')
+admin_router.register(r'statistics', admin_views.AdminHomepageStatisticViewSet, basename='admin-statistic')
+admin_router.register(r'zenda-features', admin_views.AdminZendaFeatureViewSet, basename='admin-zenda-feature')
+admin_router.register(r'newsletter', admin_views.AdminNewsletterViewSet, basename='admin-newsletter')
+admin_router.register(r'page-seo', admin_views.AdminPageSEOViewSet, basename='admin-page-seo')
 
 urlpatterns = [
     path('', include(router.urls)),

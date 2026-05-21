@@ -16,6 +16,12 @@ from .models import (
     HomeSection,
     SiteSettings,
     ContactMessage,
+    NavItem,
+    FAQ,
+    Resource,
+    HomepageStatistic,
+    NewsletterSubscriber,
+    PageSEO,
 )
 from .serializers import (
     PortfolioProjectSerializer,
@@ -28,6 +34,12 @@ from .serializers import (
     SiteSettingsSerializer,
     ContactMessageSerializer,
     ContactMessageAdminSerializer,
+    NavItemSerializer,
+    FAQSerializer,
+    ResourceSerializer,
+    HomepageStatisticSerializer,
+    NewsletterSubscriberSerializer,
+    PageSEOSerializer,
 )
 
 
@@ -48,9 +60,16 @@ class PortfolioProjectViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Service.objects.filter(is_active=True)
     serializer_class = ServiceSerializer
     permission_classes = [AllowAny]
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        qs = Service.objects.filter(is_active=True)
+        featured = self.request.query_params.get('featured')
+        if featured == 'true':
+            qs = qs.filter(is_featured=True)
+        return qs
 
 
 class TestimonialViewSet(viewsets.ReadOnlyModelViewSet):
@@ -138,21 +157,95 @@ def settings_obj_email() -> str:
     return obj.contact_email if obj else 'contacto@rubianejoaquim.com'
 
 
+class NavItemViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = NavItem.objects.filter(is_active=True)
+    serializer_class = NavItemSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        qs = NavItem.objects.filter(is_active=True)
+        placement = self.request.query_params.get('placement')
+        if placement:
+            qs = qs.filter(placement__in=[placement, 'both'])
+        return qs
+
+
+class FAQViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = FAQ.objects.filter(is_active=True)
+    serializer_class = FAQSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        qs = FAQ.objects.filter(is_active=True)
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category=category)
+        return qs
+
+
+class ResourceViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ResourceSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'slug'
+
+    def get_queryset(self):
+        qs = Resource.objects.filter(is_published=True)
+        featured = self.request.query_params.get('featured')
+        if featured == 'true':
+            qs = qs.filter(is_featured=True)
+        return qs
+
+
+class HomepageStatisticViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = HomepageStatistic.objects.filter(is_active=True)
+    serializer_class = HomepageStatisticSerializer
+    permission_classes = [AllowAny]
+
+
+class PageSEOViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = PageSEO.objects.all()
+    serializer_class = PageSEOSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'page_key'
+
+
+class NewsletterViewSet(viewsets.GenericViewSet, CreateModelMixin):
+    serializer_class = NewsletterSubscriberSerializer
+    permission_classes = [AllowAny]
+    http_method_names = ['post', 'options', 'head']
+
+    def create(self, request, *args, **kwargs):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'email': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+        locale = request.data.get('locale', 'pt')
+        obj, _created = NewsletterSubscriber.objects.update_or_create(
+            email=email,
+            defaults={'locale': locale, 'is_active': True},
+        )
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
 class PortfolioHomeViewSet(viewsets.ViewSet):
     """Aggregated homepage payload for a single request."""
     permission_classes = [AllowAny]
 
     def list(self, request):
         ctx = {'request': request}
+        all_sections = HomeSection.objects.all()
+        section_visibility = {
+            s.section_key: s.is_active for s in all_sections
+        }
+        active_sections = all_sections.filter(is_active=True)
         return Response({
-            'sections': HomeSectionSerializer(
-                HomeSection.objects.filter(is_active=True), many=True, context=ctx
-            ).data,
+            'sections': HomeSectionSerializer(active_sections, many=True, context=ctx).data,
+            'section_visibility': section_visibility,
             'services': ServiceSerializer(
                 Service.objects.filter(is_active=True), many=True, context=ctx
             ).data,
             'featured_projects': PortfolioProjectSerializer(
-                PortfolioProject.objects.filter(is_published=True, is_featured=True)[:6],
+                PortfolioProject.objects.filter(is_published=True, is_featured=True)[:12],
                 many=True,
                 context=ctx,
             ).data,
@@ -165,15 +258,33 @@ class PortfolioHomeViewSet(viewsets.ViewSet):
             'case_studies': CaseStudySerializer(
                 CaseStudy.objects.filter(is_published=True)[:6], many=True, context=ctx
             ).data,
+            'statistics': HomepageStatisticSerializer(
+                HomepageStatistic.objects.filter(is_active=True), many=True, context=ctx
+            ).data,
+            'resources': ResourceSerializer(
+                Resource.objects.filter(is_published=True, is_featured=True)[:6],
+                many=True,
+                context=ctx,
+            ).data,
+            'navigation': NavItemSerializer(
+                NavItem.objects.filter(is_active=True), many=True, context=ctx
+            ).data,
+            'faqs': FAQSerializer(
+                FAQ.objects.filter(is_active=True)[:12], many=True, context=ctx
+            ).data,
             'zenda': (
-                ZendaContentSerializer(
-                    zenda_obj,
-                    context=ctx,
-                ).data
+                ZendaContentSerializer(zenda_obj, context=ctx).data
                 if (zenda_obj := ZendaContent.objects.filter(is_active=True).first())
                 else {}
             ),
-            'settings': SiteSettingsSerializer(
-                SiteSettings.objects.first(), context=ctx
-            ).data if SiteSettings.objects.exists() else {},
+            'settings': (
+                SiteSettingsSerializer(SiteSettings.objects.first(), context=ctx).data
+                if SiteSettings.objects.exists()
+                else {}
+            ),
+            'seo': (
+                PageSEOSerializer(PageSEO.objects.filter(page_key='home').first(), context=ctx).data
+                if PageSEO.objects.filter(page_key='home').exists()
+                else {}
+            ),
         })

@@ -262,6 +262,7 @@ const styles = StyleSheet.create({
   progressPct: { color: '#666', marginTop: 4 },
   listTitle: { fontWeight: '600', color: '#374151', marginBottom: 12 },
   card: { marginBottom: 12, borderRadius: 12, elevation: 2 },
+  emptyText: { color: '#666', textAlign: 'center' },
   resultCard: { marginBottom: 10, borderRadius: 12, elevation: 2 },
   resultHeader: { flexDirection: 'row', alignItems: 'center' },
   resultIndex: {

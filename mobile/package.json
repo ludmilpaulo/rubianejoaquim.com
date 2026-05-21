@@ -19,7 +19,8 @@
     "ios": "EXPO_USE_LOCALHOST=1 expo start --ios",
     "ios:manual": "EXPO_USE_LOCALHOST=1 expo start --localhost",
     "ios:network": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -53,6 +54,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "eas-cli": "^16.32.0",
     "typescript": "~5.9.2"
   },
   "private": true

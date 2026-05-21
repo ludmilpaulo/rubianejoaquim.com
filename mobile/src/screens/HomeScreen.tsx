@@ -19,6 +19,7 @@ import ZendaCard from '../components/ui/ZendaCard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import { colors, spacing, radius } from '../theme'
 import { formatCurrency } from '../utils/currency'
+import { fetchWithCache } from '../utils/apiCache'
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
@@ -34,7 +35,7 @@ export default function HomeScreen() {
   const loadDashboard = useCallback(async () => {
     try {
       setError(false)
-      const data = await personalFinanceApi.getDashboard()
+      const data = await fetchWithCache('dashboard', () => personalFinanceApi.getDashboard(), 120000)
       setDashboard(data as DashboardData)
     } catch {
       setError(true)
@@ -64,13 +65,17 @@ export default function HomeScreen() {
   const tipIndex = new Date().getDate() % messages.tips.length
   const dailyTip = messages.tips[tipIndex]
 
-  const quickActions = [
-    { icon: 'minus-circle-outline' as const, label: t('home.addExpense'), color: colors.brand.danger, tab: 'Personal' },
-    { icon: 'plus-circle-outline' as const, label: t('home.addIncome'), color: colors.brand.secondary, tab: 'Personal' },
-    { icon: 'chart-pie' as const, label: t('home.createBudget'), color: colors.brand.primary, tab: 'Personal' },
-    { icon: 'flag-checkered' as const, label: t('home.createGoal'), color: colors.brand.accent, tab: 'Personal' },
-    { icon: 'robot-outline' as const, label: t('home.askAi'), color: colors.brand.ai, route: 'AICopilot' },
-    { icon: 'school-outline' as const, label: t('home.viewCourses'), color: colors.brand.accent, tab: 'Education' },
+  type QuickAction =
+    | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; tab: string }
+    | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; route: string }
+
+  const quickActions: QuickAction[] = [
+    { icon: 'minus-circle-outline', label: t('home.addExpense'), color: colors.brand.danger, tab: 'Personal' },
+    { icon: 'plus-circle-outline', label: t('home.addIncome'), color: colors.brand.secondary, tab: 'Personal' },
+    { icon: 'chart-pie', label: t('home.createBudget'), color: colors.brand.primary, tab: 'Personal' },
+    { icon: 'flag-checkered', label: t('home.createGoal'), color: colors.brand.accent, tab: 'Personal' },
+    { icon: 'robot-outline', label: t('home.askAi'), color: colors.brand.ai, route: 'AICopilot' },
+    { icon: 'school-outline', label: t('home.viewCourses'), color: colors.brand.accent, tab: 'Education' },
   ]
 
   if (loading && !dashboard) {
@@ -113,7 +118,10 @@ export default function HomeScreen() {
 
         {dashboard && (
           <>
-            <FinancialHealthCard health={dashboard.health} />
+            <FinancialHealthCard
+              health={dashboard.health}
+              onPress={() => navigation.navigate('HealthHistory')}
+            />
 
             <Text variant="labelLarge" style={styles.sectionTitle}>
               {t('home.thisMonth')}
@@ -155,9 +163,9 @@ export default function HomeScreen() {
                   style={styles.quickItem}
                   activeOpacity={0.75}
                   onPress={() => {
-                    if ('route' in action && action.route) {
+                    if ('route' in action) {
                       navigation.navigate(action.route)
-                    } else if ('tab' in action) {
+                    } else {
                       navigateToTab(action.tab)
                     }
                   }}
@@ -225,11 +233,13 @@ export default function HomeScreen() {
 
         <View style={styles.hubSection}>
           <Text variant="labelLarge" style={styles.sectionTitle}>{t('finance.personal')}</Text>
-          {[
-            { tab: 'Personal', icon: 'wallet', title: t('finance.personal'), color: colors.brand.primary },
-            { tab: 'Business', icon: 'store', title: t('finance.business'), color: colors.brand.secondary },
-            { tab: 'Education', icon: 'school', title: t('finance.education'), color: colors.brand.accent },
-          ].map((item) => (
+          {(
+            [
+              { tab: 'Personal', icon: 'wallet', title: t('finance.personal'), color: colors.brand.primary },
+              { tab: 'Business', icon: 'store', title: t('finance.business'), color: colors.brand.secondary },
+              { tab: 'Education', icon: 'school', title: t('finance.education'), color: colors.brand.accent },
+            ] as const
+          ).map((item) => (
             <TouchableOpacity key={item.tab} onPress={() => navigateToTab(item.tab)} activeOpacity={0.8}>
               <ZendaCard accentColor={item.color}>
                 <View style={styles.hubRow}>
@@ -240,6 +250,33 @@ export default function HomeScreen() {
               </ZendaCard>
             </TouchableOpacity>
           ))}
+          <TouchableOpacity onPress={() => navigation.navigate('Analytics')} activeOpacity={0.8}>
+            <ZendaCard accentColor={colors.brand.ai}>
+              <View style={styles.hubRow}>
+                <MaterialCommunityIcons name="chart-areaspline" size={28} color={colors.brand.ai} />
+                <Text variant="titleMedium" style={styles.hubTitle}>{t('analytics.title')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+              </View>
+            </ZendaCard>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('FamilyFinance')} activeOpacity={0.8}>
+            <ZendaCard accentColor={colors.brand.accent}>
+              <View style={styles.hubRow}>
+                <MaterialCommunityIcons name="account-group" size={28} color={colors.brand.accent} />
+                <Text variant="titleMedium" style={styles.hubTitle}>{t('family.title')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+              </View>
+            </ZendaCard>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('ReceiptScanner')} activeOpacity={0.8}>
+            <ZendaCard accentColor={colors.brand.secondary}>
+              <View style={styles.hubRow}>
+                <MaterialCommunityIcons name="receipt" size={28} color={colors.brand.secondary} />
+                <Text variant="titleMedium" style={styles.hubTitle}>{t('receipt.title')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+              </View>
+            </ZendaCard>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => navigation.navigate('Market')} activeOpacity={0.8}>
             <ZendaCard accentColor={colors.brand.danger}>
               <View style={styles.hubRow}>

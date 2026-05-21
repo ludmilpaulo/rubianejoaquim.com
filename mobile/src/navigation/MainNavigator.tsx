@@ -23,6 +23,11 @@ import SettingsScreen from '../screens/SettingsScreen'
 import AboutScreen from '../screens/AboutScreen'
 import HelpSupportScreen from '../screens/HelpSupportScreen'
 import { useI18n } from '../contexts/I18nContext'
+import { colors } from '../theme'
+import HealthHistoryScreen from '../screens/HealthHistoryScreen'
+import AnalyticsScreen from '../screens/AnalyticsScreen'
+import FamilyFinanceScreen from '../screens/FamilyFinanceScreen'
+import ReceiptScannerScreen from '../screens/ReceiptScannerScreen'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -58,8 +63,12 @@ function HomeStack() {
       <Stack.Screen 
         name="Market" 
         component={MarketScreen}
-        options={{ title: 'Mercado Global', headerStyle: { backgroundColor: '#6366f1' }, headerTintColor: '#fff' }}
+        options={{ title: 'Mercado Global', headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }}
       />
+      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: 'Saúde financeira', headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Analytics', headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: 'Família', headerStyle: { backgroundColor: colors.brand.accent }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: 'Recibos', headerStyle: { backgroundColor: colors.brand.secondary }, headerTintColor: '#fff' }} />
     </Stack.Navigator>
   )
 }
@@ -181,11 +190,11 @@ export default function MainNavigator() {
 
           return <MaterialCommunityIcons name={iconName} size={size} color={color} />
         },
-        tabBarActiveTintColor: '#6366f1',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: colors.brand.primary,
+        tabBarInactiveTintColor: colors.text.muted,
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#6366f1',
+          backgroundColor: colors.brand.primary,
         },
         headerTintColor: '#fff',
         tabBarStyle: {

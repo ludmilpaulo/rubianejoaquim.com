@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useI18n } from '../contexts/I18nContext'
 import { colors, spacing } from '../theme'
 import { authApi } from '../services/api'
+import OnboardingSetupScreen from './OnboardingSetupScreen'
 
 const { width } = Dimensions.get('window')
 const ONBOARDING_KEY = 'ZENDA_ONBOARDING_DONE'
@@ -39,11 +40,18 @@ export async function markOnboardingComplete(): Promise<void> {
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t } = useI18n()
   const [index, setIndex] = useState(0)
+  const [showSetup, setShowSetup] = useState(false)
   const listRef = useRef<FlatList>(null)
 
   const finish = async () => {
     await markOnboardingComplete()
     onComplete()
+  }
+
+  const goToSetup = () => setShowSetup(true)
+
+  if (showSetup) {
+    return <OnboardingSetupScreen onComplete={finish} />
   }
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -95,7 +103,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             {t('onboarding.next')}
           </Button>
         ) : (
-          <Button mode="contained" onPress={finish} style={styles.btn}>
+          <Button mode="contained" onPress={goToSetup} style={styles.btn}>
             {t('onboarding.start')}
           </Button>
         )}

@@ -1,5 +1,5 @@
 interface SectionHeaderProps {
-  label: string
+  label?: string
   title: string
   subtitle?: string
   align?: 'left' | 'center'
@@ -16,13 +16,15 @@ export default function SectionHeader({
   const alignClass = align === 'center' ? 'text-center mx-auto' : 'text-left'
   return (
     <div className={`max-w-3xl mb-12 md:mb-16 ${alignClass}`}>
-      <span
-        className={`inline-block text-xs font-bold uppercase tracking-[0.2em] mb-4 ${
-          dark ? 'text-amber-400' : 'text-amber-600'
-        }`}
-      >
-        {label}
-      </span>
+      {label && (
+        <span
+          className={`inline-block text-xs font-bold uppercase tracking-[0.2em] mb-4 ${
+            dark ? 'text-amber-400' : 'text-amber-600'
+          }`}
+        >
+          {label}
+        </span>
+      )}
       <h2
         className={`text-3xl sm:text-4xl md:text-5xl font-display font-bold leading-tight ${
           dark ? 'text-white' : 'text-slate-900'

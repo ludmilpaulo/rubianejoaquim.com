@@ -76,8 +76,13 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                 'message': 'Não tem subscrição do app. Use subscribe para começar a semana grátis.'
             })
         serializer = self.get_serializer(sub)
+        from .tiers import effective_tier, tier_features
+        tier = effective_tier(sub)
         return Response({
             'has_access': sub.has_access,
+            'plan_tier': sub.plan_tier,
+            'effective_tier': tier,
+            'features': tier_features(tier),
             'subscription': serializer.data,
         })
 

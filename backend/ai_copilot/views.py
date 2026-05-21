@@ -113,6 +113,106 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'error': str(e) if settings.DEBUG else None,
             }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['get'], url_path='monthly-report')
+    def monthly_report(self, request):
+        from finance.services import build_dashboard, build_analytics
+
+        dash = build_dashboard(request.user)
+        analytics = build_analytics(request.user)
+        h = dash['health']
+        summary = dash['summary']
+        lines = [
+            f"Relatório mensal Zenda — {h['month']}/{h['year']}",
+            f"Saúde financeira: {h['score']}/100 ({h['grade']})",
+            f"Receitas: {summary['income']} | Despesas: {summary['expenses']} | Saldo: {summary['balance']}",
+        ]
+        if h.get('tips'):
+            lines.append('Prioridades: ' + ', '.join(h['tips']))
+        if analytics['debt_payoff']:
+            lines.append(f"Dívidas activas: {len(analytics['debt_payoff'])} — use o plano de pagamento no app.")
+        if analytics['savings_projection']:
+            lines.append(f"Metas de poupança: {len(analytics['savings_projection'])} com contribuição sugerida.")
+        report = '\n'.join(lines)
+        return Response({'report': report, 'health': h, 'summary': summary, 'analytics': analytics})
+
+    @action(detail=False, methods=['get'], url_path='savings-plan')
+    def savings_plan(self, request):
+        from finance.services import build_analytics
+
+        data = build_analytics(request.user)
+        plans = []
+        for g in data['savings_projection']:
+            plans.append({
+                'goal': g['title'],
+                'remaining': g['remaining'],
+                'suggested_monthly': g['suggested_monthly'],
+                'message': f"Poupe {g['suggested_monthly']} por mês durante ~{g['projected_completion_months']} meses para atingir «{g['title']}».",
+            })
+        if not plans:
+            plans.append({'message': 'Defina metas na aba Pessoal para receber um plano de poupança personalizado.'})
+        return Response({'plans': plans})
+
+    @action(detail=False, methods=['get'], url_path='debt-strategy')
+    def debt_strategy(self, request):
+        from finance.services import build_analytics
+
+        data = build_analytics(request.user)
+        strategies = []
+        for d in data['debt_payoff']:
+            strategies.append({
+                'creditor': d['creditor'],
+                'remaining': d['remaining'],
+                'months_to_payoff': d['months_to_payoff'],
+                'message': f"Com ~10% do saldo em pagamento mensal, «{d['creditor']}» pode ser liquidada em cerca de {d['months_to_payoff']} meses.",
+            })
+        if not strategies:
+            strategies.append({'message': 'Sem dívidas activas — mantenha o fundo de emergência.'})
+        return Response({'strategies': strategies})
+
+    @action(detail=False, methods=['get'], url_path='insights')
+    def insights(self, request):
+        """Monthly AI-ready snapshot from dashboard + health score."""
+        from finance.services import build_dashboard
+
+        data = build_dashboard(request.user)
+        health = data.get('health') or {}
+        summary = data.get('summary') or {}
+        tips = health.get('tips') or []
+        score = health.get('score', 0)
+        grade = health.get('grade', 'fair')
+
+        suggested_prompts = [
+            'Como está a minha saúde financeira?',
+            'Sugira um plano para poupar mais este mês',
+            'Como reduzir despesas sem sacrificar o essencial?',
+        ]
+        if tips:
+            if 'expenses_exceed_income' in tips:
+                suggested_prompts.insert(0, 'As minhas despesas ultrapassam as receitas — o que fazer?')
+            if 'active_debt' in tips:
+                suggested_prompts.insert(0, 'Estratégia para pagar as minhas dívidas')
+        if (summary.get('balance') or 0) < 0:
+            suggested_prompts.append('Plano de recuperação para saldo negativo')
+
+        report_lines = []
+        if summary:
+            report_lines.append(
+                f"Receitas: {summary.get('income', 0)} | Despesas: {summary.get('expenses', 0)} | "
+                f"Saldo: {summary.get('balance', 0)}"
+            )
+        report_lines.append(f"Saúde financeira: {score}/100 ({grade})")
+
+        return Response({
+            'health_score': score,
+            'grade': grade,
+            'tips': tips,
+            'summary': summary,
+            'monthly_report': ' '.join(report_lines),
+            'suggested_prompts': suggested_prompts[:6],
+            'goals_count': len(data.get('goals') or []),
+            'debts_count': len(data.get('debts') or []),
+        })
+
     def _get_financial_context(self, user):
         """Obter contexto financeiro do usuário para o AI"""
         context = {

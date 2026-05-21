@@ -7,8 +7,13 @@ from portfolio.models import (
     ShowreelVideo,
     CaseStudy,
     ZendaContent,
+    ZendaFeature,
     HomeSection,
     SiteSettings,
+    NavItem,
+    FAQ,
+    HomepageStatistic,
+    PageSEO,
 )
 
 
@@ -28,6 +33,11 @@ class Command(BaseCommand):
         self._seed_testimonials()
         self._seed_case_studies()
         self._seed_zenda()
+        self._seed_navigation()
+        self._seed_statistics()
+        self._seed_faqs()
+        self._seed_page_seo()
+        self._seed_site_translations()
         self.stdout.write(self.style.SUCCESS('Portfolio data seeded successfully.'))
 
     def _seed_settings(self):
@@ -41,38 +51,215 @@ class Command(BaseCommand):
         )
 
     def _seed_home_sections(self):
+        hero_ctas_pt = [
+            {'key': 'showreel', 'label': 'Ver Showreel', 'url': '#showreel', 'variant': 'primary'},
+            {'key': 'portfolio', 'label': 'Ver Portfólio', 'url': '/portfolio', 'variant': 'secondary'},
+            {'key': 'work', 'label': 'Trabalhar Comigo', 'url': '/contact', 'variant': 'secondary'},
+            {'key': 'zenda', 'label': 'Explorar Zenda', 'url': '/zenda', 'variant': 'outline'},
+        ]
+        hero_ctas_en = [
+            {'key': 'showreel', 'label': 'Watch Showreel', 'url': '#showreel', 'variant': 'primary'},
+            {'key': 'portfolio', 'label': 'View Portfolio', 'url': '/portfolio', 'variant': 'secondary'},
+            {'key': 'work', 'label': 'Work With Me', 'url': '/contact', 'variant': 'secondary'},
+            {'key': 'zenda', 'label': 'Explore Zenda', 'url': '/zenda', 'variant': 'outline'},
+        ]
         sections = [
             ('hero', {
                 'title': t('Produtora de Vídeo Criativo', 'Creative Video Content Producer', 'Productrice de Contenu Vidéo Créatif', 'Productora de Contenido de Video Creativo'),
                 'subtitle': t(
-                    'Creative Video Content Producer & Marketing Campaign Storyteller',
-                    'Creative Video Content Producer & Marketing Campaign Storyteller',
-                    'Productrice de contenu vidéo créatif & narratrice de campagnes marketing',
-                    'Productora de contenido de video creativo y narradora de campañas de marketing',
+                    '& Marketing Campaign Storyteller',
+                    '& Marketing Campaign Storyteller',
+                    '& narratrice de campagnes marketing',
+                    'y narradora de campañas de marketing',
+                ),
+                'badge': t(
+                    'Creative Video · Marketing · Storytelling',
+                    'Creative Video · Marketing · Storytelling',
+                    'Vidéo créative · Marketing · Storytelling',
+                    'Video creativo · Marketing · Storytelling',
                 ),
                 'body': t(
-                    'Ajudo marcas a contar histórias memoráveis através de vídeo, roteiros e conteúdo para redes sociais.',
-                    'I help brands tell memorable stories through video, scripts, and social content.',
-                    'J\'aide les marques à raconter des histoires mémorables via la vidéo, les scripts et les réseaux sociaux.',
-                    'Ayudo a las marcas a contar historias memorables con video, guiones y contenido para redes sociales.',
+                    'Ajudo marcas a criar campanhas em vídeo, entrevistas, reels, roteiros e narrativas que conectam com audiências internacionais.',
+                    'I help brands create campaign videos, interviews, reels, scripts, and stories that connect with international audiences.',
+                    'J\'aide les marques à créer des campagnes vidéo, interviews, reels, scripts et récits pour un public international.',
+                    'Ayudo a marcas a crear videos de campaña, entrevistas, reels, guiones e historias para audiencias internacionales.',
                 ),
-                'cta_label': t('Trabalhar Comigo', 'Work With Me', 'Travailler Avec Moi', 'Trabajar Conmigo'),
             }),
             ('about', {
-                'title': t('Sobre a Rubiane', 'About Rubiane', 'À propos de Rubiane', 'Sobre Rubiane'),
+                'title': t('Quem é a', 'Meet', 'Qui est', 'Conoce a'),
+                'subtitle': t(
+                    'Criatividade audiovisual com visão de marketing e produto digital',
+                    'Audiovisual creativity with marketing vision and digital product leadership',
+                    'Créativité audiovisuelle et vision marketing',
+                    'Creatividad audiovisual y visión de marketing',
+                ),
                 'body': t(
-                    'Criadora de conteúdo audiovisual que transforma ideias em campanhas, entrevistas, reels e narrativas de marca com impacto internacional.',
-                    'Audiovisual creator turning ideas into campaigns, interviews, reels, and brand stories with international impact.',
-                    'Créatrice audiovisuelle qui transforme les idées en campagnes, interviews, reels et récits de marque à impact international.',
-                    'Creadora audiovisual que transforma ideas en campañas, entrevistas, reels e historias de marca con impacto internacional.',
+                    'Produtora de conteúdo audiovisual e storyteller de marketing que ajuda marcas a comunicar com clareza, emoção e impacto visual. Do roteiro à edição final.',
+                    'Audiovisual producer and marketing storyteller helping brands communicate with clarity, emotion, and visual impact.',
+                    'Productrice audiovisuelle et narratrice marketing pour des marques exigeantes.',
+                    'Productora audiovisual y narradora de marketing para marcas exigentes.',
+                ),
+            }),
+            ('services_intro', {
+                'title': t('O que posso criar para a sua marca', 'What I can create for your brand', 'Ce que je crée pour votre marque', 'Lo que puedo crear para tu marca'),
+                'subtitle': t(
+                    'Produção criativa completa — da ideia ao vídeo publicado',
+                    'Full creative production — from idea to published video',
+                    'Production créative complète',
+                    'Producción creativa completa',
+                ),
+            }),
+            ('portfolio_intro', {
+                'title': t('Trabalhos selecionados', 'Selected work', 'Travaux sélectionnés', 'Trabajos seleccionados'),
+                'subtitle': t(
+                    'Campanhas, entrevistas, reels, design e conteúdo Zenda',
+                    'Campaigns, interviews, reels, design, and Zenda content',
+                    'Campagnes, interviews, reels et contenu Zenda',
+                    'Campañas, entrevistas, reels y contenido Zenda',
+                ),
+            }),
+            ('showreel', {
+                'title': t('Showreel em destaque', 'Featured showreel', 'Showreel en vedette', 'Showreel destacado'),
+                'subtitle': t(
+                    'Uma amostra do trabalho criativo — campanhas, entrevistas e storytelling',
+                    'A sample of creative work — campaigns, interviews, and storytelling',
+                    'Un aperçu du travail créatif',
+                    'Una muestra del trabajo creativo',
+                ),
+            }),
+            ('zenda', {
+                'title': t('Zenda — a sua app de finanças', 'Zenda — your finance app', 'Zenda — votre app finance', 'Zenda — tu app de finanzas'),
+                'subtitle': t(
+                    'Finanças pessoais, negócio, educação e AI Copilot num só lugar',
+                    'Personal finance, business, education, and AI Copilot in one place',
+                    'Finances personnelles, business et copilot IA',
+                    'Finanzas personales, negocio y copiloto IA',
+                ),
+                'badge': t('Produto digital · Fintech · Educação', 'Digital product · Fintech · Education', 'Produit digital · Fintech', 'Producto digital · Fintech'),
+            }),
+            ('case_studies_intro', {
+                'title': t('Estudos de caso', 'Case studies', 'Études de cas', 'Casos de estudio'),
+                'subtitle': t(
+                    'Resultados reais para marcas e projetos',
+                    'Real outcomes for brands and projects',
+                    'Résultats concrets pour les marques',
+                    'Resultados reales para marcas',
+                ),
+            }),
+            ('testimonials_intro', {
+                'title': t('O que dizem os clientes', 'What clients say', 'Ce que disent les clients', 'Lo que dicen los clientes'),
+                'subtitle': t(
+                    'Confiança construída em cada entrega',
+                    'Trust built on every delivery',
+                    'La confiance à chaque livraison',
+                    'Confianza en cada entrega',
                 ),
             }),
         ]
+
+        final_cta_pt = [
+            {'key': 'whatsapp', 'label': 'WhatsApp', 'url': 'https://wa.me/244944905246', 'variant': 'whatsapp'},
+            {'key': 'message', 'label': 'Enviar Mensagem', 'url': '/contact', 'variant': 'primary'},
+            {'key': 'call', 'label': 'Marcar Chamada', 'url': '/contact', 'variant': 'secondary'},
+        ]
+        HomeSection.objects.update_or_create(
+            section_key='education',
+            defaults={
+                'is_active': True,
+                'translations': {
+                    'pt': {
+                        'title': 'Cursos, mentoria e conteúdos grátis',
+                        'subtitle': 'Além da produção criativa, Rubiane ensina finanças e empreendedorismo',
+                        'cards': [
+                            {'title': 'Cursos', 'description': 'Cursos online com certificado.', 'href': '/cursos', 'cta': 'Explorar cursos'},
+                            {'title': 'Mentoria', 'description': 'Acompanhamento individual.', 'href': '/mentoria', 'cta': 'Saber mais'},
+                            {'title': 'Conteúdos Grátis', 'description': 'Recursos gratuitos.', 'href': '/conteudos-gratis', 'cta': 'Ver conteúdos'},
+                        ],
+                    },
+                    'en': {
+                        'title': 'Courses, mentorship & free content',
+                        'subtitle': 'Beyond creative production, Rubiane teaches finance and entrepreneurship',
+                        'cards': [
+                            {'title': 'Courses', 'description': 'Online courses with certificates.', 'href': '/cursos', 'cta': 'Explore courses'},
+                            {'title': 'Mentorship', 'description': 'One-on-one guidance.', 'href': '/mentoria', 'cta': 'Learn more'},
+                            {'title': 'Free Content', 'description': 'Free resources.', 'href': '/conteudos-gratis', 'cta': 'View content'},
+                        ],
+                    },
+                },
+            },
+        )
+        HomeSection.objects.update_or_create(
+            section_key='final_cta',
+            defaults={
+                'is_active': True,
+                'translations': {
+                    'pt': {
+                        'title': 'Pronto para criar conteúdo poderoso para a sua marca?',
+                        'subtitle': 'Campanhas em vídeo, entrevistas, roteiros e conteúdo social — com qualidade internacional.',
+                        'ctas': final_cta_pt,
+                    },
+                    'en': {
+                        'title': 'Ready to create powerful content for your brand?',
+                        'subtitle': 'Video campaigns, interviews, scripts, and social content — international quality.',
+                        'ctas': [
+                            {'key': 'whatsapp', 'label': 'WhatsApp', 'url': 'https://wa.me/244944905246', 'variant': 'whatsapp'},
+                            {'key': 'message', 'label': 'Send Message', 'url': '/contact', 'variant': 'primary'},
+                            {'key': 'call', 'label': 'Book a Call', 'url': '/contact', 'variant': 'secondary'},
+                        ],
+                    },
+                },
+            },
+        )
         for key, trans in sections:
             HomeSection.objects.update_or_create(
                 section_key=key,
                 defaults={'is_active': True, 'translations': trans},
             )
+
+        HomeSection.objects.update_or_create(
+            section_key='hero',
+            defaults={
+                'is_active': True,
+                'translations': {
+                    'pt': {
+                        'title': 'Produtora de Vídeo Criativo',
+                        'subtitle': '& Marketing Campaign Storyteller',
+                        'badge': 'Creative Video · Marketing · Storytelling',
+                        'body': 'Ajudo marcas a criar campanhas em vídeo, entrevistas, reels, roteiros e narrativas que conectam com audiências internacionais.',
+                        'roles': ['Produtora de Vídeo', 'Roteirista', 'Entrevistas', 'CapCut & Canva', 'Redes Sociais', 'Criadora do Zenda'],
+                        'ctas': hero_ctas_pt,
+                        'trust_items': ['Campanhas & Entrevistas', 'Roteiros & Edição', 'Criadora do Zenda'],
+                    },
+                    'en': {
+                        'title': 'Creative Video Content Producer',
+                        'subtitle': '& Marketing Campaign Storyteller',
+                        'badge': 'Creative Video · Marketing · Storytelling',
+                        'body': 'I help brands create campaign videos, interviews, reels, scripts, and stories that connect with international audiences.',
+                        'roles': ['Video Producer', 'Scriptwriter', 'Interviews', 'CapCut & Canva', 'Social Media', 'Creator of Zenda'],
+                        'ctas': hero_ctas_en,
+                        'trust_items': ['Campaigns & Interviews', 'Scripts & Editing', 'Creator of Zenda'],
+                    },
+                    'fr': {
+                        'title': 'Productrice de Contenu Vidéo Créatif',
+                        'subtitle': '& narratrice de campagnes marketing',
+                        'badge': 'Vidéo créative · Marketing · Storytelling',
+                        'body': 'J\'aide les marques à créer des campagnes vidéo, interviews, reels, scripts et récits pour un public international.',
+                        'roles': ['Productrice vidéo', 'Scénariste', 'Interviews', 'CapCut & Canva', 'Réseaux sociaux', 'Créatrice de Zenda'],
+                        'ctas': hero_ctas_en,
+                        'trust_items': ['Campagnes & interviews', 'Scripts & montage', 'Créatrice de Zenda'],
+                    },
+                    'es': {
+                        'title': 'Productora de Contenido de Video Creativo',
+                        'subtitle': 'y narradora de campañas de marketing',
+                        'badge': 'Video creativo · Marketing · Storytelling',
+                        'body': 'Ayudo a marcas a crear videos de campaña, entrevistas, reels, guiones e historias para audiencias internacionales.',
+                        'roles': ['Productora de video', 'Guionista', 'Entrevistas', 'CapCut y Canva', 'Redes sociales', 'Creadora de Zenda'],
+                        'ctas': hero_ctas_en,
+                        'trust_items': ['Campañas y entrevistas', 'Guiones y edición', 'Creadora de Zenda'],
+                    },
+                },
+            },
+        )
 
     def _seed_services(self):
         services_data = [
@@ -89,8 +276,10 @@ class Command(BaseCommand):
             Service.objects.update_or_create(
                 icon=icon,
                 defaults={
+                    'slug': icon,
                     'order': i,
                     'is_active': True,
+                    'is_featured': i < 4,
                     'translations': t(
                         {'title': pt_title, 'description': f'Serviço profissional: {pt_title}.'},
                         {'title': en_title, 'description': f'Professional service: {en_title}.'},
@@ -254,3 +443,151 @@ class Command(BaseCommand):
                 ),
             },
         )
+
+    def _seed_navigation(self):
+        items = [
+            ('/', 'Home', 'Início', 0, 'both'),
+            ('/#services', 'Services', 'Serviços', 1, 'header'),
+            ('/portfolio', 'Portfolio', 'Portfólio', 2, 'both'),
+            ('/zenda', 'Zenda', 'Zenda', 3, 'both'),
+            ('/cursos', 'Courses', 'Cursos', 4, 'both'),
+            ('/mentoria', 'Mentorship', 'Mentoria', 5, 'footer'),
+            ('/conteudos-gratis', 'Free Content', 'Conteúdos Grátis', 6, 'footer'),
+            ('/contact', 'Contact', 'Contacto', 7, 'both'),
+        ]
+        for url, en_label, pt_label, order, placement in items:
+            NavItem.objects.update_or_create(
+                url=url,
+                defaults={
+                    'order': order,
+                    'placement': placement,
+                    'translations': t(
+                        {'label': pt_label},
+                        {'label': en_label},
+                        {'label': en_label},
+                        {'label': en_label},
+                    ),
+                },
+            )
+
+    def _seed_statistics(self):
+        stats = [
+            ('50+', 'chart', 'Projetos entregues', 'Projects delivered'),
+            ('5+', 'clock', 'Anos de experiência', 'Years of experience'),
+            ('98%', 'star', 'Satisfação dos clientes', 'Client satisfaction'),
+        ]
+        for i, (value, icon, pt_label, en_label) in enumerate(stats):
+            HomepageStatistic.objects.update_or_create(
+                value=value,
+                defaults={
+                    'icon': icon,
+                    'order': i,
+                    'translations': t(
+                        {'label': pt_label},
+                        {'label': en_label},
+                        {'label': en_label},
+                        {'label': en_label},
+                    ),
+                },
+            )
+
+    def _seed_faqs(self):
+        faqs = [
+            ('services', 'Que serviços oferece a Rubiane?', 'What services does Rubiane offer?',
+             'Campanhas em vídeo, entrevistas, roteiros, edição CapCut, design Canva, reels e estratégia de conteúdo.'),
+            ('zenda', 'O que é o Zenda?', 'What is Zenda?',
+             'Zenda é a app de finanças e educação criada por Rubiane — orçamentos, metas, cursos e AI Copilot.'),
+        ]
+        for i, (cat, pt_q, en_q, pt_a) in enumerate(faqs):
+            FAQ.objects.update_or_create(
+                category=cat,
+                order=i,
+                defaults={
+                    'translations': t(
+                        {'question': pt_q, 'answer': pt_a},
+                        {'question': en_q, 'answer': pt_a},
+                        {'question': en_q, 'answer': pt_a},
+                        {'question': en_q, 'answer': pt_a},
+                    ),
+                },
+            )
+
+    def _seed_page_seo(self):
+        PageSEO.objects.update_or_create(
+            page_key='home',
+            defaults={
+                'canonical_path': '/',
+                'translations': t(
+                    {
+                        'title': 'Rubiane Joaquim | Produtora de Vídeo Criativo & Zenda',
+                        'description': 'Campanhas em vídeo, entrevistas, roteiros, CapCut, Canva e criadora do Zenda.',
+                        'og_title': 'Rubiane Joaquim — Creative Video & Zenda',
+                    },
+                    {
+                        'title': 'Rubiane Joaquim | Creative Video Producer & Zenda',
+                        'description': 'Campaign videos, interviews, scripts, CapCut, Canva, and creator of Zenda.',
+                        'og_title': 'Rubiane Joaquim — Creative Video & Zenda',
+                    },
+                    {
+                        'title': 'Rubiane Joaquim | Productrice Vidéo & Zenda',
+                        'description': 'Vidéo, interviews, scripts et Zenda.',
+                        'og_title': 'Rubiane Joaquim',
+                    },
+                    {
+                        'title': 'Rubiane Joaquim | Video Creativo & Zenda',
+                        'description': 'Videos, entrevistas, guiones y Zenda.',
+                        'og_title': 'Rubiane Joaquim',
+                    },
+                ),
+            },
+        )
+        PageSEO.objects.update_or_create(
+            page_key='zenda',
+            defaults={
+                'canonical_path': '/zenda',
+                'translations': t(
+                    {'title': 'Zenda App | Finanças & Educação', 'description': 'App Zenda — finanças pessoais e negócio.'},
+                    {'title': 'Zenda App | Finance & Education', 'description': 'Zenda app — personal and business finance.'},
+                    {'title': 'Zenda', 'description': 'Zenda app'},
+                    {'title': 'Zenda', 'description': 'Zenda app'},
+                ),
+            },
+        )
+
+    def _seed_site_translations(self):
+        obj = SiteSettings.objects.first()
+        if not obj:
+            return
+        obj.translations = t(
+            {
+                'brand_tagline': 'Produtora de Vídeo Criativo & Storyteller de Campanhas',
+                'footer_description': 'Produção criativa de vídeo, storytelling de marketing e criadora do Zenda.',
+                'footer_rights': 'Todos os direitos reservados.',
+                'contact_label': 'Contacto',
+                'contact_title': 'Vamos trabalhar juntos',
+                'contact_subtitle': 'Conte-me sobre o seu projeto — respondo em breve.',
+                'footer_navigation': 'Navegação',
+                'footer_contact': 'Contacto',
+            },
+            {
+                'brand_tagline': 'Creative Video Producer & Campaign Storyteller',
+                'footer_description': 'Creative video production, marketing storytelling, and creator of Zenda.',
+                'footer_rights': 'All rights reserved.',
+                'contact_label': 'Contact',
+                'contact_title': "Let's work together",
+                'contact_subtitle': 'Tell me about your project — I will reply soon.',
+                'footer_navigation': 'Navigation',
+                'footer_contact': 'Contact',
+            },
+            {
+                'brand_tagline': 'Productrice Vidéo & Narratrice',
+                'footer_description': 'Production vidéo créative et Zenda.',
+                'footer_rights': 'Tous droits réservés.',
+            },
+            {
+                'brand_tagline': 'Productora de Video & Storytelling',
+                'footer_description': 'Producción de video y Zenda.',
+                'footer_rights': 'Todos los derechos reservados.',
+            },
+        )
+        obj.save()

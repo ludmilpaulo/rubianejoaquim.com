@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'ai_copilot',
     'subscriptions',
     'portfolio',
+    'finance_space',
 ]
 
 MIDDLEWARE = [

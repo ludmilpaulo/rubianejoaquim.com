@@ -1,10 +1,9 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
+import { getApiBaseUrl } from './types/api'
+import { logger } from './logger'
 
-// Use production API by default, override with NEXT_PUBLIC_API_URL env var
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://ludmilpaulo.pythonanywhere.com/api'
+const API_URL = getApiBaseUrl()
 
 const api = axios.create({
   baseURL: API_URL,
@@ -44,14 +43,11 @@ api.interceptors.response.use(
   (error) => {
     // Handle network errors
     if (!error.response) {
-      console.error('Network Error:', {
+      logger.error('Network Error:', {
         message: error.message,
         code: error.code,
-        config: {
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
-          method: error.config?.method,
-        }
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
       })
       // Don't redirect on network errors, let the component handle it
       return Promise.reject(error)
@@ -338,6 +334,8 @@ export const adminApi = {
     },
     testimonials: {
       list: () => api.get('/portfolio/admin/testimonials/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/testimonials/${id}/`, data),
     },
     showreel: {
       list: () => api.get('/portfolio/admin/showreel/'),
@@ -347,14 +345,47 @@ export const adminApi = {
     },
     zenda: {
       list: () => api.get('/portfolio/admin/zenda/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/zenda/${id}/`, data),
+    },
+    zendaFeatures: {
+      list: () => api.get('/portfolio/admin/zenda-features/'),
     },
     homeSections: {
       list: () => api.get('/portfolio/admin/home-sections/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/home-sections/${id}/`, data),
+    },
+    navigation: {
+      list: () => api.get('/portfolio/admin/navigation/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/navigation/${id}/`, data),
+    },
+    faqs: {
+      list: () => api.get('/portfolio/admin/faqs/'),
+    },
+    resources: {
+      list: () => api.get('/portfolio/admin/resources/'),
+    },
+    statistics: {
+      list: () => api.get('/portfolio/admin/statistics/'),
+    },
+    pageSeo: {
+      list: () => api.get('/portfolio/admin/page-seo/'),
+      update: (id: number, data: Record<string, unknown>) =>
+        api.patch(`/portfolio/admin/page-seo/${id}/`, data),
+    },
+    settings: {
+      get: () => api.get('/portfolio/admin/settings/1/'),
+      update: (data: Record<string, unknown>) => api.patch('/portfolio/admin/settings/1/', data),
     },
     contactMessages: {
       list: () => api.get('/portfolio/admin/contact-messages/'),
       update: (id: number, data: Record<string, unknown>) =>
         api.patch(`/portfolio/admin/contact-messages/${id}/`, data),
+    },
+    newsletter: {
+      list: () => api.get('/portfolio/admin/newsletter/'),
     },
   },
 }

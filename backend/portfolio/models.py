@@ -41,10 +41,17 @@ class PortfolioProject(models.Model):
 
 class Service(models.Model):
     """Creative services offered by Rubiane."""
+    slug = models.SlugField(max_length=120, blank=True, db_index=True)
     icon = models.CharField(max_length=64, default='video', help_text='Icon key: video, script, interview, etc.')
+    category = models.CharField(max_length=64, blank=True)
+    image = models.ImageField(upload_to='portfolio/services/', blank=True, null=True)
     order = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
-    translations = models.JSONField(default=dict)
+    is_featured = models.BooleanField(default=False)
+    translations = models.JSONField(
+        default=dict,
+        help_text='title, description, short_description, full_description, features[], cta_text, cta_link, seo_title, seo_description',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -162,6 +169,9 @@ class HomeSection(models.Model):
         ('zenda', 'Zenda'),
         ('case_studies_intro', 'Case Studies Intro'),
         ('testimonials_intro', 'Testimonials Intro'),
+        ('education', 'Education'),
+        ('final_cta', 'Final CTA'),
+        ('statistics', 'Statistics'),
         ('cta', 'Call to Action'),
     ]
     section_key = models.CharField(max_length=64, choices=SECTION_KEYS, unique=True)
@@ -187,7 +197,12 @@ class SiteSettings(models.Model):
     linkedin_url = models.URLField(blank=True)
     youtube_url = models.URLField(blank=True)
     tiktok_url = models.URLField(blank=True)
+    calendly_url = models.URLField(blank=True)
     og_image = models.ImageField(upload_to='portfolio/og/', blank=True, null=True)
+    translations = models.JSONField(
+        default=dict,
+        help_text='brand_tagline, footer_description, footer_rights per locale',
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -201,6 +216,11 @@ class SiteSettings(models.Model):
 class ContactMessage(models.Model):
     STATUS_CHOICES = [
         ('new', 'New'),
+        ('contacted', 'Contacted'),
+        ('in_progress', 'In Progress'),
+        ('converted', 'Converted'),
+        ('lost', 'Lost'),
+        ('spam', 'Spam'),
         ('read', 'Read'),
         ('replied', 'Replied'),
         ('archived', 'Archived'),
@@ -210,6 +230,12 @@ class ContactMessage(models.Model):
     phone = models.CharField(max_length=50, blank=True)
     subject = models.CharField(max_length=300)
     message = models.TextField()
+    service_interest = models.CharField(max_length=200, blank=True)
+    budget_range = models.CharField(max_length=100, blank=True)
+    project_type = models.CharField(max_length=100, blank=True)
+    source_page = models.CharField(max_length=300, blank=True)
+    assigned_to = models.CharField(max_length=200, blank=True)
+    admin_notes = models.TextField(blank=True)
     locale = models.CharField(max_length=5, default='pt')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -219,3 +245,154 @@ class ContactMessage(models.Model):
 
     def __str__(self) -> str:
         return f'{self.name} — {self.subject}'
+
+
+class NavItem(models.Model):
+    PLACEMENT_CHOICES = [
+        ('header', 'Header'),
+        ('footer', 'Footer'),
+        ('both', 'Header & Footer'),
+    ]
+    url = models.CharField(max_length=500)
+    order = models.IntegerField(default=0)
+    placement = models.CharField(max_length=16, choices=PLACEMENT_CHOICES, default='both')
+    open_in_new_tab = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    translations = models.JSONField(default=dict, help_text='{"pt": {"label": "..."}}')
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self) -> str:
+        return self.url
+
+
+class FAQ(models.Model):
+    CATEGORY_CHOICES = [
+        ('services', 'Services'),
+        ('portfolio', 'Portfolio'),
+        ('courses', 'Courses'),
+        ('mentorship', 'Mentorship'),
+        ('zenda', 'Zenda'),
+        ('payments', 'Payments'),
+        ('support', 'Support'),
+        ('general', 'General'),
+    ]
+    category = models.CharField(max_length=32, choices=CATEGORY_CHOICES, default='general')
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    translations = models.JSONField(default=dict, help_text='question, answer per locale')
+
+    class Meta:
+        ordering = ['category', 'order']
+        verbose_name = 'FAQ'
+
+    def __str__(self) -> str:
+        return f'{self.category} #{self.pk}'
+
+
+class Resource(models.Model):
+    TYPE_CHOICES = [
+        ('video', 'Video'),
+        ('pdf', 'PDF'),
+        ('article', 'Article'),
+        ('template', 'Template'),
+        ('guide', 'Guide'),
+    ]
+    slug = models.SlugField(max_length=120, unique=True)
+    resource_type = models.CharField(max_length=32, choices=TYPE_CHOICES, default='article')
+    category = models.CharField(max_length=64, blank=True)
+    thumbnail = models.ImageField(upload_to='portfolio/resources/', blank=True, null=True)
+    file = models.FileField(upload_to='portfolio/resources/files/', blank=True, null=True)
+    video_url = models.URLField(blank=True)
+    is_featured = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+    translations = models.JSONField(default=dict, help_text='title, description, seo_title, seo_description')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', '-created_at']
+
+    def __str__(self) -> str:
+        return self.slug
+
+
+class HomepageStatistic(models.Model):
+    value = models.CharField(max_length=64)
+    icon = models.CharField(max_length=32, blank=True)
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    translations = models.JSONField(default=dict, help_text='label per locale')
+
+    class Meta:
+        ordering = ['order']
+        verbose_name_plural = 'Homepage statistics'
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class ZendaFeature(models.Model):
+    CATEGORY_CHOICES = [
+        ('personal_finance', 'Personal Finance'),
+        ('business_finance', 'Business Finance'),
+        ('ai_copilot', 'AI Financial Copilot'),
+        ('currency', 'Currency Converter'),
+        ('education', 'Education'),
+        ('goals', 'Goals'),
+        ('tasks', 'Tasks'),
+        ('subscriptions', 'Subscriptions'),
+        ('notifications', 'Notifications'),
+        ('reports', 'Reports'),
+        ('security', 'Security'),
+        ('offline', 'Offline Mode'),
+    ]
+    zenda_content = models.ForeignKey(
+        ZendaContent, related_name='features', on_delete=models.CASCADE, null=True, blank=True
+    )
+    icon = models.CharField(max_length=64, blank=True)
+    image = models.ImageField(upload_to='portfolio/zenda/features/', blank=True, null=True)
+    category = models.CharField(max_length=32, choices=CATEGORY_CHOICES, default='personal_finance')
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    is_premium = models.BooleanField(default=False)
+    translations = models.JSONField(default=dict, help_text='title, description')
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self) -> str:
+        return f'{self.category} feature {self.pk}'
+
+
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    locale = models.CharField(max_length=5, default='pt')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return self.email
+
+
+class PageSEO(models.Model):
+    page_key = models.SlugField(max_length=64, unique=True, help_text='home, zenda, portfolio, contact, etc.')
+    canonical_path = models.CharField(max_length=200, blank=True)
+    og_image = models.ImageField(upload_to='portfolio/og/pages/', blank=True, null=True)
+    translations = models.JSONField(
+        default=dict,
+        help_text='title, description, keywords, og_title, og_description per locale',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Page SEO'
+        verbose_name_plural = 'Page SEO'
+
+    def __str__(self) -> str:
+        return self.page_key

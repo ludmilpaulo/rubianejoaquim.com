@@ -9,6 +9,16 @@ import { personalFinanceApi } from '../services/api'
 import { formatCurrency } from '../utils/currency'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
+import PersonalIncomeTab from '../components/finance/PersonalIncomeTab'
+import { colors } from '../theme'
+import { getApiErrorMessage } from '../types/api'
+import { logger } from '../utils/logger'
+
+type PersonalFinanceTab = 'principios' | 'overview' | 'expenses' | 'income' | 'budgets' | 'goals' | 'debts'
+
+type PersonalFinanceRouteParams = {
+  initialTab?: PersonalFinanceTab
+}
 
 const { width } = Dimensions.get('window')
 
@@ -52,6 +62,14 @@ interface Goal {
   remaining_amount: string
 }
 
+interface DebtPaymentRecord {
+  id: number
+  amount: string
+  payment_date: string
+  note?: string
+  created_at?: string
+}
+
 interface Debt {
   id: number
   creditor: string
@@ -61,6 +79,7 @@ interface Debt {
   status: string
   progress_percentage: string
   remaining_amount: string
+  payments?: DebtPaymentRecord[]
 }
 
 interface Category {
@@ -73,8 +92,8 @@ interface Category {
 export default function PersonalFinanceScreen() {
   const navigation = useNavigation()
   const route = useRoute()
-  const routeParams = (route.params as any) || {}
-  const [activeTab, setActiveTab] = useState<'principios' | 'overview' | 'expenses' | 'budgets' | 'goals' | 'debts'>(
+  const routeParams = (route.params as PersonalFinanceRouteParams | undefined) ?? {}
+  const [activeTab, setActiveTab] = useState<PersonalFinanceTab>(
     routeParams.initialTab || 'principios'
   )
   const [refreshing, setRefreshing] = useState(false)
@@ -359,9 +378,9 @@ export default function PersonalFinanceScreen() {
       setAddMoneyAmount('')
       loadData()
       Alert.alert('Sucesso', 'Valor adicionado ao objetivo com sucesso!')
-    } catch (error: any) {
-      console.error('Error adding money to goal:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Não foi possível adicionar o valor. Tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error adding money to goal:', getApiErrorMessage(error))
+      Alert.alert('Erro', getApiErrorMessage(error, 'Não foi possível adicionar o valor. Tente novamente.'))
     }
   }
 
@@ -426,19 +445,18 @@ export default function PersonalFinanceScreen() {
 
     try {
       setPayingDebt(true)
-      const newStatus = newPaidAmount >= totalAmount ? 'paid' : selectedDebt.status
-      await personalFinanceApi.updateDebt(selectedDebt.id, {
-        paid_amount: newPaidAmount.toString(),
-        status: newStatus,
+      await personalFinanceApi.payDebt(selectedDebt.id, {
+        amount: paymentValue,
+        payment_date: new Date().toISOString().slice(0, 10),
       })
       setShowPayDebtModal(false)
       setPaymentAmount('')
       setSelectedDebt(null)
       await loadData()
       Alert.alert('Sucesso', `Pagamento de ${formatCurrency(paymentValue)} registado com sucesso!`)
-    } catch (error: any) {
-      console.error('Error paying debt:', error)
-      Alert.alert('Erro', error.response?.data?.error || 'Erro ao registrar pagamento. Por favor, tente novamente.')
+    } catch (error: unknown) {
+      logger.error('Error paying debt:', getApiErrorMessage(error))
+      Alert.alert('Erro', getApiErrorMessage(error, 'Erro ao registrar pagamento. Por favor, tente novamente.'))
     } finally {
       setPayingDebt(false)
     }
@@ -641,6 +659,7 @@ export default function PersonalFinanceScreen() {
               { key: 'principios', label: 'Regras de Ouro', icon: 'lightbulb-on' },
               { key: 'overview', label: 'Visão Geral', icon: 'view-dashboard' },
               { key: 'expenses', label: 'Despesas', icon: 'cash-minus' },
+              { key: 'income', label: 'Receitas', icon: 'cash-plus' },
               { key: 'budgets', label: 'Orçamentos', icon: 'wallet' },
               { key: 'goals', label: 'Objetivos', icon: 'target' },
               { key: 'debts', label: 'Dívidas', icon: 'credit-card' },
@@ -648,7 +667,7 @@ export default function PersonalFinanceScreen() {
               <TouchableOpacity
                 key={tab.key}
                 style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-                onPress={() => setActiveTab(tab.key as any)}
+                onPress={() => setActiveTab(tab.key as PersonalFinanceTab)}
               >
                 <MaterialCommunityIcons
                   name={tab.icon as any}
@@ -1099,6 +1118,15 @@ export default function PersonalFinanceScreen() {
           </View>
         )}
 
+        {activeTab === 'income' && (
+          <View style={styles.content}>
+            <PersonalIncomeTab
+              periodState={periodState}
+              onRefreshParent={() => loadData()}
+            />
+          </View>
+        )}
+
         {activeTab === 'debts' && (
           <View style={styles.content}>
             {debts.length === 0 ? (
@@ -1185,10 +1213,22 @@ export default function PersonalFinanceScreen() {
                           setShowPayDebtModal(true)
                         }}
                         style={styles.payDebtButton}
-                        buttonColor="#10b981"
+                        buttonColor={colors.brand.secondary}
                       >
                         Pagar Dívida
                       </Button>
+                    )}
+                    {debt.payments && debt.payments.length > 0 && (
+                      <View style={styles.paymentHistory}>
+                        <Text variant="labelMedium" style={styles.paymentHistoryTitle}>
+                          Histórico de pagamentos
+                        </Text>
+                        {debt.payments.slice(0, 3).map((p) => (
+                          <Text key={p.id} variant="bodySmall" style={styles.mutedText}>
+                            {new Date(p.payment_date).toLocaleDateString('pt-PT')} — {formatCurrency(parseFloat(p.amount))}
+                          </Text>
+                        ))}
+                      </View>
                     )}
                   </Card.Content>
                 </Card>
@@ -1199,7 +1239,7 @@ export default function PersonalFinanceScreen() {
       </ScrollView>
 
       {/* FAB */}
-      {activeTab !== 'principios' && (
+      {activeTab !== 'principios' && activeTab !== 'income' && (
         <FAB
           icon="plus"
           style={styles.fab}
@@ -1920,11 +1960,11 @@ export default function PersonalFinanceScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
   },
   scrollView: {
     flex: 1,
@@ -2449,6 +2489,19 @@ const styles = StyleSheet.create({
   },
   payDebtButton: {
     marginTop: 16,
+  },
+  paymentHistory: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  paymentHistoryTitle: {
+    marginBottom: 6,
+    color: colors.text.secondary,
+  },
+  mutedText: {
+    color: colors.text.muted,
   },
   debtModalTitle: {
     fontWeight: '700',

@@ -11,18 +11,35 @@ const iconMap: Record<string, string> = {
   strategy: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10',
 }
 
-export default function ServiceCard({ service }: { service: PortfolioService }) {
+export default function ServiceCard({
+  service,
+  featured = false,
+}: {
+  service: PortfolioService
+  featured?: boolean
+}) {
   const path = iconMap[service.icon] ?? iconMap.video
 
   return (
-    <article className="group relative p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-white/5 hover:border-amber-400/30 transition-all duration-300 hover-lift">
-      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-600/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-        <svg className="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <article
+      className={`group relative h-full p-6 sm:p-8 rounded-2xl premium-card hover:border-amber-400/25 transition-all duration-500 hover-lift ${
+        featured ? 'lg:p-10' : ''
+      }`}
+    >
+      <div
+        className={`rounded-xl bg-gradient-to-br from-amber-400/20 to-indigo-600/10 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform ${
+          featured ? 'w-14 h-14' : 'w-12 h-12'
+        }`}
+      >
+        <svg className={`${featured ? 'w-7 h-7' : 'w-6 h-6'} text-amber-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={path} />
         </svg>
       </div>
-      <h3 className="text-xl font-semibold text-white mb-2">{service.title}</h3>
-      <p className="text-slate-400 text-sm leading-relaxed">{service.description}</p>
+      <h3 className={`font-semibold text-white mb-2 ${featured ? 'text-2xl' : 'text-xl'}`}>{service.title}</h3>
+      <p className={`text-slate-400 leading-relaxed ${featured ? 'text-base' : 'text-sm'}`}>{service.description}</p>
+      {featured && (
+        <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50" aria-hidden />
+      )}
     </article>
   )
 }

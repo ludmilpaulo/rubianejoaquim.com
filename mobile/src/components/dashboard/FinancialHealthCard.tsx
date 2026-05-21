@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import type { FinancialHealth } from '../../types/dashboard'
 import { useI18n } from '../../contexts/I18nContext'
@@ -17,15 +17,16 @@ const GRADE_COLORS: Record<string, string> = {
 
 interface FinancialHealthCardProps {
   health: FinancialHealth
+  onPress?: () => void
 }
 
-export default function FinancialHealthCard({ health }: FinancialHealthCardProps) {
+export default function FinancialHealthCard({ health, onPress }: FinancialHealthCardProps) {
   const { t } = useI18n()
   const gradeKey = `health.${health.grade}` as const
   const gradeLabel = t(gradeKey)
   const ringColor = GRADE_COLORS[health.grade] ?? colors.brand.primary
 
-  return (
+  const content = (
     <ZendaCard style={styles.card}>
       <View style={styles.row}>
         <View style={styles.textCol}>
@@ -45,6 +46,11 @@ export default function FinancialHealthCard({ health }: FinancialHealthCardProps
       </View>
     </ZendaCard>
   )
+
+  if (onPress) {
+    return <TouchableOpacity activeOpacity={0.85} onPress={onPress}>{content}</TouchableOpacity>
+  }
+  return content
 }
 
 const styles = StyleSheet.create({

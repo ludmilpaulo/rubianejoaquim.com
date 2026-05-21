@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import WhatsAppButton from '@/components/WhatsAppButton'
 import { LocaleProvider } from '@/contexts/LocaleContext'
+import { SiteDataProvider } from '@/contexts/SiteDataContext'
 import { defaultLocale, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n/config'
 
 const playfair = Playfair_Display({
@@ -140,6 +141,7 @@ export default async function RootLayout({
       </head>
       <body className={`${dmSans.className} antialiased bg-slate-950 text-slate-100`} suppressHydrationWarning>
         <LocaleProvider initialLocale={initialLocale}>
+          <SiteDataProvider>
           <Navbar />
           <main
             className="min-h-screen w-full min-w-0 overflow-x-hidden"
@@ -152,6 +154,7 @@ export default async function RootLayout({
           </main>
           <Footer />
           <WhatsAppButton />
+          </SiteDataProvider>
         </LocaleProvider>
       </body>
     </html>

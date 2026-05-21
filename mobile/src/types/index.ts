@@ -29,6 +29,8 @@ export interface AuthState {
    * - true: access checked at least once (hasPaidAccess is reliable)
    */
   accessChecked: boolean
+  planTier: 'free' | 'premium' | 'business' | 'family'
+  features: string[]
 }
 
 // Enrollment & Mentorship Types

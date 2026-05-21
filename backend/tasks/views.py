@@ -307,3 +307,14 @@ class NotificationViewSet(viewsets.ModelViewSet):
         """Conta notificações não lidas"""
         count = Notification.objects.filter(user=request.user, is_read=False).count()
         return Response({'count': count})
+
+    @action(detail=False, methods=['get'], url_path='poll')
+    def poll(self, request):
+        """Lightweight poll for live updates (WebSocket alternative)."""
+        qs = Notification.objects.filter(user=request.user).order_by('-created_at')[:10]
+        unread = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({
+            'unread_count': unread,
+            'notifications': NotificationSerializer(qs, many=True).data,
+            'server_time': timezone.now().isoformat(),
+        })

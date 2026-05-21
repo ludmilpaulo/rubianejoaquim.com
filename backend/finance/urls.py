@@ -4,7 +4,7 @@ from .views import (
     CategoryViewSet, PersonalExpenseViewSet, PersonalIncomeViewSet,
     BudgetViewSet, GoalViewSet, DebtViewSet, SaleViewSet,
     BusinessExpenseViewSet, BusinessMetricsViewSet, DashboardViewSet,
-    ExchangeRateViewSet, UserFavoriteCurrencyViewSet,
+    ExchangeRateViewSet, UserFavoriteCurrencyViewSet, ReceiptViewSet,
 )
 
 router = DefaultRouter()
@@ -24,6 +24,7 @@ router.register(r'personal/debts', DebtViewSet, basename='debt')
 router.register(r'business/sales', SaleViewSet, basename='sale')
 router.register(r'business/expenses', BusinessExpenseViewSet, basename='business-expense')
 router.register(r'business/metrics', BusinessMetricsViewSet, basename='business-metrics')
+router.register(r'receipts', ReceiptViewSet, basename='receipt')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
-    Category, PersonalExpense, PersonalIncome, Budget, Goal, Debt,
+    Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
+    Debt, DebtPayment,
     Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
 )
 
@@ -49,6 +50,18 @@ class GoalAdmin(admin.ModelAdmin):
     list_display = ['user', 'title', 'target_amount', 'current_amount', 'target_date', 'status', 'created_at']
     list_filter = ['status', 'target_date']
     search_fields = ['user__username', 'title', 'description']
+
+
+@admin.register(GoalContribution)
+class GoalContributionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'goal', 'amount', 'created_at']
+    search_fields = ['user__username', 'goal__title', 'note']
+
+
+@admin.register(DebtPayment)
+class DebtPaymentAdmin(admin.ModelAdmin):
+    list_display = ['debt', 'amount', 'payment_date', 'created_at']
+    search_fields = ['debt__creditor', 'note']
 
 
 @admin.register(Debt)

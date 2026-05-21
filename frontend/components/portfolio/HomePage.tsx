@@ -2,41 +2,64 @@
 
 import { useEffect, useState } from 'react'
 import { useLocale } from '@/contexts/LocaleContext'
-import { portfolioApi } from '@/lib/portfolio-api'
-import type { PortfolioHomeData } from '@/lib/portfolio-types'
+import { publicApi } from '@/lib/public-api'
+import type { PublicHomepageData } from '@/lib/public-types'
+import { buildHomeContext, isSectionVisible } from '@/lib/cms'
 import HeroSection from './HeroSection'
 import AboutSection from './AboutSection'
 import ServicesSection from './ServicesSection'
-import PortfolioGrid from './PortfolioGrid'
+import FeaturedPortfolioSection from './FeaturedPortfolioSection'
 import ShowreelSection from './ShowreelSection'
 import ZendaSection from './ZendaSection'
 import CaseStudiesSection from './CaseStudiesSection'
 import TestimonialsSection from './TestimonialsSection'
-import ContactSection from './ContactSection'
-import CtaSection from './CtaSection'
 import EducationBanner from './EducationBanner'
+import FinalContactCta from './FinalContactCta'
+import ContactSection from './ContactSection'
 
-const emptyHome: PortfolioHomeData = {
+const emptyHome: PublicHomepageData = {
   sections: [],
+  section_visibility: {},
   services: [],
   featured_projects: [],
   showreel: [],
   testimonials: [],
   case_studies: [],
+  statistics: [],
+  resources: [],
+  navigation: [],
+  faqs: [],
   zenda: {},
   settings: {},
+  seo: {},
+}
+
+function HomeLoading() {
+  return (
+    <div className="min-h-screen bg-slate-950">
+      <div className="h-[100svh] cinematic-hero animate-pulse" />
+      <div className="max-w-7xl mx-auto px-4 py-24 space-y-8">
+        <div className="h-8 w-48 bg-white/5 rounded-lg mx-auto" />
+        <div className="grid sm:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-64 bg-white/5 rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function HomePage() {
   const { locale } = useLocale()
-  const [data, setData] = useState<PortfolioHomeData>(emptyHome)
+  const [data, setData] = useState<PublicHomepageData>(emptyHome)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    portfolioApi
-      .getHome(locale)
+    publicApi
+      .getHomepage(locale)
       .then((res) => {
         if (!cancelled) setData(res)
       })
@@ -51,26 +74,53 @@ export default function HomePage() {
     }
   }, [locale])
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center bg-slate-950">
-        <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return <HomeLoading />
+
+  const ctx = buildHomeContext(data)
+  const primaryShowreel = data.showreel.find((v) => v.is_primary) ?? data.showreel[0] ?? null
+  const settings =
+    data.settings && 'contact_email' in data.settings ? data.settings : undefined
 
   return (
     <>
-      <HeroSection />
-      <AboutSection />
-      <ServicesSection services={data.services} />
-      <PortfolioGrid projects={data.featured_projects} />
-      <ShowreelSection videos={data.showreel} />
-      <ZendaSection zenda={data.zenda} />
-      <CaseStudiesSection caseStudies={data.case_studies} />
-      <TestimonialsSection testimonials={data.testimonials} />
-      <CtaSection />
-      <EducationBanner />
+      {isSectionVisible(ctx.visibility, 'hero') && (
+        <HeroSection
+          section={ctx.hero}
+          showreel={primaryShowreel}
+          settings={settings}
+          statistics={data.statistics}
+        />
+      )}
+      {isSectionVisible(ctx.visibility, 'portfolio_intro') && (
+        <FeaturedPortfolioSection
+          projects={data.featured_projects}
+          intro={ctx.portfolioIntro}
+        />
+      )}
+      {isSectionVisible(ctx.visibility, 'showreel') && (
+        <ShowreelSection videos={data.showreel} intro={ctx.showreelIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'services_intro') && (
+        <ServicesSection services={data.services} intro={ctx.servicesIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'zenda') && (
+        <ZendaSection zenda={data.zenda} intro={ctx.zendaIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'about') && (
+        <AboutSection section={ctx.about} statistics={data.statistics} />
+      )}
+      {isSectionVisible(ctx.visibility, 'case_studies_intro') && (
+        <CaseStudiesSection caseStudies={data.case_studies} intro={ctx.caseStudiesIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'testimonials_intro') && (
+        <TestimonialsSection testimonials={data.testimonials} intro={ctx.testimonialsIntro} />
+      )}
+      {isSectionVisible(ctx.visibility, 'education') && (
+        <EducationBanner section={ctx.education} />
+      )}
+      {isSectionVisible(ctx.visibility, 'final_cta') && (
+        <FinalContactCta section={ctx.finalCta} settings={data.settings} />
+      )}
       <ContactSection settings={data.settings} />
     </>
   )

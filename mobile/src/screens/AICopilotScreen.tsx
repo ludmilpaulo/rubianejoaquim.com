@@ -6,6 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { aiCopilotApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import ZendaCard from '../components/ui/ZendaCard'
+import { colors, spacing, typography } from '../theme'
+import { logger } from '../utils/logger'
 
 interface Message {
   id?: number
@@ -34,6 +37,21 @@ export default function AICopilotScreen() {
   const dot1Anim = useRef(new Animated.Value(0.4)).current
   const dot2Anim = useRef(new Animated.Value(0.4)).current
   const dot3Anim = useRef(new Animated.Value(0.4)).current
+  const [insights, setInsights] = useState<{
+    health_score?: number
+    grade?: string
+    monthly_report?: string
+    suggested_prompts?: string[]
+  } | null>(null)
+
+  useEffect(() => {
+    aiCopilotApi.getInsights().then(setInsights).catch(() => setInsights(null))
+  }, [])
+
+  const suggestionList =
+    insights?.suggested_prompts?.length
+      ? insights.suggested_prompts
+      : localeMessages.ai.suggestions
 
   // Typing animation
   useEffect(() => {
@@ -113,6 +131,28 @@ export default function AICopilotScreen() {
     }
   }
 
+  const loadReport = async (type: 'monthly' | 'savings' | 'debt') => {
+    setSending(true)
+    try {
+      let text = ''
+      if (type === 'monthly') {
+        const r = await aiCopilotApi.getMonthlyReport()
+        text = r.report || ''
+      } else if (type === 'savings') {
+        const r = await aiCopilotApi.getSavingsPlan()
+        text = (r.plans || []).map((p: { message?: string }) => p.message).join('\n\n')
+      } else {
+        const r = await aiCopilotApi.getDebtStrategy()
+        text = (r.strategies || []).map((s: { message?: string }) => s.message).join('\n\n')
+      }
+      setMessages([{ role: 'assistant', content: text }])
+    } catch {
+      setMessages([{ role: 'assistant', content: t('common.error') }])
+    } finally {
+      setSending(false)
+    }
+  }
+
   const handleSend = async () => {
     if (!inputText.trim() || sending) return
 
@@ -132,10 +172,10 @@ export default function AICopilotScreen() {
     }, 100)
 
     try {
-      console.log('📤 Sending message to AI Copilot:', inputText.trim())
+      logger.info('Sending message to AI Copilot:', inputText.trim())
       const response = await aiCopilotApi.chat(inputText.trim(), conversationId)
       
-      console.log('✅ AI Copilot response:', response)
+      logger.info('AI Copilot response received')
       
       // Response from api.ts already returns response.data, so response is the data object
       const responseData = response
@@ -144,7 +184,7 @@ export default function AICopilotScreen() {
       if (responseData.conversation_id) {
         if (!conversationId || conversationId !== responseData.conversation_id) {
           setConversationId(responseData.conversation_id)
-          console.log('💬 Conversation ID:', responseData.conversation_id)
+          logger.info('Conversation ID:', responseData.conversation_id)
         }
       }
 
@@ -159,7 +199,7 @@ export default function AICopilotScreen() {
           content: assistantMsg.content || '',
           created_at: assistantMsg.created_at,
         }
-        console.log('🤖 Assistant message:', message)
+        logger.info('Assistant message received')
         setMessages(prev => [...prev, message])
       } else {
         console.warn('⚠️ Unexpected response format:', responseData)
@@ -227,7 +267,7 @@ export default function AICopilotScreen() {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="robot" size={28} color="#8b5cf6" />
+                <MaterialCommunityIcons name="robot" size={28} color={colors.brand.ai} />
               </View>
               <View style={styles.headerText}>
                 <Text variant="titleLarge" style={styles.headerTitle}>
@@ -250,12 +290,23 @@ export default function AICopilotScreen() {
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#8b5cf6" />
+              <ActivityIndicator size="large" color={colors.brand.ai} />
             </View>
           ) : messages.length === 0 ? (
             <View style={styles.welcomeContainer}>
+              {insights && (
+                <ZendaCard variant="glass" style={{ width: '100%', marginBottom: spacing.md }}>
+                  <Text style={styles.insightLabel}>{t('ai.monthlyReport')}</Text>
+                  <Text style={styles.insightReport}>{insights.monthly_report}</Text>
+                  {insights.health_score != null && (
+                    <Text style={styles.insightScore}>
+                      {t('ai.healthLabel')}: {insights.health_score}/100 ({insights.grade})
+                    </Text>
+                  )}
+                </ZendaCard>
+              )}
               <View style={styles.welcomeIcon}>
-                <MaterialCommunityIcons name="robot" size={64} color="#8b5cf6" />
+                <MaterialCommunityIcons name="robot" size={64} color={colors.brand.ai} />
               </View>
               <Text variant="headlineSmall" style={styles.welcomeTitle}>
                 {t('ai.title')}
@@ -263,15 +314,25 @@ export default function AICopilotScreen() {
               <Text variant="bodyLarge" style={styles.welcomeText}>
                 {t('ai.disclaimer')}
               </Text>
+              <View style={styles.reportRow}>
+                {(['monthly', 'savings', 'debt'] as const).map((key) => (
+                  <TouchableOpacity key={key} style={styles.reportChip} onPress={() => loadReport(key)}>
+                    <Text style={styles.reportChipText}>
+                      {key === 'monthly' ? t('ai.monthlyReport') : key === 'savings' ? '💰' : '📉'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.insightLabel}>{t('ai.smartSuggestions')}</Text>
               <View style={styles.suggestionsContainer}>
                 <View style={styles.suggestionChips}>
-                  {localeMessages.ai.suggestions.map((prompt) => (
+                  {suggestionList.map((prompt) => (
                     <TouchableOpacity
                       key={prompt}
                       style={styles.suggestionChip}
                       onPress={() => setInputText(prompt)}
                     >
-                      <MaterialCommunityIcons name="chat-outline" size={18} color="#8b5cf6" />
+                      <MaterialCommunityIcons name="chat-outline" size={18} color={colors.brand.ai} />
                       <Text style={styles.suggestionText} numberOfLines={2}>{prompt}</Text>
                     </TouchableOpacity>
                   ))}
@@ -635,6 +696,32 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     elevation: 2,
   },
+  insightLabel: {
+    ...typography.label,
+    color: colors.brand.ai,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+  },
+  insightReport: {
+    ...typography.body,
+    color: colors.text.primary,
+    marginBottom: spacing.sm,
+  },
+  insightScore: {
+    ...typography.caption,
+    color: colors.brand.secondary,
+    fontWeight: '600',
+  },
+  reportRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.md, width: '100%' },
+  reportChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+  },
+  reportChipText: { fontSize: 12, fontWeight: '600', color: colors.brand.ai },
   sendButtonContent: {
     paddingHorizontal: 16,
     paddingVertical: 8,

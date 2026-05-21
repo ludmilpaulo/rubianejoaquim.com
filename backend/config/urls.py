@@ -18,6 +18,8 @@ urlpatterns = [
     path('api/ai-copilot/', include('ai_copilot.urls')),
     path('api/subscriptions/', include('subscriptions.urls')),
     path('api/portfolio/', include('portfolio.urls')),
+    path('api/public/', include('portfolio.public_urls')),
+    path('api/finance-space/', include('finance_space.urls')),
 ]
 
 if settings.DEBUG:

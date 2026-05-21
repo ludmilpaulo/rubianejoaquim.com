@@ -18,6 +18,7 @@ import { checkStoreUpdate } from './src/utils/storeUpdate'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
 import { I18nProvider } from './src/contexts/I18nContext'
 import { zendaLightTheme } from './src/theme/paperTheme'
+import { flushOfflineQueue } from './src/utils/offlineQueue'
 
 function AppContent() {
   const dispatch = useAppDispatch()
@@ -44,6 +45,7 @@ function AppContent() {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active' && user) {
         dispatch(checkPaidAccess()).catch(() => {})
+        flushOfflineQueue().catch(() => {})
       }
     })
     return () => sub.remove()
