@@ -30,11 +30,14 @@ export function getApiErrorMessage(error: unknown, fallback = 'Ocorreu um erro')
   return fallback
 }
 
+/** Production default when hosting omits NEXT_PUBLIC_API_URL at build time. */
+export const PRODUCTION_API_DEFAULT = 'https://ludmilpaulo.pythonanywhere.com/api'
+
 export function getApiBaseUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_API_URL?.trim()
   if (fromEnv) return fromEnv.replace(/\/$/, '')
   if (process.env.NODE_ENV === 'development') {
     return 'http://127.0.0.1:8000/api'
   }
-  throw new Error('NEXT_PUBLIC_API_URL is not set.')
+  return PRODUCTION_API_DEFAULT
 }

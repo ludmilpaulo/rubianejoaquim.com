@@ -1,7 +1,9 @@
 import { defaultLocale, isLocale, type Locale } from './i18n/config'
 import type { PageSEO } from './public-types'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'
+import { getApiBaseUrl } from './types/api'
+
+const API_BASE = getApiBaseUrl()
 
 export async function fetchPageSeo(pageKey: string, locale?: string): Promise<PageSEO | null> {
   const lang = locale && isLocale(locale) ? locale : defaultLocale
