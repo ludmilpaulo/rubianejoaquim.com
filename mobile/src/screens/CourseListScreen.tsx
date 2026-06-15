@@ -14,6 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { useAppSelector } from '../hooks/redux'
 import { coursesApi, referralApi } from '../services/api'
+import {
+  courseProductId,
+  isIapSupported,
+  purchaseIapProduct,
+} from '../services/iap'
 import { useI18n } from '../contexts/I18nContext'
 import { getApiErrorMessage } from '../types/api'
 import { logger } from '../utils/logger'
@@ -47,6 +52,7 @@ export default function CourseListScreen() {
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
   const [redeemingId, setRedeemingId] = useState<number | null>(null)
+  const [iapPurchasingId, setIapPurchasingId] = useState<number | null>(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -199,6 +205,28 @@ export default function CourseListScreen() {
     }
   }
 
+  const handleBuyWithApple = async (course: Course) => {
+    if (!isIapSupported()) {
+      Alert.alert(t('common.error'), t('access.iapUnavailable'))
+      return
+    }
+    const productId = courseProductId(course.id)
+    setIapPurchasingId(course.id)
+    try {
+      await purchaseIapProduct(productId)
+      Alert.alert(t('common.success'), t('access.iapSuccess'))
+      await loadData()
+      navigation.navigate('EducationMain')
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('access.iapFailed')
+      if (message !== 'Purchase cancelled') {
+        Alert.alert(t('common.error'), message)
+      }
+    } finally {
+      setIapPurchasingId(null)
+    }
+  }
+
   if (loading && courses.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -261,6 +289,8 @@ export default function CourseListScreen() {
             const isActive = enrollment?.status === 'active'
             const isPending = enrollment?.status === 'pending'
             const isEnrolling = enrollingId === course.id
+            const isIapPurchasing = iapPurchasingId === course.id
+            const coursePrice = parseFloat(course.price || '0')
             return (
               <Card key={course.id} style={styles.courseCard}>
                 <Card.Content>
@@ -300,14 +330,27 @@ export default function CourseListScreen() {
                     </Button>
                   ) : (
                     <View style={styles.buttonGroup}>
-                      {pointsBalance > 0 && parseFloat(course.price || '0') > 0 && (
+                      {isIapSupported() && coursePrice > 0 && (
+                        <Button
+                          mode="contained"
+                          onPress={() => handleBuyWithApple(course)}
+                          loading={isIapPurchasing}
+                          disabled={isIapPurchasing || isEnrolling || redeemingId === course.id}
+                          style={[styles.btn, styles.iapBtn]}
+                          icon="apple"
+                          buttonColor="#000"
+                        >
+                          {t('education.buyWithApple')}
+                        </Button>
+                      )}
+                      {pointsBalance > 0 && coursePrice > 0 && (
                         <>
-                          {pointsBalance >= parseFloat(course.price || '0') / 1000 ? (
+                          {pointsBalance >= coursePrice / 1000 ? (
                             <Button
                               mode="contained"
                               onPress={() => handleRedeemWithPoints(course, false)}
                               loading={redeemingId === course.id}
-                              disabled={redeemingId === course.id || enrollingId === course.id}
+                              disabled={redeemingId === course.id || isEnrolling || isIapPurchasing}
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
@@ -318,7 +361,7 @@ export default function CourseListScreen() {
                               mode="contained"
                               onPress={() => handleRedeemWithPoints(course, true)}
                               loading={redeemingId === course.id}
-                              disabled={redeemingId === course.id || enrollingId === course.id}
+                              disabled={redeemingId === course.id || isEnrolling || isIapPurchasing}
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
@@ -328,10 +371,10 @@ export default function CourseListScreen() {
                         </>
                       )}
                       <Button
-                        mode={pointsBalance > 0 && parseFloat(course.price || '0') > 0 ? "outlined" : "contained"}
+                        mode={pointsBalance > 0 && coursePrice > 0 ? 'outlined' : 'contained'}
                         onPress={() => handleEnroll(course)}
                         loading={isEnrolling}
-                        disabled={isEnrolling || redeemingId === course.id}
+                        disabled={isEnrolling || redeemingId === course.id || isIapPurchasing}
                         style={styles.btn}
                       >
                         {t('education.payTransfer')}
@@ -380,6 +423,7 @@ const styles = StyleSheet.create({
   btn: { marginTop: 4 },
   buttonGroup: { gap: 8, marginTop: 4 },
   redeemBtn: { backgroundColor: '#f59e0b' },
+  iapBtn: { backgroundColor: '#000' },
   pointsCard: {
     marginBottom: 16,
     backgroundColor: '#fef3c7',

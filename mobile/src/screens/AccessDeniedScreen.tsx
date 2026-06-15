@@ -6,6 +6,11 @@ import * as DocumentPicker from 'expo-document-picker'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { checkPaidAccess } from '../store/authSlice'
 import { accessApi, referralApi } from '../services/api'
+import {
+  isIapSupported,
+  purchaseIapProduct,
+  SUBSCRIPTION_PRODUCT_ID,
+} from '../services/iap'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
@@ -25,6 +30,7 @@ export default function AccessDeniedScreen() {
   const [uploadNotes, setUploadNotes] = useState('')
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [redeemingSubscription, setRedeemingSubscription] = useState(false)
+  const [iapPurchasing, setIapPurchasing] = useState(false)
 
   // Auto-check access when screen loads - if user has access (course, subscription trial/active, or mentorship), they shouldn't be here
   useEffect(() => {
@@ -191,6 +197,30 @@ export default function AccessDeniedScreen() {
     }
   }
 
+  const handleSubscribeWithApple = async () => {
+    if (!isIapSupported()) {
+      alert.info(t('common.error'), t('access.iapUnavailable'))
+      return
+    }
+    setIapPurchasing(true)
+    try {
+      await purchaseIapProduct(SUBSCRIPTION_PRODUCT_ID)
+      const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
+      if (hasAccess) {
+        alert.success(t('access.iapSuccess'))
+      } else {
+        alert.info(t('common.error'), t('profile.accessPending'))
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t('access.iapFailed')
+      if (message !== 'Purchase cancelled') {
+        alert.error(message)
+      }
+    } finally {
+      setIapPurchasing(false)
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scroll}>
       <View style={styles.backgroundDecor}>
@@ -314,6 +344,26 @@ export default function AccessDeniedScreen() {
           )}
 
           <View style={styles.buttonContainer}>
+            {isIapSupported() && (
+              <>
+                <Button
+                  mode="contained"
+                  onPress={handleSubscribeWithApple}
+                  loading={iapPurchasing}
+                  disabled={iapPurchasing || subscribing}
+                  style={styles.primaryButton}
+                  buttonColor="#000"
+                  contentStyle={styles.buttonContent}
+                  labelStyle={styles.buttonLabel}
+                  icon={iapPurchasing ? undefined : () => <MaterialCommunityIcons name="apple" size={22} color="#fff" />}
+                >
+                  {iapPurchasing ? t('access.activating') : t('access.subscribeWithApple')}
+                </Button>
+                <Text variant="bodySmall" style={styles.buttonHint}>
+                  {t('access.iapOrTrial')}
+                </Text>
+              </>
+            )}
             {!subLoading && !subscription && (
               <>
                 <Button

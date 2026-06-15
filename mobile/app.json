@@ -19,7 +19,7 @@
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "19"
+      "buildNumber": "21"
     },
     "android": {
       "adaptiveIcon": {
@@ -44,7 +44,8 @@
       ],
       "expo-notifications",
       "expo-updates",
-      "expo-localization"
+      "expo-localization",
+      "react-native-iap"
     ],
     "updates": {
       "url": "https://u.expo.dev/eed2db02-a05b-4292-9a7c-777b198b7b6e",

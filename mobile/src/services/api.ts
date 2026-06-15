@@ -321,6 +321,17 @@ export const accessApi = {
   },
 }
 
+// Apple In-App Purchase verification
+export const iapApi = {
+  verifyApplePurchase: async (receiptData: string, productId: string) => {
+    const response = await api.post('/subscriptions/iap/verify-apple/', {
+      receipt_data: receiptData,
+      product_id: productId,
+    })
+    return response.data
+  },
+}
+
 // Personal Finance API
 export const personalFinanceApi = {
   // Categories
