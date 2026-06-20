@@ -87,7 +87,7 @@ export default function SettingsScreen() {
   const localeLabel = (code: Locale) => t(`localeNames.${code}`)
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://www.rubianejoaquim.com/legal')
+    Linking.openURL('https://www.rubianejoaquim.com/privacy-policy')
   }
 
   return (

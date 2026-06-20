@@ -158,6 +158,14 @@ export const commonScreens: Record<
       iapFailed: 'Não foi possível concluir a compra.',
       iapUnavailable: 'Compras na App Store disponíveis apenas no iPhone/iPad.',
       iapOrTrial: 'Ou use a semana grátis / pagamento por transferência abaixo.',
+      iapSubscriptionTitle: 'Zenda Mensal',
+      iapSubscriptionLength: 'Subscrição auto-renovável de 1 mês',
+      iapSubscriptionPrice: '{{price}}/mês',
+      iapSubscriptionPriceFallback: 'Preço mostrado na App Store',
+      iapSubscriptionLegal:
+        'A subscrição renova automaticamente até cancelar nas Definições da conta Apple. Ao subscrever, aceita os nossos Termos de Uso e Política de Privacidade.',
+      iapPrivacyPolicy: 'Política de Privacidade',
+      iapTermsOfUse: 'Termos de Uso (EULA)',
     },
     personal: {
       tabPrinciples: 'Regras de ouro',
@@ -433,6 +441,14 @@ export const commonScreens: Record<
       iapFailed: 'Could not complete the purchase.',
       iapUnavailable: 'App Store purchases are only available on iPhone/iPad.',
       iapOrTrial: 'Or use the free week / bank transfer options below.',
+      iapSubscriptionTitle: 'Zenda Monthly',
+      iapSubscriptionLength: '1-month auto-renewing subscription',
+      iapSubscriptionPrice: '{{price}}/month',
+      iapSubscriptionPriceFallback: 'Price shown in the App Store',
+      iapSubscriptionLegal:
+        'Subscription automatically renews until cancelled in Apple Account Settings. By subscribing you agree to our Terms of Use and Privacy Policy.',
+      iapPrivacyPolicy: 'Privacy Policy',
+      iapTermsOfUse: 'Terms of Use (EULA)',
     },
     personal: {
       tabPrinciples: 'Golden rules',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, StyleSheet, Linking, Alert, ScrollView } from 'react-native'
+import { View, StyleSheet, Linking, Alert, ScrollView, Pressable } from 'react-native'
 import { Text, Button, Card, TextInput } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
@@ -9,8 +9,12 @@ import { accessApi, referralApi } from '../services/api'
 import {
   isIapSupported,
   purchaseIapProduct,
+  getIapProducts,
+  PRIVACY_POLICY_URL,
+  TERMS_OF_USE_URL,
   SUBSCRIPTION_PRODUCT_ID,
 } from '../services/iap'
+import type { ProductOrSubscription } from 'react-native-iap'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
@@ -31,6 +35,17 @@ export default function AccessDeniedScreen() {
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [redeemingSubscription, setRedeemingSubscription] = useState(false)
   const [iapPurchasing, setIapPurchasing] = useState(false)
+  const [iapProduct, setIapProduct] = useState<ProductOrSubscription | null>(null)
+
+  useEffect(() => {
+    if (!isIapSupported()) return
+    getIapProducts([SUBSCRIPTION_PRODUCT_ID])
+      .then((products) => {
+        const match = products.find((p) => p.id === SUBSCRIPTION_PRODUCT_ID)
+        if (match) setIapProduct(match)
+      })
+      .catch((error) => logger.warn('IAP product prefetch failed:', error))
+  }, [])
 
   // Auto-check access when screen loads - if user has access (course, subscription trial/active, or mentorship), they shouldn't be here
   useEffect(() => {
@@ -197,6 +212,23 @@ export default function AccessDeniedScreen() {
     }
   }
 
+  const handleOpenUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url)
+      if (supported) {
+        await Linking.openURL(url)
+      } else {
+        alert.error(t('access.linkError'))
+      }
+    } catch {
+      alert.error(t('access.linkError'))
+    }
+  }
+
+  const subscriptionPriceLabel = iapProduct?.displayPrice
+    ? tw('access.iapSubscriptionPrice', { price: iapProduct.displayPrice })
+    : t('access.iapSubscriptionPriceFallback')
+
   const handleSubscribeWithApple = async () => {
     if (!isIapSupported()) {
       alert.info(t('common.error'), t('access.iapUnavailable'))
@@ -346,6 +378,33 @@ export default function AccessDeniedScreen() {
           <View style={styles.buttonContainer}>
             {isIapSupported() && (
               <>
+                <View style={styles.iapDisclosure}>
+                  <Text variant="labelLarge" style={styles.iapDisclosureTitle}>
+                    {iapProduct?.title || t('access.iapSubscriptionTitle')}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.iapDisclosureText}>
+                    {t('access.iapSubscriptionLength')}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.iapDisclosureText}>
+                    {subscriptionPriceLabel}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.iapDisclosureLegal}>
+                    {t('access.iapSubscriptionLegal')}
+                  </Text>
+                  <View style={styles.iapLinksRow}>
+                    <Pressable onPress={() => handleOpenUrl(PRIVACY_POLICY_URL)}>
+                      <Text variant="bodySmall" style={styles.iapLink}>
+                        {t('access.iapPrivacyPolicy')}
+                      </Text>
+                    </Pressable>
+                    <Text variant="bodySmall" style={styles.iapLinkSeparator}> · </Text>
+                    <Pressable onPress={() => handleOpenUrl(TERMS_OF_USE_URL)}>
+                      <Text variant="bodySmall" style={styles.iapLink}>
+                        {t('access.iapTermsOfUse')}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
                 <Button
                   mode="contained"
                   onPress={handleSubscribeWithApple}
@@ -537,6 +596,44 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     gap: 12,
+  },
+  iapDisclosure: {
+    width: '100%',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  iapDisclosureTitle: {
+    fontWeight: '700',
+    color: '#1f2937',
+    marginBottom: 6,
+  },
+  iapDisclosureText: {
+    color: '#4b5563',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  iapDisclosureLegal: {
+    color: '#64748b',
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 8,
+  },
+  iapLinksRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  iapLink: {
+    color: '#6366f1',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  iapLinkSeparator: {
+    color: '#94a3b8',
   },
   buttonHint: {
     marginTop: 6,

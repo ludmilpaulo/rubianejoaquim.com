@@ -323,11 +323,17 @@ export const accessApi = {
 
 // Apple In-App Purchase verification
 export const iapApi = {
-  verifyApplePurchase: async (receiptData: string, productId: string) => {
+  verifyApplePurchase: async (receiptData: string, productId: string, transactionId?: string) => {
     const response = await api.post('/subscriptions/iap/verify-apple/', {
       receipt_data: receiptData,
       product_id: productId,
+      transaction_id: transactionId,
     })
+    if (response.status >= 400) {
+      const body = response.data as ApiErrorBody | undefined
+      const detail = typeof body?.detail === 'string' ? body.detail : body?.error
+      throw new Error(detail || 'Purchase verification failed')
+    }
     return response.data
   },
 }

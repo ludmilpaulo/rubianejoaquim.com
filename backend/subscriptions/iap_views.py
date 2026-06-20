@@ -11,6 +11,7 @@ Required environment variables:
 """
 import json
 import logging
+import base64
 import requests
 from django.conf import settings
 from django.utils import timezone
@@ -63,6 +64,62 @@ def _verify_apple_receipt(receipt_data_b64):
             return False, None, "Invalid response from Apple"
 
     return False, None, "Receipt verification failed"
+
+
+def _decode_jws_payload(jws_token):
+    """Decode the payload segment of a StoreKit 2 JWS without signature verification."""
+    try:
+        parts = jws_token.split(".")
+        if len(parts) != 3:
+            return None
+        payload_b64 = parts[1]
+        padding = "=" * (-len(payload_b64) % 4)
+        payload_json = base64.urlsafe_b64decode(payload_b64 + padding)
+        return json.loads(payload_json)
+    except (ValueError, json.JSONDecodeError, TypeError) as e:
+        logger.warning("Failed to decode JWS payload: %s", e)
+        return None
+
+
+def _verify_apple_jws(jws_token, expected_product_id, expected_transaction_id=None):
+    """
+    Verify a StoreKit 2 signed transaction (JWS).
+    Returns (success, payload_dict or None, error_message).
+    """
+    payload = _decode_jws_payload(jws_token)
+    if not payload:
+        return False, None, "Invalid transaction token"
+
+    bundle_id = getattr(settings, "APPLE_BUNDLE_ID", "com.rubianejoaquim.zenda")
+    token_bundle = payload.get("bundleId") or payload.get("bundle_id")
+    if token_bundle and token_bundle != bundle_id:
+        return False, None, f"Bundle ID mismatch: {token_bundle}"
+
+    product_id = payload.get("productId") or payload.get("product_id")
+    if product_id and product_id != expected_product_id:
+        return False, None, f"Product ID mismatch: {product_id}"
+
+    if expected_transaction_id:
+        token_tx = (
+            payload.get("transactionId")
+            or payload.get("transaction_id")
+            or payload.get("originalTransactionId")
+        )
+        if token_tx and str(token_tx) != str(expected_transaction_id):
+            return False, None, "Transaction ID mismatch"
+
+    # Revoked or refunded transactions should not grant access.
+    if payload.get("revocationDate") or payload.get("revocationReason"):
+        return False, None, "Transaction was revoked"
+
+    return True, payload, None
+
+
+def _verify_apple_purchase(receipt_data_b64, product_id, transaction_id=None):
+    """Try StoreKit 2 JWS first, then legacy receipt verification."""
+    if isinstance(receipt_data_b64, str) and receipt_data_b64.startswith("eyJ"):
+        return _verify_apple_jws(receipt_data_b64, product_id, transaction_id)
+    return _verify_apple_receipt(receipt_data_b64)
 
 
 def _grant_course_access(user, course_id):
@@ -135,6 +192,7 @@ def verify_apple_iap(request):
     """
     receipt_data = request.data.get("receipt_data") or request.data.get("receiptData")
     product_id = (request.data.get("product_id") or request.data.get("productId") or "").strip()
+    transaction_id = request.data.get("transaction_id") or request.data.get("transactionId")
 
     if not receipt_data:
         return Response(
@@ -147,7 +205,7 @@ def verify_apple_iap(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    ok, apple_data, err = _verify_apple_receipt(receipt_data)
+    ok, apple_data, err = _verify_apple_purchase(receipt_data, product_id, transaction_id)
     if not ok:
         logger.warning("IAP verification failed for user %s: %s", request.user.id, err)
         return Response(

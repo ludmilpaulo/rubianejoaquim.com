@@ -15,6 +15,9 @@ ISSUER_ID = "0cf240e3-a3d1-465d-bb95-734a26332c10"
 KEY_PATH = "/Users/ludmil/Downloads/AuthKey_67F47B76ZR.p8"
 APP_ID = "6758412176"
 BUILD_21_ID = "b473a36d-b9f4-4b8b-9073-4a90947a221e"
+PRIVACY_URL = "https://www.rubianejoaquim.com/privacy-policy"
+TERMS_URL = "https://www.rubianejoaquim.com/legal"
+EULA_LINE = f"\n\nTerms of Use (EULA): {TERMS_URL}\nPrivacy Policy: {PRIVACY_URL}"
 SCREENSHOT = "/Users/ludmil/Desktop/Apps/rubianejoaquim.com/mobile/assets/iap-review-screenshot.png"
 BASE = "https://api.appstoreconnect.apple.com/v1"
 
@@ -248,10 +251,11 @@ def api_v2(method: str, path: str, body: Optional[dict] = None):
 def update_review_notes():
     notes = (
         "How to locate In-App Purchases in Zenda Gestão (sandbox testing):\n\n"
-        "1. Install the app and sign in with demo account (test / password in review details) or create a new account.\n"
-        '2. On the access screen, tap "Subscribe with Apple" / "Subscrever com Apple" for product zenda_monthly.\n'
+        "1. Install build 24 and sign in with the demo account in App Review Information, or create a new account.\n"
+        '2. On the access screen, review the subscription disclosure (title, length, price, Privacy Policy and Terms of Use links), then tap "Subscribe with Apple" for product zenda_monthly.\n'
         '3. Or tap "Browse courses & enroll", open catalog, tap "Buy with Apple" on paid course (product course_3).\n'
         "4. Use Sandbox Apple ID in Settings > App Store > Sandbox Account.\n\n"
+        f"Required links: Privacy Policy {PRIVACY_URL} | Terms of Use (EULA) {TERMS_URL}\n"
         "Products: zenda_monthly (subscription), course_3 (consumable)."
     )
     app = api(f"/apps/{APP_ID}?include=appStoreVersions")
@@ -271,6 +275,73 @@ def update_review_notes():
         body={"data": {"type": "appStoreReviewDetails", "id": detail_id, "attributes": {"notes": notes}}},
     )
     print("Updated App Review notes")
+
+
+def update_app_metadata():
+    """Ensure App Store description includes EULA link (Guideline 3.1.2c)."""
+    version_id = get_version_13_id()
+    if not version_id:
+        print("Version 1.3 not found")
+        return
+
+    locs = api(f"/appStoreVersions/{version_id}/appStoreVersionLocalizations")
+    for loc in locs.get("data", []):
+        loc_id = loc["id"]
+        locale = loc["attributes"].get("locale")
+        detail = api(f"/appStoreVersionLocalizations/{loc_id}")
+        attrs = detail["data"]["attributes"]
+        description = attrs.get("description") or ""
+        if TERMS_URL in description and PRIVACY_URL in description:
+            print(f"Metadata already includes legal links ({locale})")
+            continue
+        new_description = description.rstrip() + EULA_LINE
+        api(
+            f"/appStoreVersionLocalizations/{loc_id}",
+            method="PATCH",
+            body={
+                "data": {
+                    "type": "appStoreVersionLocalizations",
+                    "id": loc_id,
+                    "attributes": {"description": new_description},
+                }
+            },
+        )
+        print(f"Updated description with EULA/privacy links ({locale})")
+
+    try:
+        app_info = api(f"/apps/{APP_ID}/appInfos?include=appInfoLocalizations")
+        for included in app_info.get("included") or []:
+            if included["type"] != "appInfoLocalizations":
+                continue
+            loc_id = included["id"]
+            locale = included["attributes"].get("locale")
+            api(
+                f"/appInfoLocalizations/{loc_id}",
+                method="PATCH",
+                body={
+                    "data": {
+                        "type": "appInfoLocalizations",
+                        "id": loc_id,
+                        "attributes": {"privacyPolicyUrl": PRIVACY_URL},
+                    }
+                },
+            )
+            print(f"Set privacy policy URL ({locale})")
+    except urllib.error.HTTPError as e:
+        print(f"Privacy policy update skipped: {e.code}")
+
+
+def link_latest_build(version_id: str):
+    builds = api(f"/builds?filter[app]={APP_ID}&sort=-uploadedDate&limit=5")
+    build_id = None
+    for b in builds.get("data", []):
+        if b["attributes"].get("version") in ("22", "23", "24"):
+            build_id = b["id"]
+            break
+    if not build_id:
+        print("Build 22 not found yet — upload via EAS first")
+        return
+    link_build(version_id, build_id)
 
 
 def disable_game_center(version_id: str):
@@ -326,8 +397,9 @@ def prepare():
         print("Version 1.3 not found", file=sys.stderr)
         sys.exit(1)
     fix_iap_metadata()
+    update_app_metadata()
     try:
-        link_build(version_id, BUILD_21_ID)
+        link_latest_build(version_id)
     except urllib.error.HTTPError as e:
         if e.code not in (409, 422):
             raise
@@ -353,6 +425,8 @@ def main():
         fix_iap_metadata()
     elif cmd == "update-review-notes":
         update_review_notes()
+    elif cmd == "update-metadata":
+        update_app_metadata()
     elif cmd == "submit-review":
         version_id = get_version_13_id()
         if not version_id:

@@ -54,6 +54,18 @@
 
 7. **Reload** the PythonAnywhere web app after changes.
 
+8. **Apple In-App Purchases (required for App Store review)** — in `backend/.env`:
+   ```env
+   APPLE_BUNDLE_ID=com.rubianejoaquim.zenda
+   APPLE_SHARED_SECRET=<from App Store Connect → App Information → App-Specific Shared Secret>
+   ```
+   Deploy IAP backend changes:
+   ```bash
+   cd ~/rubianejoaquim.com && git pull origin main
+   python3 backend/scripts/check_iap_production.py
+   ```
+   The script must print `OK status=200`. StoreKit 2 (sandbox) works without the shared secret once the latest `iap_views.py` is deployed; legacy receipts still need `APPLE_SHARED_SECRET`.
+
 ---
 
 ## Frontend (www.rubianejoaquim.com)

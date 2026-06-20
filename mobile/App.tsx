@@ -21,6 +21,7 @@ import { I18nProvider, useI18n } from './src/contexts/I18nContext'
 import { AppAppearanceProvider, useAppAppearance } from './src/contexts/AppAppearanceContext'
 import { zendaDarkTheme, zendaLightTheme } from './src/theme/paperTheme'
 import { flushOfflineQueue } from './src/utils/offlineQueue'
+import { warmupIap } from './src/services/iap'
 import {
   authenticateWithBiometric,
   isBiometricAppLockEnabled,
@@ -71,6 +72,7 @@ function AppContent() {
 
   useEffect(() => {
     dispatch(checkAuth())
+    warmupIap().catch(() => {})
   }, [dispatch])
 
   useEffect(() => {
