@@ -1,0 +1,46 @@
+---
+description: Core project standards for Rubiane Joaquim / Zenda monorepo
+alwaysApply: true
+---
+
+# Global Project Rules
+
+## Monorepo layout
+
+| Path | Stack | Purpose |
+|------|-------|---------|
+| `frontend/` | Next.js 16, React, TypeScript, Tailwind | Public site, student area, admin dashboard |
+| `backend/` | Django 5 + DRF | REST API (`/api/*`) |
+| `mobile/` | Expo 54, React Native, Redux Toolkit | Zenda mobile app |
+
+## Non-negotiables
+
+1. **No hardcoded business data** — courses, users, CMS content, finance records, subscriptions, and config must come from the backend API or env vars (`NEXT_PUBLIC_API_URL`, `EXPO_PUBLIC_API_URL`). Static assets (images, icons) are fine.
+2. **Do not remove existing features** — extend or fix; never delete flows, screens, or endpoints unless explicitly requested.
+3. **Small, safe changes** — one concern per change. Match existing patterns before introducing new abstractions.
+4. **API is the source of truth** — web uses `frontend/lib/api.ts` and `frontend/lib/public-api.ts`; mobile uses `mobile/src/services/api.ts`. Add new endpoints on the backend first, then wire clients.
+
+## TypeScript
+
+- **Never use `any`.** Use `unknown`, generics, or types from `frontend/lib/types/api.ts` / `mobile/src/types/api.ts`.
+- Use `getApiErrorMessage` / `isApiError` for Axios errors instead of casting.
+
+## UI state coverage
+
+Every data-fetching view must handle all four states:
+
+- **Loading** — skeleton or spinner
+- **Error** — user-visible message + retry where appropriate
+- **Empty** — clear empty state (not a blank screen)
+- **Success** — render data
+
+## Auth and permissions
+
+- Web auth: Zustand store (`frontend/lib/store.ts`), token in cookies, `Authorization: Token <key>`.
+- Mobile auth: Redux (`mobile/src/store/authSlice.ts`), token in AsyncStorage.
+- Admin routes (`frontend/app/admin/**`) require `user.is_admin`. Mobile uses paid-access checks via `accessApi`.
+- Never bypass permission checks on the client; enforce on the backend with DRF permissions.
+
+## Before finishing
+
+Run available checks for the area you changed (see `30-testing-qa-rules.mdc`).

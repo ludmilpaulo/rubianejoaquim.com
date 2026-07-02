@@ -15,8 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale()
   const seo = await fetchPageSeo('home', locale)
   return seoToMetadata(seo, {
-    title: seo?.title || '',
-    description: seo?.description || '',
+    title: 'Rubiane Joaquim | Produção de Vídeo & Educação Financeira',
+    description: 'Produção criativa de vídeo, storytelling de marketing e educação financeira com a app Zenda.',
   })
 }
 

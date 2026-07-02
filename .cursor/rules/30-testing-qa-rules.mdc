@@ -1,0 +1,58 @@
+---
+description: Test, lint, and typecheck commands — run before marking work done
+alwaysApply: true
+---
+
+# Testing & QA Rules
+
+Always run the checks available for the area you changed. Fix failures before finishing.
+
+## Frontend (`cd frontend`)
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm run lint        # next lint
+npm run build       # production build — run for routing/config changes
+```
+
+No unit test suite is configured. Manually verify affected pages in the browser.
+
+## Backend (`cd backend`)
+
+```bash
+source venv/bin/activate
+python manage.py test                    # Django test runner
+python manage.py check                   # system checks
+python manage.py makemigrations --check  # after model changes
+```
+
+Smoke scripts (when touching IAP or deploy):
+
+```bash
+python backend/scripts/check_iap_production.py
+```
+
+Root-level `test_ai_copilot.py` — run only when changing `ai_copilot`.
+
+## Mobile (`cd mobile`)
+
+```bash
+npm run typecheck      # tsc --noEmit
+npm run test:api       # API smoke test against configured base URL
+npm run test:web       # Playwright (web wrapper tests)
+npm run test:e2e       # Maestro native smoke (requires simulator + dev build)
+```
+
+## QA checklist for UI changes
+
+- [ ] Loading state visible while fetching
+- [ ] Error state with readable message (use `getApiErrorMessage`)
+- [ ] Empty state when list is `[]`
+- [ ] Success state renders correct data from API
+- [ ] Unauthenticated users redirected or blocked
+- [ ] Admin-only pages reject non-admin users
+- [ ] Mobile paid-access gates still work (`accessApi.checkPaidAccess`)
+
+## When checks are unavailable
+
+If lint/test tooling is missing for an area, state what you verified manually and what could not be run.

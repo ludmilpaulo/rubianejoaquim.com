@@ -1,0 +1,47 @@
+---
+description: Authentication, authorization, secrets, and data-handling security
+alwaysApply: true
+---
+
+# Security Rules
+
+## Authentication
+
+- API uses DRF **Token** auth. Tokens are issued at `/api/auth/login/` and `/api/auth/register/`.
+- Web stores token in **httpOnly-safe pattern via js-cookie** (`frontend/lib/store.ts`). Mobile uses **AsyncStorage**.
+- On 401: clear token and redirect to login (web) or clear session (mobile). Do not retry indefinitely.
+
+## Authorization
+
+- **Every** new backend endpoint must declare `permission_classes`.
+- Admin actions: verify `is_staff` or `is_superuser` server-side (`UserSerializer.is_admin`).
+- Mobile app access: enforce paid enrollment/subscription in `subscriptions` and `accessApi` — never trust client-only flags.
+- Student vs public content: use `IsAuthenticated` and object-level checks on enrollments.
+
+## Secrets and sensitive data
+
+- Never commit: `.env`, API keys, `APPLE_SHARED_SECRET`, SMTP passwords, OpenAI keys.
+- Never log tokens, passwords, or full payment proofs.
+- Password reset tokens: use Django's `default_token_generator`; do not invent custom schemes.
+
+## Input validation
+
+- All write endpoints go through DRF serializers. Reject unknown fields.
+- File uploads: validate type/size; store via Django `FileField`/`ImageField`.
+- Sanitize user-generated content before rendering in HTML (React escapes by default; avoid `dangerouslySetInnerHTML`).
+
+## CORS and hosts
+
+- Production: `CORS_ALLOWED_ORIGINS` must list only trusted domains (`rubianejoaquim.com`).
+- `ALLOWED_HOSTS` must not be `*` in production.
+- `DEBUG=False` in production.
+
+## Account safety
+
+- Account deletion flows exist (`/api/auth/request-deletion/`, `frontend/app/delete-account/`). Do not remove without replacement.
+- Rate-limit or validate sensitive endpoints (password reset, registration) — follow existing patterns in `accounts/views.py`.
+
+## Dependencies
+
+- Do not add packages that bypass Django/DRF auth for API routes.
+- Prefer existing `axios` interceptors for auth headers — do not duplicate token handling in every call site.

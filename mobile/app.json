@@ -19,7 +19,7 @@
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "24"
+      "buildNumber": "25"
     },
     "android": {
       "adaptiveIcon": {

@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     recent_payments: [],
   })
   const [loadingStats, setLoadingStats] = useState(true)
+  const [statsError, setStatsError] = useState(false)
   const [sendingUpdateEmail, setSendingUpdateEmail] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [showUpdateModal, setShowUpdateModal] = useState(false)
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
     if (mounted && user?.is_admin) {
       const fetchStats = async () => {
         try {
+          setStatsError(false)
           const response = await adminApi.stats()
           setStats({
             totalCourses: response.data.total_courses,
@@ -60,6 +62,7 @@ export default function AdminDashboard() {
           })
         } catch (error) {
           console.error('Error fetching stats:', error)
+          setStatsError(true)
         } finally {
           setLoadingStats(false)
         }
@@ -94,6 +97,12 @@ export default function AdminDashboard() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">Dashboard Admin</h1>
           <p className="text-sm sm:text-base text-gray-600">Bem-vindo, {user.first_name || user.username}!</p>
         </div>
+
+        {statsError && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            Não foi possível carregar as estatísticas do painel. Os valores abaixo podem estar desatualizados.
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">

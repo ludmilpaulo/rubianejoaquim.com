@@ -1,0 +1,53 @@
+---
+description: Django REST Framework API conventions
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend Rules
+
+## Stack
+
+- Django 5+ with Django REST Framework.
+- Custom user: `accounts.User` (`AUTH_USER_MODEL`).
+- Auth: `TokenAuthentication` — clients send `Authorization: Token <key>`.
+- URL prefix: all APIs under `/api/` via `backend/config/urls.py`.
+
+## App boundaries
+
+| App | Domain |
+|-----|--------|
+| `accounts` | Auth, profile, password reset |
+| `courses` | Courses, lessons, enrollments, quizzes |
+| `mentorship` | Packages and requests |
+| `finance` | Personal finance (mobile) |
+| `finance_space` | Shared/family finance |
+| `subscriptions` | Mobile IAP and payment proofs |
+| `portfolio` | Public CMS and admin CMS |
+| `ai_copilot` | AI financial assistant |
+| `tasks` | To-do and reminders |
+
+Add endpoints in the correct app's `views.py`, `serializers.py`, and `urls.py`. Register routes in `config/urls.py` if new.
+
+## API design
+
+- Use DRF serializers for input validation and output shape.
+- Set explicit `permission_classes` on every view — do not rely on defaults alone for write operations.
+- Admin endpoints live under `/api/*/admin/` and require staff/superuser checks.
+- Paginate list endpoints; return consistent error bodies (`detail`, field errors).
+
+## Data
+
+- No hardcoded business data in views — use models, fixtures (`backend/fixtures/`), or management commands for seed data.
+- Migrations required for model changes: `python manage.py makemigrations` + `migrate`.
+- Media uploads via `Pillow`; serve in DEBUG via `static()` in urls.
+
+## Small safe changes
+
+- One app/concern per change. Do not refactor unrelated apps.
+- Preserve existing URL paths and response shapes unless versioning or explicit migration is requested.
+- Copy patterns from sibling views in the same app (e.g. `courses/views.py` for new course endpoints).
+
+## Environment
+
+- Secrets and config via `python-decouple` / `.env` (see `backend/.env.example`). Never commit secrets.

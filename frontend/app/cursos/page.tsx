@@ -19,14 +19,18 @@ interface Course {
 export default function CursosPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        setLoadError(false)
         const response = await coursesApi.list()
         setCourses(response.data.results || response.data)
       } catch (error) {
         console.error('Erro ao carregar cursos:', error)
+        setLoadError(true)
+        setCourses([])
       } finally {
         setLoading(false)
       }
@@ -61,6 +65,29 @@ export default function CursosPage() {
             <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
             <div className="absolute inset-0 border-4 border-transparent border-r-primary-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
           </div>
+        </div>
+      ) : loadError ? (
+        <div className="text-center py-12 sm:py-20">
+          <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Erro ao carregar cursos</h3>
+          <p className="text-sm sm:text-base text-gray-500 mb-6">
+            Não foi possível contactar o servidor. Verifique a ligação e tente novamente.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true)
+              coursesApi.list()
+                .then((response) => {
+                  setCourses(response.data.results || response.data)
+                  setLoadError(false)
+                })
+                .catch(() => setLoadError(true))
+                .finally(() => setLoading(false))
+            }}
+            className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
+          >
+            Tentar novamente
+          </button>
         </div>
       ) : courses.length === 0 ? (
         <div className="text-center py-12 sm:py-20">

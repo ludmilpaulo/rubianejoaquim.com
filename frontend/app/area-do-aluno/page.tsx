@@ -65,6 +65,7 @@ export default function AreaDoAlunoPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [mentorshipRequests, setMentorshipRequests] = useState<MentorshipRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
   const [uploading, setUploading] = useState<number | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [activeTab, setActiveTab] = useState<'courses' | 'mentorship' | 'profile'>('courses')
@@ -124,41 +125,25 @@ export default function AreaDoAlunoPage() {
     }
 
     try {
-      console.log('Buscando dados do aluno...')
       const [enrollmentsRes, mentorshipRes] = await Promise.all([
         coursesApi.myEnrollments(),
         mentorshipApi.myRequests(),
       ])
-      console.log('Dados recebidos:', { enrollmentsRes, mentorshipRes })
       setEnrollments(enrollmentsRes.data.results || enrollmentsRes.data || [])
       setMentorshipRequests(mentorshipRes.data.results || mentorshipRes.data || [])
-    } catch (error: any) {
+      setFetchError(false)
+    } catch (error: unknown) {
       console.error('Erro ao carregar dados:', error)
-      console.error('Detalhes do erro:', {
-        message: error.message,
-        code: error.code,
-        response: error.response?.data,
-        status: error.response?.status,
-        config: {
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
-          method: error.config?.method,
+      if (error && typeof error === 'object' && 'response' in error) {
+        const apiError = error as { response?: { status?: number } }
+        if (apiError.response?.status === 401) {
+          return
         }
-      })
-      
-      // Se for erro 401, o interceptor já vai redirecionar
-      if (error.response?.status === 401) {
-        // Token inválido - já será redirecionado pelo interceptor
-        return
       }
-      
-      // Network Error - backend might not be reachable
-      if (error.code === 'ECONNREFUSED' || error.message === 'Network Error' || !error.response) {
-        console.error('Erro de conexão: Backend não está acessível')
-        // Don't redirect, just show empty state
-        setEnrollments([])
-        setMentorshipRequests([])
-      }
+
+      setFetchError(true)
+      setEnrollments([])
+      setMentorshipRequests([])
     } finally {
       setLoading(false)
     }
@@ -302,6 +287,22 @@ export default function AreaDoAlunoPage() {
           paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
         }}
       >
+        {fetchError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <span>Não foi possível carregar os seus dados. Verifique a ligação ao servidor.</span>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true)
+                fetchData().finally(() => setLoading(false))
+              }}
+              className="text-red-900 font-semibold underline"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">

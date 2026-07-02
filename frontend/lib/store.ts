@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import Cookies from 'js-cookie'
 import { authApi } from './api'
 
+function authCookieOptions() {
+  return {
+    expires: 30,
+    sameSite: 'lax' as const,
+    secure: typeof window !== 'undefined' && window.location.protocol === 'https:',
+  }
+}
+
 interface User {
   id: number
   email: string
@@ -35,7 +43,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await authApi.login({ email, password })
       const { user, token } = response.data
-      Cookies.set('token', token, { expires: 30 })
+      Cookies.set('token', token, authCookieOptions())
       set({ user, token })
     } catch (error: any) {
       // Extract specific error message from response
@@ -70,7 +78,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await authApi.register(data)
       const { user, token } = response.data
-      Cookies.set('token', token, { expires: 30 })
+      Cookies.set('token', token, authCookieOptions())
       set({ user, token })
     } catch (error: any) {
       // Extract specific validation errors from Django REST Framework

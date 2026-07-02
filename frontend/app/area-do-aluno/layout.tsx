@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import AuthGuard from '@/components/AuthGuard'
 
 export const metadata: Metadata = {
   title: 'Área do Aluno | Rubiane Joaquim Educação Financeira',
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function AreaDoAlunoLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <AuthGuard>{children}</AuthGuard>
 }

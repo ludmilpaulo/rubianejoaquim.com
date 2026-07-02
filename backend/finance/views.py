@@ -67,22 +67,45 @@ from .services import (
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    """ViewSet para categorias - permite criar, editar e deletar"""
+    """ViewSet para categorias - sistema (user=null) + categorias pessoais do utilizador."""
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Category.objects.all()
+        queryset = Category.objects.filter(
+            Q(user__isnull=True) | Q(user=self.request.user)
+        )
         is_personal = self.request.query_params.get('is_personal', None)
         is_business = self.request.query_params.get('is_business', None)
-        
+
         if is_personal == 'true':
             queryset = queryset.filter(is_personal=True)
         if is_business == 'true':
             queryset = queryset.filter(is_business=True)
-        
+
         return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def _ensure_can_modify(self, instance):
+        user = self.request.user
+        is_admin = user.is_staff or user.is_superuser
+        if instance.user_id is None and not is_admin:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Não pode alterar categorias de sistema.')
+        if instance.user_id and instance.user_id != user.id and not is_admin:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Não pode alterar categorias de outro utilizador.')
+
+    def perform_update(self, serializer):
+        self._ensure_can_modify(serializer.instance)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._ensure_can_modify(instance)
+        instance.delete()
 
 
 # ==================== PERSONAL FINANCE ====================

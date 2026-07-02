@@ -56,9 +56,25 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle errors
+// Response interceptor: reject 4xx (validateStatus accepts them without throwing)
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.status >= 400) {
+      const body = (response.data || {}) as ApiErrorBody
+      const fieldError =
+        (Array.isArray(body.email) ? body.email[0] : undefined) ||
+        (Array.isArray(body.password) ? body.password[0] : undefined) ||
+        (Array.isArray(body.non_field_errors) ? body.non_field_errors[0] : undefined)
+      const message =
+        (typeof body.detail === 'string' ? body.detail : undefined) ||
+        (typeof body.error === 'string' ? body.error : undefined) ||
+        (typeof body.message === 'string' ? body.message : undefined) ||
+        fieldError ||
+        `Request failed (${response.status})`
+      return Promise.reject(new Error(message))
+    }
+    return response
+  },
   async (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid

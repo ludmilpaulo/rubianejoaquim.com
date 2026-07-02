@@ -15,7 +15,7 @@
     "submit:android": "eas submit --profile production --platform android",
     "start": "expo start",
     "start:localhost": "EXPO_USE_LOCALHOST=1 expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "ios": "EXPO_USE_LOCALHOST=1 expo start --ios",
     "ios:manual": "EXPO_USE_LOCALHOST=1 expo start --localhost",
     "ios:network": "expo start --ios",

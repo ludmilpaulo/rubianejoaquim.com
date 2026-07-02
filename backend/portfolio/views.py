@@ -41,6 +41,7 @@ from .serializers import (
     NewsletterSubscriberSerializer,
     PageSEOSerializer,
 )
+from .cms_defaults import apply_homepage_defaults, default_navigation
 
 
 class PortfolioProjectViewSet(viewsets.ReadOnlyModelViewSet):
@@ -169,6 +170,15 @@ class NavItemViewSet(viewsets.ReadOnlyModelViewSet):
             qs = qs.filter(placement__in=[placement, 'both'])
         return qs
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        if queryset.exists():
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        placement = request.query_params.get('placement')
+        lang = request.query_params.get('lang')
+        return Response(default_navigation(lang, placement))
+
 
 class FAQViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = FAQ.objects.filter(is_active=True)
@@ -233,12 +243,13 @@ class PortfolioHomeViewSet(viewsets.ViewSet):
 
     def list(self, request):
         ctx = {'request': request}
+        lang = request.query_params.get('lang')
         all_sections = HomeSection.objects.all()
         section_visibility = {
             s.section_key: s.is_active for s in all_sections
         }
         active_sections = all_sections.filter(is_active=True)
-        return Response({
+        payload = {
             'sections': HomeSectionSerializer(active_sections, many=True, context=ctx).data,
             'section_visibility': section_visibility,
             'services': ServiceSerializer(
@@ -287,4 +298,5 @@ class PortfolioHomeViewSet(viewsets.ViewSet):
                 if PageSEO.objects.filter(page_key='home').exists()
                 else {}
             ),
-        })
+        }
+        return Response(apply_homepage_defaults(payload, lang))

@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from '@/contexts/LocaleContext'
+import { useTranslations, useLocale } from '@/contexts/LocaleContext'
 import { useSiteData, navByPlacement } from '@/contexts/SiteDataContext'
+import { defaultNavItems } from '@/lib/default-nav'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function Navbar() {
@@ -13,6 +14,7 @@ export default function Navbar() {
   const router = useRouter()
   const t = useTranslations()
   const { navigation, settings } = useSiteData()
+  const { locale } = useLocale()
   const [mounted, setMounted] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -29,7 +31,7 @@ export default function Navbar() {
 
   const showLoading = mounted && isLoading
   const showUser = mounted && !isLoading && user
-  const navLinks = navByPlacement(navigation, 'header')
+  const navLinks = navByPlacement(navigation.length > 0 ? navigation : defaultNavItems(locale), 'header')
   const brandName = settings.brand_tagline ? 'Rubiane Joaquim' : 'Rubiane Joaquim'
   const workCta = navLinks.find((l) => l.url.includes('contact'))?.label || 'Contact'
 

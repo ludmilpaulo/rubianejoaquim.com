@@ -1,0 +1,54 @@
+---
+description: Deployment, env vars, and production safety for PythonAnywhere + Vercel + EAS
+alwaysApply: true
+---
+
+# Production Readiness Rules
+
+## Deployment targets
+
+| Service | Host | Docs |
+|---------|------|------|
+| API | PythonAnywhere (`ludmilpaulo.pythonanywhere.com`) | `DEPLOYMENT.md` |
+| Web | Vercel/Netlify (`www.rubianejoaquim.com`) | `DEPLOYMENT.md` |
+| Mobile | EAS Build + OTA updates | `mobile/package.json` scripts |
+
+## Environment variables
+
+**Frontend** (`.env.local` / build-time):
+
+- `NEXT_PUBLIC_API_URL` — defaults to production API if unset in prod builds
+
+**Mobile** (`.env` / EAS secrets):
+
+- `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_DEV_API_HOST`, `EXPO_PUBLIC_USE_DEV_API`
+
+**Backend** (`backend/.env`):
+
+- `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `FRONTEND_URL`
+- `APPLE_BUNDLE_ID`, `APPLE_SHARED_SECRET` for IAP
+- Email and OpenAI keys per `EMAIL_SETUP.md` / `OPENAI_SETUP.md`
+
+Never commit `.env` files. Update `.env.example` when adding new required vars.
+
+## Safe change practices
+
+- Do not change production API response shapes without updating web and mobile clients.
+- Run `npm run build` (frontend) before merging large UI changes.
+- Backend: run `migrate` on deploy; use `load_production_data` for CMS fixtures only when intended.
+- Mobile: version bump via `npm run version:bump`; production builds use `build:production`.
+
+## Logging
+
+- Use `frontend/lib/logger.ts` and `mobile/src/utils/logger.ts` — not raw `console.log` for errors in new code.
+
+## Feature flags and fallbacks
+
+- Do not add client-side fallbacks that serve fake data when the API fails — show error states instead.
+- `getApiBaseUrl()` fallbacks to production URLs are for missing env config only, not for substituting API responses.
+
+## Before deploy-related changes
+
+1. Confirm CORS allows the target frontend origin.
+2. Confirm token auth still works cross-origin.
+3. For IAP/subscription changes: run `check_iap_production.py` and verify `subscriptions/iap_views.py` behavior.

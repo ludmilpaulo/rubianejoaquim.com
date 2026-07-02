@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import AuthGuard from '@/components/AuthGuard'
 
 export const metadata: Metadata = {
   title: 'Dashboard Admin | Rubiane Joaquim Educação Financeira',
@@ -14,5 +15,5 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
+  return <AuthGuard requireAdmin>{children}</AuthGuard>
 }

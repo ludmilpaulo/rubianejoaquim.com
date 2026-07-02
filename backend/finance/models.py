@@ -9,6 +9,14 @@ User = get_user_model()
 
 class Category(models.Model):
     """Categoria para despesas pessoais e de negócios"""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='finance_categories',
+        help_text="Null = categoria de sistema partilhada por todos os utilizadores",
+    )
     name = models.CharField(max_length=100, help_text="Nome da categoria")
     icon = models.CharField(max_length=50, default="tag", help_text="Ícone da categoria")
     color = models.CharField(max_length=7, default="#6366f1", help_text="Cor em hexadecimal")

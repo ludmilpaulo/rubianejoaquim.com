@@ -28,6 +28,7 @@ export default function AdminAnalyticsPage() {
   const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -48,10 +49,13 @@ export default function AdminAnalyticsPage() {
   const fetchStats = async () => {
     try {
       setLoading(true)
+      setLoadError(false)
       const response = await adminApi.stats()
       setStats(response.data)
     } catch (error) {
       console.error('Error fetching stats:', error)
+      setLoadError(true)
+      setStats(null)
     } finally {
       setLoading(false)
     }
@@ -69,10 +73,25 @@ export default function AdminAnalyticsPage() {
     return null
   }
 
-  if (loading || !stats) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+
+  if (loadError || !stats) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
+        <p className="text-gray-700 mb-4">Não foi possível carregar as estatísticas.</p>
+        <button
+          type="button"
+          onClick={fetchStats}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
+        >
+          Tentar novamente
+        </button>
       </div>
     )
   }

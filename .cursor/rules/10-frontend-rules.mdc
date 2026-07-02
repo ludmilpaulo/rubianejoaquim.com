@@ -1,0 +1,56 @@
+---
+description: Next.js web and Expo mobile TypeScript/React conventions
+globs: "{frontend,mobile}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Frontend & Mobile Rules
+
+## API clients
+
+- **Web**: import from `@/lib/api` or `@/lib/public-api`. Do not create ad-hoc `fetch`/`axios` instances.
+- **Mobile**: import from `mobile/src/services/api.ts`. Use `getApiBaseUrl()` from `mobile/src/config/api.ts`.
+- Add new API methods to the existing grouped exports (`authApi`, `coursesApi`, `adminApi`, etc.).
+
+## TypeScript
+
+```typescript
+// ❌ BAD
+catch (error: any) { ... }
+const data: any = response.data
+
+// ✅ GOOD
+catch (error: unknown) {
+  const message = getApiErrorMessage(error, 'Fallback message')
+}
+```
+
+- Define shared shapes in `lib/types/api.ts` (web) or `src/types/api.ts` (mobile).
+- Prefer `interface` for API payloads; use `type` for unions and utility types.
+
+## React patterns
+
+- Use functional components. Web admin pages are `'use client'` where they use hooks.
+- Colocate API calls in page/screen logic or thin hooks; keep components focused on rendering.
+- Reuse existing UI: Tailwind + components in `frontend/components/`; React Native Paper + theme in `mobile/src/theme/`.
+
+## State management
+
+- **Web**: Zustand (`useAuthStore`) for auth; local `useState`/`useEffect` for page data unless a store already exists.
+- **Mobile**: Redux Toolkit slices in `mobile/src/store/`. Dispatch thunks (`login`, `checkAuth`) instead of calling `authApi` directly from screens.
+
+## Routing
+
+- Web App Router: pages in `frontend/app/`. Admin dashboard under `frontend/app/admin/`.
+- Mobile: navigators in `mobile/src/navigation/`, screens in `mobile/src/screens/`.
+
+## i18n
+
+- Web: `frontend/lib/i18n/` and `LocaleContext`.
+- Mobile: `mobile/src/i18n/` and `I18nContext`. User-facing strings go through i18n keys, not inline Portuguese/English literals for new UI.
+
+## Do not
+
+- Hardcode course lists, prices, CMS copy, or user data in components.
+- Duplicate API base URL logic outside `getApiBaseUrl()` helpers.
+- Remove screens, routes, or API methods without explicit instruction.
