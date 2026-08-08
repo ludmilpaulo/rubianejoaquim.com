@@ -75,6 +75,7 @@ export const authApi = {
     api.post('/auth/register/', data),
   login: (data: { email: string; password: string }) =>
     api.post('/auth/login/', data),
+  logout: () => api.post('/auth/logout/'),
   me: () => api.get('/auth/me/'),
   updateProfile: (data: { first_name?: string; last_name?: string; phone?: string; address?: string; email?: string }) =>
     api.put('/auth/profile/', data),
@@ -85,6 +86,31 @@ export const authApi = {
     api.post('/auth/password-reset-confirm/', { uid, token, new_password: newPassword }),
   sendAppUpdateNotification: (appVersion: string) =>
     api.post('/auth/send-app-update-notification/', { app_version: appVersion }),
+  socialConfig: () =>
+    api.get<{
+      google_client_id: string
+      facebook_app_id: string
+      google_enabled: boolean
+      facebook_enabled: boolean
+      tiktok_enabled: boolean
+    }>('/auth/social/config/'),
+  socialGoogle: (idToken: string) =>
+    api.post('/auth/social/google/', { id_token: idToken }),
+  socialFacebook: (accessToken: string) =>
+    api.post('/auth/social/facebook/', { access_token: accessToken }),
+  socialLinkConfirm: (linkToken: string, password: string) =>
+    api.post('/auth/social/link-confirm/', { link_token: linkToken, password }),
+  loginMethods: () => api.get('/auth/social/methods/'),
+  unlinkSocial: (provider: string) =>
+    api.delete<{ status: string; methods: {
+      email: boolean
+      email_address: string | null
+      email_verified: boolean
+      google: boolean
+      facebook: boolean
+      tiktok: boolean
+      providers: string[]
+    } }>(`/auth/social/${provider}/unlink/`),
 }
 
 // Courses

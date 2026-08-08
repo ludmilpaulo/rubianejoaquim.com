@@ -92,14 +92,32 @@ export const checkPaidAccess = createAsyncThunk('auth/checkPaidAccess', async ()
   return await accessApi.checkPaidAccess()
 })
 
+export const socialSession = createAsyncThunk(
+  'auth/socialSession',
+  async ({ user, token }: { user: User; token: string }, { rejectWithValue }) => {
+    try {
+      await AsyncStorage.setItem('token', token)
+      await AsyncStorage.setItem('user', JSON.stringify(user))
+      return { user, token }
+    } catch (error: unknown) {
+      return rejectWithValue(getApiErrorMessage(error, 'api.errors.login.failed'))
+    }
+  }
+)
+
 export const logout = createAsyncThunk('auth/logout', async () => {
+  try {
+    await authApi.logout()
+  } catch {
+    // ignore
+  }
   await AsyncStorage.removeItem('token')
   await AsyncStorage.removeItem('user')
-  
+
   // Optionally clear biometric credentials on logout (uncomment if desired)
   // import { clearBiometricCredentials } from '../utils/biometric'
   // await clearBiometricCredentials()
-  
+
   return null
 })
 
@@ -117,6 +135,14 @@ const authSlice = createSlice({
         state.isLoading = true
       })
       .addCase(login.fulfilled, (state, action) => {
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isLoading = false
+        state.hasPaidAccess = false
+        state.hasExpiredSubscription = false
+        state.accessChecked = false
+      })
+      .addCase(socialSession.fulfilled, (state, action) => {
         state.user = action.payload.user
         state.token = action.payload.token
         state.isLoading = false

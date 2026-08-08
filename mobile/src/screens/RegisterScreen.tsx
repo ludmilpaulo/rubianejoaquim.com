@@ -4,8 +4,8 @@ import { TextInput, Button, Text, Card } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch } from '../hooks/redux'
-import { register } from '../store/authSlice'
-import { checkPaidAccess } from '../store/authSlice'
+import { register, socialSession, checkPaidAccess } from '../store/authSlice'
+import SocialAuthButtons from '../components/SocialAuthButtons'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
@@ -99,6 +99,23 @@ export default function RegisterScreen({ navigation }: Props) {
               <Text variant="bodyMedium" style={styles.subtitle}>
                 {t('auth.register.subtitle')}
               </Text>
+
+              <SocialAuthButtons
+                disabled={loading}
+                onSuccess={async ({ user, token }) => {
+                  setLoading(true)
+                  try {
+                    await dispatch(socialSession({ user, token })).unwrap()
+                    await dispatch(checkPaidAccess()).unwrap()
+                    Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
+                    navigation.replace('AccessDenied')
+                  } catch {
+                    setError(t('auth.register.verifyData'))
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+              />
 
               {error ? (
                 <View style={styles.errorContainer}>

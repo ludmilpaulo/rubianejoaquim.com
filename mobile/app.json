@@ -2,6 +2,7 @@
   "expo": {
     "name": "Zenda",
     "slug": "zenda",
+    "scheme": "zenda",
     "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -45,7 +46,8 @@
       "expo-notifications",
       "expo-updates",
       "expo-localization",
-      "react-native-iap"
+      "react-native-iap",
+      "expo-web-browser"
     ],
     "updates": {
       "url": "https://u.expo.dev/eed2db02-a05b-4292-9a7c-777b198b7b6e",

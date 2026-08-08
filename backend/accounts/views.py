@@ -46,10 +46,13 @@ class RegisterView(generics.CreateAPIView):
 @permission_classes([AllowAny])
 @csrf_exempt
 def login_view(request):
+    from django.utils import timezone
     serializer = LoginSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
         # Don't call login() for API token auth - it triggers CSRF checks
         # login(request, user)
         return Response({
@@ -174,10 +177,13 @@ def request_account_deletion(request):
     # In production, consider a grace period (e.g., 30 days) before actual deletion
     user.is_active = False
     user.save()
-    
-    # Delete auth token to log out the user
+
+    # Remove social-account links and app sessions so the user cannot re-auth into this account
+    from .models import SocialAccount, OAuthState
+    SocialAccount.objects.filter(user=user).delete()
+    OAuthState.objects.filter(user=user).delete()
     Token.objects.filter(user=user).delete()
-    
+
     return Response({
         'message': 'Sua solicitação de exclusão de conta foi recebida. Sua conta e dados associados serão removidos em breve.',
         'account_deactivated': True
@@ -197,7 +203,7 @@ def send_app_update_notification(request):
     app_version = request.data.get('app_version', 'Nova versão')
     frontend_url = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
     
-    users = User.objects.filter(is_active=True)
+    users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email='')
     total_users = users.count()
     sent_count = 0
     failed_count = 0

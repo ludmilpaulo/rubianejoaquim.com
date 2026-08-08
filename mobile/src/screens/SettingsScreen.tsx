@@ -28,6 +28,12 @@ export default function SettingsScreen() {
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricType, setBiometricType] = useState('Biometric')
+  const [loginMethods, setLoginMethods] = useState<{
+    email: boolean
+    google: boolean
+    facebook: boolean
+    tiktok: boolean
+  } | null>(null)
 
   useEffect(() => {
     areNotificationsEnabled().then(setNotificationsEnabled)
@@ -40,6 +46,17 @@ export default function SettingsScreen() {
       })
       .catch(() => setBiometricAvailable(false))
     isBiometricAppLockEnabled().then(setBiometricEnabled).catch(() => setBiometricEnabled(false))
+    authApi
+      .loginMethods()
+      .then((m) =>
+        setLoginMethods({
+          email: m.email,
+          google: m.google,
+          facebook: m.facebook,
+          tiktok: m.tiktok,
+        })
+      )
+      .catch(() => setLoginMethods(null))
   }, [])
 
   const handleNotificationsToggle = (value: boolean) => {
@@ -110,6 +127,79 @@ export default function SettingsScreen() {
             />
           </Card.Content>
         </Card>
+
+        {loginMethods ? (
+          <Card style={styles.card}>
+            <Card.Content>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Login e segurança
+              </Text>
+              {(
+                [
+                  ['email', 'Email / palavra-passe', loginMethods.email],
+                  ['google', 'Google', loginMethods.google],
+                  ['facebook', 'Facebook', loginMethods.facebook],
+                  ['tiktok', 'TikTok', loginMethods.tiktok],
+                ] as const
+              ).map(([key, label, linked], index) => (
+                <React.Fragment key={key}>
+                  {index > 0 ? <Divider /> : null}
+                  <List.Item
+                    title={label}
+                    description={linked ? 'Associado' : 'Não associado'}
+                    left={(props) => (
+                      <List.Icon
+                        {...props}
+                        icon={linked ? 'check-circle' : 'circle-outline'}
+                        color={linked ? '#16a34a' : '#9ca3af'}
+                      />
+                    )}
+                    right={
+                      linked && key !== 'email'
+                        ? () => (
+                            <Text
+                              style={{ color: '#dc2626', alignSelf: 'center', marginRight: 8 }}
+                              onPress={() => {
+                                Alert.alert('Remover método', `Remover ${label}?`, [
+                                  { text: 'Cancelar', style: 'cancel' },
+                                  {
+                                    text: 'Remover',
+                                    style: 'destructive',
+                                    onPress: () => {
+                                      authApi
+                                        .unlinkSocial(key)
+                                        .then((res) => {
+                                          const m = res.methods
+                                          setLoginMethods({
+                                            email: m.email,
+                                            google: m.google,
+                                            facebook: m.facebook,
+                                            tiktok: m.tiktok,
+                                          })
+                                        })
+                                        .catch((err) => {
+                                          alert.info(
+                                            'Login',
+                                            err?.response?.data?.error ||
+                                              'Não foi possível remover este método.'
+                                          )
+                                        })
+                                    },
+                                  },
+                                ])
+                              }}
+                            >
+                              Remover
+                            </Text>
+                          )
+                        : undefined
+                    }
+                  />
+                </React.Fragment>
+              ))}
+            </Card.Content>
+          </Card>
+        ) : null}
 
         {/* Preferences Section */}
         <Card style={styles.card}>

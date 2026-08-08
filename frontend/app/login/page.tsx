@@ -1,18 +1,29 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
+import SocialLoginButtons from '@/components/SocialLoginButtons'
+import { authApi } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/types/api'
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter()
-  const { login, register, user } = useAuthStore()
+  const searchParams = useSearchParams()
+  const { login, register, applySession } = useAuthStore()
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
+  const [linkState, setLinkState] = useState<{
+    link_token: string
+    email: string
+    provider: string
+    message?: string
+  } | null>(null)
+  const [linkPassword, setLinkPassword] = useState('')
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -22,6 +33,48 @@ export default function LoginPage() {
     last_name: '',
     phone: '',
   })
+
+  useEffect(() => {
+    const social = searchParams.get('social')
+    const status = searchParams.get('status')
+    if (!social) return
+    if (status === 'cancelled') {
+      // Soft return — no error banner
+      return
+    }
+    if (status === 'link_required') {
+      setLinkState({
+        link_token: searchParams.get('link_token') || '',
+        email: searchParams.get('email') || '',
+        provider: searchParams.get('provider') || social,
+        message: 'Já existe uma conta com este email. Introduza a palavra-passe para associar.',
+      })
+      return
+    }
+    if (status === 'error') {
+      setError(searchParams.get('message') || 'Não foi possível concluir o login social. Tente novamente.')
+    }
+  }, [searchParams])
+
+  const handleLinkConfirm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!linkState?.link_token || !linkPassword) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await authApi.socialLinkConfirm(linkState.link_token, linkPassword)
+      if (res.data.token && res.data.user) {
+        applySession(res.data.user, res.data.token)
+        setLinkState(null)
+        if (res.data.user.is_admin) router.push('/admin')
+        else router.push('/area-do-aluno')
+      }
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Não foi possível associar a conta. Verifique a palavra-passe.'))
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -170,6 +223,65 @@ export default function LoginPage() {
             </div>
           </div>
         )}
+
+        {linkState && (
+          <form onSubmit={handleLinkConfirm} className="mb-6 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm text-amber-900">
+              {linkState.message || 'Já existe uma conta com este email.'}
+            </p>
+            <p className="text-sm text-amber-800">
+              Email: <strong>{linkState.email}</strong> · Provedor: <strong>{linkState.provider}</strong>
+            </p>
+            <input
+              type="password"
+              required
+              value={linkPassword}
+              onChange={(e) => setLinkPassword(e.target.value)}
+              placeholder="Palavra-passe da conta existente"
+              className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-amber-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+              >
+                Associar e entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinkState(null)}
+                className="px-3 py-2 text-sm text-amber-900"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="mb-6">
+          <SocialLoginButtons
+            onError={setError}
+            onLinkRequired={(payload) => {
+              setLinkState({
+                link_token: payload.link_token,
+                email: payload.email,
+                provider: payload.provider,
+                message: payload.message,
+              })
+              setError('')
+            }}
+          />
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-3 text-gray-500">ou</span>
+            </div>
+          </div>
+          <p className="text-center text-sm text-gray-600 mb-1">Continuar com email</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
@@ -323,8 +435,9 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-2">
           <button
+            type="button"
             onClick={() => {
               setIsLogin(!isLogin)
               setError('')
@@ -333,8 +446,29 @@ export default function LoginPage() {
           >
             {isLogin ? 'Não tem conta? Registar' : 'Já tem conta? Entrar'}
           </button>
+          <p className="text-xs text-gray-500">
+            Ao continuar, aceita a nossa{' '}
+            <Link href="/privacy-policy" className="underline hover:text-gray-700">
+              Política de Privacidade
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <LoginPageInner />
+    </Suspense>
   )
 }

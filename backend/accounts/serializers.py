@@ -12,10 +12,13 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address',
             'referral_code', 'preferred_locale', 'preferred_currency', 'onboarding_completed',
-            'onboarding_goals', 'finance_level',
+            'onboarding_goals', 'finance_level', 'email_verified', 'profile_image_url',
             'dark_mode', 'date_joined', 'is_staff', 'is_superuser', 'is_admin',
         ]
-        read_only_fields = ['id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code']
+        read_only_fields = [
+            'id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code',
+            'email_verified', 'profile_image_url',
+        ]
     
     def get_is_admin(self, obj):
         return obj.is_staff or obj.is_superuser

@@ -1,11 +1,14 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 import secrets
 
 
 class User(AbstractUser):
     """Custom User model"""
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
+    email_verified = models.BooleanField(default=False)
     phone = models.CharField(max_length=20, blank=True)
     address = models.TextField(blank=True, help_text="Endereço completo")
     referral_code = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Código de referência único")
@@ -21,6 +24,7 @@ class User(AbstractUser):
         help_text='beginner, intermediate, advanced',
     )
     profile_photo = models.ImageField(upload_to='profiles/', blank=True, null=True)
+    profile_image_url = models.URLField(max_length=500, blank=True, help_text='External profile image from social providers')
     dark_mode = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -29,6 +33,8 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
         if not self.referral_code:
             self.referral_code = self.generate_referral_code()
         super().save(*args, **kwargs)
@@ -40,5 +46,87 @@ class User(AbstractUser):
             if not User.objects.filter(referral_code=code).exists():
                 return code
 
+    def has_usable_password_login(self):
+        return self.has_usable_password()
+
     def __str__(self):
-        return self.email
+        return self.email or self.username
+
+
+class SocialAccount(models.Model):
+    """Linked OAuth provider identity for a user. Unique per provider + provider_user_id."""
+
+    PROVIDER_GOOGLE = 'google'
+    PROVIDER_FACEBOOK = 'facebook'
+    PROVIDER_TIKTOK = 'tiktok'
+    PROVIDER_CHOICES = [
+        (PROVIDER_GOOGLE, 'Google'),
+        (PROVIDER_FACEBOOK, 'Facebook'),
+        (PROVIDER_TIKTOK, 'TikTok'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='social_accounts',
+    )
+    provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES)
+    provider_user_id = models.CharField(max_length=255)
+    provider_email = models.EmailField(blank=True, null=True)
+    provider_data = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['provider', 'provider_user_id'],
+                name='uniq_social_provider_user',
+            ),
+            models.UniqueConstraint(
+                fields=['user', 'provider'],
+                name='uniq_user_provider',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['provider', 'provider_user_id']),
+        ]
+
+    def __str__(self):
+        return f'{self.provider}:{self.provider_user_id} → {self.user_id}'
+
+
+class OAuthState(models.Model):
+    """Short-lived CSRF state for OAuth redirect flows (TikTok, etc.)."""
+
+    PURPOSE_LOGIN = 'login'
+    PURPOSE_LINK = 'link'
+    PURPOSE_CHOICES = [
+        (PURPOSE_LOGIN, 'Login'),
+        (PURPOSE_LINK, 'Link'),
+    ]
+
+    state = models.CharField(max_length=64, unique=True, db_index=True)
+    provider = models.CharField(max_length=32)
+    purpose = models.CharField(max_length=16, choices=PURPOSE_CHOICES, default=PURPOSE_LOGIN)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='oauth_states',
+    )
+    redirect_path = models.CharField(max_length=255, blank=True, default='/area-do-aluno')
+    code_verifier = models.CharField(max_length=128, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        if self.consumed_at is not None:
+            return False
+        return timezone.now() < self.expires_at
+
+    def consume(self):
+        self.consumed_at = timezone.now()
+        self.save(update_fields=['consumed_at'])

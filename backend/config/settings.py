@@ -161,12 +161,18 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_burst': '30/min',
+        'auth_user': '60/min',
+    },
 }
 
 # CORS
+_cors_default = 'http://localhost:3000,http://127.0.0.1:3000,https://www.rubianejoaquim.com,https://rubianejoaquim.com'
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    s.strip()
+    for s in config('CORS_ALLOWED_ORIGINS', default=_cors_default).split(',')
+    if s.strip()
 ]
 
 # Allow all origins in development (for mobile app)
@@ -211,3 +217,29 @@ APP_STORE_URL_ANDROID = config('APP_STORE_URL_ANDROID', default='https://play.go
 # App Store Connect → Your App → App Information → App-Specific Shared Secret
 APPLE_SHARED_SECRET = config('APPLE_SHARED_SECRET', default=None)
 APPLE_BUNDLE_ID = config('APPLE_BUNDLE_ID', default='com.rubianejoaquim.zenda')
+
+# ---------------------------------------------------------------------------
+# Social login (Google / Facebook / TikTok)
+# Secrets must stay server-side only. Never expose CLIENT_SECRET / APP_SECRET.
+# Use separate credentials for development vs production.
+# ---------------------------------------------------------------------------
+API_PUBLIC_URL = config('API_PUBLIC_URL', default='https://ludmilpaulo.pythonanywhere.com')
+
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')  # server-only; GIS web often needs ID only
+GOOGLE_CLIENT_ID_IOS = config('GOOGLE_CLIENT_ID_IOS', default='')
+GOOGLE_CLIENT_ID_ANDROID = config('GOOGLE_CLIENT_ID_ANDROID', default='')
+
+FACEBOOK_APP_ID = config('FACEBOOK_APP_ID', default='')
+FACEBOOK_APP_SECRET = config('FACEBOOK_APP_SECRET', default='')
+
+TIKTOK_CLIENT_KEY = config('TIKTOK_CLIENT_KEY', default='')
+TIKTOK_CLIENT_SECRET = config('TIKTOK_CLIENT_SECRET', default='')
+TIKTOK_REDIRECT_URI = config(
+    'TIKTOK_REDIRECT_URI',
+    default='',  # falls back to API_PUBLIC_URL + /api/auth/social/tiktok/callback/
+)
+TIKTOK_SCOPES = config('TIKTOK_SCOPES', default='user.info.basic')
+
+# Mobile deep-link target after TikTok OAuth (must match app scheme)
+MOBILE_OAUTH_REDIRECT_URI = config('MOBILE_OAUTH_REDIRECT_URI', default='zenda://social-callback')

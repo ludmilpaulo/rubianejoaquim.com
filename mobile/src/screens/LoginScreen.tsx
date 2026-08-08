@@ -4,14 +4,16 @@ import { TextInput, Button, Text, Card, Checkbox } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch } from '../hooks/redux'
-import { login } from '../store/authSlice'
+import { login, socialSession, checkPaidAccess } from '../store/authSlice'
+import SocialAuthButtons from '../components/SocialAuthButtons'
+import { authApi } from '../services/api'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
 import { getApiBaseUrl } from '../config/api'
 import { getThunkErrorMessage } from '../utils/thunkError'
 import { logger } from '../utils/logger'
-import { isApiError } from '../types/api'
+import { getApiErrorMessage, isApiError } from '../types/api'
 
 type Props = StackScreenProps<AuthStackParamList, 'Login'>
 import {
@@ -66,6 +68,12 @@ export default function LoginScreen({ navigation }: Props) {
   const [biometricType, setBiometricType] = useState('')
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [enableBiometricOption, setEnableBiometricOption] = useState(false)
+  const [linkState, setLinkState] = useState<{
+    link_token: string
+    email: string
+    provider: string
+  } | null>(null)
+  const [linkPassword, setLinkPassword] = useState('')
 
   useEffect(() => {
     const checkBiometric = async () => {
@@ -244,6 +252,72 @@ export default function LoginScreen({ navigation }: Props) {
                   <Text style={[styles.error, errorStyle && styles.errorDangerText]}>
                     {displayError}
                   </Text>
+                </View>
+              ) : null}
+
+              <SocialAuthButtons
+                disabled={loading}
+                onSuccess={async ({ user, token }) => {
+                  setLoading(true)
+                  try {
+                    await dispatch(socialSession({ user, token })).unwrap()
+                    await dispatch(checkPaidAccess()).unwrap()
+                  } catch (err) {
+                    const msg = getThunkErrorMessage(err, 'api.errors.login.failed')
+                    setError(msg)
+                    showLoginErrorAlert(msg)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                onLinkRequired={(payload) => {
+                  setLinkState(payload)
+                  setError('')
+                }}
+              />
+
+              {linkState ? (
+                <View style={styles.linkBox}>
+                  <Text style={styles.linkText}>
+                    Já existe uma conta com {linkState.email}. Introduza a palavra-passe para associar{' '}
+                    {linkState.provider}.
+                  </Text>
+                  <TextInput
+                    label="Palavra-passe"
+                    value={linkPassword}
+                    onChangeText={setLinkPassword}
+                    mode="outlined"
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                  <Button
+                    mode="contained"
+                    loading={loading}
+                    disabled={loading || !linkPassword}
+                    onPress={async () => {
+                      setLoading(true)
+                      setError('')
+                      try {
+                        const data = await authApi.socialLinkConfirm(linkState.link_token, linkPassword)
+                        if (data.token && data.user) {
+                          await dispatch(socialSession({ user: data.user, token: data.token })).unwrap()
+                          await dispatch(checkPaidAccess()).unwrap()
+                          setLinkState(null)
+                          setLinkPassword('')
+                        }
+                      } catch (err) {
+                        const msg = getApiErrorMessage(err, 'Não foi possível associar a conta.')
+                        setError(msg)
+                        Alert.alert('Associar conta', msg)
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    buttonColor="#b45309"
+                    style={styles.button}
+                  >
+                    Associar e entrar
+                  </Button>
                 </View>
               ) : null}
 
@@ -443,6 +517,20 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     color: '#6b7280',
     lineHeight: 20,
+  },
+  linkBox: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  linkText: {
+    color: '#92400e',
+    fontSize: 13,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   input: {
     marginBottom: 16,

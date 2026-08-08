@@ -235,6 +235,65 @@ export const authApi = {
     })
     return response.data
   },
+
+  logout: async () => {
+    try {
+      await api.post('/auth/logout/')
+    } catch {
+      // Best-effort revoke
+    }
+  },
+
+  socialConfig: async () => {
+    const response = await api.get('/auth/social/config/')
+    return response.data as {
+      google_client_id: string
+      facebook_app_id: string
+      google_enabled: boolean
+      facebook_enabled: boolean
+      tiktok_enabled: boolean
+    }
+  },
+
+  socialGoogle: async (idToken: string) => {
+    const response = await api.post('/auth/social/google/', { id_token: idToken })
+    return response.data
+  },
+
+  socialFacebook: async (accessToken: string) => {
+    const response = await api.post('/auth/social/facebook/', { access_token: accessToken })
+    return response.data
+  },
+
+  socialLinkConfirm: async (linkToken: string, password: string) => {
+    const response = await api.post('/auth/social/link-confirm/', {
+      link_token: linkToken,
+      password,
+    })
+    return response.data
+  },
+
+  loginMethods: async () => {
+    const response = await api.get('/auth/social/methods/')
+    return response.data as {
+      email: boolean
+      email_address: string | null
+      email_verified: boolean
+      google: boolean
+      facebook: boolean
+      tiktok: boolean
+      providers: string[]
+    }
+  },
+
+  unlinkSocial: async (provider: string) => {
+    const response = await api.delete(`/auth/social/${provider}/unlink/`)
+    return response.data
+  },
+
+  setSessionToken: async (token: string) => {
+    await AsyncStorage.setItem('token', token)
+  },
 }
 
 // Access Verification API

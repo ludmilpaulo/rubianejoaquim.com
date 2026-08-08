@@ -6,6 +6,7 @@ import { useAuthStore } from '@/lib/store'
 import { coursesApi, mentorshipApi, authApi } from '@/lib/api'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils/currency'
+import LoginMethodsPanel from '@/components/LoginMethodsPanel'
 
 interface Enrollment {
   id: number
@@ -675,6 +676,8 @@ export default function AreaDoAlunoPage() {
                     Editar Perfil
                   </button>
                 </div>
+
+                <LoginMethodsPanel />
 
                 {/* Referral Section */}
                 <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 mb-6">
