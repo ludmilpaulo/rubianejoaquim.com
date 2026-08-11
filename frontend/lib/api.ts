@@ -89,6 +89,8 @@ export const authApi = {
   socialConfig: () =>
     api.get<{
       google_client_id: string
+      google_client_id_ios: string
+      google_client_id_android: string
       facebook_app_id: string
       google_enabled: boolean
       facebook_enabled: boolean

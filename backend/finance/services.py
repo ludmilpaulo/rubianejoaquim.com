@@ -8,6 +8,7 @@ from typing import Any
 from django.db.models import Sum
 from django.utils import timezone
 
+from .fx import convert_amount, sum_in_currency
 from .models import Budget, Debt, Goal, PersonalExpense, PersonalIncome, Sale, BusinessExpense
 
 
@@ -17,21 +18,32 @@ def _decimal(value: Decimal | None) -> Decimal:
     return Decimal(str(value)).quantize(Decimal('0.01'))
 
 
+def _preferred(user) -> str:
+    return (getattr(user, 'preferred_currency', None) or 'AOA').upper()
+
+
+def _sum_queryset_amounts(qs, *, amount_field='amount', currency_field='currency', target: str) -> Decimal:
+    rows = [
+        (getattr(obj, amount_field), getattr(obj, currency_field, None) or target)
+        for obj in qs.only(amount_field, currency_field)
+    ]
+    return sum_in_currency(rows, target)
+
+
 def compute_financial_health(user, month: int | None = None, year: int | None = None) -> dict[str, Any]:
     """Score 0-100 from spending, savings, debt, budget adherence, goals."""
     today = timezone.now().date()
     month = month or today.month
     year = year or today.year
+    preferred = _preferred(user)
 
-    expenses_total = _decimal(
-        PersonalExpense.objects.filter(
-            user=user, date__month=month, date__year=year
-        ).aggregate(s=Sum('amount'))['s']
+    expenses_total = _sum_queryset_amounts(
+        PersonalExpense.objects.filter(user=user, date__month=month, date__year=year),
+        target=preferred,
     )
-    income_total = _decimal(
-        PersonalIncome.objects.filter(
-            user=user, date__month=month, date__year=year
-        ).aggregate(s=Sum('amount'))['s']
+    income_total = _sum_queryset_amounts(
+        PersonalIncome.objects.filter(user=user, date__month=month, date__year=year),
+        target=preferred,
     )
 
     budgets = Budget.objects.filter(user=user, month=month, year=year, period_type='monthly')
@@ -39,9 +51,13 @@ def compute_financial_health(user, month: int | None = None, year: int | None = 
     budget_total = Decimal('0')
     budget_spent = Decimal('0')
     for b in budgets:
-        budget_total += b.amount
-        spent = b.spent
-        budget_spent += spent
+        b_cur = (b.currency or preferred).upper()
+        # Convert budget envelope into preferred for health aggregates
+        b_amt = convert_amount(b.amount, b_cur, preferred)
+        budget_total += b_amt['converted_amount'] if b_amt else _decimal(b.amount)
+        spent = b.spent  # already in budget currency
+        spent_pref = convert_amount(spent, b_cur, preferred)
+        budget_spent += spent_pref['converted_amount'] if spent_pref else _decimal(spent)
         if b.amount > 0 and spent > b.amount:
             over_budget_count += 1
 
@@ -52,7 +68,11 @@ def compute_financial_health(user, month: int | None = None, year: int | None = 
             goals_on_track += 1
 
     debts = Debt.objects.filter(user=user, status='active')
-    debt_remaining = _decimal(sum((d.remaining_amount for d in debts), Decimal('0')))
+    debt_remaining = Decimal('0')
+    for d in debts:
+        rem = convert_amount(d.remaining_amount, d.currency or preferred, preferred)
+        debt_remaining += rem['converted_amount'] if rem else _decimal(d.remaining_amount)
+    debt_remaining = _decimal(debt_remaining)
 
     # Component scores (each 0-100)
     savings_rate = Decimal('0')
@@ -127,20 +147,34 @@ def compute_financial_health(user, month: int | None = None, year: int | None = 
 
 
 def build_dashboard(user) -> dict[str, Any]:
-    """Aggregated home dashboard payload."""
+    """Aggregated home dashboard payload (amounts in preferred_currency where aggregated)."""
     today = timezone.now().date()
     month, year = today.month, today.year
+    preferred = _preferred(user)
 
     health = compute_financial_health(user, month, year)
 
     from tasks.models import Task, Notification
 
-    expenses_by_cat = (
-        PersonalExpense.objects.filter(user=user, date__month=month, date__year=year)
-        .values('category__name', 'category__color')
-        .annotate(total=Sum('amount'))
-        .order_by('-total')[:5]
-    )
+    # Category totals: convert each expense into preferred before grouping
+    cat_totals: dict[tuple[str, str], Decimal] = {}
+    for exp in PersonalExpense.objects.filter(
+        user=user, date__month=month, date__year=year
+    ).select_related('category').only('amount', 'currency', 'category__name', 'category__color'):
+        name = exp.category.name if exp.category else 'Other'
+        color = (exp.category.color if exp.category else None) or '#6366f1'
+        key = (name, color)
+        converted = convert_amount(exp.amount, exp.currency or preferred, preferred)
+        amt = converted['converted_amount'] if converted else _decimal(exp.amount)
+        cat_totals[key] = cat_totals.get(key, Decimal('0')) + amt
+    expenses_by_cat = sorted(
+        (
+            {'name': name, 'color': color, 'total': float(total)}
+            for (name, color), total in cat_totals.items()
+        ),
+        key=lambda row: row['total'],
+        reverse=True,
+    )[:5]
 
     active_goals = Goal.objects.filter(user=user, status='active').order_by('-updated_at')[:3]
     active_debts = Debt.objects.filter(user=user, status='active').order_by('due_date')[:3]
@@ -151,11 +185,13 @@ def build_dashboard(user) -> dict[str, Any]:
     ).count()
     unread_notifications = Notification.objects.filter(user=user, is_read=False).count()
 
-    business_sales = _decimal(
-        Sale.objects.filter(user=user, date__month=month, date__year=year).aggregate(s=Sum('amount'))['s']
+    business_sales = _sum_queryset_amounts(
+        Sale.objects.filter(user=user, date__month=month, date__year=year),
+        target=preferred,
     )
-    business_expenses = _decimal(
-        BusinessExpense.objects.filter(user=user, date__month=month, date__year=year).aggregate(s=Sum('amount'))['s']
+    business_expenses = _sum_queryset_amounts(
+        BusinessExpense.objects.filter(user=user, date__month=month, date__year=year),
+        target=preferred,
     )
 
     record_health_snapshot(user, health)
@@ -164,21 +200,14 @@ def build_dashboard(user) -> dict[str, Any]:
         'health': health,
         'month': month,
         'year': year,
-        'currency': getattr(user, 'preferred_currency', 'AOA') or 'AOA',
+        'currency': preferred,
         'summary': {
             'income': health['income'],
             'expenses': health['expenses'],
             'balance': health['balance'],
             'business_profit': float(business_sales - business_expenses),
         },
-        'expenses_by_category': [
-            {
-                'name': row['category__name'] or 'Other',
-                'color': row['category__color'] or '#6366f1',
-                'total': float(row['total'] or 0),
-            }
-            for row in expenses_by_cat
-        ],
+        'expenses_by_category': expenses_by_cat,
         'goals': [
             {
                 'id': g.id,
@@ -187,6 +216,7 @@ def build_dashboard(user) -> dict[str, Any]:
                 'target_amount': float(g.target_amount),
                 'progress_percentage': float(g.progress_percentage),
                 'target_date': g.target_date.isoformat(),
+                'currency': g.currency,
             }
             for g in active_goals
         ],
@@ -197,6 +227,7 @@ def build_dashboard(user) -> dict[str, Any]:
                 'remaining_amount': float(d.remaining_amount),
                 'due_date': d.due_date.isoformat(),
                 'progress_percentage': float(d.progress_percentage),
+                'currency': d.currency,
             }
             for d in active_debts
         ],
@@ -206,6 +237,7 @@ def build_dashboard(user) -> dict[str, Any]:
                 'category': b.category.name if b.category else None,
                 'amount': float(b.amount),
                 'spent': float(b.spent),
+                'currency': b.currency,
                 'remaining': float(b.remaining),
                 'percentage_used': float(b.percentage_used),
             }
@@ -285,7 +317,8 @@ def build_analytics(user) -> dict[str, Any]:
             'projected_completion_months': 6 if monthly_need > 0 else 0,
         })
 
-    # 3-month average expenses forecast
+    # 3-month average expenses forecast (converted to preferred)
+    preferred = _preferred(user)
     forecast = []
     for i in range(3):
         m = month - i
@@ -293,8 +326,9 @@ def build_analytics(user) -> dict[str, Any]:
         if m <= 0:
             m += 12
             y -= 1
-        total = _decimal(
-            PersonalExpense.objects.filter(user=user, date__month=m, date__year=y).aggregate(s=Sum('amount'))['s']
+        total = _sum_queryset_amounts(
+            PersonalExpense.objects.filter(user=user, date__month=m, date__year=y),
+            target=preferred,
         )
         forecast.append({'month': m, 'year': y, 'projected_expenses': float(total)})
     forecast.reverse()

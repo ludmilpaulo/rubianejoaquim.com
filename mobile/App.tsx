@@ -11,14 +11,16 @@ import { checkAuth, checkPaidAccess } from './src/store/authSlice'
 import { useAppDispatch, useAppSelector } from './src/hooks/redux'
 import AuthNavigator from './src/navigation/AuthNavigator'
 import MainNavigator from './src/navigation/MainNavigator'
-import ProfileOnlyNavigator from './src/navigation/ProfileOnlyNavigator'
+import { linking } from './src/navigation/linking'
 import LoadingScreen from './src/screens/LoadingScreen'
 import OnboardingScreen, { isOnboardingComplete } from './src/screens/OnboardingScreen'
 import { setupNotifications } from './src/utils/notifications'
 import { checkStoreUpdate } from './src/utils/storeUpdate'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
 import { I18nProvider, useI18n } from './src/contexts/I18nContext'
+import { CurrencyProvider } from './src/contexts/CurrencyContext'
 import { AppAppearanceProvider, useAppAppearance } from './src/contexts/AppAppearanceContext'
+import { isLocale } from './src/i18n'
 import { zendaDarkTheme, zendaLightTheme } from './src/theme/paperTheme'
 import { flushOfflineQueue } from './src/utils/offlineQueue'
 import { warmupIap } from './src/services/iap'
@@ -31,7 +33,7 @@ import {
 
 function AppContent() {
   const dispatch = useAppDispatch()
-  const { t } = useI18n()
+  const { t, setLocale } = useI18n()
   const { isDarkMode, ready: appearanceReady } = useAppAppearance()
   const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector(
     (state) => state.auth,
@@ -74,6 +76,12 @@ function AppContent() {
     dispatch(checkAuth())
     warmupIap().catch(() => {})
   }, [dispatch])
+
+  // After login/session restore: honor explicit profile language when set
+  useEffect(() => {
+    if (!user?.preferred_locale || !isLocale(user.preferred_locale)) return
+    setLocale(user.preferred_locale).catch(() => {})
+  }, [user?.id, user?.preferred_locale, setLocale])
 
   useEffect(() => {
     if (user && hasPaidAccess) {
@@ -169,12 +177,12 @@ function AppContent() {
             </Button>
           </View>
         ) : (
-          <NavigationContainer>
+          <NavigationContainer linking={linking}>
             {user && hasPaidAccess ? (
               <MainNavigator />
-            ) : user && hasExpiredSubscription ? (
-              <ProfileOnlyNavigator />
             ) : (
+              // Expired / no-access users go to AccessDenied (AuthNavigator), which exposes
+              // Subscribe with Apple + renew/upload. Profile-only hid IAP and blocked App Review.
               <AuthNavigator />
             )}
           </NavigationContainer>
@@ -231,9 +239,11 @@ export default function App() {
   return (
     <Provider store={store}>
       <I18nProvider>
-        <AppAppearanceProvider>
-          <AppContent />
-        </AppAppearanceProvider>
+        <CurrencyProvider>
+          <AppAppearanceProvider>
+            <AppContent />
+          </AppAppearanceProvider>
+        </CurrencyProvider>
       </I18nProvider>
     </Provider>
   )

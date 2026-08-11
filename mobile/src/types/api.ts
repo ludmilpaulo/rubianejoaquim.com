@@ -44,6 +44,111 @@ export interface ExpensePayload {
   receipt_url?: string
 }
 
+export type PlanItemKey =
+  | 'rent'
+  | 'transport'
+  | 'food'
+  | 'electricity'
+  | 'internet'
+  | 'school'
+  | 'family'
+  | 'debt'
+  | 'savings'
+  | 'entertainment'
+  | 'other'
+
+export type PlanBucket = 'needs' | 'wants' | 'savings' | 'debt'
+
+export type PlanProgressStatus = 'ok' | 'warning' | 'at_limit' | 'exceeded'
+
+export interface MonthlyPlanItem {
+  id?: number
+  key: PlanItemKey | string
+  label?: string
+  amount: string | number
+  bucket: PlanBucket | string
+  sort_order?: number
+}
+
+export interface MonthlyPlanProgress {
+  salary: string
+  spending_limit: string
+  savings_target: string
+  planned_expenses: string
+  planned_needs: string
+  planned_wants: string
+  planned_savings: string
+  actual_expenses: string
+  actual_savings: string
+  remaining: string
+  percent_used: string
+  status: PlanProgressStatus
+  currency: string
+  month: number
+  year: number
+}
+
+export interface MonthlyPlan {
+  id: number | null
+  month: number
+  year: number
+  salary: string | number
+  spending_limit: string | number
+  savings_target: string | number
+  currency: string
+  notes?: string
+  items: MonthlyPlanItem[]
+  progress: MonthlyPlanProgress
+  last_budget_alert_level?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface MonthlyPlanDashboard extends MonthlyPlanProgress {
+  has_plan: boolean
+  items: MonthlyPlanItem[]
+}
+
+export interface BudgetAlert {
+  id?: number
+  level: number
+  type: 'budget_warning' | 'budget_exceeded' | 'budget_exceeded_urgent' | string
+  title: string
+  message: string
+  remaining?: string
+  percent_used?: string
+  over_by?: string
+  currency?: string
+}
+
+export interface ExpenseCreateResponse {
+  budget_alerts?: BudgetAlert[]
+  [key: string]: unknown
+}
+
+export interface MonthlyPlanSavePayload {
+  salary: string | number
+  spending_limit: string | number
+  savings_target: string | number
+  currency?: string
+  notes?: string
+  items: MonthlyPlanItem[]
+}
+
+export interface ShareZendaResponse {
+  referral_code: string
+  download_url: string
+  invite_url: string
+  ios_store_url?: string
+  android_store_url?: string
+}
+
+export interface ReferralTrackPayload {
+  referral_code: string
+  event_type: 'click' | 'install' | 'register'
+  platform?: 'ios' | 'android' | 'web' | string
+}
+
 export interface IncomePayload {
   category?: number | null
   amount: string | number
@@ -65,6 +170,7 @@ export interface BudgetPayload {
   start_date?: string
   end_date?: string
   date?: string
+  currency?: string
 }
 
 export interface GoalPayload {
@@ -74,6 +180,7 @@ export interface GoalPayload {
   current_amount?: string | number
   target_date: string
   status?: 'active' | 'completed' | 'cancelled'
+  currency?: string
 }
 
 export interface DebtPayload {
@@ -83,17 +190,20 @@ export interface DebtPayload {
   due_date: string
   status?: 'active' | 'paid' | 'overdue' | 'cancelled'
   notes?: string
+  currency?: string
 }
 
 export interface DebtPaymentPayload {
   amount: string | number
   payment_date?: string
   note?: string
+  currency?: string
 }
 
 export interface GoalContributionPayload {
   amount: string | number
   note?: string
+  currency?: string
 }
 
 export interface BusinessSalePayload {
@@ -104,6 +214,7 @@ export interface BusinessSalePayload {
   payment_method?: string
   customer_name?: string
   invoice_number?: string
+  currency?: string
 }
 
 export interface BusinessExpensePayload {
@@ -115,6 +226,7 @@ export interface BusinessExpensePayload {
   supplier?: string
   invoice_number?: string
   is_tax_deductible?: boolean
+  currency?: string
 }
 
 export interface SubscriptionPaymentProofPayload {
@@ -140,6 +252,40 @@ export interface AIConversationResponse {
 export interface LoginResponse {
   token: string
   user: import('./index').User
+}
+
+export interface SocialConfigResponse {
+  google_client_id: string
+  google_client_id_ios: string
+  google_client_id_android: string
+  facebook_app_id: string
+  apple_bundle_id: string
+  google_enabled: boolean
+  facebook_enabled: boolean
+  tiktok_enabled: boolean
+  apple_enabled: boolean
+}
+
+export interface SocialAuthResult {
+  status?: string
+  token?: string
+  user?: import('./index').User
+  link_token?: string
+  email?: string
+  provider?: string
+  message?: string
+  created?: boolean
+}
+
+export interface SocialLoginMethods {
+  email: boolean
+  email_address: string | null
+  email_verified: boolean
+  google: boolean
+  facebook: boolean
+  tiktok: boolean
+  apple: boolean
+  providers: string[]
 }
 
 export interface TaskPayload {

@@ -4,11 +4,13 @@ import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, ProgressBar, M
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
-import { formatCurrency } from '../utils/currency'
+import { useCurrency } from '../contexts/CurrencyContext'
+import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage, type TargetPayload, type TargetStats, unwrapList } from '../types/api'
 import { materialIcon, type MaterialIconName } from '../utils/icons'
 import { logger } from '../utils/logger'
@@ -34,8 +36,10 @@ interface Target {
 }
 
 export default function TargetsScreen() {
-  const { t } = useI18n()
+  const { t, tw, locale } = useI18n()
+  const { format } = useCurrency()
   const alert = useAlert()
+  const feedback = useActionFeedback()
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [activeFilter, setActiveFilter] = useState<TargetFilter>('all')
   const [refreshing, setRefreshing] = useState(false)
@@ -85,8 +89,7 @@ export default function TargetsScreen() {
     setRefreshing(false)
   }
 
-  const handleSaveTarget = async () => {
-    // Validation
+  const handleSaveTarget = () => {
     if (!targetForm.title.trim()) {
       alert.error(t('tasks.titleRequired'))
       return
@@ -96,51 +99,61 @@ export default function TargetsScreen() {
       alert.error(t('tasks.dateRequired'))
       return
     }
-    
-    try {
-      // Format dates for API
-      const targetData: TargetPayload = {
-        title: targetForm.title.trim(),
-        description: targetForm.description.trim(),
-        target_type: targetForm.target_type,
-        current_value: targetForm.current_value || '0',
-        unit: targetForm.unit.trim(),
-        status: targetForm.status,
-        start_date: targetForm.start_date.toISOString().split('T')[0],
-        target_date: targetForm.target_date.toISOString().split('T')[0],
-        target_value:
-          targetForm.target_value && targetForm.target_value.trim()
-            ? targetForm.target_value
-            : undefined,
-      }
-      
-      if (editingTarget) {
-        await tasksApi.updateTarget(editingTarget.id, targetData)
-      } else {
-        await tasksApi.createTarget(targetData)
-      }
-      setShowTargetModal(false)
-      setEditingTarget(null)
-      resetTargetForm()
-      loadData()
-    } catch (error: unknown) {
-      logger.error('Error saving target:', error)
-      alert.error(getApiErrorMessage(error, 'tasks.saveFailed'))
-    }
+
+    void feedback.run(
+      async () => {
+        const targetData: TargetPayload = {
+          title: targetForm.title.trim(),
+          description: targetForm.description.trim(),
+          target_type: targetForm.target_type,
+          current_value: targetForm.current_value || '0',
+          unit: targetForm.unit.trim(),
+          status: targetForm.status,
+          start_date: targetForm.start_date.toISOString().split('T')[0],
+          target_date: targetForm.target_date.toISOString().split('T')[0],
+          target_value:
+            targetForm.target_value && targetForm.target_value.trim()
+              ? targetForm.target_value
+              : undefined,
+        }
+        
+        if (editingTarget) {
+          await tasksApi.updateTarget(editingTarget.id, targetData)
+        } else {
+          await tasksApi.createTarget(targetData)
+        }
+        setShowTargetModal(false)
+        setEditingTarget(null)
+        resetTargetForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveTarget',
+        pendingMessage: 'feedback.savingGoal',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'tasks.saveFailed',
+      },
+    )
   }
 
-  const handleUpdateProgress = async () => {
-    if (!selectedTarget) return
-    try {
-      await tasksApi.updateTargetProgress(selectedTarget.id, parseFloat(progressValue))
-      setShowProgressModal(false)
-      setSelectedTarget(null)
-      setProgressValue('')
-      loadData()
-    } catch (error: unknown) {
-      logger.error('Error updating progress:', error)
-      alert.error(getApiErrorMessage(error, 'tasks.updateProgressFailed'))
-    }
+  const handleUpdateProgress = () => {
+    if (!selectedTarget || feedback.isPending('updateProgress')) return
+
+    void feedback.run(
+      async () => {
+        await tasksApi.updateTargetProgress(selectedTarget.id, parseFloat(progressValue))
+        setShowProgressModal(false)
+        setSelectedTarget(null)
+        setProgressValue('')
+        await loadData()
+      },
+      {
+        pendingKey: 'updateProgress',
+        pendingMessage: 'feedback.processing',
+        successMessage: 'feedback.successUpdated',
+        errorFallback: 'tasks.updateProgressFailed',
+      },
+    )
   }
 
   const handleDeleteTarget = async (targetId: number) => {
@@ -390,7 +403,7 @@ export default function TargetsScreen() {
                       <View style={styles.progressSection}>
                         <View style={styles.progressHeader}>
                           <Text variant="bodyMedium" style={styles.progressText}>
-                            {formatCurrency(parseFloat(target.current_value))} / {formatCurrency(parseFloat(target.target_value))} {target.unit}
+                            {format(parseFloat(target.current_value))} / {format(parseFloat(target.target_value))} {target.unit}
                           </Text>
                           <Text variant="bodyMedium" style={styles.progressPercentage}>
                             {progress.toFixed(0)}%
@@ -403,7 +416,7 @@ export default function TargetsScreen() {
                         />
                         {target.remaining_value && (
                           <Text variant="bodySmall" style={styles.remainingText}>
-                            Restante: {formatCurrency(parseFloat(target.remaining_value))} {target.unit}
+                            {t('personal.remainingLabel')} {format(parseFloat(target.remaining_value))} {target.unit}
                           </Text>
                         )}
                       </View>
@@ -625,8 +638,13 @@ export default function TargetsScreen() {
                 <RNText style={styles.modalDeleteButtonText}>Excluir Meta</RNText>
               </TouchableOpacity>
             )}
-            <Button mode="contained" onPress={handleSaveTarget} style={styles.modalButton}>
-              Salvar
+            <Button
+              mode="contained"
+              onPress={handleSaveTarget}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveTarget')}
+            >
+              {feedback.actionLabel('common.save', 'saveTarget', 'feedback.savingGoal')}
             </Button>
           </ScrollView>
         </Modal>
@@ -652,11 +670,11 @@ export default function TargetsScreen() {
                 {selectedTarget.title}
               </Text>
               <Text variant="bodyMedium" style={styles.progressInfo}>
-                Valor atual: {formatCurrency(parseFloat(selectedTarget.current_value))} {selectedTarget.unit}
+                Valor atual: {format(parseFloat(selectedTarget.current_value))} {selectedTarget.unit}
               </Text>
               {selectedTarget.target_value && (
                 <Text variant="bodyMedium" style={styles.progressInfo}>
-                  Valor alvo: {formatCurrency(parseFloat(selectedTarget.target_value))} {selectedTarget.unit}
+                  Valor alvo: {format(parseFloat(selectedTarget.target_value))} {selectedTarget.unit}
                 </Text>
               )}
               <TextInput
@@ -666,8 +684,13 @@ export default function TargetsScreen() {
                 onChangeText={setProgressValue}
                 style={styles.input}
               />
-              <Button mode="contained" onPress={handleUpdateProgress} style={styles.modalButton}>
-                Atualizar
+              <Button
+                mode="contained"
+                onPress={handleUpdateProgress}
+                style={styles.modalButton}
+                {...feedback.buttonProps('updateProgress')}
+              >
+                {feedback.actionLabel('tasks.updateProgress', 'updateProgress', 'feedback.processing')}
               </Button>
             </>
           )}

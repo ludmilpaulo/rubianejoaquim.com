@@ -9,7 +9,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { personalFinanceApi } from '../services/api'
-import { formatCurrency } from '../utils/currency'
+import CurrencyPicker from '../components/CurrencyPicker'
+import { useCurrency } from '../contexts/CurrencyContext'
+import type { CurrencyCode } from '../utils/currency'
+import { useI18n } from '../contexts/I18nContext'
+import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import { materialIcon } from '../utils/icons'
@@ -29,6 +33,7 @@ interface Budget {
   spent: string
   remaining: string
   percentage_used: string
+  currency?: string
 }
 
 interface Expense {
@@ -40,9 +45,13 @@ interface Expense {
   description: string
   date: string
   payment_method: string
+  currency?: string
 }
 
 export default function TirarDinheiroOrcamentoScreen() {
+  const { t, tw, locale } = useI18n()
+  const { currency: preferredCurrency, format, formatDual } = useCurrency()
+  const fmtDate = (d: string) => formatDate(locale, new Date(d))
   const navigation = useNavigation()
   const route = useRoute()
   const routeParams = (route.params as { budgetId?: number }) || {}
@@ -54,13 +63,14 @@ export default function TirarDinheiroOrcamentoScreen() {
   const [loadingExpenses, setLoadingExpenses] = useState(false)
   const [showBudgetMenu, setShowBudgetMenu] = useState(false)
   const [showExpenseModal, setShowExpenseModal] = useState(false)
-  const [categories, setCategories] = useState<any[]>([])
+  const [categories, setCategories] = useState<Array<{ id: number; name: string }>>([])
   const [expenseForm, setExpenseForm] = useState({
     budget_id: '',
     amount: '',
     description: '',
     date: new Date(),
     payment_method: 'cash',
+    currency: preferredCurrency,
   })
 
   useEffect(() => {
@@ -155,6 +165,7 @@ export default function TirarDinheiroOrcamentoScreen() {
         description: expenseForm.description.trim(),
         date: expenseForm.date.toISOString().split('T')[0],
         payment_method: expenseForm.payment_method,
+        currency: expenseForm.currency,
       }
       
       await personalFinanceApi.createExpense(expenseData)
@@ -165,6 +176,7 @@ export default function TirarDinheiroOrcamentoScreen() {
         description: '',
         date: new Date(),
         payment_method: 'cash',
+        currency: preferredCurrency,
       })
       await loadBudgets()
       await loadBudgetExpenses(selectedBudget.id)
@@ -303,7 +315,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                     </View>
                     <View style={styles.budgetAmount}>
                       <Text variant="headlineMedium" style={styles.budgetAmountValue}>
-                        {formatCurrency(parseFloat(selectedBudget.amount))}
+                        {format(parseFloat(selectedBudget.amount))}
                       </Text>
                       <Text variant="bodySmall" style={styles.budgetAmountLabel}>Orçamento</Text>
                     </View>
@@ -323,13 +335,13 @@ export default function TirarDinheiroOrcamentoScreen() {
 
                   <View style={styles.budgetStats}>
                     <View style={styles.statItem}>
-                      <Text variant="bodySmall" style={styles.statLabel}>Gasto</Text>
+                      <Text variant="bodySmall" style={styles.statLabel}>{t('personal.spentLabel').replace(':','')}</Text>
                       <Text variant="titleMedium" style={styles.statValue}>
-                        {formatCurrency(parseFloat(selectedBudget.spent))}
+                        {format(parseFloat(selectedBudget.spent))}
                       </Text>
                     </View>
                     <View style={styles.statItem}>
-                      <Text variant="bodySmall" style={styles.statLabel}>Restante</Text>
+                      <Text variant="bodySmall" style={styles.statLabel}>{t('personal.remainingLabel').replace(':','')}</Text>
                       <Text 
                         variant="titleMedium" 
                         style={[
@@ -337,7 +349,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                           parseFloat(selectedBudget.remaining) < 0 && styles.statValueNegative
                         ]}
                       >
-                        {formatCurrency(parseFloat(selectedBudget.remaining))}
+                        {format(parseFloat(selectedBudget.remaining))}
                       </Text>
                     </View>
                     <View style={styles.statItem}>
@@ -356,7 +368,7 @@ export default function TirarDinheiroOrcamentoScreen() {
               <View style={styles.expensesSection}>
                 <View style={styles.sectionHeader}>
                   <Text variant="titleMedium" style={styles.sectionTitle}>
-                    Despesas ({budgetExpenses.length})
+                    {t('personal.budgetExpenses')} ({budgetExpenses.length})
                   </Text>
                   <Button
                     mode="contained"
@@ -415,9 +427,17 @@ export default function TirarDinheiroOrcamentoScreen() {
                             </View>
                           </View>
                           <View style={styles.expenseRight}>
-                            <Text variant="headlineSmall" style={styles.expenseAmount}>
-                              {formatCurrency(parseFloat(expense.amount))}
-                            </Text>
+                            {(() => {
+                              const dual = formatDual(expense.amount, expense.currency || preferredCurrency)
+                              return (
+                                <>
+                                  <Text variant="headlineSmall" style={styles.expenseAmount}>{dual.primary}</Text>
+                                  {dual.secondary ? (
+                                    <Text variant="bodySmall" style={styles.dualSecondary}>{dual.secondary}</Text>
+                                  ) : null}
+                                </>
+                              )
+                            })()}
                             <TouchableOpacity
                               onPress={() => handleDeleteExpense(expense.id)}
                               style={styles.deleteButton}
@@ -440,7 +460,17 @@ export default function TirarDinheiroOrcamentoScreen() {
           <FAB
             icon="plus"
             style={styles.fab}
-            onPress={() => setShowExpenseModal(true)}
+            onPress={() => {
+              setExpenseForm({
+                budget_id: String(selectedBudget.id),
+                amount: '',
+                description: '',
+                date: new Date(),
+                payment_method: 'cash',
+                currency: (selectedBudget.currency || preferredCurrency) as CurrencyCode,
+              })
+              setShowExpenseModal(true)
+            }}
           />
         )}
 
@@ -456,6 +486,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                 description: '',
                 date: new Date(),
                 payment_method: 'cash',
+                currency: preferredCurrency,
               })
             }}
             contentContainerStyle={styles.modal}
@@ -471,12 +502,16 @@ export default function TirarDinheiroOrcamentoScreen() {
               )}
 
               <TextInput
-                label="Valor (AOA)"
+                label={`${t('personal.amount')} (${expenseForm.currency})`}
                 value={expenseForm.amount}
                 onChangeText={(text) => setExpenseForm({ ...expenseForm, amount: text })}
                 keyboardType="decimal-pad"
                 style={styles.input}
-                left={<TextInput.Icon icon="currency-usd" />}
+              />
+              <CurrencyPicker
+                value={expenseForm.currency}
+                onChange={(code) => setExpenseForm({ ...expenseForm, currency: code })}
+                label={t('market.selectCurrency')}
               />
 
               <TextInput
@@ -524,6 +559,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                       description: '',
                       date: new Date(),
                       payment_method: 'cash',
+                      currency: preferredCurrency,
                     })
                   }}
                 >
@@ -741,6 +777,10 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontWeight: '700',
     color: '#ef4444',
+  },
+  dualSecondary: {
+    color: '#94a3b8',
+    textAlign: 'right',
   },
   deleteButton: {
     padding: 4,

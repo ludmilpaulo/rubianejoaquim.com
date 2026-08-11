@@ -1,14 +1,14 @@
 import React from 'react'
-import { View, ActivityIndicator, StyleSheet } from 'react-native'
-import { Text } from 'react-native-paper'
+import { StyleSheet, View } from 'react-native'
 import { getDeviceLocale, translateForLocale } from '../i18n'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
+import { colors } from '../theme'
 
 export default function LoadingScreen() {
-  const label = translateForLocale(getDeviceLocale(), 'common.loading')
+  const label = translateForLocale(getDeviceLocale(), 'loading.app')
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#6366f1" />
-      <Text style={styles.text}>{label}</Text>
+      <ZendaLoading visible fill message={label} />
     </View>
   )
 }
@@ -16,13 +16,6 @@ export default function LoadingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  text: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
+    backgroundColor: colors.background.default,
   },
 })

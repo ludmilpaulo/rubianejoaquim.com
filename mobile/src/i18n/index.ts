@@ -8,7 +8,13 @@ import { commonScreens } from './commonScreens'
 export const LOCALES = ['pt', 'en', 'fr', 'es'] as const
 export type Locale = (typeof LOCALES)[number]
 export const DEFAULT_LOCALE: Locale = 'pt'
+
+/** Sentinel stored when user chooses "Use device language". */
+export const DEVICE_LOCALE_MODE = 'device' as const
+export type LocalePreference = Locale | typeof DEVICE_LOCALE_MODE
+
 const STORAGE_KEY = 'ZENDA_LOCALE'
+const MODE_KEY = 'ZENDA_LOCALE_MODE'
 
 function mergeCatalog<T extends Record<string, unknown>>(base: T, extra: Record<string, unknown>): T {
   const out = { ...base } as Record<string, unknown>
@@ -44,6 +50,10 @@ export function isLocale(value: string): value is Locale {
   return LOCALES.includes(value as Locale)
 }
 
+export function isLocalePreference(value: string): value is LocalePreference {
+  return value === DEVICE_LOCALE_MODE || isLocale(value)
+}
+
 /** Detect device language via Intl (no extra native module). */
 export function getDeviceLocale(): Locale {
   try {
@@ -56,14 +66,35 @@ export function getDeviceLocale(): Locale {
   return DEFAULT_LOCALE
 }
 
-export async function getStoredLocale(): Promise<Locale> {
+export async function getLocaleMode(): Promise<LocalePreference> {
+  const mode = await AsyncStorage.getItem(MODE_KEY)
+  if (mode && isLocalePreference(mode)) return mode
   const stored = await AsyncStorage.getItem(STORAGE_KEY)
   if (stored && isLocale(stored)) return stored
-  return getDeviceLocale()
+  return DEVICE_LOCALE_MODE
+}
+
+/**
+ * Resolve active UI locale.
+ * - Manual pick → that locale
+ * - Device mode → system language (fallback DEFAULT_LOCALE)
+ */
+export async function getStoredLocale(): Promise<Locale> {
+  const mode = await getLocaleMode()
+  if (mode === DEVICE_LOCALE_MODE) return getDeviceLocale()
+  return mode
 }
 
 export async function setStoredLocale(locale: Locale): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, locale)
+  await AsyncStorage.setItem(MODE_KEY, locale)
+}
+
+/** Follow device language again (clears manual override). */
+export async function setUseDeviceLocale(): Promise<Locale> {
+  await AsyncStorage.setItem(MODE_KEY, DEVICE_LOCALE_MODE)
+  await AsyncStorage.removeItem(STORAGE_KEY)
+  return getDeviceLocale()
 }
 
 export function getMessages(locale: Locale): Messages {

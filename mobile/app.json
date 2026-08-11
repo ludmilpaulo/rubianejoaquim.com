@@ -2,8 +2,11 @@
   "expo": {
     "name": "Zenda",
     "slug": "zenda",
-    "scheme": "zenda",
-    "version": "1.0.3",
+    "scheme": [
+      "zenda",
+      "fb2691305731001778"
+    ],
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,12 +18,27 @@
     },
     "ios": {
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "bundleIdentifier": "com.rubianejoaquim.zenda",
+      "associatedDomains": [
+        "applinks:www.rubianejoaquim.com",
+        "applinks:rubianejoaquim.com"
+      ],
       "infoPlist": {
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "zenda",
+              "com.rubianejoaquim.zenda",
+              "com.googleusercontent.apps.112065604009-bt1io2ogtdl5focg0r25i2stg1sln4co",
+              "fb2691305731001778"
+            ]
+          }
+        ]
       },
-      "buildNumber": "25"
+      "buildNumber": "32"
     },
     "android": {
       "adaptiveIcon": {
@@ -30,7 +48,59 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 22
+      "versionCode": 30,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": false,
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ],
+          "data": [
+            {
+              "scheme": "zenda"
+            },
+            {
+              "scheme": "fb2691305731001778"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rubianejoaquim.com",
+              "pathPrefix": "/download"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rubianejoaquim.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rubianejoaquim.com",
+              "pathPrefix": "/course"
+            },
+            {
+              "scheme": "https",
+              "host": "rubianejoaquim.com",
+              "pathPrefix": "/download"
+            },
+            {
+              "scheme": "https",
+              "host": "rubianejoaquim.com",
+              "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "rubianejoaquim.com",
+              "pathPrefix": "/course"
+            },
+            {
+              "scheme": "com.rubianejoaquim.zenda",
+              "pathPrefix": "/oauthredirect"
+            }
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -47,7 +117,8 @@
       "expo-updates",
       "expo-localization",
       "react-native-iap",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "updates": {
       "url": "https://u.expo.dev/eed2db02-a05b-4292-9a7c-777b198b7b6e",
@@ -55,9 +126,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.4",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {

@@ -55,14 +55,19 @@ def verify_google_id_token(id_token: str) -> VerifiedProviderUser:
     if not id_token or not isinstance(id_token, str):
         raise ProviderVerificationError()
 
-    client_ids = [
-        cid for cid in [
-            getattr(settings, 'GOOGLE_CLIENT_ID', None),
-            getattr(settings, 'GOOGLE_CLIENT_ID_IOS', None),
-            getattr(settings, 'GOOGLE_CLIENT_ID_ANDROID', None),
-        ]
-        if cid
-    ]
+    # Comma-separated values allowed (e.g. Play App Signing + upload-key Android clients).
+    client_ids: list[str] = []
+    for raw in (
+        getattr(settings, 'GOOGLE_CLIENT_ID', None),
+        getattr(settings, 'GOOGLE_CLIENT_ID_IOS', None),
+        getattr(settings, 'GOOGLE_CLIENT_ID_ANDROID', None),
+    ):
+        if not raw:
+            continue
+        for part in str(raw).split(','):
+            cid = part.strip()
+            if cid and cid not in client_ids:
+                client_ids.append(cid)
     if not client_ids:
         logger.error('Google social login misconfigured: GOOGLE_CLIENT_ID missing')
         raise ProviderVerificationError('Login com Google não está configurado.')
@@ -275,4 +280,87 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         full_name=display_name,
         picture_url=(user_obj.get('avatar_url') or '').strip(),
         raw={'union_id': user_obj.get('union_id')},
+    )
+
+
+def verify_apple_identity_token(
+    identity_token: str,
+    *,
+    full_name: Optional[dict] = None,
+) -> VerifiedProviderUser:
+    """
+    Verify a Sign in with Apple identity token (JWT) against Apple's JWKS.
+    Never trust client-supplied email/sub without JWT verification.
+    Handles Apple's private relay emails (is_private_email claim).
+    """
+    if not identity_token or not isinstance(identity_token, str):
+        raise ProviderVerificationError()
+
+    bundle_id = getattr(settings, 'APPLE_BUNDLE_ID', None) or 'com.rubianejoaquim.zenda'
+    # Optionally accept additional audiences (e.g. Services ID for web)
+    audiences: list[str] = [bundle_id]
+    extra = getattr(settings, 'APPLE_SIGN_IN_AUDIENCES', '') or ''
+    for part in str(extra).split(','):
+        aud = part.strip()
+        if aud and aud not in audiences:
+            audiences.append(aud)
+
+    try:
+        import jwt
+        from jwt import PyJWKClient
+    except ImportError as exc:
+        logger.error('PyJWT is required for Sign in with Apple')
+        raise ProviderVerificationError('Login com Apple não está configurado.') from exc
+
+    try:
+        jwks_client = PyJWKClient('https://appleid.apple.com/auth/keys', cache_keys=True)
+        signing_key = jwks_client.get_signing_key_from_jwt(identity_token)
+        claims = jwt.decode(
+            identity_token,
+            signing_key.key,
+            algorithms=['RS256'],
+            audience=audiences,
+            issuer='https://appleid.apple.com',
+            options={'verify_email': False},
+        )
+    except Exception:
+        logger.info('Apple identity token verification failed')
+        raise ProviderVerificationError() from None
+
+    sub = claims.get('sub')
+    if not sub:
+        raise ProviderVerificationError()
+
+    email = (claims.get('email') or '').strip().lower() or None
+    # Apple tokens: email_verified may be bool or string "true"
+    email_verified_raw = claims.get('email_verified', False)
+    email_verified = bool(email) and (
+        email_verified_raw is True
+        or str(email_verified_raw).lower() == 'true'
+    )
+    # Private relay is still a real Apple-issued address for this user+app
+    is_private = claims.get('is_private_email')
+    if is_private is True or str(is_private).lower() == 'true':
+        email_verified = bool(email)
+
+    given = ''
+    family = ''
+    if isinstance(full_name, dict):
+        given = str(full_name.get('givenName') or full_name.get('given_name') or '').strip()
+        family = str(full_name.get('familyName') or full_name.get('family_name') or '').strip()
+
+    return VerifiedProviderUser(
+        provider='apple',
+        provider_user_id=str(sub),
+        email=email,
+        email_verified=email_verified,
+        first_name=given,
+        last_name=family,
+        full_name=(f'{given} {family}').strip(),
+        picture_url='',
+        raw={
+            'iss': claims.get('iss'),
+            'aud': claims.get('aud'),
+            'is_private_email': claims.get('is_private_email'),
+        },
     )

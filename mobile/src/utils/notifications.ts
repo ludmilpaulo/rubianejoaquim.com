@@ -10,8 +10,20 @@
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import type { NotificationPrefs } from '../types'
 
 const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
+const NOTIFICATION_PREFS_KEY = 'ZENDA_NOTIFICATION_PREFS'
+
+const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
+  enabled: true,
+  budget_warnings: true,
+  budget_exceeded: true,
+  debt_reminders: true,
+  savings_reminders: true,
+  monthly_summary: true,
+  goal_reminders: true,
+}
 
 // Ensure notifications are shown when app is in foreground and trigger vibration/sound
 Notifications.setNotificationHandler({
@@ -49,6 +61,15 @@ export async function setupNotifications(): Promise<boolean> {
       lightColor: '#6366f1',
       sound: 'default',
     })
+    await Notifications.setNotificationChannelAsync('budget_alerts', {
+      name: 'Alertas de orçamento',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 400, 200, 400],
+      enableVibrate: true,
+      enableLights: true,
+      lightColor: '#f59e0b',
+      sound: 'default',
+    })
   }
   return true
 }
@@ -70,6 +91,67 @@ export async function areNotificationsEnabled(): Promise<boolean> {
  */
 export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, enabled ? 'true' : 'false')
+}
+
+export async function getNotificationPrefs(): Promise<NotificationPrefs> {
+  try {
+    const raw = await AsyncStorage.getItem(NOTIFICATION_PREFS_KEY)
+    if (!raw) return { ...DEFAULT_NOTIFICATION_PREFS }
+    const parsed = JSON.parse(raw) as NotificationPrefs
+    return { ...DEFAULT_NOTIFICATION_PREFS, ...parsed }
+  } catch {
+    return { ...DEFAULT_NOTIFICATION_PREFS }
+  }
+}
+
+export async function setNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
+  await AsyncStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(prefs))
+}
+
+export type BudgetAlertNotificationType =
+  | 'budget_warning'
+  | 'budget_exceeded'
+  | 'budget_exceeded_urgent'
+
+/**
+ * Present a budget alert local notification respecting master switch and budget prefs.
+ */
+export async function presentBudgetAlertNotification(
+  title: string,
+  body: string,
+  type: BudgetAlertNotificationType = 'budget_warning',
+  data?: Record<string, unknown>,
+): Promise<string | null> {
+  const masterEnabled = await areNotificationsEnabled()
+  if (!masterEnabled) return null
+
+  const prefs = await getNotificationPrefs()
+  if (prefs.enabled === false) return null
+
+  if (type === 'budget_warning' && prefs.budget_warnings === false) return null
+  if (
+    (type === 'budget_exceeded' || type === 'budget_exceeded_urgent') &&
+    prefs.budget_exceeded === false
+  ) {
+    return null
+  }
+
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: { screen: 'MonthlyPlan', ...data },
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+      },
+      trigger: { channelId: 'budget_alerts' },
+    })
+    return id
+  } catch (e) {
+    if (__DEV__) console.warn('presentBudgetAlertNotification failed:', e)
+    return null
+  }
 }
 
 /**

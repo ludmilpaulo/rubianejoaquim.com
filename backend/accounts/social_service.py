@@ -187,8 +187,10 @@ def authenticate_social_user(
             message='Conta social associada com sucesso.',
         )
 
-    # Email collision with an existing account — require explicit link (never auto-merge)
-    if verified.email and verified.email_verified:
+    # Email collision with an existing account — require explicit link (never auto-merge).
+    # Also apply when email exists even if provider didn't mark verified, to avoid
+    # IntegrityError on unique email and accidental duplicate accounts.
+    if verified.email:
         email_owner = User.objects.filter(email__iexact=verified.email, is_active=True).first()
         if email_owner:
             link_token = _make_link_token(
@@ -211,8 +213,7 @@ def authenticate_social_user(
             )
 
     # New social user — email optional (e.g. TikTok basic scope)
-    if not verified.email and verified.provider == 'tiktok':
-        # Create account keyed only by provider id; client may collect email later
+    if not verified.email and verified.provider in ('tiktok', 'apple'):
         pass
 
     base_username = ''
@@ -232,7 +233,32 @@ def authenticate_social_user(
         profile_image_url=(verified.picture_url or '')[:500],
     )
     user.set_unusable_password()
-    user.save()
+    try:
+        user.save()
+    except Exception as exc:
+        # Unique email race: another request created the same email — force link flow
+        from django.db import IntegrityError
+
+        if isinstance(exc, IntegrityError) and verified.email:
+            email_owner = User.objects.filter(email__iexact=verified.email, is_active=True).first()
+            if email_owner:
+                link_token = _make_link_token(
+                    user_id=email_owner.pk,
+                    provider=verified.provider,
+                    provider_user_id=verified.provider_user_id,
+                    provider_email=verified.email,
+                )
+                return SocialAuthResult(
+                    status='link_required',
+                    link_token=link_token,
+                    email=verified.email,
+                    provider=verified.provider,
+                    message=(
+                        'Já existe uma conta com este email. '
+                        'Introduza a palavra-passe para associar este método de login.'
+                    ),
+                )
+        raise
 
     SocialAccount.objects.create(
         user=user,
@@ -334,5 +360,33 @@ def list_login_methods(user: User) -> dict:
         'google': 'google' in linked,
         'facebook': 'facebook' in linked,
         'tiktok': 'tiktok' in linked,
+        'apple': 'apple' in linked,
         'providers': sorted(linked),
     }
+
+
+EXCHANGE_SALT = 'accounts.social.session_exchange'
+EXCHANGE_MAX_AGE = 120  # seconds
+
+
+def make_session_exchange_code(token: str) -> str:
+    """Short-lived code so mobile OAuth redirects never carry the DRF token in the URL."""
+    from django.core import signing as dj_signing
+
+    return dj_signing.dumps({'token': token, 'nonce': secrets.token_hex(6)}, salt=EXCHANGE_SALT)
+
+
+def redeem_session_exchange_code(code: str) -> str:
+    from django.core import signing as dj_signing
+
+    try:
+        payload = dj_signing.loads(code, salt=EXCHANGE_SALT, max_age=EXCHANGE_MAX_AGE)
+    except dj_signing.BadSignature as exc:
+        raise SocialAuthError(
+            'Código de sessão expirado ou inválido. Tente novamente.',
+            code='invalid_exchange_code',
+        ) from exc
+    token = payload.get('token')
+    if not token:
+        raise SocialAuthError('Código de sessão inválido.', code='invalid_exchange_code')
+    return str(token)

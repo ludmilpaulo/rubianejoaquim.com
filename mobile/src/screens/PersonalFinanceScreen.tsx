@@ -6,12 +6,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
 import { personalFinanceApi } from '../services/api'
-import { formatCurrency } from '../utils/currency'
+import { useCurrency } from '../contexts/CurrencyContext'
+import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import PersonalIncomeTab from '../components/finance/PersonalIncomeTab'
+import CurrencyPicker from '../components/CurrencyPicker'
 import { colors } from '../theme'
-import { getApiErrorMessage, unwrapList, type BudgetPayload, type ExpensePayload, type ExpenseSummary } from '../types/api'
+import type { CurrencyCode } from '../utils/currency'
+import { getApiErrorMessage, unwrapList, type BudgetPayload, type ExpenseCreateResponse, type ExpensePayload, type ExpenseSummary } from '../types/api'
+import { handleBudgetAlerts } from '../utils/budgetAlerts'
 import { logger } from '../utils/logger'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
@@ -37,6 +41,7 @@ interface Expense {
   description: string
   date: string
   payment_method: string
+  currency?: string
 }
 
 interface Budget {
@@ -52,6 +57,7 @@ interface Budget {
   spent: string
   remaining: string
   percentage_used: string
+  currency?: string
 }
 
 interface Goal {
@@ -64,6 +70,7 @@ interface Goal {
   status: string
   progress_percentage: string
   remaining_amount: string
+  currency?: string
 }
 
 interface DebtPaymentRecord {
@@ -84,6 +91,7 @@ interface Debt {
   progress_percentage: string
   remaining_amount: string
   payments?: DebtPaymentRecord[]
+  currency?: string
 }
 
 interface Category {
@@ -94,7 +102,18 @@ interface Category {
 }
 
 export default function PersonalFinanceScreen() {
-  const { t, tw, resolve } = useI18n()
+  const { t, tw, resolve, locale } = useI18n()
+  const { currency: preferredCurrency, format, formatDual } = useCurrency()
+
+  const fmtDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
+    formatDate(locale, new Date(dateStr), options)
+
+  const paymentLabel = (method: string) => {
+    if (method === 'cash') return t('business.paymentCash')
+    if (method === 'card') return t('business.paymentCard')
+    if (method === 'transfer') return t('business.paymentTransfer')
+    return t('personal.paymentOther')
+  }
   const alert = useAlert()
   const navigation = useNavigation<PersonalFinanceNavigation>()
   const route = useRoute<PersonalFinanceRoute>()
@@ -124,6 +143,8 @@ export default function PersonalFinanceScreen() {
   const [showPayDebtModal, setShowPayDebtModal] = useState(false)
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentCurrency, setPaymentCurrency] = useState<CurrencyCode>(preferredCurrency)
+  const [contributeCurrency, setContributeCurrency] = useState<CurrencyCode>(preferredCurrency)
   const [payingDebt, setPayingDebt] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
@@ -141,7 +162,7 @@ export default function PersonalFinanceScreen() {
   const [categoryForm, setCategoryForm] = useState({ name: '', icon: 'tag', color: '#6366f1' })
   
   // Form states
-  const [expenseForm, setExpenseForm] = useState({ category: '', amount: '', description: '', date: new Date(), payment_method: 'cash' })
+  const [expenseForm, setExpenseForm] = useState({ category: '', amount: '', description: '', date: new Date(), payment_method: 'cash', currency: preferredCurrency })
   const [budgetForm, setBudgetForm] = useState({ 
     category: '', 
     amount: '', 
@@ -151,12 +172,13 @@ export default function PersonalFinanceScreen() {
     date: null as Date | null,
     start_date: null as Date | null,
     end_date: null as Date | null,
-    description: '' 
+    description: '',
+    currency: preferredCurrency,
   })
-  const [goalForm, setGoalForm] = useState({ title: '', description: '', target_amount: '', target_date: null as Date | null, current_amount: '0' })
-  const [debtForm, setDebtForm] = useState({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null as Date | null, description: '' })
+  const [goalForm, setGoalForm] = useState({ title: '', description: '', target_amount: '', target_date: null as Date | null, current_amount: '0', currency: preferredCurrency })
+  const [debtForm, setDebtForm] = useState({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null as Date | null, description: '', currency: preferredCurrency })
 
-  // Regras de Ouro (Fundamentos das Finanças Pessoais)
+  // Regras de Ouro (Fundamentos das {t('personal.title')})
   const [regrasRendimento, setRegrasRendimento] = useState('')
   const [regrasValorGastar, setRegrasValorGastar] = useState('')
   const [regrasDisponivel, setRegrasDisponivel] = useState('')
@@ -226,6 +248,7 @@ export default function PersonalFinanceScreen() {
         description: expenseForm.description,
         date: expenseForm.date.toISOString().split('T')[0],
         payment_method: expenseForm.payment_method,
+        currency: expenseForm.currency,
       }
 
       if (expenseForm.category) {
@@ -233,9 +256,11 @@ export default function PersonalFinanceScreen() {
       }
 
       if (editingItem && 'payment_method' in editingItem) {
-        await personalFinanceApi.updateExpense(editingItem.id, expenseData)
+        const updated = await personalFinanceApi.updateExpense(editingItem.id, expenseData)
+        await handleBudgetAlerts((updated as ExpenseCreateResponse).budget_alerts)
       } else {
-        await personalFinanceApi.createExpense(expenseData)
+        const created = await personalFinanceApi.createExpense(expenseData)
+        await handleBudgetAlerts((created as ExpenseCreateResponse).budget_alerts)
       }
       setShowExpenseModal(false)
       setEditingItem(null)
@@ -253,12 +278,12 @@ export default function PersonalFinanceScreen() {
 
   const handleDeleteExpense = async (expenseId: number) => {
     Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir esta despesa?',
+      t('personal.deleteExpenseTitle'),
+      t('personal.deleteExpenseConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -301,6 +326,7 @@ export default function PersonalFinanceScreen() {
         amount: budgetForm.amount,
         period_type: budgetForm.period_type as BudgetPayload['period_type'],
         description: budgetForm.description,
+        currency: budgetForm.currency,
       }
 
       // Add period-specific fields
@@ -368,10 +394,11 @@ export default function PersonalFinanceScreen() {
     }
 
     try {
-      await personalFinanceApi.addMoneyToGoal(selectedGoal.id, parseFloat(addMoneyAmount))
+      await personalFinanceApi.addMoneyToGoal(selectedGoal.id, parseFloat(addMoneyAmount), undefined, contributeCurrency)
       setShowAddMoneyModal(false)
       setSelectedGoal(null)
       setAddMoneyAmount('')
+      setContributeCurrency(preferredCurrency)
       loadData()
       alert.success(t('personal.goalFunded'))
     } catch (error: unknown) {
@@ -383,6 +410,7 @@ export default function PersonalFinanceScreen() {
   const openAddMoneyModal = (goal: Goal) => {
     setSelectedGoal(goal)
     setAddMoneyAmount('')
+    setContributeCurrency((goal.currency || preferredCurrency) as CurrencyCode)
     setShowAddMoneyModal(true)
   }
 
@@ -408,7 +436,7 @@ export default function PersonalFinanceScreen() {
     }
   }
 
-  const resetExpenseForm = () => setExpenseForm({ category: '', amount: '', description: '', date: new Date(), payment_method: 'cash' })
+  const resetExpenseForm = () => setExpenseForm({ category: '', amount: '', description: '', date: new Date(), payment_method: 'cash', currency: preferredCurrency })
   const resetBudgetForm = () => setBudgetForm({ 
     category: '', 
     amount: '', 
@@ -418,10 +446,11 @@ export default function PersonalFinanceScreen() {
     date: null,
     start_date: null,
     end_date: null,
-    description: '' 
+    description: '',
+    currency: preferredCurrency,
   })
-  const resetGoalForm = () => setGoalForm({ title: '', description: '', target_amount: '', target_date: null, current_amount: '0' })
-  const resetDebtForm = () => setDebtForm({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null, description: '' })
+  const resetGoalForm = () => setGoalForm({ title: '', description: '', target_amount: '', target_date: null, current_amount: '0', currency: preferredCurrency })
+  const resetDebtForm = () => setDebtForm({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null, description: '', currency: preferredCurrency })
 
   const handlePayDebt = async () => {
     if (!selectedDebt || !paymentAmount || parseFloat(paymentAmount) <= 0) {
@@ -432,11 +461,13 @@ export default function PersonalFinanceScreen() {
     const paymentValue = parseFloat(paymentAmount)
     const currentPaid = parseFloat(selectedDebt.paid_amount)
     const totalAmount = parseFloat(selectedDebt.total_amount)
-    const newPaidAmount = currentPaid + paymentValue
-
-    if (newPaidAmount > totalAmount) {
-      alert.error(tw('personal.paymentExceeds', { amount: formatCurrency(totalAmount - currentPaid) }))
-      return
+    const debtCurrency = selectedDebt.currency || preferredCurrency
+    if (paymentCurrency === debtCurrency) {
+      const newPaidAmount = currentPaid + paymentValue
+      if (newPaidAmount > totalAmount) {
+        alert.error(tw('personal.paymentExceeds', { amount: format(totalAmount - currentPaid, debtCurrency) }))
+        return
+      }
     }
 
     try {
@@ -444,12 +475,14 @@ export default function PersonalFinanceScreen() {
       await personalFinanceApi.payDebt(selectedDebt.id, {
         amount: paymentValue,
         payment_date: new Date().toISOString().slice(0, 10),
+        currency: paymentCurrency,
       })
       setShowPayDebtModal(false)
       setPaymentAmount('')
+      setPaymentCurrency(preferredCurrency)
       setSelectedDebt(null)
       await loadData()
-      alert.success(tw('personal.paymentRecorded', { amount: formatCurrency(paymentValue) }))
+      alert.success(tw('personal.paymentRecorded', { amount: format(paymentValue, paymentCurrency) }))
     } catch (error: unknown) {
       logger.error('Error paying debt:', getApiErrorMessage(error))
       alert.error(getApiErrorMessage(error, t('personal.paymentFailed')))
@@ -477,6 +510,7 @@ export default function PersonalFinanceScreen() {
       description: expense.description,
       date: expenseDate,
       payment_method: expense.payment_method,
+      currency: (expense.currency || preferredCurrency) as CurrencyCode,
     })
     setShowExpenseModal(true)
   }
@@ -493,6 +527,7 @@ export default function PersonalFinanceScreen() {
       start_date: budget.start_date ? new Date(budget.start_date) : null,
       end_date: budget.end_date ? new Date(budget.end_date) : null,
       description: '',
+      currency: (budget.currency || preferredCurrency) as CurrencyCode,
     })
     setShowBudgetModal(true)
   }
@@ -529,6 +564,7 @@ export default function PersonalFinanceScreen() {
       description: '',
       date: today,
       payment_method: 'cash',
+      currency: (budget.currency || preferredCurrency) as CurrencyCode,
     })
     setEditingItem(null)
     setShowExpenseModal(true)
@@ -551,7 +587,7 @@ export default function PersonalFinanceScreen() {
   ]
 
   const chartData = summary?.by_category?.slice(0, 5).map((cat, index: number) => ({
-    name: cat.category__name || cat.category_name || 'Outros',
+    name: cat.category__name || cat.category_name || t('personal.others'),
     amount: parseFloat(String(cat.total ?? cat.amount ?? 0)),
     color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
@@ -612,11 +648,20 @@ export default function PersonalFinanceScreen() {
               <MaterialCommunityIcons name="wallet" size={28} color="#6366f1" />
             </View>
             <View style={styles.headerText}>
-              <Text variant="headlineMedium" style={styles.title}>Finanças Pessoais</Text>
+              <Text variant="headlineMedium" style={styles.title}>{t('personal.title')}</Text>
               <Text variant="bodySmall" style={styles.headerSubtitle}>
-                {new Date(selectedYear, selectedMonth - 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' })}
+                {formatDate(locale, new Date(selectedYear, selectedMonth - 1), { month: 'long', year: 'numeric' })}
               </Text>
             </View>
+            <Chip
+              icon="calendar-month"
+              mode="outlined"
+              onPress={() => navigation.navigate('MonthlyPlan')}
+              style={styles.planChip}
+              textStyle={styles.planChipText}
+            >
+              {t('navigation.monthlyPlan')}
+            </Chip>
           </View>
         </View>
 
@@ -626,9 +671,9 @@ export default function PersonalFinanceScreen() {
           <Card.Content style={styles.summaryContent}>
             <View style={styles.summaryHeader}>
               <View>
-                <Text variant="bodySmall" style={styles.summaryLabel}>Despesas do Mês</Text>
+                <Text variant="bodySmall" style={styles.summaryLabel}>{t('personal.monthExpenses')}</Text>
                 <Text variant="headlineLarge" style={styles.summaryAmount}>
-                  {formatCurrency(totalExpenses)}
+                  {format(totalExpenses)}
                 </Text>
               </View>
               <View style={styles.summaryIcon}>
@@ -689,7 +734,7 @@ export default function PersonalFinanceScreen() {
         {/* Content based on active tab */}
         {activeTab === 'principios' && (
           <View style={styles.content}>
-            {/* Regra 1: Divisão dos 100% - Visual Calculator */}
+            {/* Regra 1: {t('personal.rules100Title')} - Visual Calculator */}
             <Card style={styles.goldenRuleCard}>
               <Card.Content>
                 <View style={styles.ruleHeader}>
@@ -697,8 +742,8 @@ export default function PersonalFinanceScreen() {
                     <MaterialCommunityIcons name="chart-pie" size={32} color="#6366f1" />
                   </View>
                   <View style={styles.ruleHeaderText}>
-                    <Text variant="titleLarge" style={styles.ruleTitle}>Divisão dos 100%</Text>
-                    <Text variant="bodySmall" style={styles.ruleSubtitle}>50% Fixas • 30% Desejos • 20% Poupança</Text>
+                    <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.rules100Title')}</Text>
+                    <Text variant="bodySmall" style={styles.ruleSubtitle}>{t('personal.rules100Subtitle')}</Text>
                   </View>
                 </View>
 
@@ -719,7 +764,7 @@ export default function PersonalFinanceScreen() {
                 <View style={styles.calculatorSection}>
                   <TextInput
                     mode="outlined"
-                    label="Rendimento mensal (AOA)"
+                    label={tw('personal.monthlyIncome', { currency: preferredCurrency })}
                     value={regrasRendimento}
                     onChangeText={setRegrasRendimento}
                     keyboardType="decimal-pad"
@@ -733,9 +778,9 @@ export default function PersonalFinanceScreen() {
                           <MaterialCommunityIcons name="home" size={32} color="#3b82f6" />
                         </View>
                         <Text variant="labelLarge" style={styles.resultPercentage}>50%</Text>
-                        <Text variant="bodyMedium" style={styles.resultLabel}>Fixas</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>{t('personal.fixed')}</Text>
                         <Text variant="headlineSmall" style={styles.resultValue}>
-                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.5)}
+                          {format(parseFloat(regrasRendimento.replace(',', '.')) * 0.5)}
                         </Text>
                       </View>
                       <View style={[styles.resultCard, styles.resultCard30]}>
@@ -743,9 +788,9 @@ export default function PersonalFinanceScreen() {
                           <MaterialCommunityIcons name="heart" size={32} color="#ec4899" />
                         </View>
                         <Text variant="labelLarge" style={styles.resultPercentage}>30%</Text>
-                        <Text variant="bodyMedium" style={styles.resultLabel}>Desejos</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>{t('personal.wishes')}</Text>
                         <Text variant="headlineSmall" style={styles.resultValue}>
-                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}
+                          {format(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}
                         </Text>
                       </View>
                       <View style={[styles.resultCard, styles.resultCard20]}>
@@ -753,9 +798,9 @@ export default function PersonalFinanceScreen() {
                           <MaterialCommunityIcons name="piggy-bank" size={32} color="#10b981" />
                         </View>
                         <Text variant="labelLarge" style={styles.resultPercentage}>20%</Text>
-                        <Text variant="bodyMedium" style={styles.resultLabel}>Poupança</Text>
+                        <Text variant="bodyMedium" style={styles.resultLabel}>{t('personal.savings')}</Text>
                         <Text variant="headlineSmall" style={styles.resultValue}>
-                          {formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.2)}
+                          {format(parseFloat(regrasRendimento.replace(',', '.')) * 0.2)}
                         </Text>
                       </View>
                     </View>
@@ -772,15 +817,15 @@ export default function PersonalFinanceScreen() {
                     <MaterialCommunityIcons name="shield-check" size={32} color="#10b981" />
                   </View>
                   <View style={styles.ruleHeaderText}>
-                    <Text variant="titleLarge" style={styles.ruleTitle}>Regra 3×</Text>
-                    <Text variant="bodySmall" style={styles.ruleSubtitle}>Precisas de 3× o valor antes de gastar</Text>
+                    <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.rule3xTitle')}</Text>
+                    <Text variant="bodySmall" style={styles.ruleSubtitle}>{t('personal.rule3xSubtitle')}</Text>
                   </View>
                 </View>
 
                 <View style={styles.checkerSection}>
                   <TextInput
                     mode="outlined"
-                    label="Quero gastar (AOA)"
+                    label={tw('personal.wantToSpend', { currency: preferredCurrency })}
                     value={regrasValorGastar}
                     onChangeText={setRegrasValorGastar}
                     keyboardType="decimal-pad"
@@ -789,12 +834,12 @@ export default function PersonalFinanceScreen() {
                   />
                   <TextInput
                     mode="outlined"
-                    label="Tenho disponível (AOA)"
+                    label={tw('personal.available', { currency: preferredCurrency })}
                     value={regrasDisponivel}
                     onChangeText={setRegrasDisponivel}
                     keyboardType="decimal-pad"
                     style={styles.calculatorInput}
-                    placeholder={regrasRendimento && parseFloat(regrasRendimento.replace(',', '.')) > 0 ? `Sugestão: ${formatCurrency(parseFloat(regrasRendimento.replace(',', '.')) * 0.3)}` : 'Opcional'}
+                    placeholder={regrasRendimento && parseFloat(regrasRendimento.replace(',', '.')) > 0 ? tw('personal.suggestion', { amount: format(parseFloat(regrasRendimento.replace(',', '.')) * 0.3) }) : t('personal.optional')}
                     left={<TextInput.Icon icon="wallet" />}
                   />
                   {(() => {
@@ -814,15 +859,15 @@ export default function PersonalFinanceScreen() {
                           />
                           <View style={styles.verificationContent}>
                             <Text variant="titleLarge" style={[styles.verificationTitle, { color: pode ? '#10b981' : '#b45309' }]}>
-                              {pode ? 'Podes gastar ✓' : 'Ainda não podes'}
+                              {pode ? t('personal.canSpend') : t('personal.cannotSpendYet')}
                             </Text>
                             {pode ? (
                               <Text variant="bodyMedium" style={styles.verificationText}>
-                                Tens {formatCurrency(disp)} disponível, suficiente para gastar {formatCurrency(gastar)}
+                                {tw('personal.enoughToSpend', { available: format(disp), amount: format(gastar) })}
                               </Text>
                             ) : (
                               <Text variant="bodyMedium" style={styles.verificationText}>
-                                Precisas de {formatCurrency(precisa3x)} (3× {formatCurrency(gastar)}). Tens {formatCurrency(disp)}.
+                                {tw('personal.needAmount', { needed: format(precisa3x), amount: format(gastar), available: format(disp) })}
                               </Text>
                             )}
                           </View>
@@ -835,7 +880,7 @@ export default function PersonalFinanceScreen() {
               </Card.Content>
             </Card>
 
-            {/* Tirar dinheiro do orçamento - functional tool */}
+            {/* {t('personal.budgetWithdrawTitle')} - functional tool */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => navigation.navigate('TirarDinheiroOrcamento')}
@@ -847,15 +892,15 @@ export default function PersonalFinanceScreen() {
                       <MaterialCommunityIcons name="wallet-outline" size={32} color="#6366f1" />
                     </View>
                     <View style={styles.ruleHeaderText}>
-                      <Text variant="titleLarge" style={styles.ruleTitle}>Tirar dinheiro do orçamento</Text>
+                      <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.budgetWithdrawTitle')}</Text>
                       <Text variant="bodySmall" style={styles.ruleSubtitle}>
-                        7 cenários reais: custos operacionais, projetos, reembolsos, contingência, fundador, crescimento, lucro
+                        {t('personal.budgetWithdrawSubtitle')}
                       </Text>
                     </View>
                     <MaterialCommunityIcons name="chevron-right" size={28} color="#6366f1" />
                   </View>
                   <Text variant="bodySmall" style={styles.orcamentoCta}>
-                    Toque para ver a regra real: alocar, aprovar e justificar →
+                    {t('personal.budgetWithdrawCta')}
                   </Text>
                 </Card.Content>
               </Card>
@@ -869,7 +914,7 @@ export default function PersonalFinanceScreen() {
             {chartData.length > 0 && (
               <Card style={styles.card}>
                 <Card.Content>
-                  <Text variant="titleMedium" style={styles.sectionTitle}>Despesas por Categoria</Text>
+                  <Text variant="titleMedium" style={styles.sectionTitle}>{t('personal.expensesByCategory')}</Text>
                   <PieChart
                     data={chartData}
                     width={width - 64}
@@ -891,21 +936,21 @@ export default function PersonalFinanceScreen() {
                 <Card.Content>
                   <MaterialCommunityIcons name="wallet" size={24} color="#6366f1" />
                   <Text variant="headlineSmall" style={styles.statValue}>{budgets.length}</Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Orçamentos</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statBudgets')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
                   <MaterialCommunityIcons name="target" size={24} color="#10b981" />
                   <Text variant="headlineSmall" style={styles.statValue}>{activeGoals.length}</Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Objetivos</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statGoals')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
                   <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
                   <Text variant="headlineSmall" style={styles.statValue}>{activeDebts.length}</Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Dívidas</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statDebts')}</Text>
                 </Card.Content>
               </Card>
             </View>
@@ -919,10 +964,10 @@ export default function PersonalFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="cash-minus" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhuma despesa registada
+                    {t('personal.emptyExpenses')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowExpenseModal(true)}>
-                    Adicionar Despesa
+                    {t('personal.addExpense')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -937,19 +982,29 @@ export default function PersonalFinanceScreen() {
                             <MaterialCommunityIcons name={materialIcon(expense.category_icon)} size={20} color="#fff" />
                           </View>
                           <View>
-                            <Text variant="titleMedium">{expense.category_name || 'Sem categoria'}</Text>
+                            <Text variant="titleMedium">{expense.category_name || t('personal.noCategory')}</Text>
                             <Text variant="bodySmall" style={styles.expenseDescription}>
                               {expense.description}
                             </Text>
                           </View>
                         </View>
-                        <Text variant="titleLarge" style={styles.expenseAmount}>
-                          {formatCurrency(parseFloat(expense.amount))}
-                        </Text>
+                        <View style={styles.amountCol}>
+                          {(() => {
+                            const dual = formatDual(expense.amount, expense.currency || preferredCurrency)
+                            return (
+                              <>
+                                <Text variant="titleLarge" style={styles.expenseAmount}>{dual.primary}</Text>
+                                {dual.secondary ? (
+                                  <Text variant="bodySmall" style={styles.mutedText}>{dual.secondary}</Text>
+                                ) : null}
+                              </>
+                            )
+                          })()}
+                        </View>
                       </View>
                       <View style={styles.expenseFooter}>
-                        <Chip icon="calendar" compact>{new Date(expense.date).toLocaleDateString('pt-PT')}</Chip>
-                        <Chip icon="credit-card" compact>{expense.payment_method}</Chip>
+                        <Chip icon="calendar" compact>{fmtDate(expense.date)}</Chip>
+                        <Chip icon="credit-card" compact>{paymentLabel(expense.payment_method)}</Chip>
                       </View>
                     </TouchableOpacity>
                     <View style={styles.expenseActions}>
@@ -960,7 +1015,7 @@ export default function PersonalFinanceScreen() {
                       >
                         <View style={styles.actionButtonContent}>
                           <MaterialCommunityIcons name="pencil" size={18} color="#6366f1" />
-                          <RNText style={styles.editActionText}>Editar</RNText>
+                          <RNText style={styles.editActionText}>{t('common.edit')}</RNText>
                         </View>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -970,7 +1025,7 @@ export default function PersonalFinanceScreen() {
                       >
                         <View style={styles.actionButtonContent}>
                           <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
-                          <Text style={styles.deleteActionText}>Excluir</Text>
+                          <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
                         </View>
                       </TouchableOpacity>
                     </View>
@@ -988,10 +1043,10 @@ export default function PersonalFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="wallet" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhum orçamento criado
+                    {t('personal.emptyBudgets')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowBudgetModal(true)}>
-                    Criar Orçamento
+                    {t('personal.createBudget')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -1001,8 +1056,13 @@ export default function PersonalFinanceScreen() {
                   <Card.Content>
                     <TouchableOpacity onPress={() => openEditBudget(budget)} activeOpacity={0.7}>
                       <View style={styles.budgetHeader}>
-                        <Text variant="titleMedium">{budget.category_name || 'Geral'}</Text>
-                        <Text variant="headlineSmall">{formatCurrency(parseFloat(budget.amount))}</Text>
+                        <Text variant="titleMedium">{budget.category_name || t('personal.general')}</Text>
+                        <Text variant="headlineSmall">
+                          {(() => {
+                            const dual = formatDual(budget.amount, budget.currency || preferredCurrency)
+                            return dual.secondary ? `${dual.primary}\n${dual.secondary}` : dual.primary
+                          })()}
+                        </Text>
                       </View>
                       <View style={styles.progressBar}>
                         <View
@@ -1016,8 +1076,8 @@ export default function PersonalFinanceScreen() {
                         />
                       </View>
                       <View style={styles.budgetFooter}>
-                        <Text variant="bodySmall">Gasto: {formatCurrency(parseFloat(budget.spent))}</Text>
-                        <Text variant="bodySmall">Restante: {formatCurrency(parseFloat(budget.remaining))}</Text>
+                        <Text variant="bodySmall">{t('personal.spentLabel')} {format(parseFloat(budget.spent))}</Text>
+                        <Text variant="bodySmall">{t('personal.remainingLabel')} {format(parseFloat(budget.remaining))}</Text>
                       </View>
                     </TouchableOpacity>
                     <View style={styles.budgetActions}>
@@ -1028,7 +1088,7 @@ export default function PersonalFinanceScreen() {
                         icon="wallet-outline"
                         style={styles.budgetActionButton}
                       >
-                        Gerir Orçamento
+                        {t('personal.manageBudget')}
                       </Button>
                       <Button
                         mode="contained"
@@ -1038,7 +1098,7 @@ export default function PersonalFinanceScreen() {
                         style={styles.budgetActionButton}
                         buttonColor="#6366f1"
                       >
-                        Adicionar Gasto
+                        {t('personal.addSpend')}
                       </Button>
                     </View>
                   </Card.Content>
@@ -1055,10 +1115,10 @@ export default function PersonalFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="target" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhum objetivo definido
+                    {t('personal.emptyGoals')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowGoalModal(true)}>
-                    Criar Objetivo
+                    {t('personal.createGoal')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -1076,7 +1136,7 @@ export default function PersonalFinanceScreen() {
                           icon="check-circle"
                           style={styles.statusChip}
                         >
-                          {goal.status === 'completed' ? 'Concluído' : goal.status === 'cancelled' ? 'Cancelado' : 'Ativo'}
+                          {goal.status === 'completed' ? t('personal.statusCompleted') : goal.status === 'cancelled' ? t('personal.statusCancelled') : t('personal.statusActive')}
                         </Chip>
                       )}
                     </View>
@@ -1093,7 +1153,11 @@ export default function PersonalFinanceScreen() {
                     </View>
                     <View style={styles.goalFooter}>
                       <Text variant="bodySmall">
-                        {formatCurrency(parseFloat(goal.current_amount))} / {formatCurrency(parseFloat(goal.target_amount))}
+                        {(() => {
+                          const curDual = formatDual(goal.current_amount, goal.currency || preferredCurrency)
+                          const tgtDual = formatDual(goal.target_amount, goal.currency || preferredCurrency)
+                          return `${curDual.primary} / ${tgtDual.primary}`
+                        })()}
                       </Text>
                       <Text variant="bodySmall">{parseFloat(goal.progress_percentage).toFixed(0)}%</Text>
                     </View>
@@ -1104,7 +1168,7 @@ export default function PersonalFinanceScreen() {
                         style={styles.addMoneyButton}
                         icon="plus-circle"
                       >
-                        Adicionar Dinheiro
+                        {t('personal.addMoney')}
                       </Button>
                     )}
                   </Card.Content>
@@ -1127,10 +1191,10 @@ export default function PersonalFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="credit-card" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhuma dívida registada
+                    {t('personal.emptyDebts')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowDebtModal(true)}>
-                    Adicionar Dívida
+                    {t('personal.addDebt')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -1148,7 +1212,7 @@ export default function PersonalFinanceScreen() {
                           debt.status === 'overdue' && styles.statusChipOverdue,
                         ]}
                       >
-                        {debt.status === 'paid' ? 'Paga' : debt.status === 'overdue' ? 'Vencida' : 'Ativa'}
+                        {debt.status === 'paid' ? t('personal.statusPaid') : debt.status === 'overdue' ? t('personal.statusOverdue') : t('personal.statusActive')}
                       </Chip>
                     </View>
                     <View style={styles.progressBar}>
@@ -1165,34 +1229,34 @@ export default function PersonalFinanceScreen() {
                     <View style={styles.debtInfo}>
                       <View style={styles.debtInfoRow}>
                         <Text variant="bodySmall" style={styles.debtInfoLabel}>
-                          Total:
+                          {t('personal.totalLabel')}
                         </Text>
                         <Text variant="bodyMedium" style={styles.debtInfoValue}>
-                          {formatCurrency(parseFloat(debt.total_amount))}
+                          {formatDual(debt.total_amount, debt.currency || preferredCurrency).primary}
                         </Text>
                       </View>
                       <View style={styles.debtInfoRow}>
                         <Text variant="bodySmall" style={styles.debtInfoLabel}>
-                          Pago:
+                          {t('personal.paidLabel')}
                         </Text>
                         <Text variant="bodyMedium" style={styles.debtInfoValue}>
-                          {formatCurrency(parseFloat(debt.paid_amount))}
+                          {formatDual(debt.paid_amount, debt.currency || preferredCurrency).primary}
                         </Text>
                       </View>
                       <View style={styles.debtInfoRow}>
                         <Text variant="bodySmall" style={styles.debtInfoLabel}>
-                          Restante:
+                          {t('personal.remainingLabel')}
                         </Text>
                         <Text variant="bodyMedium" style={[styles.debtInfoValue, styles.remainingAmount]}>
-                          {formatCurrency(parseFloat(debt.remaining_amount))}
+                          {formatDual(debt.remaining_amount, debt.currency || preferredCurrency).primary}
                         </Text>
                       </View>
                       <View style={styles.debtInfoRow}>
                         <Text variant="bodySmall" style={styles.debtInfoLabel}>
-                          Vencimento:
+                          {t('personal.dueDateLabel')}
                         </Text>
                         <Text variant="bodySmall" style={styles.debtInfoValue}>
-                          {new Date(debt.due_date).toLocaleDateString('pt-PT')}
+                          {fmtDate(debt.due_date)}
                         </Text>
                       </View>
                     </View>
@@ -1203,22 +1267,23 @@ export default function PersonalFinanceScreen() {
                         onPress={() => {
                           setSelectedDebt(debt)
                           setPaymentAmount('')
+                          setPaymentCurrency((debt.currency || preferredCurrency) as CurrencyCode)
                           setShowPayDebtModal(true)
                         }}
                         style={styles.payDebtButton}
                         buttonColor={colors.brand.secondary}
                       >
-                        Pagar Dívida
+                        {t('personal.payDebt')}
                       </Button>
                     )}
                     {debt.payments && debt.payments.length > 0 && (
                       <View style={styles.paymentHistory}>
                         <Text variant="labelMedium" style={styles.paymentHistoryTitle}>
-                          Histórico de pagamentos
+                          {t('personal.paymentHistory')}
                         </Text>
                         {debt.payments.slice(0, 3).map((p) => (
                           <Text key={p.id} variant="bodySmall" style={styles.mutedText}>
-                            {new Date(p.payment_date).toLocaleDateString('pt-PT')} — {formatCurrency(parseFloat(p.amount))}
+                            {fmtDate(p.payment_date)} — {formatDual(p.amount, debt.currency || preferredCurrency).primary}
                           </Text>
                         ))}
                       </View>
@@ -1250,20 +1315,20 @@ export default function PersonalFinanceScreen() {
         <Modal visible={showExpenseModal} onDismiss={() => { setShowExpenseModal(false); setEditingItem(null); resetExpenseForm() }} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingItem ? 'Editar Despesa' : 'Nova Despesa'}
+              {editingItem ? t('personal.editExpense') : t('personal.newExpense')}
             </Text>
             
             {/* Category Selection */}
             <View style={styles.dropdownContainer}>
               <View style={styles.categoryHeader}>
-                <Text variant="bodySmall" style={styles.label}>Categoria</Text>
+                <Text variant="bodySmall" style={styles.label}>{t('personal.category')}</Text>
                 <Button
                   mode="text"
                   compact
                   onPress={() => setShowCategoryModal(true)}
                   icon="plus"
                 >
-                  Nova Categoria
+                  {t('personal.newCategory')}
                 </Button>
               </View>
               <Menu
@@ -1298,7 +1363,7 @@ export default function PersonalFinanceScreen() {
                         <>
                           <MaterialCommunityIcons name="tag" size={20} color="#999" style={styles.dropdownIcon} />
                           <Text variant="bodyLarge" style={[styles.dropdownText, styles.placeholderText]}>
-                            Selecione uma categoria
+                            {t('personal.selectCategory')}
                           </Text>
                         </>
                       )}
@@ -1312,7 +1377,7 @@ export default function PersonalFinanceScreen() {
                     setExpenseForm({ ...expenseForm, category: '' })
                     setShowCategoryMenu(false)
                   }}
-                  title="Sem categoria"
+                  title={t('personal.noCategory')}
                 />
                 {categories.map(category => (
                   <Menu.Item
@@ -1335,29 +1400,34 @@ export default function PersonalFinanceScreen() {
             </View>
             
             <TextInput 
-              label="Descrição" 
+              label={t('personal.description')} 
               value={expenseForm.description} 
               onChangeText={(text) => setExpenseForm({ ...expenseForm, description: text })} 
             />
             <TextInput 
-              label="Valor" 
+              label={t('personal.amount')} 
               keyboardType="numeric" 
               value={expenseForm.amount} 
               onChangeText={(text) => setExpenseForm({ ...expenseForm, amount: text })} 
             />
+            <CurrencyPicker
+              value={expenseForm.currency}
+              onChange={(code) => setExpenseForm({ ...expenseForm, currency: code })}
+              label={t('market.selectCurrency')}
+            />
             <DatePicker
-              label="Data"
+              label={t('personal.date')}
               value={expenseForm.date}
               onChange={(date) => setExpenseForm({ ...expenseForm, date: date || new Date() })}
             />
-            <Text variant="bodySmall" style={styles.label}>Método de Pagamento</Text>
+            <Text variant="bodySmall" style={styles.label}>{t('personal.paymentMethod')}</Text>
             <SegmentedButtons
               value={expenseForm.payment_method}
               onValueChange={(value) => setExpenseForm({ ...expenseForm, payment_method: value })}
               buttons={[
-                { value: 'cash', label: 'Dinheiro' },
-                { value: 'card', label: 'Cartão' },
-                { value: 'transfer', label: 'Transferência' },
+                { value: 'cash', label: t('business.paymentCash') },
+                { value: 'card', label: t('business.paymentCard') },
+                { value: 'transfer', label: t('business.paymentTransfer') },
               ]}
             />
             {editingItem && (
@@ -1367,11 +1437,11 @@ export default function PersonalFinanceScreen() {
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name="delete-outline" size={20} color="#fff" />
-                <RNText style={styles.modalDeleteButtonText}>Excluir Despesa</RNText>
+                <RNText style={styles.modalDeleteButtonText}>{t('personal.deleteExpense')}</RNText>
               </TouchableOpacity>
             )}
             <Button mode="contained" onPress={handleSaveExpense} style={styles.modalButton}>
-              Salvar
+              {t('common.save')}
             </Button>
           </ScrollView>
         </Modal>
@@ -1388,17 +1458,17 @@ export default function PersonalFinanceScreen() {
           contentContainerStyle={styles.modal}
         >
           <Text variant="headlineSmall" style={styles.modalTitle}>
-            Nova Categoria
+            {t('personal.newCategory')}
           </Text>
           <TextInput
-            label="Nome da Categoria"
+            label={t('personal.categoryName')}
             value={categoryForm.name}
             onChangeText={(text) => setCategoryForm({ ...categoryForm, name: text })}
             style={styles.input}
           />
           
           {/* Icon Selection */}
-          <Text variant="bodySmall" style={styles.label}>Ícone</Text>
+          <Text variant="bodySmall" style={styles.label}>{t('personal.icon')}</Text>
           <View style={styles.iconGrid}>
             {['tag', 'food', 'car', 'home', 'shopping', 'medical-bag', 'school', 'gamepad-variant', 'gift', 'bank'].map(icon => (
               <TouchableOpacity
@@ -1420,7 +1490,7 @@ export default function PersonalFinanceScreen() {
           </View>
           
           {/* Color Selection */}
-          <Text variant="bodySmall" style={styles.label}>Cor</Text>
+          <Text variant="bodySmall" style={styles.label}>{t('personal.color')}</Text>
           <View style={styles.colorGrid}>
             {['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'].map(color => (
               <TouchableOpacity
@@ -1445,7 +1515,7 @@ export default function PersonalFinanceScreen() {
             style={styles.modalButton}
             disabled={!categoryForm.name.trim()}
           >
-            Criar Categoria
+            {t('personal.createCategory')}
           </Button>
         </Modal>
       </Portal>
@@ -1455,18 +1525,23 @@ export default function PersonalFinanceScreen() {
         <Modal visible={showBudgetModal} onDismiss={() => { setShowBudgetModal(false); setEditingItem(null); resetBudgetForm() }} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingItem ? 'Editar Orçamento' : 'Novo Orçamento'}
+              {editingItem ? t('personal.editBudget') : t('personal.newBudget')}
             </Text>
             <TextInput 
-              label="Valor" 
+              label={t('personal.amount')} 
               keyboardType="numeric" 
               value={budgetForm.amount} 
               onChangeText={(text) => setBudgetForm({ ...budgetForm, amount: text })} 
             />
+            <CurrencyPicker
+              value={budgetForm.currency}
+              onChange={(code) => setBudgetForm({ ...budgetForm, currency: code })}
+              label={t('market.selectCurrency')}
+            />
             
             {/* Period Type Dropdown */}
             <View style={styles.dropdownContainer}>
-              <Text variant="bodySmall" style={styles.label}>Período</Text>
+              <Text variant="bodySmall" style={styles.label}>{t('personal.period')}</Text>
               <Menu
                 visible={showBudgetPeriodMenu}
                 onDismiss={() => setShowBudgetPeriodMenu(false)}
@@ -1488,10 +1563,10 @@ export default function PersonalFinanceScreen() {
                         style={styles.dropdownIcon}
                       />
                       <Text variant="bodyLarge" style={styles.dropdownText}>
-                        {budgetForm.period_type === 'daily' ? 'Diário' :
-                         budgetForm.period_type === 'monthly' ? 'Mensal' :
-                         budgetForm.period_type === 'yearly' ? 'Anual' :
-                         'Personalizado'}
+                        {budgetForm.period_type === 'daily' ? t('personal.periodDaily') :
+                         budgetForm.period_type === 'monthly' ? t('personal.periodMonthly') :
+                         budgetForm.period_type === 'yearly' ? t('personal.periodYearly') :
+                         t('personal.periodCustom')}
                       </Text>
                     </View>
                     <MaterialCommunityIcons name="chevron-down" size={20} color="#999" />
@@ -1503,7 +1578,7 @@ export default function PersonalFinanceScreen() {
                     setBudgetForm({ ...budgetForm, period_type: 'daily' })
                     setShowBudgetPeriodMenu(false)
                   }}
-                  title="Diário"
+                  title={t('personal.periodDaily')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="calendar-today" size={20} color="#6366f1" />
                   )}
@@ -1513,7 +1588,7 @@ export default function PersonalFinanceScreen() {
                     setBudgetForm({ ...budgetForm, period_type: 'monthly' })
                     setShowBudgetPeriodMenu(false)
                   }}
-                  title="Mensal"
+                  title={t('personal.periodMonthly')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="calendar-month" size={20} color="#6366f1" />
                   )}
@@ -1523,7 +1598,7 @@ export default function PersonalFinanceScreen() {
                     setBudgetForm({ ...budgetForm, period_type: 'yearly' })
                     setShowBudgetPeriodMenu(false)
                   }}
-                  title="Anual"
+                  title={t('personal.periodYearly')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="calendar" size={20} color="#6366f1" />
                   )}
@@ -1533,7 +1608,7 @@ export default function PersonalFinanceScreen() {
                     setBudgetForm({ ...budgetForm, period_type: 'custom' })
                     setShowBudgetPeriodMenu(false)
                   }}
-                  title="Personalizado"
+                  title={t('personal.periodCustom')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="calendar-range" size={20} color="#6366f1" />
                   )}
@@ -1544,7 +1619,7 @@ export default function PersonalFinanceScreen() {
             {/* Date inputs based on period type */}
             {budgetForm.period_type === 'daily' && (
               <DatePicker
-                label="Data"
+                label={t('personal.date')}
                 value={budgetForm.date}
                 onChange={(date) => setBudgetForm({ ...budgetForm, date: date })}
               />
@@ -1553,13 +1628,13 @@ export default function PersonalFinanceScreen() {
             {budgetForm.period_type === 'monthly' && (
               <>
                 <TextInput 
-                  label="Mês" 
+                  label={t('personal.month')} 
                   keyboardType="numeric" 
                   value={budgetForm.month.toString()} 
                   onChangeText={(text) => setBudgetForm({ ...budgetForm, month: parseInt(text) || 1 })} 
                 />
                 <TextInput 
-                  label="Ano" 
+                  label={t('personal.year')} 
                   keyboardType="numeric" 
                   value={budgetForm.year.toString()} 
                   onChangeText={(text) => setBudgetForm({ ...budgetForm, year: parseInt(text) || new Date().getFullYear() })} 
@@ -1569,7 +1644,7 @@ export default function PersonalFinanceScreen() {
 
             {budgetForm.period_type === 'yearly' && (
               <TextInput 
-                label="Ano" 
+                label={t('personal.year')} 
                 keyboardType="numeric" 
                 value={budgetForm.year.toString()} 
                 onChangeText={(text) => setBudgetForm({ ...budgetForm, year: parseInt(text) || new Date().getFullYear() })} 
@@ -1579,12 +1654,12 @@ export default function PersonalFinanceScreen() {
             {budgetForm.period_type === 'custom' && (
               <>
                 <DatePicker
-                  label="Data de Início"
+                  label={t('personal.startDate')}
                   value={budgetForm.start_date}
                   onChange={(date) => setBudgetForm({ ...budgetForm, start_date: date })}
                 />
                 <DatePicker
-                  label="Data de Fim"
+                  label={t('personal.endDate')}
                   value={budgetForm.end_date}
                   onChange={(date) => setBudgetForm({ ...budgetForm, end_date: date })}
                   minimumDate={budgetForm.start_date || undefined}
@@ -1593,7 +1668,7 @@ export default function PersonalFinanceScreen() {
             )}
 
             <Button mode="contained" onPress={handleSaveBudget} style={styles.modalButton}>
-              Salvar
+              {t('common.save')}
             </Button>
           </ScrollView>
         </Modal>
@@ -1603,18 +1678,23 @@ export default function PersonalFinanceScreen() {
       <Portal>
         <Modal visible={showGoalModal} onDismiss={() => { setShowGoalModal(false); setEditingItem(null); resetGoalForm() }} contentContainerStyle={styles.modal}>
           <Text variant="headlineSmall" style={styles.modalTitle}>
-            {editingItem ? 'Editar Objetivo' : 'Novo Objetivo'}
+            {editingItem ? t('personal.editGoal') : t('personal.newGoal')}
           </Text>
-          <TextInput label="Título" value={goalForm.title} onChangeText={(text) => setGoalForm({ ...goalForm, title: text })} />
-          <TextInput label="Descrição" multiline value={goalForm.description} onChangeText={(text) => setGoalForm({ ...goalForm, description: text })} />
-          <TextInput label="Valor Alvo" keyboardType="numeric" value={goalForm.target_amount} onChangeText={(text) => setGoalForm({ ...goalForm, target_amount: text })} />
+          <TextInput label={t('personal.goalTitle')} value={goalForm.title} onChangeText={(text) => setGoalForm({ ...goalForm, title: text })} />
+          <TextInput label={t('personal.description')} multiline value={goalForm.description} onChangeText={(text) => setGoalForm({ ...goalForm, description: text })} />
+          <TextInput label={t('personal.targetAmount')} keyboardType="numeric" value={goalForm.target_amount} onChangeText={(text) => setGoalForm({ ...goalForm, target_amount: text })} />
+          <CurrencyPicker
+            value={goalForm.currency}
+            onChange={(code) => setGoalForm({ ...goalForm, currency: code })}
+            label={t('market.selectCurrency')}
+          />
           <DatePicker
-            label="Data Alvo"
+            label={t('personal.targetDate')}
             value={goalForm.target_date}
             onChange={(date) => setGoalForm({ ...goalForm, target_date: date })}
           />
           <Button mode="contained" onPress={handleSaveGoal} style={styles.modalButton}>
-            Salvar
+            {t('common.save')}
           </Button>
         </Modal>
       </Portal>
@@ -1624,20 +1704,25 @@ export default function PersonalFinanceScreen() {
         <Modal visible={showDebtModal} onDismiss={() => { setShowDebtModal(false); setEditingItem(null); resetDebtForm() }} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingItem ? 'Editar Dívida' : 'Nova Dívida'}
+              {editingItem ? t('personal.editDebt') : t('personal.newDebt')}
             </Text>
-            <TextInput label="Credor" value={debtForm.creditor} onChangeText={(text) => setDebtForm({ ...debtForm, creditor: text })} style={styles.input} />
-            <TextInput label="Valor Total" keyboardType="numeric" value={debtForm.total_amount} onChangeText={(text) => setDebtForm({ ...debtForm, total_amount: text })} style={styles.input} />
-            <TextInput label="Valor Pago" keyboardType="numeric" value={debtForm.paid_amount} onChangeText={(text) => setDebtForm({ ...debtForm, paid_amount: text })} style={styles.input} />
-            <TextInput label="Taxa de Juros (%)" keyboardType="numeric" value={debtForm.interest_rate} onChangeText={(text) => setDebtForm({ ...debtForm, interest_rate: text })} style={styles.input} />
+            <TextInput label={t('personal.creditor')} value={debtForm.creditor} onChangeText={(text) => setDebtForm({ ...debtForm, creditor: text })} style={styles.input} />
+            <TextInput label={t('personal.totalAmount')} keyboardType="numeric" value={debtForm.total_amount} onChangeText={(text) => setDebtForm({ ...debtForm, total_amount: text })} style={styles.input} />
+            <CurrencyPicker
+              value={debtForm.currency}
+              onChange={(code) => setDebtForm({ ...debtForm, currency: code })}
+              label={t('market.selectCurrency')}
+            />
+            <TextInput label={t('personal.paidAmount')} keyboardType="numeric" value={debtForm.paid_amount} onChangeText={(text) => setDebtForm({ ...debtForm, paid_amount: text })} style={styles.input} />
+            <TextInput label={t('personal.interestRate')} keyboardType="numeric" value={debtForm.interest_rate} onChangeText={(text) => setDebtForm({ ...debtForm, interest_rate: text })} style={styles.input} />
             <DatePicker
-              label="Data de Vencimento"
+              label={t('personal.dueDateLabel')}
               value={debtForm.due_date}
               onChange={(date) => setDebtForm({ ...debtForm, due_date: date })}
             />
-            <TextInput label="Descrição" value={debtForm.description} onChangeText={(text) => setDebtForm({ ...debtForm, description: text })} multiline numberOfLines={3} style={styles.input} />
+            <TextInput label={t('personal.description')} value={debtForm.description} onChangeText={(text) => setDebtForm({ ...debtForm, description: text })} multiline numberOfLines={3} style={styles.input} />
             <Button mode="contained" onPress={handleSaveDebt} style={styles.modalButton}>
-              Salvar
+              {t('common.save')}
             </Button>
           </ScrollView>
         </Modal>
@@ -1651,12 +1736,13 @@ export default function PersonalFinanceScreen() {
             setShowPayDebtModal(false)
             setSelectedDebt(null)
             setPaymentAmount('')
+            setPaymentCurrency(preferredCurrency)
           }} 
           contentContainerStyle={styles.modal}
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              Pagar Dívida
+              {t('personal.payDebt')}
             </Text>
             {selectedDebt && (
               <>
@@ -1668,26 +1754,26 @@ export default function PersonalFinanceScreen() {
                     <View style={styles.debtModalInfo}>
                       <View style={styles.debtModalRow}>
                         <Text variant="bodySmall" style={styles.debtModalLabel}>
-                          Valor Total:
+                          {t('personal.totalAmount')}:
                         </Text>
                         <Text variant="bodyMedium" style={styles.debtModalValue}>
-                          {formatCurrency(parseFloat(selectedDebt.total_amount))}
+                          {format(parseFloat(selectedDebt.total_amount), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       <View style={styles.debtModalRow}>
                         <Text variant="bodySmall" style={styles.debtModalLabel}>
-                          Já Pago:
+                          {t('personal.alreadyPaid')}
                         </Text>
                         <Text variant="bodyMedium" style={styles.debtModalValue}>
-                          {formatCurrency(parseFloat(selectedDebt.paid_amount))}
+                          {format(parseFloat(selectedDebt.paid_amount), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       <View style={styles.debtModalRow}>
                         <Text variant="bodySmall" style={styles.debtModalLabel}>
-                          Restante:
+                          {t('personal.remainingLabel')}
                         </Text>
                         <Text variant="bodyMedium" style={[styles.debtModalValue, styles.remainingAmount]}>
-                          {formatCurrency(parseFloat(selectedDebt.remaining_amount))}
+                          {format(parseFloat(selectedDebt.remaining_amount), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       <View style={styles.progressBar}>
@@ -1705,33 +1791,37 @@ export default function PersonalFinanceScreen() {
                   </Card.Content>
                 </Card>
                 <TextInput
-                  label="Valor do Pagamento"
+                  label={t('personal.paymentAmount')}
                   keyboardType="numeric"
                   value={paymentAmount}
                   onChangeText={(text) => setPaymentAmount(text)}
                   style={styles.input}
-                  left={<TextInput.Icon icon="currency-usd" />}
                   placeholder="0.00"
                 />
-                {paymentAmount && parseFloat(paymentAmount) > 0 && (
+                <CurrencyPicker
+                  value={paymentCurrency}
+                  onChange={setPaymentCurrency}
+                  label={t('market.selectCurrency')}
+                />
+                {paymentAmount && parseFloat(paymentAmount) > 0 && paymentCurrency === (selectedDebt.currency || preferredCurrency) && (
                   <Card style={styles.previewCard}>
                     <Card.Content>
-                      <Text variant="bodySmall" style={styles.previewLabel}>Após este pagamento:</Text>
+                      <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.afterPayment')}</Text>
                       <View style={styles.previewRow}>
-                        <Text variant="bodySmall" style={styles.previewLabel}>Total Pago:</Text>
+                        <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.totalPaid')}</Text>
                         <Text variant="titleMedium" style={styles.previewValue}>
-                          {formatCurrency(parseFloat(selectedDebt.paid_amount) + parseFloat(paymentAmount))}
+                          {format(parseFloat(selectedDebt.paid_amount) + parseFloat(paymentAmount), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       <View style={styles.previewRow}>
-                        <Text variant="bodySmall" style={styles.previewLabel}>Restante:</Text>
+                        <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.remainingLabel')}</Text>
                         <Text variant="titleMedium" style={[styles.previewValue, parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 ? styles.paidAmount : null]}>
-                          {formatCurrency(Math.max(parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount), 0))}
+                          {format(Math.max(parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount), 0), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       {parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 && (
                         <Chip icon="check-circle" style={styles.willBePaidChip} textStyle={styles.willBePaidChipText}>
-                          Dívida será totalmente paga!
+                          {t('personal.debtFullyPaid')}
                         </Chip>
                       )}
                     </Card.Content>
@@ -1746,7 +1836,7 @@ export default function PersonalFinanceScreen() {
                   icon="cash-check"
                   buttonColor="#10b981"
                 >
-                  {payingDebt ? 'Processando...' : 'Registrar Pagamento'}
+                  {payingDebt ? t('personal.processing') : t('personal.recordPayment')}
                 </Button>
               </>
             )}
@@ -1762,12 +1852,13 @@ export default function PersonalFinanceScreen() {
             setShowAddMoneyModal(false)
             setSelectedGoal(null)
             setAddMoneyAmount('')
+            setContributeCurrency(preferredCurrency)
           }} 
           contentContainerStyle={styles.modal}
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              Adicionar Dinheiro ao Objetivo
+              {t('personal.addMoney')} ao Objetivo
             </Text>
             {selectedGoal && (
               <>
@@ -1790,29 +1881,33 @@ export default function PersonalFinanceScreen() {
                     </View>
                     <View style={styles.goalFooter}>
                       <Text variant="bodySmall">
-                        {formatCurrency(parseFloat(selectedGoal.current_amount))} / {formatCurrency(parseFloat(selectedGoal.target_amount))}
+                        {format(parseFloat(selectedGoal.current_amount), selectedGoal.currency || preferredCurrency)} / {format(parseFloat(selectedGoal.target_amount), selectedGoal.currency || preferredCurrency)}
                       </Text>
                       <Text variant="bodySmall">{parseFloat(selectedGoal.progress_percentage).toFixed(0)}%</Text>
                     </View>
                   </Card.Content>
                 </Card>
                 <TextInput
-                  label="Valor a Adicionar"
+                  label={t('personal.amountToAdd')}
                   keyboardType="numeric"
                   value={addMoneyAmount}
                   onChangeText={(text) => setAddMoneyAmount(text)}
                   style={styles.input}
-                  left={<TextInput.Icon icon="currency-usd" />}
                 />
-                {addMoneyAmount && parseFloat(addMoneyAmount) > 0 && (
+                <CurrencyPicker
+                  value={contributeCurrency}
+                  onChange={setContributeCurrency}
+                  label={t('market.selectCurrency')}
+                />
+                {addMoneyAmount && parseFloat(addMoneyAmount) > 0 && contributeCurrency === (selectedGoal.currency || preferredCurrency) && (
                   <Card style={styles.previewCard}>
                     <Card.Content>
-                      <Text variant="bodySmall" style={styles.previewLabel}>Novo valor:</Text>
+                      <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.newValue')}</Text>
                       <Text variant="titleLarge" style={styles.previewValue}>
-                        {formatCurrency(parseFloat(selectedGoal.current_amount) + parseFloat(addMoneyAmount))} / {formatCurrency(parseFloat(selectedGoal.target_amount))}
+                        {format(parseFloat(selectedGoal.current_amount) + parseFloat(addMoneyAmount), selectedGoal.currency || preferredCurrency)} / {format(parseFloat(selectedGoal.target_amount), selectedGoal.currency || preferredCurrency)}
                       </Text>
                       <Text variant="bodySmall" style={styles.previewPercentage}>
-                        {((parseFloat(selectedGoal.current_amount) + parseFloat(addMoneyAmount)) / parseFloat(selectedGoal.target_amount) * 100).toFixed(0)}% do objetivo
+                        {tw('personal.goalProgress', { percent: ((parseFloat(selectedGoal.current_amount) + parseFloat(addMoneyAmount)) / parseFloat(selectedGoal.target_amount) * 100).toFixed(0) })}
                       </Text>
                     </Card.Content>
                   </Card>
@@ -1824,7 +1919,7 @@ export default function PersonalFinanceScreen() {
                   disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0}
                   icon="check-circle"
                 >
-                  Adicionar
+                  {t('common.add')}
                 </Button>
               </>
             )}
@@ -1845,15 +1940,15 @@ export default function PersonalFinanceScreen() {
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              Gastos do Orçamento
+              {t('personal.budgetExpenses')}
             </Text>
             {selectedBudget && (
               <>
                 <Card style={styles.infoCard}>
                   <Card.Content>
                     <View style={styles.budgetHeader}>
-                      <Text variant="titleMedium">{selectedBudget.category_name || 'Geral'}</Text>
-                      <Text variant="headlineSmall">{formatCurrency(parseFloat(selectedBudget.amount))}</Text>
+                      <Text variant="titleMedium">{selectedBudget.category_name || t('personal.general')}</Text>
+                      <Text variant="headlineSmall">{format(parseFloat(selectedBudget.amount))}</Text>
                     </View>
                     <View style={styles.progressBar}>
                       <View
@@ -1867,18 +1962,18 @@ export default function PersonalFinanceScreen() {
                       />
                     </View>
                     <View style={styles.budgetFooter}>
-                      <Text variant="bodySmall">Gasto: {formatCurrency(parseFloat(selectedBudget.spent))}</Text>
-                      <Text variant="bodySmall">Restante: {formatCurrency(parseFloat(selectedBudget.remaining))}</Text>
+                      <Text variant="bodySmall">{t('personal.spentLabel')} {format(parseFloat(selectedBudget.spent))}</Text>
+                      <Text variant="bodySmall">{t('personal.remainingLabel')} {format(parseFloat(selectedBudget.remaining))}</Text>
                     </View>
                     <Text variant="bodySmall" style={{ marginTop: 8, color: '#6b7280' }}>
                       {selectedBudget.period_type === 'daily' && selectedBudget.date
-                        ? `Período: ${new Date(selectedBudget.date).toLocaleDateString('pt-PT')}`
+                        ? tw('personal.periodSingle', { date: fmtDate(selectedBudget.date) })
                         : selectedBudget.period_type === 'monthly'
                         ? `Período: ${['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][selectedBudget.month]} ${selectedBudget.year}`
                         : selectedBudget.period_type === 'yearly'
                         ? `Período: ${selectedBudget.year}`
                         : selectedBudget.start_date && selectedBudget.end_date
-                        ? `Período: ${new Date(selectedBudget.start_date).toLocaleDateString('pt-PT')} - ${new Date(selectedBudget.end_date).toLocaleDateString('pt-PT')}`
+                        ? tw('personal.periodRange', { from: fmtDate(selectedBudget.start_date), to: fmtDate(selectedBudget.end_date) })
                         : ''}
                     </Text>
                   </Card.Content>
@@ -1894,7 +1989,7 @@ export default function PersonalFinanceScreen() {
                     buttonColor="#6366f1"
                     style={{ marginBottom: 16 }}
                   >
-                    Adicionar Gasto
+                    {t('personal.addSpend')}
                   </Button>
                 </View>
                 {loadingBudgetExpenses ? (
@@ -1928,12 +2023,12 @@ export default function PersonalFinanceScreen() {
                             <View style={{ flex: 1 }}>
                               <Text variant="titleSmall">{expense.description}</Text>
                               <Text variant="bodySmall" style={styles.expenseDescription}>
-                                {new Date(expense.date).toLocaleDateString('pt-PT')} • {expense.payment_method === 'cash' ? 'Dinheiro' : expense.payment_method === 'card' ? 'Cartão' : expense.payment_method === 'transfer' ? 'Transferência' : 'Outro'}
+                                {fmtDate(expense.date)} • {paymentLabel(expense.payment_method)}
                               </Text>
                             </View>
                           </View>
                           <Text variant="titleMedium" style={styles.expenseAmount}>
-                            {formatCurrency(parseFloat(expense.amount))}
+                            {formatDual(expense.amount, expense.currency || preferredCurrency).primary}
                           </Text>
                         </View>
                       </Card.Content>
@@ -1995,6 +2090,14 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     color: '#6b7280',
     fontSize: 13,
+  },
+  planChip: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#c7d2fe',
+  },
+  planChipText: {
+    color: '#4338ca',
+    fontSize: 12,
   },
   principlesContainer: {
     paddingHorizontal: 16,
@@ -2336,6 +2439,9 @@ const styles = StyleSheet.create({
   expenseAmount: {
     fontWeight: 'bold',
     color: '#ef4444',
+  },
+  amountCol: {
+    alignItems: 'flex-end',
   },
   expenseFooter: {
     flexDirection: 'row',

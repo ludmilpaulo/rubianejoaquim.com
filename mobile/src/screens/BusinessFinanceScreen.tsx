@@ -5,11 +5,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
 import { businessFinanceApi } from '../services/api'
-import { formatCurrency } from '../utils/currency'
+import CurrencyPicker from '../components/CurrencyPicker'
+import { useCurrency } from '../contexts/CurrencyContext'
+import type { CurrencyCode } from '../utils/currency'
+import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import {
   getApiErrorMessage,
   unwrapList,
@@ -34,6 +39,7 @@ interface Sale {
   date: string
   payment_method: string
   invoice_number: string
+  currency?: string
 }
 
 interface BusinessExpense {
@@ -48,6 +54,7 @@ interface BusinessExpense {
   supplier: string
   invoice_number?: string
   is_tax_deductible: boolean
+  currency?: string
 }
 
 interface Category {
@@ -58,11 +65,18 @@ interface Category {
 }
 
 export default function BusinessFinanceScreen() {
-  const { t } = useI18n()
+  const { t, tw, locale } = useI18n()
+  const { currency: preferredCurrency, format, formatDual } = useCurrency()
+
+  const fmtDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
+    formatDate(locale, new Date(dateStr), options)
   const alert = useAlert()
+  const feedback = useActionFeedback()
   const [activeTab, setActiveTab] = useState<BusinessTab>('overview')
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [refreshing, setRefreshing] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [sales, setSales] = useState<Sale[]>([])
   const [expenses, setExpenses] = useState<BusinessExpense[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -77,7 +91,7 @@ export default function BusinessFinanceScreen() {
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showCategoryMenu, setShowCategoryMenu] = useState(false)
-  const [editingItem, setEditingItem] = useState<any>(null)
+  const [editingItem, setEditingItem] = useState<Sale | BusinessExpense | null>(null)
   
   // Category form
   const [categoryForm, setCategoryForm] = useState({ name: '', icon: 'tag', color: '#ef4444' })
@@ -90,6 +104,7 @@ export default function BusinessFinanceScreen() {
     date: new Date(),
     payment_method: 'cash',
     invoice_number: '',
+    currency: preferredCurrency,
   })
   const [expenseForm, setExpenseForm] = useState({
     category: '',
@@ -100,6 +115,7 @@ export default function BusinessFinanceScreen() {
     supplier: '',
     invoice_number: '',
     is_tax_deductible: false,
+    currency: preferredCurrency,
   })
 
   useEffect(() => {
@@ -108,6 +124,7 @@ export default function BusinessFinanceScreen() {
 
   const loadData = async () => {
     try {
+      setLoadError(null)
       const periodParams = getPeriodParams(periodState)
       const dateFrom = periodState.period === 'custom' && periodState.dateFrom
         ? periodState.dateFrom.toISOString().split('T')[0] : undefined
@@ -132,6 +149,9 @@ export default function BusinessFinanceScreen() {
       setExpensesSummary(expensesSummaryRes)
     } catch (error: unknown) {
       logger.error('Error loading data:', error)
+      setLoadError(getApiErrorMessage(error, 'feedback.tryAgain'))
+    } finally {
+      setInitialLoading(false)
     }
   }
 
@@ -141,72 +161,89 @@ export default function BusinessFinanceScreen() {
     setRefreshing(false)
   }
 
-  const handleSaveSale = async () => {
-    try {
-      const saleData: BusinessSalePayload = {
-        amount: saleForm.amount,
-        description: saleForm.description,
-        customer_name: saleForm.customer_name,
-        date: saleForm.date.toISOString().split('T')[0],
-        payment_method: saleForm.payment_method,
-        invoice_number: saleForm.invoice_number,
-      }
-      if (editingItem && 'customer_name' in editingItem) {
-        await businessFinanceApi.updateSale(editingItem.id, saleData)
-      } else {
-        await businessFinanceApi.createSale(saleData)
-      }
-      setShowSaleModal(false)
-      setEditingItem(null)
-      resetSaleForm()
-      loadData()
-    } catch (error: unknown) {
-      logger.error('Error saving sale:', error)
-      alert.error(getApiErrorMessage(error, 'business.saveSaleFailed'))
-    }
+  const handleSaveSale = () => {
+    void feedback.run(
+      async () => {
+        const saleData: BusinessSalePayload = {
+          amount: saleForm.amount,
+          description: saleForm.description,
+          customer_name: saleForm.customer_name,
+          date: saleForm.date.toISOString().split('T')[0],
+          payment_method: saleForm.payment_method,
+          invoice_number: saleForm.invoice_number,
+          currency: saleForm.currency,
+        }
+        if (editingItem && 'customer_name' in editingItem) {
+          await businessFinanceApi.updateSale(editingItem.id, saleData)
+        } else {
+          await businessFinanceApi.createSale(saleData)
+        }
+        setShowSaleModal(false)
+        setEditingItem(null)
+        resetSaleForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveSale',
+        pendingMessage: 'feedback.savingSale',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'business.saveSaleFailed',
+      },
+    )
   }
 
-  const handleSaveExpense = async () => {
-    try {
-      const expenseData: BusinessExpensePayload = {
-        amount: expenseForm.amount,
-        description: expenseForm.description,
-        date: expenseForm.date.toISOString().split('T')[0],
-        payment_method: expenseForm.payment_method,
-        supplier: expenseForm.supplier,
-        invoice_number: expenseForm.invoice_number,
-        is_tax_deductible: expenseForm.is_tax_deductible,
-        category: expenseForm.category ? parseInt(expenseForm.category, 10) : undefined,
-      }
+  const handleSaveExpense = () => {
+    void feedback.run(
+      async () => {
+        const expenseData: BusinessExpensePayload = {
+          amount: expenseForm.amount,
+          description: expenseForm.description,
+          date: expenseForm.date.toISOString().split('T')[0],
+          payment_method: expenseForm.payment_method,
+          supplier: expenseForm.supplier,
+          invoice_number: expenseForm.invoice_number,
+          is_tax_deductible: expenseForm.is_tax_deductible,
+          category: expenseForm.category ? parseInt(expenseForm.category, 10) : undefined,
+          currency: expenseForm.currency,
+        }
 
-      if (editingItem && 'supplier' in editingItem) {
-        await businessFinanceApi.updateExpense(editingItem.id, expenseData)
-      } else {
-        await businessFinanceApi.createExpense(expenseData)
-      }
-      setShowExpenseModal(false)
-      setEditingItem(null)
-      resetExpenseForm()
-      loadData()
-    } catch (error: unknown) {
-      logger.error('Error saving expense:', error)
-      alert.error(getApiErrorMessage(error, 'business.saveExpenseFailed'))
-    }
+        if (editingItem && 'supplier' in editingItem) {
+          await businessFinanceApi.updateExpense(editingItem.id, expenseData)
+        } else {
+          await businessFinanceApi.createExpense(expenseData)
+        }
+        setShowExpenseModal(false)
+        setEditingItem(null)
+        resetExpenseForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveExpense',
+        pendingMessage: 'feedback.savingBusinessExpense',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'business.saveExpenseFailed',
+      },
+    )
   }
 
-  const handleSaveCategory = async () => {
-    try {
-      await businessFinanceApi.createCategory({
-        ...categoryForm,
-        is_business: true,
-      })
-      setShowCategoryModal(false)
-      setCategoryForm({ name: '', icon: 'tag', color: '#ef4444' })
-      loadData() // Reload to get new categories
-    } catch (error: unknown) {
-      logger.error('Error saving category:', error)
-      alert.error(getApiErrorMessage(error, 'business.saveCategoryFailed'))
-    }
+  const handleSaveCategory = () => {
+    void feedback.run(
+      async () => {
+        await businessFinanceApi.createCategory({
+          ...categoryForm,
+          is_business: true,
+        })
+        setShowCategoryModal(false)
+        setCategoryForm({ name: '', icon: 'tag', color: '#ef4444' })
+        await loadData()
+      },
+      {
+        pendingKey: 'saveCategory',
+        pendingMessage: 'feedback.savingCategory',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'business.saveCategoryFailed',
+      },
+    )
   }
 
   const resetSaleForm = () => setSaleForm({
@@ -216,6 +253,7 @@ export default function BusinessFinanceScreen() {
     date: new Date(),
     payment_method: 'cash',
     invoice_number: '',
+    currency: preferredCurrency,
   })
   
   const resetExpenseForm = () => setExpenseForm({
@@ -227,6 +265,7 @@ export default function BusinessFinanceScreen() {
     supplier: '',
     invoice_number: '',
     is_tax_deductible: false,
+    currency: preferredCurrency,
   })
 
   const openEditSale = (sale: Sale) => {
@@ -246,6 +285,7 @@ export default function BusinessFinanceScreen() {
       date: saleDate,
       payment_method: sale.payment_method,
       invoice_number: sale.invoice_number,
+      currency: (sale.currency || preferredCurrency) as CurrencyCode,
     })
     setShowSaleModal(true)
   }
@@ -271,6 +311,7 @@ export default function BusinessFinanceScreen() {
       supplier: expense.supplier,
       invoice_number: expense.invoice_number || '',
       is_tax_deductible: expense.is_tax_deductible,
+      currency: (expense.currency || preferredCurrency) as CurrencyCode,
     })
     setShowExpenseModal(true)
   }
@@ -294,12 +335,28 @@ export default function BusinessFinanceScreen() {
   ]
 
   const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: ExpenseCategorySummary, index: number) => ({
-    name: cat.category__name || cat.category_name || 'Outros',
+    name: cat.category__name || cat.category_name || t('personal.others'),
     amount: parseFloat(String(cat.total ?? cat.amount ?? 0)),
     color: pieChartColors[index % pieChartColors.length],
     legendFontColor: '#7F7F7F',
     legendFontSize: 12,
   })) || []
+
+  if (initialLoading && sales.length === 0 && expenses.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {loadError ? (
+          <View style={styles.centered}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text variant="bodyLarge" style={styles.loadErrorText}>{loadError}</Text>
+            <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
+          </View>
+        ) : (
+          <ZendaLoading visible fill message={t('loading.business')} />
+        )}
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -310,12 +367,12 @@ export default function BusinessFinanceScreen() {
         >
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>Finanças do Negócio</Text>
+          <Text variant="headlineSmall" style={styles.title}>{t('business.title')}</Text>
         </View>
 
         {/* Period Selector for Analytics */}
         <View style={styles.periodSection}>
-          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <Text variant="labelMedium" style={styles.periodLabel}>{t('business.periodStats')}</Text>
           <PeriodSelector state={periodState} onChange={setPeriodState} />
         </View>
 
@@ -325,19 +382,19 @@ export default function BusinessFinanceScreen() {
             <View style={styles.metricRow}>
               <View style={styles.metric}>
                 <MaterialCommunityIcons name="trending-up" size={24} color="#6366f1" />
-                <Text variant="bodySmall" style={styles.metricLabel}>Vendas</Text>
+                <Text variant="bodySmall" style={styles.metricLabel}>{t('business.sales')}</Text>
                 <Text variant="headlineSmall" style={styles.metricValue}>
-                  {formatCurrency(totalSales)}
+                  {format(totalSales)}
                 </Text>
-                <Text variant="bodySmall" style={styles.metricCount}>{sales.length} vendas</Text>
+                <Text variant="bodySmall" style={styles.metricCount}>{tw('business.salesCount', { count: sales.length })}</Text>
               </View>
               <View style={styles.metric}>
                 <MaterialCommunityIcons name="trending-down" size={24} color="#ef4444" />
-                <Text variant="bodySmall" style={styles.metricLabel}>Despesas</Text>
+                <Text variant="bodySmall" style={styles.metricLabel}>{t('business.expenses')}</Text>
                 <Text variant="headlineSmall" style={[styles.metricValue, styles.expenseValue]}>
-                  {formatCurrency(totalExpenses)}
+                  {format(totalExpenses)}
                 </Text>
-                <Text variant="bodySmall" style={styles.metricCount}>{expenses.length} despesas</Text>
+                <Text variant="bodySmall" style={styles.metricCount}>{tw('business.expensesCount', { count: expenses.length })}</Text>
               </View>
             </View>
             <View style={styles.profitContainer}>
@@ -346,12 +403,12 @@ export default function BusinessFinanceScreen() {
                 size={32}
                 color={profit >= 0 ? "#10b981" : "#ef4444"}
               />
-              <Text variant="bodySmall" style={styles.profitLabel}>Lucro Líquido</Text>
+              <Text variant="bodySmall" style={styles.profitLabel}>{t('business.netProfit')}</Text>
               <Text variant="headlineMedium" style={[styles.profitValue, profit < 0 && styles.profitNegative]}>
-                {formatCurrency(profit)}
+                {format(profit)}
               </Text>
               <Text variant="bodySmall" style={styles.profitPercentage}>
-                {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0}% margem
+                {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0}% {t('business.margin')}
               </Text>
             </View>
           </Card.Content>
@@ -390,10 +447,10 @@ export default function BusinessFinanceScreen() {
             {salesChartData.length > 0 && (
               <Card style={styles.card}>
                 <Card.Content>
-                  <Text variant="titleMedium" style={styles.sectionTitle}>Vendas Recentes</Text>
+                  <Text variant="titleMedium" style={styles.sectionTitle}>{t('business.recentSales')}</Text>
                   <LineChart
                     data={{
-                      labels: sales.slice(0, 7).map(s => new Date(s.date).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })),
+                      labels: sales.slice(0, 7).map(s => fmtDate(s.date, { day: '2-digit', month: '2-digit' })),
                       datasets: [{ data: salesChartData }],
                     }}
                     width={width - 64}
@@ -417,7 +474,7 @@ export default function BusinessFinanceScreen() {
             {expensesChartData.length > 0 && (
               <Card style={styles.card}>
                 <Card.Content>
-                  <Text variant="titleMedium" style={styles.sectionTitle}>Despesas por Categoria</Text>
+                  <Text variant="titleMedium" style={styles.sectionTitle}>{t('business.expensesByCategory')}</Text>
                   <PieChart
                     data={expensesChartData}
                     width={width - 64}
@@ -439,14 +496,14 @@ export default function BusinessFinanceScreen() {
                 <Card.Content>
                   <MaterialCommunityIcons name="receipt" size={24} color="#10b981" />
                   <Text variant="headlineSmall" style={styles.statValue}>{sales.length}</Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Vendas</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('business.sales')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
                   <MaterialCommunityIcons name="file-document" size={24} color="#ef4444" />
                   <Text variant="headlineSmall" style={styles.statValue}>{expenses.length}</Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Despesas</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('business.expenses')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
@@ -455,7 +512,7 @@ export default function BusinessFinanceScreen() {
                   <Text variant="headlineSmall" style={styles.statValue}>
                     {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(0) : 0}%
                   </Text>
-                  <Text variant="bodySmall" style={styles.statLabel}>Margem</Text>
+                  <Text variant="bodySmall" style={styles.statLabel}>{t('business.marginLabel')}</Text>
                 </Card.Content>
               </Card>
             </View>
@@ -469,10 +526,10 @@ export default function BusinessFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="cash-plus" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhuma venda registada
+                    {t('business.emptySales')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowSaleModal(true)}>
-                    Registrar Venda
+                    {t('business.registerSale')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -486,18 +543,28 @@ export default function BusinessFinanceScreen() {
                           <MaterialCommunityIcons name="cash-plus" size={24} color="#10b981" />
                         </View>
                         <View>
-                          <Text variant="titleMedium">{sale.customer_name || 'Cliente não especificado'}</Text>
+                          <Text variant="titleMedium">{sale.customer_name || t('business.unspecifiedCustomer')}</Text>
                           <Text variant="bodySmall" style={styles.saleDescription}>
                             {sale.description}
                           </Text>
                         </View>
                       </View>
-                      <Text variant="titleLarge" style={styles.saleAmount}>
-                        {formatCurrency(parseFloat(sale.amount))}
-                      </Text>
+                      <View style={styles.amountCol}>
+                        {(() => {
+                          const dual = formatDual(sale.amount, sale.currency || preferredCurrency)
+                          return (
+                            <>
+                              <Text variant="titleLarge" style={styles.saleAmount}>{dual.primary}</Text>
+                              {dual.secondary ? (
+                                <Text variant="bodySmall" style={styles.dualSecondary}>{dual.secondary}</Text>
+                              ) : null}
+                            </>
+                          )
+                        })()}
+                      </View>
                     </View>
                     <View style={styles.saleFooter}>
-                      <Chip icon="calendar" compact>{new Date(sale.date).toLocaleDateString('pt-PT')}</Chip>
+                      <Chip icon="calendar" compact>{fmtDate(sale.date)}</Chip>
                       <Chip icon="credit-card" compact>{sale.payment_method}</Chip>
                       {sale.invoice_number && (
                         <Chip icon="receipt" compact>#{sale.invoice_number}</Chip>
@@ -517,10 +584,10 @@ export default function BusinessFinanceScreen() {
                 <Card.Content style={styles.emptyContent}>
                   <MaterialCommunityIcons name="cash-minus" size={64} color="#ccc" />
                   <Text variant="bodyLarge" style={styles.emptyText}>
-                    Nenhuma despesa registada
+                    {t('business.emptyExpenses')}
                   </Text>
                   <Button mode="contained" onPress={() => setShowExpenseModal(true)}>
-                    Adicionar Despesa
+                    {t('business.addExpense')}
                   </Button>
                 </Card.Content>
               </Card>
@@ -534,26 +601,36 @@ export default function BusinessFinanceScreen() {
                           <MaterialCommunityIcons name={materialIcon(expense.category_icon)} size={20} color="#fff" />
                         </View>
                         <View>
-                          <Text variant="titleMedium">{expense.category_name || 'Sem categoria'}</Text>
+                          <Text variant="titleMedium">{expense.category_name || t('business.noCategory')}</Text>
                           <Text variant="bodySmall" style={styles.expenseDescription}>
                             {expense.description}
                           </Text>
                           {expense.supplier && (
                             <Text variant="bodySmall" style={styles.supplierText}>
-                              Fornecedor: {expense.supplier}
+                              {tw('business.supplier', { name: expense.supplier })}
                             </Text>
                           )}
                         </View>
                       </View>
-                      <Text variant="titleLarge" style={styles.expenseAmount}>
-                        {formatCurrency(parseFloat(expense.amount))}
-                      </Text>
+                      <View style={styles.amountCol}>
+                        {(() => {
+                          const dual = formatDual(expense.amount, expense.currency || preferredCurrency)
+                          return (
+                            <>
+                              <Text variant="titleLarge" style={styles.expenseAmount}>{dual.primary}</Text>
+                              {dual.secondary ? (
+                                <Text variant="bodySmall" style={styles.dualSecondary}>{dual.secondary}</Text>
+                              ) : null}
+                            </>
+                          )
+                        })()}
+                      </View>
                     </View>
                     <View style={styles.expenseFooter}>
-                      <Chip icon="calendar" compact>{new Date(expense.date).toLocaleDateString('pt-PT')}</Chip>
+                      <Chip icon="calendar" compact>{fmtDate(expense.date)}</Chip>
                       <Chip icon="credit-card" compact>{expense.payment_method}</Chip>
                       {expense.is_tax_deductible && (
-                        <Chip icon="receipt" compact style={styles.taxChip}>Dedutível</Chip>
+                        <Chip icon="receipt" compact style={styles.taxChip}>{t('business.deductible')}</Chip>
                       )}
                     </View>
                   </Card.Content>
@@ -579,17 +656,22 @@ export default function BusinessFinanceScreen() {
         <Modal visible={showSaleModal} onDismiss={() => { setShowSaleModal(false); setEditingItem(null); resetSaleForm() }} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingItem ? 'Editar Venda' : 'Nova Venda'}
+              {editingItem ? t('business.editSale') : t('business.newSale')}
             </Text>
-            <TextInput label="Valor" keyboardType="numeric" value={saleForm.amount} onChangeText={(text) => setSaleForm({ ...saleForm, amount: text })} />
-            <TextInput label="Descrição" multiline value={saleForm.description} onChangeText={(text) => setSaleForm({ ...saleForm, description: text })} />
-            <TextInput label="Cliente" value={saleForm.customer_name} onChangeText={(text) => setSaleForm({ ...saleForm, customer_name: text })} />
+            <TextInput label={t('business.amount')} keyboardType="numeric" value={saleForm.amount} onChangeText={(text) => setSaleForm({ ...saleForm, amount: text })} />
+            <CurrencyPicker
+              value={saleForm.currency}
+              onChange={(code) => setSaleForm({ ...saleForm, currency: code })}
+              label={t('market.selectCurrency')}
+            />
+            <TextInput label={t('business.description')} multiline value={saleForm.description} onChangeText={(text) => setSaleForm({ ...saleForm, description: text })} />
+            <TextInput label={t('business.customer')} value={saleForm.customer_name} onChangeText={(text) => setSaleForm({ ...saleForm, customer_name: text })} />
             <DatePicker
-              label="Data"
+              label={t('business.date')}
               value={saleForm.date}
               onChange={(date) => setSaleForm({ ...saleForm, date: date || new Date() })}
             />
-            <TextInput label="Número da Fatura" value={saleForm.invoice_number} onChangeText={(text) => setSaleForm({ ...saleForm, invoice_number: text })} />
+            <TextInput label={t('business.invoiceNumber')} value={saleForm.invoice_number} onChangeText={(text) => setSaleForm({ ...saleForm, invoice_number: text })} />
             <SegmentedButtons
               value={saleForm.payment_method}
               onValueChange={(value) => setSaleForm({ ...saleForm, payment_method: value })}
@@ -600,8 +682,13 @@ export default function BusinessFinanceScreen() {
                 { value: 'check', label: t('business.paymentCheck') },
               ]}
             />
-            <Button mode="contained" onPress={handleSaveSale} style={styles.modalButton}>
-              Salvar
+            <Button
+              mode="contained"
+              onPress={handleSaveSale}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveSale')}
+            >
+              {feedback.actionLabel('common.save', 'saveSale', 'feedback.savingSale')}
             </Button>
           </ScrollView>
         </Modal>
@@ -612,7 +699,7 @@ export default function BusinessFinanceScreen() {
         <Modal visible={showExpenseModal} onDismiss={() => { setShowExpenseModal(false); setEditingItem(null); resetExpenseForm() }} contentContainerStyle={styles.modal}>
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingItem ? 'Editar Despesa' : 'Nova Despesa'}
+              {editingItem ? t('business.editExpense') : t('business.newExpense')}
             </Text>
             
             {/* Category Selection */}
@@ -696,15 +783,20 @@ export default function BusinessFinanceScreen() {
               </Menu>
             </View>
             
-            <TextInput label="Valor" keyboardType="numeric" value={expenseForm.amount} onChangeText={(text) => setExpenseForm({ ...expenseForm, amount: text })} />
-            <TextInput label="Descrição" multiline value={expenseForm.description} onChangeText={(text) => setExpenseForm({ ...expenseForm, description: text })} />
+            <TextInput label={t('business.amount')} keyboardType="numeric" value={expenseForm.amount} onChangeText={(text) => setExpenseForm({ ...expenseForm, amount: text })} />
+            <CurrencyPicker
+              value={expenseForm.currency}
+              onChange={(code) => setExpenseForm({ ...expenseForm, currency: code })}
+              label={t('market.selectCurrency')}
+            />
+            <TextInput label={t('business.description')} multiline value={expenseForm.description} onChangeText={(text) => setExpenseForm({ ...expenseForm, description: text })} />
             <TextInput label="Fornecedor" value={expenseForm.supplier} onChangeText={(text) => setExpenseForm({ ...expenseForm, supplier: text })} />
             <DatePicker
-              label="Data"
+              label={t('business.date')}
               value={expenseForm.date}
               onChange={(date) => setExpenseForm({ ...expenseForm, date: date || new Date() })}
             />
-            <TextInput label="Número da Fatura" value={expenseForm.invoice_number} onChangeText={(text) => setExpenseForm({ ...expenseForm, invoice_number: text })} />
+            <TextInput label={t('business.invoiceNumber')} value={expenseForm.invoice_number} onChangeText={(text) => setExpenseForm({ ...expenseForm, invoice_number: text })} />
             <SegmentedButtons
               value={expenseForm.payment_method}
               onValueChange={(value) => setExpenseForm({ ...expenseForm, payment_method: value })}
@@ -715,8 +807,13 @@ export default function BusinessFinanceScreen() {
                 { value: 'check', label: t('business.paymentCheck') },
               ]}
             />
-            <Button mode="contained" onPress={handleSaveExpense} style={styles.modalButton}>
-              Salvar
+            <Button
+              mode="contained"
+              onPress={handleSaveExpense}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveExpense')}
+            >
+              {feedback.actionLabel('common.save', 'saveExpense', 'feedback.savingBusinessExpense')}
             </Button>
           </ScrollView>
         </Modal>
@@ -789,9 +886,10 @@ export default function BusinessFinanceScreen() {
               mode="contained" 
               onPress={handleSaveCategory} 
               style={styles.modalButton}
-              disabled={!categoryForm.name.trim()}
+              disabled={!categoryForm.name.trim() || feedback.isPending('saveCategory')}
+              loading={feedback.isPending('saveCategory')}
             >
-              Criar Categoria
+              {feedback.actionLabel('business.createCategory', 'saveCategory', 'feedback.savingCategory')}
             </Button>
           </ScrollView>
         </Modal>
@@ -809,6 +907,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  loadErrorText: {
+    color: '#666',
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
@@ -954,6 +1063,13 @@ const styles = StyleSheet.create({
   saleAmount: {
     fontWeight: 'bold',
     color: '#10b981',
+  },
+  amountCol: {
+    alignItems: 'flex-end',
+  },
+  dualSecondary: {
+    color: '#94a3b8',
+    marginTop: 2,
   },
   saleFooter: {
     flexDirection: 'row',

@@ -28,6 +28,7 @@ from .social_providers import (
     ProviderVerificationError,
     build_tiktok_authorize_url,
     exchange_tiktok_code,
+    verify_apple_identity_token,
     verify_facebook_access_token,
     verify_google_id_token,
 )
@@ -36,6 +37,8 @@ from .social_service import (
     authenticate_social_user,
     confirm_social_link,
     list_login_methods,
+    make_session_exchange_code,
+    redeem_session_exchange_code,
     unlink_social_account,
 )
 
@@ -167,6 +170,60 @@ def facebook_login(request):
         result = authenticate_social_user(verified, linking_user=linking_user)
         return _auth_response(result)
     except (ProviderVerificationError, SocialAuthError) as exc:
+        return _error_response(exc)
+    except Exception as exc:
+        return _error_response(exc)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AuthBurstThrottle])
+@csrf_exempt
+def apple_login(request):
+    """
+    Exchange a Sign in with Apple identity token for an application session.
+    Body: { identity_token, full_name?: { givenName, familyName }, user?: apple_user_id }
+    The Apple `user` string is never trusted alone — JWT `sub` is the identity.
+    """
+    identity_token = request.data.get('identity_token') or request.data.get('id_token')
+    if not identity_token:
+        return Response({'error': 'Credencial Apple em falta.', 'code': 'missing_token'}, status=400)
+    full_name = request.data.get('full_name')
+    if full_name is not None and not isinstance(full_name, dict):
+        full_name = None
+    try:
+        verified = verify_apple_identity_token(identity_token, full_name=full_name)
+        linking_user = request.user if request.user.is_authenticated else None
+        result = authenticate_social_user(verified, linking_user=linking_user)
+        return _auth_response(result)
+    except (ProviderVerificationError, SocialAuthError) as exc:
+        return _error_response(exc)
+    except Exception as exc:
+        return _error_response(exc)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@throttle_classes([AuthBurstThrottle])
+@csrf_exempt
+def social_exchange(request):
+    """Redeem a short-lived OAuth exchange code for a DRF session token (mobile TikTok)."""
+    code = request.data.get('exchange_code') or request.data.get('code')
+    if not code:
+        return Response({'error': 'exchange_code em falta.', 'code': 'missing_code'}, status=400)
+    try:
+        token_key = redeem_session_exchange_code(code)
+        token = Token.objects.select_related('user').filter(key=token_key).first()
+        if not token or not token.user.is_active:
+            raise SocialAuthError('Sessão inválida.', code='invalid_session', status=401)
+        return Response({
+            'status': 'authenticated',
+            'user': UserSerializer(token.user).data,
+            'token': token.key,
+            'created': False,
+            'provider': request.data.get('provider') or 'tiktok',
+        })
+    except SocialAuthError as exc:
         return _error_response(exc)
     except Exception as exc:
         return _error_response(exc)
@@ -331,12 +388,12 @@ def tiktok_callback(request):
             return HttpResponseRedirect(f"{_post_auth_redirect_base(client='mobile')}?{params}")
         return HttpResponseRedirect(f"{_frontend_url('/login')}?{params}")
 
-    # Hand token to client via query on a dedicated callback route.
-    # Client stores the app session immediately and clears the URL.
+    # Hand a short-lived exchange code to the client (never put the DRF token in the URL).
+    exchange = make_session_exchange_code(result.token or '')
     params = urlencode({
         'social': 'tiktok',
         'status': 'authenticated',
-        'token': result.token or '',
+        'exchange_code': exchange,
         'created': '1' if result.created else '0',
         'next': dest,
     })
@@ -359,6 +416,7 @@ def unlink_provider(request, provider: str):
         SocialAccount.PROVIDER_GOOGLE,
         SocialAccount.PROVIDER_FACEBOOK,
         SocialAccount.PROVIDER_TIKTOK,
+        SocialAccount.PROVIDER_APPLE,
     ):
         return Response({'error': 'Fornecedor inválido.', 'code': 'invalid_provider'}, status=400)
     try:
@@ -381,13 +439,22 @@ def logout_view(request):
 @permission_classes([AllowAny])
 def social_config(request):
     """Public client IDs / enabled flags for frontend buttons (never secrets)."""
+    apple_enabled = bool(getattr(settings, 'APPLE_SIGN_IN_ENABLED', True))
     return Response({
         'google_client_id': getattr(settings, 'GOOGLE_CLIENT_ID', '') or '',
+        'google_client_id_ios': getattr(settings, 'GOOGLE_CLIENT_ID_IOS', '') or '',
+        # Public config exposes the first Android client ID (Play Store / primary).
+        'google_client_id_android': (
+            (getattr(settings, 'GOOGLE_CLIENT_ID_ANDROID', '') or '').split(',')[0].strip()
+        ),
         'facebook_app_id': getattr(settings, 'FACEBOOK_APP_ID', '') or '',
+        'apple_bundle_id': getattr(settings, 'APPLE_BUNDLE_ID', '') or 'com.rubianejoaquim.zenda',
         'tiktok_enabled': bool(getattr(settings, 'TIKTOK_CLIENT_KEY', None)),
         'google_enabled': bool(getattr(settings, 'GOOGLE_CLIENT_ID', None)),
         'facebook_enabled': bool(
             getattr(settings, 'FACEBOOK_APP_ID', None)
             and getattr(settings, 'FACEBOOK_APP_SECRET', None)
         ),
+        # Sign in with Apple is available on iOS when capability is enabled in the app.
+        'apple_enabled': apple_enabled,
     })

@@ -6,6 +6,7 @@ import HomeScreen from '../screens/HomeScreen'
 import PersonalFinanceScreen from '../screens/PersonalFinanceScreen'
 import OrcamentoPrincipiosScreen from '../screens/OrcamentoPrincipiosScreen'
 import TirarDinheiroOrcamentoScreen from '../screens/TirarDinheiroOrcamentoScreen'
+import MonthlyPlanScreen from '../screens/MonthlyPlanScreen'
 import BusinessFinanceScreen from '../screens/BusinessFinanceScreen'
 import EducationScreen from '../screens/EducationScreen'
 import ProfileScreen from '../screens/ProfileScreen'
@@ -137,6 +138,15 @@ function PersonalStack() {
         component={TirarDinheiroOrcamentoScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="MonthlyPlan"
+        component={MonthlyPlanScreen}
+        options={{
+          title: t('navigation.monthlyPlan'),
+          headerStyle: { backgroundColor: '#6366f1' },
+          headerTintColor: '#fff',
         }}
       />
     </Stack.Navigator>

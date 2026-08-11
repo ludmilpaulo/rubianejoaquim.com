@@ -6,7 +6,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native'
 import { Text, Card, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -20,6 +19,8 @@ import {
   purchaseIapProduct,
 } from '../services/iap'
 import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
 import { logger } from '../utils/logger'
 
@@ -42,11 +43,13 @@ interface Enrollment {
 
 export default function CourseListScreen() {
   const { t, tw } = useI18n()
+  const feedback = useActionFeedback()
   const navigation = useNavigation<any>()
   const { user } = useAppSelector((state) => state.auth)
   const [courses, setCourses] = useState<Course[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [enrollingId, setEnrollingId] = useState<number | null>(null)
   const [pointsBalance, setPointsBalance] = useState<number>(0)
@@ -56,6 +59,7 @@ export default function CourseListScreen() {
 
   const loadData = useCallback(async () => {
     try {
+      setLoadError(null)
       const [coursesRes, enrollmentsRes, pointsRes] = await Promise.all([
         coursesApi.list(),
         coursesApi.myEnrollments(),
@@ -78,6 +82,7 @@ export default function CourseListScreen() {
       logger.error('Error loading courses:', e)
       setCourses([])
       setEnrollments([])
+      setLoadError(getApiErrorMessage(e, 'feedback.tryAgain'))
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -107,18 +112,21 @@ export default function CourseListScreen() {
       return
     }
     setEnrollingId(course.id)
-    try {
-      // Use referral code from shared link if available, otherwise use user's referral code
-      const referralCode = referralCodeFromShare || undefined
-      await coursesApi.enroll(course.id, referralCode)
-      Alert.alert(t('education.enrollCreatedTitle'), t('education.enrollCreatedMsg'))
-      await loadData()
-      navigation.navigate('EducationMain')
-    } catch (err: unknown) {
-      Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.enrollFailed'))
-    } finally {
-      setEnrollingId(null)
-    }
+    await feedback.run(
+      async () => {
+        const referralCode = referralCodeFromShare || undefined
+        await coursesApi.enroll(course.id, referralCode)
+        Alert.alert(t('education.enrollCreatedTitle'), t('education.enrollCreatedMsg'))
+        await loadData()
+        navigation.navigate('EducationMain')
+      },
+      {
+        pendingKey: `enroll-${course.id}`,
+        pendingMessage: 'feedback.enrolling',
+        errorFallback: 'education.enrollFailed',
+      },
+    )
+    setEnrollingId(null)
   }
 
   const handleRedeemWithPoints = async (course: Course, usePartial: boolean = false) => {
@@ -146,21 +154,25 @@ export default function CourseListScreen() {
             text: t('common.confirm'),
             onPress: async () => {
               setRedeemingId(course.id)
-              try {
-                const result = await referralApi.redeemCourse(course.id, pointsBalance)
-                const remain = result.remaining_kz ?? remainingKz
-                Alert.alert(
-                  t('education.pointsAppliedTitle'),
-                  result.message ||
-                    tw('education.pointsAppliedRemain', { remainKz: remain.toFixed(0) })
-                )
-                await loadData()
-                navigation.navigate('EducationMain')
-              } catch (err: unknown) {
-                Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.redeemFailed'))
-              } finally {
-                setRedeemingId(null)
-              }
+              await feedback.run(
+                async () => {
+                  const result = await referralApi.redeemCourse(course.id, pointsBalance)
+                  const remain = result.remaining_kz ?? remainingKz
+                  Alert.alert(
+                    t('education.pointsAppliedTitle'),
+                    result.message ||
+                      tw('education.pointsAppliedRemain', { remainKz: remain.toFixed(0) })
+                  )
+                  await loadData()
+                  navigation.navigate('EducationMain')
+                },
+                {
+                  pendingKey: `redeem-${course.id}`,
+                  pendingMessage: 'feedback.processing',
+                  errorFallback: 'education.redeemFailed',
+                },
+              )
+              setRedeemingId(null)
             },
           },
         ]
@@ -180,16 +192,20 @@ export default function CourseListScreen() {
             text: t('common.confirm'),
             onPress: async () => {
               setRedeemingId(course.id)
-              try {
-                await referralApi.redeemCourse(course.id)
-                Alert.alert(t('common.success'), t('education.courseRedeemSuccess'))
-                await loadData()
-                navigation.navigate('EducationMain')
-              } catch (err: unknown) {
-                Alert.alert(t('common.error'), getApiErrorMessage(err, 'education.redeemFailed'))
-              } finally {
-                setRedeemingId(null)
-              }
+              await feedback.run(
+                async () => {
+                  await referralApi.redeemCourse(course.id)
+                  Alert.alert(t('common.success'), t('education.courseRedeemSuccess'))
+                  await loadData()
+                  navigation.navigate('EducationMain')
+                },
+                {
+                  pendingKey: `redeem-${course.id}`,
+                  pendingMessage: 'feedback.processing',
+                  errorFallback: 'education.redeemFailed',
+                },
+              )
+              setRedeemingId(null)
             },
           },
         ]
@@ -212,30 +228,40 @@ export default function CourseListScreen() {
     }
     const productId = courseProductId(course.id)
     setIapPurchasingId(course.id)
-    try {
-      await purchaseIapProduct(productId)
-      Alert.alert(t('common.success'), t('access.iapSuccess'))
-      await loadData()
-      navigation.navigate('EducationMain')
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('access.iapFailed')
-      if (message !== 'Purchase cancelled') {
-        Alert.alert(t('common.error'), message)
-      }
-    } finally {
-      setIapPurchasingId(null)
-    }
+    await feedback.run(
+      async () => {
+        await purchaseIapProduct(productId)
+        Alert.alert(t('common.success'), t('access.iapSuccess'))
+        await loadData()
+        navigation.navigate('EducationMain')
+      },
+      {
+        pendingKey: `iap-${course.id}`,
+        pendingMessage: 'feedback.processingSubscription',
+        silentError: true,
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : t('access.iapFailed')
+          if (message !== 'Purchase cancelled') {
+            Alert.alert(t('common.error'), message)
+          }
+        },
+      },
+    )
+    setIapPurchasingId(null)
   }
 
   if (loading && courses.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#6366f1" />
-          <Text variant="bodyLarge" style={styles.loadingText}>
-            {t('education.loadingCourses')}
-          </Text>
-        </View>
+        {loadError ? (
+          <View style={styles.centered}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text variant="bodyLarge" style={styles.loadingText}>{loadError}</Text>
+            <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
+          </View>
+        ) : (
+          <ZendaLoading visible fill message={t('loading.courses')} />
+        )}
       </SafeAreaView>
     )
   }
@@ -288,8 +314,9 @@ export default function CourseListScreen() {
             const enrollment = getEnrollmentForCourse(course.id)
             const isActive = enrollment?.status === 'active'
             const isPending = enrollment?.status === 'pending'
-            const isEnrolling = enrollingId === course.id
-            const isIapPurchasing = iapPurchasingId === course.id
+            const isEnrolling = enrollingId === course.id || feedback.isPending(`enroll-${course.id}`)
+            const isIapPurchasing = iapPurchasingId === course.id || feedback.isPending(`iap-${course.id}`)
+            const isRedeeming = redeemingId === course.id || feedback.isPending(`redeem-${course.id}`)
             const coursePrice = parseFloat(course.price || '0')
             return (
               <Card key={course.id} style={styles.courseCard}>
@@ -335,12 +362,12 @@ export default function CourseListScreen() {
                           mode="contained"
                           onPress={() => handleBuyWithApple(course)}
                           loading={isIapPurchasing}
-                          disabled={isIapPurchasing || isEnrolling || redeemingId === course.id}
+                          disabled={isIapPurchasing || isEnrolling || isRedeeming}
                           style={[styles.btn, styles.iapBtn]}
                           icon="apple"
                           buttonColor="#000"
                         >
-                          {t('education.buyWithApple')}
+                          {isIapPurchasing ? t('feedback.processingSubscription') : t('education.buyWithApple')}
                         </Button>
                       )}
                       {pointsBalance > 0 && coursePrice > 0 && (
@@ -349,23 +376,25 @@ export default function CourseListScreen() {
                             <Button
                               mode="contained"
                               onPress={() => handleRedeemWithPoints(course, false)}
-                              loading={redeemingId === course.id}
-                              disabled={redeemingId === course.id || isEnrolling || isIapPurchasing}
+                              loading={isRedeeming}
+                              disabled={isRedeeming || isEnrolling || isIapPurchasing}
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
-                              {t('education.redeemWithPoints')}
+                              {isRedeeming ? t('feedback.processing') : t('education.redeemWithPoints')}
                             </Button>
                           ) : (
                             <Button
                               mode="contained"
                               onPress={() => handleRedeemWithPoints(course, true)}
-                              loading={redeemingId === course.id}
-                              disabled={redeemingId === course.id || isEnrolling || isIapPurchasing}
+                              loading={isRedeeming}
+                              disabled={isRedeeming || isEnrolling || isIapPurchasing}
                               style={[styles.btn, styles.redeemBtn]}
                               icon="star"
                             >
-                              {tw('education.redeemPartialBtn', { points: pointsBalance.toFixed(1) })}
+                              {isRedeeming
+                                ? t('feedback.processing')
+                                : tw('education.redeemPartialBtn', { points: pointsBalance.toFixed(1) })}
                             </Button>
                           )}
                         </>
@@ -374,10 +403,10 @@ export default function CourseListScreen() {
                         mode={pointsBalance > 0 && coursePrice > 0 ? 'outlined' : 'contained'}
                         onPress={() => handleEnroll(course)}
                         loading={isEnrolling}
-                        disabled={isEnrolling || redeemingId === course.id || isIapPurchasing}
+                        disabled={isEnrolling || isRedeeming || isIapPurchasing}
                         style={styles.btn}
                       >
-                        {t('education.payTransfer')}
+                        {isEnrolling ? t('feedback.enrolling') : t('education.payTransfer')}
                       </Button>
                     </View>
                   )}

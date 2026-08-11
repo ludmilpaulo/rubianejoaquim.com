@@ -17,6 +17,14 @@ import type {
   IncomePayload,
   ApiErrorBody,
   LoginResponse,
+  SocialAuthResult,
+  SocialConfigResponse,
+  SocialLoginMethods,
+  MonthlyPlan,
+  MonthlyPlanDashboard,
+  MonthlyPlanSavePayload,
+  ReferralTrackPayload,
+  ShareZendaResponse,
   PublicFAQ,
   PublicSiteSettings,
   PublicZendaContent,
@@ -201,7 +209,9 @@ export const authApi = {
     last_name: string
     phone?: string
     preferred_currency?: string
+    preferred_locale?: string
     device_region?: string
+    referral_code?: string
   }) => {
     const response = await api.post('/auth/register/', data)
     return response.data
@@ -244,24 +254,39 @@ export const authApi = {
     }
   },
 
-  socialConfig: async () => {
-    const response = await api.get('/auth/social/config/')
-    return response.data as {
-      google_client_id: string
-      facebook_app_id: string
-      google_enabled: boolean
-      facebook_enabled: boolean
-      tiktok_enabled: boolean
-    }
-  },
-
-  socialGoogle: async (idToken: string) => {
-    const response = await api.post('/auth/social/google/', { id_token: idToken })
+  socialConfig: async (): Promise<SocialConfigResponse> => {
+    const response = await api.get<SocialConfigResponse>('/auth/social/config/')
     return response.data
   },
 
-  socialFacebook: async (accessToken: string) => {
-    const response = await api.post('/auth/social/facebook/', { access_token: accessToken })
+  socialGoogle: async (idToken: string): Promise<SocialAuthResult> => {
+    const response = await api.post<SocialAuthResult>('/auth/social/google/', { id_token: idToken })
+    return response.data
+  },
+
+  socialFacebook: async (accessToken: string): Promise<SocialAuthResult> => {
+    const response = await api.post<SocialAuthResult>('/auth/social/facebook/', {
+      access_token: accessToken,
+    })
+    return response.data
+  },
+
+  socialApple: async (
+    identityToken: string,
+    fullName?: { givenName?: string; familyName?: string }
+  ): Promise<SocialAuthResult> => {
+    const response = await api.post<SocialAuthResult>('/auth/social/apple/', {
+      identity_token: identityToken,
+      ...(fullName ? { full_name: fullName } : {}),
+    })
+    return response.data
+  },
+
+  socialExchange: async (exchangeCode: string, provider?: string): Promise<SocialAuthResult> => {
+    const response = await api.post<SocialAuthResult>('/auth/social/exchange/', {
+      exchange_code: exchangeCode,
+      ...(provider ? { provider } : {}),
+    })
     return response.data
   },
 
@@ -273,17 +298,9 @@ export const authApi = {
     return response.data
   },
 
-  loginMethods: async () => {
-    const response = await api.get('/auth/social/methods/')
-    return response.data as {
-      email: boolean
-      email_address: string | null
-      email_verified: boolean
-      google: boolean
-      facebook: boolean
-      tiktok: boolean
-      providers: string[]
-    }
+  loginMethods: async (): Promise<SocialLoginMethods> => {
+    const response = await api.get<SocialLoginMethods>('/auth/social/methods/')
+    return response.data
   },
 
   unlinkSocial: async (provider: string) => {
@@ -293,6 +310,16 @@ export const authApi = {
 
   setSessionToken: async (token: string) => {
     await AsyncStorage.setItem('token', token)
+  },
+
+  shareZenda: async () => {
+    const response = await api.get<ShareZendaResponse>('/auth/share-zenda/')
+    return response.data
+  },
+
+  trackReferral: async (data: ReferralTrackPayload) => {
+    const response = await api.post('/auth/referral/track/', data)
+    return response.data
   },
 }
 
@@ -538,8 +565,8 @@ export const personalFinanceApi = {
     return response.data
   },
   
-  addMoneyToGoal: async (id: number, amount: number, note?: string) => {
-    const response = await api.post(`/finance/personal/goals/${id}/add-money/`, { amount, note })
+  addMoneyToGoal: async (id: number, amount: number, note?: string, currency?: string) => {
+    const response = await api.post(`/finance/personal/goals/${id}/add-money/`, { amount, note, currency })
     return response.data
   },
 
@@ -630,8 +657,10 @@ export const personalFinanceApi = {
     return response.data
   },
 
-  getExchangeRates: async () => {
-    const response = await api.get('/finance/exchange-rates/')
+  getExchangeRates: async (params?: { refresh?: boolean }) => {
+    const response = await api.get('/finance/exchange-rates/', {
+      params: params?.refresh ? { refresh: '1' } : undefined,
+    })
     return response.data
   },
 
@@ -639,6 +668,56 @@ export const personalFinanceApi = {
     const response = await api.get('/finance/exchange-rates/convert/', {
       params: { amount, from, to },
     })
+    return response.data as {
+      original_amount?: string
+      amount?: string | number
+      converted?: string | number
+      result?: string | number
+      from: string
+      to: string
+      rate?: string | number
+      rate_line?: string
+      updated_at?: string | null
+      provider_updated_at?: string | null
+      source?: string
+      stale?: boolean
+      error?: string
+    }
+  },
+
+  getSupportedCurrencies: async () => {
+    const response = await api.get('/finance/exchange-rates/supported/')
+    return response.data as {
+      currencies: string[]
+      base: string
+      updated_at?: string | null
+      provider_updated_at?: string | null
+      source?: string
+      stale?: boolean
+    }
+  },
+
+  getMonthlyPlanCurrent: async (month?: number, year?: number) => {
+    const params: Record<string, number> = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.get<MonthlyPlan>('/finance/personal/monthly-plans/current/', { params })
+    return response.data
+  },
+
+  saveMonthlyPlanCurrent: async (data: MonthlyPlanSavePayload, month?: number, year?: number) => {
+    const params: Record<string, number> = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.put<MonthlyPlan>('/finance/personal/monthly-plans/current/', data, { params })
+    return response.data
+  },
+
+  getMonthlyPlanDashboard: async (month?: number, year?: number) => {
+    const params: Record<string, number> = {}
+    if (month) params.month = month
+    if (year) params.year = year
+    const response = await api.get<MonthlyPlanDashboard>('/finance/personal/monthly-plans/dashboard/', { params })
     return response.data
   },
 }

@@ -32,6 +32,19 @@ class RegisterView(generics.CreateAPIView):
                 referrer = User.objects.get(referral_code=referral_code)
                 user.referred_by = referrer
                 user.save()
+                try:
+                    from .models import AppReferralEvent
+                    AppReferralEvent.objects.create(
+                        referral_code=referral_code,
+                        referrer=referrer,
+                        event_type=AppReferralEvent.EVENT_REGISTER,
+                        platform=str(request.data.get('platform') or 'unknown')[:20],
+                        user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500],
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        created_user=user,
+                    )
+                except Exception:
+                    pass
             except User.DoesNotExist:
                 pass  # Ignorar código inválido
         
@@ -237,3 +250,67 @@ def send_app_update_notification(request):
         'sent_count': sent_count,
         'failed_count': failed_count,
     }, status=status.HTTP_200_OK)
+
+
+DEFAULT_NOTIFICATION_PREFS = {
+    'enabled': True,
+    'budget_warnings': True,
+    'budget_exceeded': True,
+    'debt_reminders': True,
+    'savings_reminders': True,
+    'monthly_summary': True,
+    'goal_reminders': True,
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def share_zenda_link(request):
+    """Return platform-aware download URL with the user's referral code."""
+    user = request.user
+    if not user.referral_code:
+        user.referral_code = user.generate_referral_code()
+        user.save(update_fields=['referral_code'])
+    frontend = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com').rstrip('/')
+    url = f'{frontend}/download?ref={user.referral_code}'
+    return Response({
+        'referral_code': user.referral_code,
+        'download_url': url,
+        'invite_url': f'{frontend}/invite/{user.referral_code}',
+        'ios_store_url': getattr(settings, 'APP_STORE_URL_IOS', '') or '',
+        'android_store_url': getattr(settings, 'APP_STORE_URL_ANDROID', '') or '',
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def track_referral_event(request):
+    """
+    Public endpoint to record download-link clicks (and optional install opens).
+    Body: { referral_code, event_type: click|install, platform?: ios|android|web }
+    """
+    from .models import AppReferralEvent
+
+    code = (request.data.get('referral_code') or '').strip().upper()
+    event_type = (request.data.get('event_type') or AppReferralEvent.EVENT_CLICK).strip().lower()
+    platform = (request.data.get('platform') or 'unknown').strip().lower()[:20]
+    if not code:
+        return Response({'error': 'referral_code required'}, status=status.HTTP_400_BAD_REQUEST)
+    if event_type not in (
+        AppReferralEvent.EVENT_CLICK,
+        AppReferralEvent.EVENT_INSTALL,
+        AppReferralEvent.EVENT_REGISTER,
+    ):
+        return Response({'error': 'invalid event_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+    referrer = User.objects.filter(referral_code__iexact=code).first()
+    AppReferralEvent.objects.create(
+        referral_code=code,
+        referrer=referrer,
+        event_type=event_type,
+        platform=platform,
+        user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:500],
+        ip_address=request.META.get('REMOTE_ADDR'),
+        metadata={'path': request.data.get('path') or ''},
+    )
+    return Response({'ok': True, 'referral_code': code, 'event_type': event_type})

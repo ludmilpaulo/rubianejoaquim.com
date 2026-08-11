@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated, TouchableOpacity } from 'react-native'
-import { Text, TextInput, Button, Card, ActivityIndicator } from 'react-native-paper'
+import { Text, TextInput, Button, Card } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
@@ -8,6 +8,8 @@ import { aiCopilotApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { formatTime } from '../i18n/format'
 import ZendaCard from '../components/ui/ZendaCard'
+import { ZendaLoader, ZendaLoading } from '../components/ui/ZendaLoader'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 import { colors, spacing, typography } from '../theme'
 import { logger } from '../utils/logger'
 import { ChatMessageDto, getApiErrorMessage, isApiError } from '../types/api'
@@ -25,6 +27,7 @@ interface RouteParams {
 
 export default function AICopilotScreen() {
   const { t, locale, messages: localeMessages } = useI18n()
+  const feedback = useActionFeedback()
   const navigation = useNavigation<{ goBack: () => void }>()
   const route = useRoute()
   const { conversationId: initialConversationId } = (route.params as RouteParams) || {}
@@ -32,8 +35,11 @@ export default function AICopilotScreen() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState<number | null>(initialConversationId || null)
-  const [sending, setSending] = useState(false)
+  const chatPending = feedback.isPending('chat')
+  const reportPending = feedback.isPending('report')
+  const sending = chatPending || reportPending
   const scrollViewRef = useRef<ScrollView>(null)
   const inputRef = useRef<RNTextInput>(null)
   const dot1Anim = useRef(new Animated.Value(0.4)).current
@@ -99,6 +105,7 @@ export default function AICopilotScreen() {
     
     try {
       setLoading(true)
+      setLoadError(null)
       const response = await aiCopilotApi.getConversation(conversationId)
       // Handle response - could be direct data or wrapped
       const conversation = response.data || response
@@ -123,6 +130,7 @@ export default function AICopilotScreen() {
       } else if (isApiError(error) && error.response?.status === 401) {
         errorMsg = t('aiErrors.sessionExpired')
       }
+      setLoadError(errorMsg)
       setMessages([{
         role: 'assistant',
         content: errorMsg
@@ -132,109 +140,101 @@ export default function AICopilotScreen() {
     }
   }
 
-  const loadReport = async (type: 'monthly' | 'savings' | 'debt') => {
-    setSending(true)
-    try {
-      let text = ''
-      if (type === 'monthly') {
-        const r = await aiCopilotApi.getMonthlyReport()
-        text = r.report || ''
-      } else if (type === 'savings') {
-        const r = await aiCopilotApi.getSavingsPlan()
-        text = (r.plans || []).map((p: { message?: string }) => p.message).join('\n\n')
-      } else {
-        const r = await aiCopilotApi.getDebtStrategy()
-        text = (r.strategies || []).map((s: { message?: string }) => s.message).join('\n\n')
-      }
-      setMessages([{ role: 'assistant', content: text }])
-    } catch {
-      setMessages([{ role: 'assistant', content: t('common.error') }])
-    } finally {
-      setSending(false)
-    }
+  const loadReport = (type: 'monthly' | 'savings' | 'debt') => {
+    void feedback.run(
+      async () => {
+        let text = ''
+        if (type === 'monthly') {
+          const r = await aiCopilotApi.getMonthlyReport()
+          text = r.report || ''
+        } else if (type === 'savings') {
+          const r = await aiCopilotApi.getSavingsPlan()
+          text = (r.plans || []).map((p: { message?: string }) => p.message).join('\n\n')
+        } else {
+          const r = await aiCopilotApi.getDebtStrategy()
+          text = (r.strategies || []).map((s: { message?: string }) => s.message).join('\n\n')
+        }
+        setMessages([{ role: 'assistant', content: text }])
+      },
+      {
+        pendingKey: 'report',
+        pendingMessage: 'loading.report',
+        silentError: true,
+        onError: () => {
+          setMessages([{ role: 'assistant', content: t('common.error') }])
+        },
+      },
+    )
   }
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!inputText.trim() || sending) return
 
+    const trimmed = inputText.trim()
     const userMessage: Message = {
       role: 'user',
-      content: inputText.trim(),
+      content: trimmed,
     }
 
-    // Add user message immediately
     setMessages(prev => [...prev, userMessage])
     setInputText('')
-    setSending(true)
 
-    // Scroll to bottom
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true })
     }, 100)
 
-    try {
-      logger.info('Sending message to AI Copilot:', inputText.trim())
-      const response = await aiCopilotApi.chat(inputText.trim(), conversationId)
-      
-      logger.info('AI Copilot response received')
-      
-      // Response from api.ts already returns response.data, so response is the data object
-      const responseData = response
-      
-      // Update conversation ID if this is a new conversation or if it changed
-      if (responseData.conversation_id) {
-        if (!conversationId || conversationId !== responseData.conversation_id) {
-          setConversationId(responseData.conversation_id)
-          logger.info('Conversation ID:', responseData.conversation_id)
-        }
-      }
+    void feedback.run(
+      async () => {
+        logger.info('Sending message to AI Copilot:', trimmed)
+        const response = await aiCopilotApi.chat(trimmed, conversationId)
+        const responseData = response
 
-      // Add assistant response
-      // Backend returns: { conversation_id, conversation_title, user_message, assistant_message }
-      // assistant_message is a MessageSerializer object: { id, role, content, created_at }
-      if (responseData.assistant_message) {
-        const assistantMsg = responseData.assistant_message
-        const message: Message = {
-          id: assistantMsg.id,
-          role: assistantMsg.role || 'assistant',
-          content: assistantMsg.content || '',
-          created_at: assistantMsg.created_at,
+        if (responseData.conversation_id) {
+          if (!conversationId || conversationId !== responseData.conversation_id) {
+            setConversationId(responseData.conversation_id)
+          }
         }
-        logger.info('Assistant message received')
-        setMessages(prev => [...prev, message])
-      } else {
-        logger.warn('Unexpected AI response format')
-        // Fallback: show error message
-        const message: Message = {
-          role: 'assistant',
-          content: t('aiErrors.unexpectedFormat'),
-          created_at: new Date().toISOString(),
+
+        if (responseData.assistant_message) {
+          const assistantMsg = responseData.assistant_message
+          const message: Message = {
+            id: assistantMsg.id,
+            role: assistantMsg.role || 'assistant',
+            content: assistantMsg.content || '',
+            created_at: assistantMsg.created_at,
+          }
+          setMessages(prev => [...prev, message])
+        } else {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: t('aiErrors.unexpectedFormat'),
+            created_at: new Date().toISOString(),
+          }])
         }
-        setMessages(prev => [...prev, message])
-      }
 
-      // Scroll to bottom after response
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true })
-      }, 100)
-    } catch (error: unknown) {
-      logger.error('Error sending message:', error)
-
-      let errorMessage = getApiErrorMessage(error, 'aiErrors.processFailed')
-      if (isApiError(error)) {
-        if (error.response?.status === 401) errorMessage = t('aiErrors.sessionExpired')
-        else if (error.response?.status === 403) errorMessage = t('aiErrors.noPermission')
-        else if (error.response?.status === 500) errorMessage = t('aiErrors.serverUnavailable')
-      }
-      
-      // Add error message
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: errorMessage
-      }])
-    } finally {
-      setSending(false)
-    }
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true })
+        }, 100)
+      },
+      {
+        pendingKey: 'chat',
+        pendingMessage: 'loading.aiThinking',
+        silentError: true,
+        onError: (error: unknown) => {
+          logger.error('Error sending message:', error)
+          let errorMessage = getApiErrorMessage(error, 'aiErrors.processFailed')
+          if (isApiError(error)) {
+            if (error.response?.status === 401) errorMessage = t('aiErrors.sessionExpired')
+            else if (error.response?.status === 403) errorMessage = t('aiErrors.noPermission')
+            else if (error.response?.status === 500) errorMessage = t('aiErrors.serverUnavailable')
+          }
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: errorMessage
+          }])
+        },
+      },
+    )
   }
 
   const formatMessageTime = (dateString?: string) => {
@@ -277,8 +277,13 @@ export default function AICopilotScreen() {
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
           {loading ? (
+            <ZendaLoading visible fill message={t('loading.ai')} />
+          ) : loadError && messages.length <= 1 ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.brand.ai} />
+              <Text variant="bodyMedium" style={styles.loadingText}>{loadError}</Text>
+              <Button mode="contained" onPress={loadConversation} buttonColor={colors.brand.ai}>
+                {t('common.retry')}
+              </Button>
             </View>
           ) : messages.length === 0 ? (
             <View style={styles.welcomeContainer}>
@@ -304,7 +309,12 @@ export default function AICopilotScreen() {
               </Text>
               <View style={styles.reportRow}>
                 {(['monthly', 'savings', 'debt'] as const).map((key) => (
-                  <TouchableOpacity key={key} style={styles.reportChip} onPress={() => loadReport(key)}>
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.reportChip, reportPending && styles.reportChipDisabled]}
+                    onPress={() => loadReport(key)}
+                    disabled={reportPending || chatPending}
+                  >
                     <Text style={styles.reportChipText}>
                       {key === 'monthly' ? t('ai.monthlyReport') : key === 'savings' ? t('aiErrors.reportSavings') : t('aiErrors.reportDebt')}
                     </Text>
@@ -375,10 +385,15 @@ export default function AICopilotScreen() {
           {sending && (
             <View style={styles.sendingIndicator}>
               <View style={styles.assistantIcon}>
-                <MaterialCommunityIcons name="robot" size={22} color="#8b5cf6" />
+                <MaterialCommunityIcons name="robot" size={22} color={colors.brand.ai} />
               </View>
               <Card style={styles.assistantMessageCard} elevation={1}>
                 <Card.Content style={styles.messageContent}>
+                  <ZendaLoader
+                    inline
+                    size="sm"
+                    message={reportPending ? t('loading.report') : t('loading.aiThinking')}
+                  />
                   <View style={styles.typingDots}>
                     <Animated.View style={[styles.dot, { opacity: dot1Anim }]} />
                     <Animated.View style={[styles.dot, { opacity: dot2Anim }]} />
@@ -412,12 +427,13 @@ export default function AICopilotScreen() {
               mode="contained"
               onPress={handleSend}
               disabled={!inputText.trim() || sending || loading}
+              loading={chatPending}
               style={styles.sendButton}
               contentStyle={styles.sendButtonContent}
-              buttonColor="#8b5cf6"
-              icon="send"
+              buttonColor={colors.brand.ai}
+              icon={chatPending ? undefined : 'send'}
             >
-              {t('common.send')}
+              {chatPending ? t('loading.aiThinking') : t('common.send')}
             </Button>
           </View>
           <Text variant="bodySmall" style={styles.inputHint}>
@@ -710,6 +726,7 @@ const styles = StyleSheet.create({
     borderColor: '#E9D5FF',
   },
   reportChipText: { fontSize: 12, fontWeight: '600', color: colors.brand.ai },
+  reportChipDisabled: { opacity: 0.5 },
   sendButtonContent: {
     paddingHorizontal: 16,
     paddingVertical: 8,

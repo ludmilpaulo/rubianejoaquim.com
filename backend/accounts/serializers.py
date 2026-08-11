@@ -13,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'email', 'username', 'first_name', 'last_name', 'phone', 'address',
             'referral_code', 'preferred_locale', 'preferred_currency', 'onboarding_completed',
             'onboarding_goals', 'finance_level', 'email_verified', 'profile_image_url',
-            'dark_mode', 'date_joined', 'is_staff', 'is_superuser', 'is_admin',
+            'dark_mode', 'notification_prefs', 'date_joined', 'is_staff', 'is_superuser', 'is_admin',
         ]
         read_only_fields = [
             'id', 'date_joined', 'is_staff', 'is_superuser', 'referral_code',
@@ -31,7 +31,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'first_name', 'last_name', 'phone', 'address', 'email',
             'preferred_locale', 'preferred_currency', 'onboarding_completed', 'dark_mode',
-            'onboarding_goals', 'finance_level',
+            'onboarding_goals', 'finance_level', 'notification_prefs',
         ]
     
     def validate_email(self, value):
@@ -44,11 +44,21 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_preferred_currency(self, value):
         return normalize_currency(value)
 
+    def validate_preferred_locale(self, value):
+        """Allow blank (device language) or pt/en/fr/es."""
+        if value is None or value == '':
+            return ''
+        code = str(value).lower().strip()
+        if code in ('pt', 'en', 'fr', 'es'):
+            return code
+        raise serializers.ValidationError('Unsupported locale. Use pt, en, fr, es, or blank.')
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True, min_length=8)
     preferred_currency = serializers.CharField(max_length=3, required=False, allow_blank=True)
+    preferred_locale = serializers.CharField(max_length=5, required=False, allow_blank=True)
     device_region = serializers.CharField(max_length=2, required=False, allow_blank=True, write_only=True)
 
     class Meta:
@@ -56,7 +66,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = [
             'email', 'username', 'password', 'password_confirm',
             'first_name', 'last_name', 'phone',
-            'preferred_currency', 'device_region',
+            'preferred_currency', 'preferred_locale', 'device_region',
         ]
 
     def validate(self, attrs):
@@ -68,6 +78,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         if not value:
             return value
         return normalize_currency(value)
+
+    def validate_preferred_locale(self, value):
+        if value is None or value == '':
+            return ''
+        code = str(value).lower().strip()
+        if code in ('pt', 'en', 'fr', 'es'):
+            return code
+        raise serializers.ValidationError('Unsupported locale.')
 
     def create(self, validated_data):
         validated_data.pop('password_confirm')

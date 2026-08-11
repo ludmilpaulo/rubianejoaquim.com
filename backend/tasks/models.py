@@ -175,6 +175,8 @@ class Notification(models.Model):
             ('goal_achievement', 'Conquista de Objetivo'),
             ('goal_reminder', 'Lembrete de Objetivo'),
             ('payment_due', 'Pagamento Vencendo'),
+            ('budget_warning', 'Alerta de Orçamento'),
+            ('budget_exceeded', 'Orçamento Excedido'),
             ('system', 'Sistema'),
             ('achievement', 'Conquista'),
             ('reminder', 'Lembrete'),

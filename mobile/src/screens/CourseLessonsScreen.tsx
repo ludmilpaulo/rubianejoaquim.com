@@ -5,7 +5,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { lessonsApi, coursesApi } from '../services/api'
-import { unwrapList } from '../types/api'
+import { useI18n } from '../contexts/I18nContext'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
+import { getApiErrorMessage, unwrapList } from '../types/api'
 import { logger } from '../utils/logger'
 
 interface EnrollmentRow {
@@ -34,6 +36,7 @@ interface RouteParams {
 }
 
 export default function CourseLessonsScreen() {
+  const { t, tw } = useI18n()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { courseId, enrollmentId } = (route.params as RouteParams) || {}
@@ -42,6 +45,7 @@ export default function CourseLessonsScreen() {
   const [enrollment, setEnrollment] = useState<any>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (courseId) {
@@ -52,6 +56,7 @@ export default function CourseLessonsScreen() {
   const loadData = async () => {
     try {
       setLoading(true)
+      setLoadError(null)
       const [lessonsRes, courseRes, enrollmentRes] = await Promise.all([
         lessonsApi.list(courseId),
         coursesApi.get(courseId),
@@ -86,6 +91,7 @@ export default function CourseLessonsScreen() {
       setEnrollment(enrollmentRes)
     } catch (error) {
       logger.error('Error loading course lessons:', error)
+      setLoadError(getApiErrorMessage(error, 'feedback.tryAgain'))
     } finally {
       setLoading(false)
     }
@@ -104,6 +110,22 @@ export default function CourseLessonsScreen() {
   const completedLessons = lessons.filter(l => l.progress?.completed).length
   const totalLessons = lessons.length
   const progress = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+
+  if (loading && lessons.length === 0 && !course) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {loadError ? (
+          <View style={styles.centered}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text variant="bodyLarge" style={styles.errorText}>{loadError}</Text>
+            <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
+          </View>
+        ) : (
+          <ZendaLoading visible fill message={t('loading.courses')} />
+        )}
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -129,7 +151,7 @@ export default function CourseLessonsScreen() {
                 <View style={styles.progressSection}>
                   <View style={styles.progressHeader}>
                     <Text variant="bodyMedium" style={styles.progressText}>
-                      {completedLessons} de {totalLessons} aulas concluídas
+                      {tw('education.lessonsCompleted', { done: completedLessons, total: totalLessons })}
                     </Text>
                     <Text variant="bodyMedium" style={styles.progressPercentage}>
                       {progress.toFixed(0)}%
@@ -150,7 +172,7 @@ export default function CourseLessonsScreen() {
                   style={styles.progressButton}
                   compact
                 >
-                  Ver progresso e quizzes
+                  {t('education.viewProgressQuizzes')}
                 </Button>
               )}
             </Card.Content>
@@ -160,7 +182,7 @@ export default function CourseLessonsScreen() {
         {/* Lessons List */}
         <View style={styles.section}>
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Aulas do Curso
+            {t('education.courseLessonsTitle')}
           </Text>
 
           {lessons.length === 0 ? (
@@ -168,7 +190,7 @@ export default function CourseLessonsScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="book-open-outline" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  Nenhuma aula disponível
+                  {t('education.noLessonsAvailable')}
                 </Text>
               </Card.Content>
             </Card>
@@ -235,7 +257,7 @@ export default function CourseLessonsScreen() {
                                 <View style={styles.lessonMetaItem}>
                                   <MaterialCommunityIcons name="clock-outline" size={14} color="#999" />
                                   <Text variant="bodySmall" style={styles.lessonMetaText}>
-                                    {Math.floor(lesson.duration / 60)} min
+                                    {tw('education.minutesShort', { count: Math.floor(lesson.duration / 60) })}
                                   </Text>
                                 </View>
                               )}
@@ -246,7 +268,7 @@ export default function CourseLessonsScreen() {
                                   textStyle={styles.freeChipText}
                                   compact
                                 >
-                                  Grátis
+                                  {t('education.lessonFree')}
                                 </Chip>
                               )}
                             </View>
@@ -259,7 +281,7 @@ export default function CourseLessonsScreen() {
                             textStyle={styles.completedChipText}
                             compact
                           >
-                            Concluída
+                            {t('education.lessonDone')}
                           </Chip>
                         )}
                         {isLocked && (
@@ -442,5 +464,16 @@ const styles = StyleSheet.create({
   completedChipText: {
     fontSize: 11,
     color: '#10b981',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  errorText: {
+    color: '#666',
+    textAlign: 'center',
   },
 })

@@ -3,6 +3,7 @@ from .models import (
     Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
     Debt, DebtPayment,
     Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
+    MonthlyFinancialPlan, MonthlyPlanItem,
 )
 
 
@@ -22,7 +23,16 @@ class PersonalIncomeAdmin(admin.ModelAdmin):
 
 @admin.register(ExchangeRate)
 class ExchangeRateAdmin(admin.ModelAdmin):
-    list_display = ['base_currency', 'target_currency', 'rate', 'updated_at']
+    list_display = [
+        'base_currency',
+        'target_currency',
+        'rate',
+        'source',
+        'provider_updated_at',
+        'updated_at',
+    ]
+    list_filter = ['source', 'base_currency']
+    search_fields = ['target_currency', 'source']
 
 
 @admin.register(UserFavoriteCurrency)
@@ -85,3 +95,16 @@ class BusinessExpenseAdmin(admin.ModelAdmin):
     list_filter = ['category', 'payment_method', 'is_tax_deductible', 'date']
     search_fields = ['user__username', 'description', 'supplier', 'invoice_number']
     date_hierarchy = 'date'
+
+
+class MonthlyPlanItemInline(admin.TabularInline):
+    model = MonthlyPlanItem
+    extra = 0
+
+
+@admin.register(MonthlyFinancialPlan)
+class MonthlyFinancialPlanAdmin(admin.ModelAdmin):
+    list_display = ['user', 'month', 'year', 'salary', 'spending_limit', 'savings_target', 'currency']
+    list_filter = ['year', 'month', 'currency']
+    search_fields = ['user__email', 'user__username']
+    inlines = [MonthlyPlanItemInline]

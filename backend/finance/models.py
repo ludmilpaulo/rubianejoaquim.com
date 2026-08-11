@@ -108,10 +108,29 @@ class PersonalExpense(models.Model):
 
 
 class ExchangeRate(models.Model):
-    """Cached FX rates (base → target)."""
+    """
+    Cached market FX rates (base → target).
+
+    `rate` is the latest available market quote from the configured provider.
+    `provider_updated_at` is the provider's own timestamp (may be a prior
+    business day on weekends/holidays — never pretend it is "today").
+    `source` names the market data provider (e.g. open.er-api.com).
+    Seeded/bootstrap rows use source='seed' and must be replaced by live refresh.
+    """
     base_currency = models.CharField(max_length=3, default='USD')
     target_currency = models.CharField(max_length=3)
     rate = models.DecimalField(max_digits=18, decimal_places=8)
+    source = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text='Market data provider name (or seed)',
+    )
+    provider_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Timestamp reported by the market provider for this quote',
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -144,6 +163,7 @@ class Budget(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='budgets')
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    currency = models.CharField(max_length=3, default='AOA', help_text='Original budget currency (never overwrite on display FX)')
     period_type = models.CharField(max_length=20, choices=PERIOD_CHOICES, default='monthly')
     # For daily budgets
     date = models.DateField(null=True, blank=True, help_text="Data (para orçamentos diários)")
@@ -195,11 +215,18 @@ class Budget(models.Model):
             else:  # monthly (default)
                 expenses = expenses.filter(date__year=self.year, date__month=self.month)
 
-            result = expenses.aggregate(Sum('amount'))['amount__sum']
-            if result is None:
-                return Decimal('0.00')
-            # Ensure result is a properly quantized Decimal
-            return Decimal(str(result)).quantize(Decimal('0.01'))
+            # Convert each expense into this budget's currency (preserve originals on expenses)
+            from finance.fx import convert_amount
+
+            budget_currency = (getattr(self, 'currency', None) or 'AOA').upper()
+            total = Decimal('0.00')
+            for exp in expenses.only('amount', 'currency'):
+                result = convert_amount(exp.amount, getattr(exp, 'currency', None) or budget_currency, budget_currency)
+                if result:
+                    total += result['converted_amount']
+                elif (getattr(exp, 'currency', None) or budget_currency).upper() == budget_currency:
+                    total += Decimal(str(exp.amount)).quantize(Decimal('0.01'))
+            return total.quantize(Decimal('0.01'))
         except Exception as e:
             # Return 0 if there's any error calculating spent
             import logging
@@ -247,6 +274,7 @@ class Goal(models.Model):
     description = models.TextField(blank=True, help_text="Descrição detalhada")
     target_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     current_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    currency = models.CharField(max_length=3, default='AOA', help_text='Original goal currency')
     target_date = models.DateField(help_text="Data alvo para alcançar o objetivo")
     status = models.CharField(
         max_length=20,
@@ -284,7 +312,18 @@ class Goal(models.Model):
 class GoalContribution(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goal_contributions')
     goal = models.ForeignKey(Goal, on_delete=models.CASCADE, related_name='contributions')
+    # Original payment as entered by the user — never overwrite
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default='AOA')
+    # Snapshot vs goal.currency at write time (for historical reports)
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True)
+    converted_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Amount converted into the goal currency at payment time',
+    )
     note = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -298,9 +337,11 @@ class Debt(models.Model):
     creditor = models.CharField(max_length=200, help_text="Nome do credor")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
+    currency = models.CharField(max_length=3, default='AOA', help_text='Original debt currency')
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Taxa de juros (%)")
     due_date = models.DateField(help_text="Data de vencimento")
     description = models.TextField(blank=True, help_text="Descrição da dívida")
+    notes = models.TextField(blank=True, help_text="Notas adicionais")
     status = models.CharField(
         max_length=20,
         choices=[
@@ -319,7 +360,7 @@ class Debt(models.Model):
         ordering = ['due_date', '-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.creditor} - {self.total_amount} AOA"
+        return f"{self.user.username} - {self.creditor} - {self.total_amount} {self.currency}"
 
     @property
     def remaining_amount(self):
@@ -336,7 +377,17 @@ class Debt(models.Model):
 
 class DebtPayment(models.Model):
     debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='payments')
+    # Original payment as entered — preserve forever
     amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3, default='AOA')
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True)
+    converted_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Amount converted into the debt currency at payment time',
+    )
     payment_date = models.DateField()
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -351,6 +402,7 @@ class Sale(models.Model):
     """Venda do negócio"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sales')
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    currency = models.CharField(max_length=3, default='AOA', help_text='Original sale currency')
     description = models.TextField(help_text="Descrição da venda")
     customer_name = models.CharField(max_length=200, blank=True, help_text="Nome do cliente")
     date = models.DateField(help_text="Data da venda")
@@ -375,7 +427,7 @@ class Sale(models.Model):
         ordering = ['-date', '-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.amount} AOA - {self.date}"
+        return f"{self.user.username} - {self.amount} {self.currency} - {self.date}"
 
 
 class FinancialHealthSnapshot(models.Model):
@@ -423,6 +475,7 @@ class BusinessExpense(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='business_expenses')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='business_expenses')
     amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    currency = models.CharField(max_length=3, default='AOA', help_text='Original expense currency')
     description = models.TextField(help_text="Descrição da despesa")
     date = models.DateField(help_text="Data da despesa")
     payment_method = models.CharField(
@@ -448,4 +501,103 @@ class BusinessExpense(models.Model):
         ordering = ['-date', '-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.amount} AOA - {self.date}"
+        return f"{self.user.username} - {self.amount} {self.currency} - {self.date}"
+
+
+# ==================== MONTHLY SALARY / SPENDING PLAN ====================
+
+PLAN_ITEM_KEYS = [
+    ('rent', 'Rent'),
+    ('transport', 'Transport'),
+    ('food', 'Food'),
+    ('electricity', 'Electricity'),
+    ('internet', 'Internet'),
+    ('school', 'School'),
+    ('family', 'Family'),
+    ('debt', 'Debt payments'),
+    ('savings', 'Savings'),
+    ('entertainment', 'Entertainment'),
+    ('other', 'Other'),
+]
+
+PLAN_BUCKETS = [
+    ('needs', 'Needs / fixed'),
+    ('wants', 'Wants'),
+    ('savings', 'Savings'),
+    ('debt', 'Debt'),
+]
+
+
+class MonthlyFinancialPlan(models.Model):
+    """
+    Monthly salary → planned expenses → savings → remaining envelope.
+    Original amounts stay in `currency`; display FX is client-side.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='monthly_plans')
+    month = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
+    year = models.PositiveSmallIntegerField()
+    salary = models.DecimalField(
+        max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))], default=0
+    )
+    spending_limit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        default=0,
+        help_text='Monthly spending budget (cap for actual expenses)',
+    )
+    savings_target = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0'))],
+        default=0,
+    )
+    currency = models.CharField(max_length=3, default='AOA')
+    notes = models.TextField(blank=True)
+    last_budget_alert_level = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'month', 'year']
+        ordering = ['-year', '-month']
+
+    def __str__(self) -> str:
+        return f'{self.user_id} plan {self.month}/{self.year}'
+
+    @property
+    def planned_expenses_total(self) -> Decimal:
+        total = self.items.exclude(bucket='savings').aggregate(s=Sum('amount'))['s']
+        return Decimal(str(total or 0)).quantize(Decimal('0.01'))
+
+    @property
+    def planned_needs(self) -> Decimal:
+        total = self.items.filter(bucket='needs').aggregate(s=Sum('amount'))['s']
+        return Decimal(str(total or 0)).quantize(Decimal('0.01'))
+
+    @property
+    def planned_wants(self) -> Decimal:
+        total = self.items.filter(bucket='wants').aggregate(s=Sum('amount'))['s']
+        return Decimal(str(total or 0)).quantize(Decimal('0.01'))
+
+    @property
+    def planned_savings(self) -> Decimal:
+        total = self.items.filter(bucket='savings').aggregate(s=Sum('amount'))['s']
+        if total:
+            return Decimal(str(total)).quantize(Decimal('0.01'))
+        return Decimal(str(self.savings_target or 0)).quantize(Decimal('0.01'))
+
+
+class MonthlyPlanItem(models.Model):
+    plan = models.ForeignKey(MonthlyFinancialPlan, on_delete=models.CASCADE, related_name='items')
+    key = models.CharField(max_length=32, choices=PLAN_ITEM_KEYS, default='other')
+    label = models.CharField(max_length=120, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    bucket = models.CharField(max_length=20, choices=PLAN_BUCKETS, default='needs')
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self) -> str:
+        return f'{self.key}={self.amount}'

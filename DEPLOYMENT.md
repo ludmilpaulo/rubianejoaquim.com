@@ -45,16 +45,26 @@
    python manage.py createsuperuser  # if needed
    ```
 
-6. **CMS & course content** (JSON fixtures):
+6. **Live exchange rates (multi-currency)** — see **`EXCHANGE_RATES.md`**:
+   ```bash
+   # Only if ExchangeRate table is empty (emergency bootstrap):
+   python manage.py seed_exchange_rates
+   # Replace with market data (required in production):
+   python manage.py refresh_exchange_rates --force
+   ```
+   Schedule `refresh_exchange_rates --force` every ~6 hours (PythonAnywhere scheduled task).
+   Never treat seed rates as live market truth.
+
+7. **CMS & course content** (JSON fixtures):
    ```bash
    python manage.py load_production_data
    ```
    Or: `loaddata portfolio_cms`, `loaddata courses_content`, `loaddata exchange_rates`.  
    See `backend/fixtures/README.md`.
 
-7. **Reload** the PythonAnywhere web app after changes.
+8. **Reload** the PythonAnywhere web app after changes.
 
-8. **Apple In-App Purchases (required for App Store review)** — in `backend/.env`:
+9. **Apple In-App Purchases (required for App Store review)** — in `backend/.env`:
    ```env
    APPLE_BUNDLE_ID=com.rubianejoaquim.zenda
    APPLE_SHARED_SECRET=<from App Store Connect → App Information → App-Specific Shared Secret>

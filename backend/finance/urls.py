@@ -5,6 +5,7 @@ from .views import (
     BudgetViewSet, GoalViewSet, DebtViewSet, SaleViewSet,
     BusinessExpenseViewSet, BusinessMetricsViewSet, DashboardViewSet,
     ExchangeRateViewSet, UserFavoriteCurrencyViewSet, ReceiptViewSet,
+    MonthlyFinancialPlanViewSet,
 )
 
 router = DefaultRouter()
@@ -19,6 +20,7 @@ router.register(r'favorite-currencies', UserFavoriteCurrencyViewSet, basename='f
 router.register(r'personal/budgets', BudgetViewSet, basename='budget')
 router.register(r'personal/goals', GoalViewSet, basename='goal')
 router.register(r'personal/debts', DebtViewSet, basename='debt')
+router.register(r'personal/monthly-plans', MonthlyFinancialPlanViewSet, basename='monthly-plan')
 
 # Business Finance
 router.register(r'business/sales', SaleViewSet, basename='sale')

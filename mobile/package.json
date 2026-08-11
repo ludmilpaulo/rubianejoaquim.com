@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "index.ts",
   "scripts": {
     "version:bump": "node scripts/bump-version.js",
@@ -40,6 +40,7 @@
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.13.2",
     "expo": "~54.0.33",
+    "expo-apple-authentication": "~8.0.8",
     "expo-auth-session": "~7.0.11",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",

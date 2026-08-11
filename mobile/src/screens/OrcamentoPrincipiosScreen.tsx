@@ -1,7 +1,6 @@
 /**
  * "Tirar dinheiro do orçamento" – 7 real-world scenarios + the real rule.
- * Professional, scrollable content for Finanças Pessoais.
- * Now functional: quick actions to manage budgets and expenses.
+ * Section titles use i18n; bullet/note body copy remains PT-only for now (educational content).
  */
 import React from 'react'
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
@@ -11,14 +10,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import type { StackNavigationProp } from '@react-navigation/stack'
 import type { PersonalStackParamList } from '../navigation/types'
+import { useI18n } from '../contexts/I18nContext'
 
 const SECTIONS = [
   {
     id: '1',
     icon: 'cog' as const,
     color: '#6366f1',
-    title: 'Custos operacionais',
-    subtitle: 'Manter tudo a funcionar',
+    titleKey: 'budgetSection1Title',
+    subtitleKey: 'budgetSection1Subtitle',
     points: [
       'Salários (desenvolvedores, designers, equipa)',
       'Hosting (VPS, AWS, Vercel, domínios)',
@@ -31,8 +31,8 @@ const SECTIONS = [
     id: '2',
     icon: 'briefcase-check' as const,
     color: '#10b981',
-    title: 'Execução de projetos',
-    subtitle: 'Trabalho para clientes',
+    titleKey: 'budgetSection2Title',
+    subtitleKey: 'budgetSection2Subtitle',
     points: [
       'Cliente paga 50.000 AOA. Alocação típica:',
       '25.000 AOA → desenvolvimento',
@@ -47,8 +47,8 @@ const SECTIONS = [
     id: '3',
     icon: 'cash-refund' as const,
     color: '#f59e0b',
-    title: 'Reembolsos',
-    subtitle: 'Muito importante e mal entendido',
+    titleKey: 'budgetSection3Title',
+    subtitleKey: 'budgetSection3Subtitle',
     points: [
       'Transporte para reuniões',
       'Compra de dispositivos de teste',
@@ -61,8 +61,8 @@ const SECTIONS = [
     id: '4',
     icon: 'shield-alert' as const,
     color: '#ef4444',
-    title: 'Emergência e contingência',
-    subtitle: 'Cada orçamento sério tem uma reserva (5–15%)',
+    titleKey: 'budgetSection4Title',
+    subtitleKey: 'budgetSection4Subtitle',
     points: [
       'Queda de servidor',
       'Alteração de âmbito pelo cliente',
@@ -75,8 +75,8 @@ const SECTIONS = [
     id: '5',
     icon: 'account-tie' as const,
     color: '#8b5cf6',
-    title: 'Remuneração do fundador',
-    subtitle: 'Onde costumam surgir os problemas',
+    titleKey: 'budgetSection5Title',
+    subtitleKey: 'budgetSection5Subtitle',
     points: [
       'Forma correta: salário mensal definido, pago do orçamento aprovado.',
       'Forma errada: “deixem-me tirar um pouco”, misturar pessoal e empresa, sem registos.',
@@ -87,8 +87,8 @@ const SECTIONS = [
     id: '6',
     icon: 'trending-up' as const,
     color: '#06b6d4',
-    title: 'Crescimento e reinvestimento',
-    subtitle: 'Dinheiro para crescer, não consumir',
+    titleKey: 'budgetSection6Title',
+    subtitleKey: 'budgetSection6Subtitle',
     points: [
       'Campanhas de marketing',
       'Contratação de nova equipa',
@@ -101,8 +101,8 @@ const SECTIONS = [
     id: '7',
     icon: 'hand-coin' as const,
     color: '#22c55e',
-    title: 'Distribuição de lucro',
-    subtitle: 'Só depois de tudo o acima',
+    titleKey: 'budgetSection7Title',
+    subtitleKey: 'budgetSection7Subtitle',
     points: [
       'Só quando: custos cobertos, impostos considerados, fluxo de caixa saudável.',
       'Depois: dividendos, pagamentos a sócios, bónus do fundador.',
@@ -112,6 +112,7 @@ const SECTIONS = [
 ]
 
 export default function OrcamentoPrincipiosScreen() {
+  const { t } = useI18n()
   const navigation = useNavigation<StackNavigationProp<PersonalStackParamList>>()
 
   const handleGoToBudgets = () => {
@@ -131,10 +132,10 @@ export default function OrcamentoPrincipiosScreen() {
             <MaterialCommunityIcons name="wallet-outline" size={40} color="#6366f1" />
           </View>
           <Text variant="headlineMedium" style={styles.heroTitle}>
-            Tirar dinheiro do orçamento
+            {t('personal.budgetWithdrawTitle')}
           </Text>
           <Text variant="bodyMedium" style={styles.heroSubtitle}>
-            Cenários reais onde o dinheiro sai do orçamento — prático, sem teoria.
+            {t('personal.budgetWithdrawSubtitle')}
           </Text>
         </View>
 
@@ -145,10 +146,10 @@ export default function OrcamentoPrincipiosScreen() {
                 <MaterialCommunityIcons name={section.icon} size={28} color={section.color} />
               </View>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                {section.title}
+                {t(`personal.${section.titleKey}`)}
               </Text>
               <Text variant="bodySmall" style={styles.sectionSubtitle}>
-                {section.subtitle}
+                {t(`personal.${section.subtitleKey}`)}
               </Text>
               <View style={styles.pointsWrap}>
                 {section.points.map((point, i) => (
@@ -175,7 +176,7 @@ export default function OrcamentoPrincipiosScreen() {
               <MaterialCommunityIcons name="alert-circle" size={36} color="#b91c1c" />
             </View>
             <Text variant="titleLarge" style={styles.ruleTitle}>
-              A regra real
+              {t('personal.budgetPrinciplesRuleTitle')}
             </Text>
             <Text variant="bodyLarge" style={styles.ruleQuote}>
               Nunca “tiras” dinheiro. Alocas, aprovas e justificas.
@@ -205,10 +206,10 @@ export default function OrcamentoPrincipiosScreen() {
               <MaterialCommunityIcons name="calculator" size={32} color="#6366f1" />
               <View style={styles.actionText}>
                 <Text variant="titleLarge" style={styles.actionTitle}>
-                  Usar na prática
+                  {t('personal.budgetPrinciplesUsePractice')}
                 </Text>
                 <Text variant="bodyMedium" style={styles.actionSubtitle}>
-                  Acompanhe despesas do orçamento em tempo real com filtros por data
+                  {t('personal.budgetPrinciplesActionSubtitle')}
                 </Text>
               </View>
             </View>
@@ -219,7 +220,7 @@ export default function OrcamentoPrincipiosScreen() {
               style={styles.actionButton}
               buttonColor="#6366f1"
             >
-              Abrir ferramenta de orçamento
+              {t('personal.budgetPrinciplesOpenTool')}
             </Button>
           </Card.Content>
         </Card>

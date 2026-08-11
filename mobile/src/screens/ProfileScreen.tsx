@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { View, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native'
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
 import { Text, Card, Button, Divider, TextInput } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -8,16 +8,22 @@ import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { logout, checkPaidAccess } from '../store/authSlice'
 import { useNavigation } from '@react-navigation/native'
 import { authApi, accessApi, referralApi } from '../services/api'
+import { shareZendaApp } from '../utils/shareZenda'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 import { getApiErrorMessage, type UploadFilePayload } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoader } from '../components/ui/ZendaLoader'
 
 export default function ProfileScreen() {
   const { t, tw, locale } = useI18n()
+  const { formatOriginal } = useCurrency()
   const dateLoc =
     locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
   const alert = useAlert()
+  const { run, isPending, buttonProps, actionLabel } = useActionFeedback()
   const dispatch = useAppDispatch()
   const { user, hasExpiredSubscription } = useAppSelector((state) => state.auth)
   const hasShownExpiryAlert = useRef(false)
@@ -25,11 +31,9 @@ export default function ProfileScreen() {
   const [subscription, setSubscription] = useState<MobileAppSubscription | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
   const [subLoading, setSubLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [uploadNotes, setUploadNotes] = useState('')
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
-  const [redeemingSubscription, setRedeemingSubscription] = useState(false)
 
   const loadSubscription = useCallback(async () => {
     try {
@@ -70,7 +74,7 @@ export default function ProfileScreen() {
   }
 
   const handlePickAndUploadProof = async () => {
-    if (!subscription?.id) return
+    if (!subscription?.id || isPending('upload')) return
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -78,21 +82,30 @@ export default function ProfileScreen() {
       })
       if (result.canceled) return
       const file = result.assets[0]
-      setUploading(true)
       const filePayload = {
         uri: file.uri,
         name: file.name ?? `proof_${Date.now()}.jpg`,
         type: file.mimeType ?? 'image/jpeg',
       }
-      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as UploadFilePayload, uploadNotes || undefined)
-      setUploadNotes('')
-      alert.success(t('profile.proofSentMsg'), t('profile.proofSentTitle'))
-      await loadSubscription()
-      dispatch(checkPaidAccess())
+      await run(
+        async () => {
+          await accessApi.uploadSubscriptionPaymentProof(
+            subscription.id,
+            filePayload as UploadFilePayload,
+            uploadNotes || undefined,
+          )
+          setUploadNotes('')
+          await loadSubscription()
+          dispatch(checkPaidAccess())
+        },
+        {
+          pendingKey: 'upload',
+          pendingMessage: 'feedback.uploading',
+          onSuccess: () => alert.success(t('profile.proofSentMsg'), t('profile.proofSentTitle')),
+        },
+      )
     } catch (error: unknown) {
       alert.error(getApiErrorMessage(error, 'profile.uploadFailed'))
-    } finally {
-      setUploading(false)
     }
   }
 
@@ -118,23 +131,25 @@ export default function ProfileScreen() {
           { text: t('common.cancel'), style: 'cancel' },
           {
             text: t('common.confirm'),
-            onPress: async () => {
-              setRedeemingSubscription(true)
-              try {
-                const result = await referralApi.redeemSubscription(pointsBalance)
-                const remain = result.remaining_kz ?? remainingKz
-                Alert.alert(
-                  t('profile.pointsAppliedSubTitle'),
-                  result.message ||
-                    tw('profile.pointsAppliedSubRemain', { remainKz: remain.toFixed(0) })
-                )
-                await loadSubscription()
-                dispatch(checkPaidAccess())
-              } catch (err: unknown) {
-                alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
-              } finally {
-                setRedeemingSubscription(false)
-              }
+            onPress: () => {
+              run(
+                async () => {
+                  const result = await referralApi.redeemSubscription(pointsBalance)
+                  const remain = result.remaining_kz ?? remainingKz
+                  Alert.alert(
+                    t('profile.pointsAppliedSubTitle'),
+                    result.message ||
+                      tw('profile.pointsAppliedSubRemain', { remainKz: remain.toFixed(0) }),
+                  )
+                  await loadSubscription()
+                  dispatch(checkPaidAccess())
+                },
+                {
+                  pendingKey: 'redeem',
+                  pendingMessage: 'feedback.processingSubscription',
+                  silentSuccess: true,
+                },
+              ).catch(() => {})
             },
           },
         ]
@@ -151,18 +166,20 @@ export default function ProfileScreen() {
           { text: t('common.cancel'), style: 'cancel' },
           {
             text: t('common.confirm'),
-            onPress: async () => {
-              setRedeemingSubscription(true)
-              try {
-                await referralApi.redeemSubscription()
-                Alert.alert(t('common.success'), t('profile.subscriptionRedeemSuccess'))
-                await loadSubscription()
-                dispatch(checkPaidAccess())
-              } catch (err: unknown) {
-                alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
-              } finally {
-                setRedeemingSubscription(false)
-              }
+            onPress: () => {
+              run(
+                async () => {
+                  await referralApi.redeemSubscription()
+                  Alert.alert(t('common.success'), t('profile.subscriptionRedeemSuccess'))
+                  await loadSubscription()
+                  dispatch(checkPaidAccess())
+                },
+                {
+                  pendingKey: 'redeem',
+                  pendingMessage: 'feedback.processingSubscription',
+                  silentSuccess: true,
+                },
+              ).catch(() => {})
             },
           },
         ]
@@ -176,6 +193,23 @@ export default function ProfileScreen() {
         })
       )
     }
+  }
+
+  const handleShareZenda = () => {
+    if (isPending('share')) return
+    run(
+      async () => {
+        const shared = await shareZendaApp({ user, t, tw })
+        if (!shared) {
+          alert.info(t('share.title'), t('share.error'))
+        }
+      },
+      {
+        pendingKey: 'share',
+        pendingMessage: 'feedback.preparingShare',
+        silentSuccess: true,
+      },
+    ).catch(() => {})
   }
 
   const handleRequestAccountDeletion = () => {
@@ -255,11 +289,13 @@ export default function ProfileScreen() {
                   {t('education.pointsAvailable')}
                 </Text>
                 <Text variant="headlineMedium" style={styles.pointsValue}>
-                  {pointsBalance.toFixed(1)} pts
+                  {tw('education.pointsShort', { points: pointsBalance.toFixed(1) })}
                 </Text>
-                <Text variant="bodyMedium" style={styles.pointsKz}>
-                  = {pointsBalanceKz.toFixed(0)} KZ
-                </Text>
+                {locale === 'pt' && (
+                  <Text variant="bodyMedium" style={styles.pointsKz}>
+                    {tw('education.pointsKzEquivalent', { amount: pointsBalanceKz.toFixed(0) })}
+                  </Text>
+                )}
               </View>
             </View>
             <Text variant="bodySmall" style={styles.pointsHint}>
@@ -271,25 +307,27 @@ export default function ProfileScreen() {
                   <Button
                     mode="contained"
                     onPress={() => handleRedeemSubscription(false)}
-                    loading={redeemingSubscription}
-                    disabled={redeemingSubscription}
+                    {...buttonProps('redeem')}
                     style={styles.redeemButton}
                     buttonColor="#f59e0b"
                     icon="star"
                   >
-                    {tw('profile.redeemSubPoints', { points: '10' })}
+                    {isPending('redeem')
+                      ? t('feedback.processingSubscription')
+                      : tw('profile.redeemSubPoints', { points: '10' })}
                   </Button>
                 ) : (
                   <Button
                     mode="contained"
                     onPress={() => handleRedeemSubscription(true)}
-                    loading={redeemingSubscription}
-                    disabled={redeemingSubscription}
+                    {...buttonProps('redeem')}
                     style={styles.redeemButton}
                     buttonColor="#f59e0b"
                     icon="star"
                   >
-                    {tw('profile.redeemSubPartialBtn', { points: pointsBalance.toFixed(1) })}
+                    {isPending('redeem')
+                      ? t('feedback.processingSubscription')
+                      : tw('profile.redeemSubPartialBtn', { points: pointsBalance.toFixed(1) })}
                   </Button>
                 )}
               </>
@@ -391,7 +429,11 @@ export default function ProfileScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>{t('profile.labelAmount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
+                      {formatOriginal(
+                        paymentInfo.monthly_price_kz,
+                        paymentInfo.currency || 'AOA',
+                      )}
+                      {t('access.perMonth')}
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
@@ -424,15 +466,14 @@ export default function ProfileScreen() {
                   <Button
                     mode="contained"
                     onPress={handlePickAndUploadProof}
-                    loading={uploading}
-                    disabled={uploading}
+                    {...buttonProps('upload')}
                     style={styles.uploadButton}
                     buttonColor="#6366f1"
                     contentStyle={styles.uploadButtonContent}
                     labelStyle={styles.uploadButtonLabel}
                     icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
                   >
-                    {uploading ? t('access.uploading') : t('access.uploadProof')}
+                    {actionLabel('access.uploadProof', 'upload', 'feedback.uploading')}
                   </Button>
                   <Text variant="bodySmall" style={styles.uploadHint}>
                     {t('access.proofHint')}
@@ -448,10 +489,7 @@ export default function ProfileScreen() {
           <Card style={styles.subscriptionCard}>
             <View style={styles.subscriptionCardInner}>
               <Card.Content style={styles.subscriptionContent}>
-                <ActivityIndicator size="large" color="#6366f1" style={{ marginVertical: 24 }} />
-                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#6b7280' }}>
-                  {t('profile.loadingSubscription')}
-                </Text>
+                <ZendaLoader message={t('loading.subscription')} />
               </Card.Content>
             </View>
           </Card>
@@ -460,6 +498,29 @@ export default function ProfileScreen() {
         {/* Menu Options */}
         <Card style={styles.card}>
           <Card.Content>
+            <TouchableOpacity
+              onPress={handleShareZenda}
+              activeOpacity={0.7}
+              disabled={isPending('share')}
+            >
+              <View style={styles.menuItem}>
+                <View style={styles.menuItemLeft}>
+                  <View style={[styles.menuIconContainer, { backgroundColor: '#eef2ff' }]}>
+                    <MaterialCommunityIcons name="share-variant" size={24} color="#6366f1" />
+                  </View>
+                  <View style={styles.menuItemText}>
+                    <Text variant="titleMedium" style={styles.menuItemTitle}>
+                      {isPending('share') ? t('feedback.preparingShare') : t('share.button')}
+                    </Text>
+                    <Text variant="bodySmall" style={styles.menuItemSubtitle}>
+                      {t('education.pointsShareHint')}
+                    </Text>
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
+              </View>
+            </TouchableOpacity>
+            <Divider style={styles.divider} />
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
               activeOpacity={0.7}

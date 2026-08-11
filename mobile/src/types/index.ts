@@ -1,4 +1,14 @@
 // User Types
+export interface NotificationPrefs {
+  enabled?: boolean
+  budget_warnings?: boolean
+  budget_exceeded?: boolean
+  debt_reminders?: boolean
+  savings_reminders?: boolean
+  monthly_summary?: boolean
+  goal_reminders?: boolean
+}
+
 export interface User {
   id: number
   email: string
@@ -13,6 +23,7 @@ export interface User {
   onboarding_goals?: string[]
   finance_level?: string
   dark_mode?: boolean
+  notification_prefs?: NotificationPrefs
   is_staff: boolean
   is_superuser: boolean
   is_admin: boolean
@@ -64,6 +75,7 @@ export interface Expense {
   category: string
   description: string
   date: string
+  currency?: string
   created_at: string
 }
 
@@ -74,6 +86,7 @@ export interface Budget {
   period: 'weekly' | 'monthly' | 'yearly'
   spent: number
   date?: string
+  currency?: string
   created_at: string
 }
 
@@ -83,6 +96,7 @@ export interface Goal {
   target_amount: number
   current_amount: number
   deadline: string
+  currency?: string
   created_at: string
 }
 
@@ -92,6 +106,7 @@ export interface Sale {
   amount: number
   description: string
   date: string
+  currency?: string
   created_at: string
 }
 
@@ -101,6 +116,7 @@ export interface BusinessExpense {
   category: string
   description: string
   date: string
+  currency?: string
   invoice_number?: string
   created_at: string
 }

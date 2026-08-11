@@ -21,11 +21,19 @@ import { colors, spacing, radius } from '../theme'
 import { formatCurrency, resolveUserCurrency } from '../utils/currency'
 import { fetchWithCache } from '../utils/apiCache'
 import { flushOfflineQueue, getQueueCount } from '../utils/offlineQueue'
+import { shareZendaApp } from '../utils/shareZenda'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
-  const navigation = useNavigation<{ navigate: (name: string) => void; getParent: () => { navigate: (tab: string) => void } | undefined }>()
+  const navigation = useNavigation<{
+    navigate: (name: string) => void
+    getParent: () =>
+      | { navigate: (tab: string, params?: { screen: string }) => void }
+      | undefined
+  }>()
   const { t, tw, messages } = useI18n()
+  const { run, isPending } = useActionFeedback()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -147,12 +155,16 @@ export default function HomeScreen() {
   type QuickAction =
     | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; tab: string }
     | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; route: string }
+    | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; personalScreen: string }
+    | { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string; color: string; shareZenda: true }
 
   const quickActions: QuickAction[] = [
     { icon: 'minus-circle-outline', label: t('home.addExpense'), color: colors.brand.danger, tab: 'Personal' },
     { icon: 'plus-circle-outline', label: t('home.addIncome'), color: colors.brand.secondary, tab: 'Personal' },
+    { icon: 'calendar-month', label: t('home.monthlyPlan'), color: colors.brand.primary, personalScreen: 'MonthlyPlan' },
     { icon: 'chart-pie', label: t('home.createBudget'), color: colors.brand.primary, tab: 'Personal' },
     { icon: 'flag-checkered', label: t('home.createGoal'), color: colors.brand.accent, tab: 'Personal' },
+    { icon: 'share-variant', label: t('home.shareZenda'), color: colors.brand.secondary, shareZenda: true },
     { icon: 'robot-outline', label: t('home.askAi'), color: colors.brand.ai, route: 'AICopilot' },
     { icon: 'chart-areaspline', label: t('home.viewAnalytics'), color: colors.brand.ai, route: 'Analytics' },
     { icon: 'receipt', label: t('home.scanReceipt'), color: colors.brand.secondary, route: 'ReceiptScanner' },
@@ -317,7 +329,27 @@ export default function HomeScreen() {
                   key={action.label}
                   style={styles.quickItem}
                   activeOpacity={0.75}
+                  disabled={'shareZenda' in action && isPending('share')}
                   onPress={() => {
+                    if ('shareZenda' in action) {
+                      if (isPending('share')) return
+                      run(
+                        async () => {
+                          await shareZendaApp({ user, t, tw })
+                        },
+                        {
+                          pendingKey: 'share',
+                          pendingMessage: 'feedback.preparingShare',
+                          silentSuccess: true,
+                          silentError: true,
+                        },
+                      ).catch(() => {})
+                      return
+                    }
+                    if ('personalScreen' in action) {
+                      navigation.getParent()?.navigate('Personal', { screen: action.personalScreen })
+                      return
+                    }
                     if ('route' in action) {
                       navigation.navigate(action.route)
                     } else {

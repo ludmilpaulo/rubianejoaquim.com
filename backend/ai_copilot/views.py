@@ -215,18 +215,18 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     def _get_financial_context(self, user):
         """Obter contexto financeiro do usuário para o AI"""
+        currency = getattr(user, 'preferred_currency', None) or 'AOA'
+        locale = getattr(user, 'preferred_locale', None) or 'pt'
         context = {
             'user_name': user.get_full_name() or user.first_name or user.email.split('@')[0],
+            'currency': currency,
+            'locale': locale if locale else 'pt',
         }
 
         try:
             from finance.models import PersonalExpense, Budget, Goal, Debt
-            from finance.views import PersonalExpenseViewSet
-            
-            # Obter resumo financeiro pessoal
             from django.db.models import Sum
             from django.utils import timezone
-            from datetime import datetime
 
             current_month = timezone.now().month
             current_year = timezone.now().year
@@ -244,7 +244,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
             ).aggregate(total=Sum('amount'))['total'] or 0
 
             goals = Goal.objects.filter(user=user, status='active').count()
-            # Calculate total remaining debt (total_amount - paid_amount for active/overdue debts)
             debts_queryset = Debt.objects.filter(user=user, status__in=['active', 'overdue'])
             debts = 0
             for debt in debts_queryset:
@@ -257,55 +256,73 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'active_goals': goals,
                 'active_debts': float(debts),
             })
-        except Exception as e:
-            # Se houver erro ao obter dados financeiros, continuar sem contexto
+        except Exception:
             pass
 
         return context
 
     def _prepare_messages(self, conversation, financial_context):
-        """Preparar mensagens para o AI incluindo contexto financeiro"""
+        """Preparar mensagens para o AI incluindo contexto financeiro, idioma e moeda."""
+        locale = (financial_context.get('locale') or 'pt').lower()
+        currency = financial_context.get('currency') or 'AOA'
+        language_name = {
+            'pt': 'Portuguese (Angola/Portugal — Português)',
+            'en': 'English',
+            'fr': 'French (Français)',
+            'es': 'Spanish (Español)',
+        }.get(locale, 'Portuguese')
+
         messages = [
             {
                 'role': 'system',
-                'content': f"""Você é um assistente financeiro especializado e preciso chamado AI Financial Copilot. 
-Você ajuda usuários com educação financeira, planejamento, orçamento e gestão de dinheiro.
+                'content': f"""You are AI Financial Copilot — a precise financial education assistant in the Zenda app.
+You help users with financial education, planning, budgeting and money management.
 
-IMPORTANTE - PRECISÃO E EXATIDÃO:
-- Sempre forneça informações financeiras precisas e baseadas em melhores práticas reconhecidas
-- Use apenas dados e estatísticas verificáveis quando mencionar números
-- Se não tiver certeza sobre algo específico, seja honesto e sugira consultar um profissional financeiro
-- Evite fazer previsões específicas sobre mercados ou investimentos
-- Foque em educação financeira e estratégias comprovadas
+CRITICAL — LANGUAGE:
+- ALWAYS reply in {language_name}.
+- The user's preferred app language code is: {locale}.
+- Do not switch languages unless the user explicitly asks.
 
-CONTEXTO DO USUÁRIO:
-- Nome: {financial_context.get('user_name', 'Usuário')}
-- Despesas do mês atual: {financial_context.get('monthly_expenses', 0):.2f} AOA (Kwanza Angolano)
-- Orçamentos do mês: {financial_context.get('monthly_budgets', 0):.2f} AOA
-- Metas ativas: {financial_context.get('active_goals', 0)}
-- Dívidas ativas: {financial_context.get('active_debts', 0):.2f} AOA
+CRITICAL — CURRENCY:
+- The user's preferred display currency is: {currency}.
+- Context totals below are already converted into {currency} for display; individual entries may have been recorded in other currencies.
+- When the user mentions a specific transaction, acknowledge the original amount+currency may differ from the preferred display total.
+- Never invent exchange rates. Point to Market / backend live rates for conversions.
+- Never tell the user to permanently convert or overwrite original transaction currencies.
 
-DIRETRIZES DE RESPOSTA:
-1. Forneça conselhos financeiros práticos, personalizados e baseados em evidências
-2. Ajudar com planejamento de orçamento usando métodos reconhecidos (ex: Regra 50/30/20)
-3. Explicar conceitos financeiros de forma clara e precisa
-4. Sugerir estratégias de poupança e investimento adequadas ao contexto do usuário
-5. Ajudar a definir e alcançar metas financeiras realistas
-6. Sempre mencione a moeda AOA (Kwanza Angolano) quando falar de valores
-7. Seja específico e acionável - evite generalidades vagas
-8. Quando apropriado, mencione ferramentas do app que podem ajudar
+ACCURACY:
+- Provide accurate, evidence-based financial education guidance.
+- If unsure, say so and suggest consulting a licensed professional.
+- Avoid specific market predictions.
+- Focus on proven education and strategies (e.g. 50/30/20 rule).
 
-ESTILO:
-- Seja positivo, encorajador e prático
-- Use linguagem clara e acessível
-- Estruture respostas com pontos claros quando apropriado
-- Responda sempre em português (português de Angola quando relevante)
-- Mantenha respostas focadas e relevantes à pergunta do usuário"""
+USER CONTEXT:
+- Name: {financial_context.get('user_name', 'User')}
+- Preferred currency: {currency}
+- Preferred language: {locale}
+- Current month expenses (summed as stored): {financial_context.get('monthly_expenses', 0):.2f} {currency}
+- Current month budgets (summed as stored): {financial_context.get('monthly_budgets', 0):.2f} {currency}
+- Active goals: {financial_context.get('active_goals', 0)}
+- Active debts remaining (summed as stored): {financial_context.get('active_debts', 0):.2f} {currency}
+
+RESPONSE GUIDELINES:
+1. Practical, personalized, evidence-based advice
+2. Budget planning with recognized methods
+3. Clear explanations of financial concepts
+4. Savings strategies suited to the user context
+5. Realistic goals
+6. Always state amounts in {currency} when using the context figures
+7. Be specific and actionable
+8. Mention relevant Zenda app tools when helpful (Personal Finance, Debts, Goals, Education, Market FX)
+
+STYLE:
+- Positive, encouraging, practical
+- Clear structure with bullet points when useful
+- Keep answers focused on the user's question"""
             }
         ]
 
-        # Adicionar histórico da conversa
-        previous_messages = conversation.messages.all()[:10]  # Últimas 10 mensagens
+        previous_messages = conversation.messages.all()[:10]
         for msg in previous_messages:
             messages.append({
                 'role': msg.role,

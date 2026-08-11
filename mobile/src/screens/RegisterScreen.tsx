@@ -6,15 +6,20 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch } from '../hooks/redux'
 import { register, socialSession, checkPaidAccess } from '../store/authSlice'
 import SocialAuthButtons from '../components/SocialAuthButtons'
+import ScreenErrorBoundary from '../components/ScreenErrorBoundary'
+import { authApi } from '../services/api'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { getApiErrorMessage } from '../types/api'
 
 type Props = StackScreenProps<AuthStackParamList, 'Register'>
 
 export default function RegisterScreen({ navigation }: Props) {
   const dispatch = useAppDispatch()
-  const { t, resolve } = useI18n()
+  const { t, tw, resolve } = useI18n()
+  const feedback = useActionFeedback()
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -22,10 +27,15 @@ export default function RegisterScreen({ navigation }: Props) {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [linkState, setLinkState] = useState<{
+    link_token: string
+    email: string
+    provider: string
+  } | null>(null)
+  const [linkPassword, setLinkPassword] = useState('')
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     setError('')
     if (!email.trim() || !username.trim() || !password || !passwordConfirm || !firstName.trim() || !lastName.trim()) {
       setError(t('auth.register.fillAllFields'))
@@ -40,32 +50,37 @@ export default function RegisterScreen({ navigation }: Props) {
       return
     }
 
-    setLoading(true)
-    try {
-      await dispatch(
-        register({
-          email: email.trim(),
-          username: username.trim(),
-          password,
-          password_confirm: passwordConfirm,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-        })
-      ).unwrap()
-      await dispatch(checkPaidAccess()).unwrap()
-      Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
-      navigation.replace('AccessDenied')
-    } catch (err: unknown) {
-      const raw =
-        (err && typeof err === 'object' && 'payload' in err && (err as { payload?: string }).payload) ||
-        (err instanceof Error ? err.message : null) ||
-        'api.errors.register.failed'
-      const msg = typeof raw === 'string' ? resolve(raw) : JSON.stringify(raw)
-      setError(msg)
-      Alert.alert(t('auth.register.errorTitle'), typeof raw === 'string' ? msg : t('auth.register.verifyData'))
-    } finally {
-      setLoading(false)
-    }
+    void feedback.run(
+      async () => {
+        await dispatch(
+          register({
+            email: email.trim(),
+            username: username.trim(),
+            password,
+            password_confirm: passwordConfirm,
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+          }),
+        ).unwrap()
+        await dispatch(checkPaidAccess()).unwrap()
+        Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
+        navigation.replace('AccessDenied')
+      },
+      {
+        pendingKey: 'register',
+        pendingMessage: 'feedback.creatingAccount',
+        silentError: true,
+        onError: (err: unknown) => {
+          const raw =
+            (err && typeof err === 'object' && 'payload' in err && (err as { payload?: string }).payload) ||
+            (err instanceof Error ? err.message : null) ||
+            'api.errors.register.failed'
+          const msg = typeof raw === 'string' ? resolve(raw) : JSON.stringify(raw)
+          setError(msg)
+          Alert.alert(t('auth.register.errorTitle'), typeof raw === 'string' ? msg : t('auth.register.verifyData'))
+        },
+      },
+    )
   }
 
   return (
@@ -84,7 +99,7 @@ export default function RegisterScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
-                disabled={loading}
+                disabled={feedback.anyPending}
               >
                 <MaterialCommunityIcons name="arrow-left" size={24} color="#6366f1" />
               </TouchableOpacity>
@@ -100,22 +115,90 @@ export default function RegisterScreen({ navigation }: Props) {
                 {t('auth.register.subtitle')}
               </Text>
 
-              <SocialAuthButtons
-                disabled={loading}
-                onSuccess={async ({ user, token }) => {
-                  setLoading(true)
-                  try {
-                    await dispatch(socialSession({ user, token })).unwrap()
-                    await dispatch(checkPaidAccess()).unwrap()
-                    Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
-                    navigation.replace('AccessDenied')
-                  } catch {
-                    setError(t('auth.register.verifyData'))
-                  } finally {
-                    setLoading(false)
-                  }
-                }}
-              />
+              <ScreenErrorBoundary>
+                <SocialAuthButtons
+                  disabled={feedback.anyPending}
+                  onSuccess={async ({ user, token }) => {
+                    await feedback.run(
+                      async () => {
+                        await dispatch(socialSession({ user, token })).unwrap()
+                        await dispatch(checkPaidAccess()).unwrap()
+                        Alert.alert(t('auth.register.accountCreatedTitle'), t('auth.register.accountCreatedMessage'))
+                        navigation.replace('AccessDenied')
+                      },
+                      {
+                        pendingKey: 'social',
+                        pendingMessage: 'feedback.creatingAccount',
+                        silentError: true,
+                        onError: () => {
+                          setError(t('auth.register.verifyData'))
+                        },
+                      },
+                    )
+                  }}
+                  onLinkRequired={(payload) => {
+                    setLinkState(payload)
+                    setError('')
+                  }}
+                />
+              </ScreenErrorBoundary>
+
+              {linkState ? (
+                <View style={styles.linkBox}>
+                  <Text style={styles.linkText}>
+                    {tw('auth.social.linkBody', {
+                      email: linkState.email,
+                      provider: linkState.provider,
+                    })}
+                  </Text>
+                  <TextInput
+                    label={t('auth.social.linkPassword')}
+                    value={linkPassword}
+                    onChangeText={setLinkPassword}
+                    mode="outlined"
+                    secureTextEntry
+                    style={styles.input}
+                  />
+                  <Button
+                    mode="contained"
+                    {...feedback.buttonProps('socialLink')}
+                    disabled={feedback.isPending('socialLink') || !linkPassword}
+                    onPress={() => {
+                      void feedback.run(
+                        async () => {
+                          setError('')
+                          const data = await authApi.socialLinkConfirm(linkState.link_token, linkPassword)
+                          if (data.token && data.user) {
+                            await dispatch(socialSession({ user: data.user, token: data.token })).unwrap()
+                            await dispatch(checkPaidAccess()).unwrap()
+                            setLinkState(null)
+                            setLinkPassword('')
+                            Alert.alert(
+                              t('auth.register.accountCreatedTitle'),
+                              t('auth.register.accountCreatedMessage'),
+                            )
+                            navigation.replace('AccessDenied')
+                          }
+                        },
+                        {
+                          pendingKey: 'socialLink',
+                          pendingMessage: 'feedback.creatingAccount',
+                          silentError: true,
+                          onError: (err: unknown) => {
+                            const msg = getApiErrorMessage(err, t('auth.social.linkFailed'))
+                            setError(msg)
+                            Alert.alert(t('auth.social.linkTitle'), msg)
+                          },
+                        },
+                      )
+                    }}
+                    buttonColor="#b45309"
+                    style={styles.button}
+                  >
+                    {feedback.actionLabel('auth.social.linkConfirm', 'socialLink', 'feedback.creatingAccount')}
+                  </Button>
+                </View>
+              ) : null}
 
               {error ? (
                 <View style={styles.errorContainer}>
@@ -183,20 +266,19 @@ export default function RegisterScreen({ navigation }: Props) {
               <Button
                 mode="contained"
                 onPress={handleRegister}
-                loading={loading}
-                disabled={loading}
+                {...feedback.buttonProps('register')}
                 style={styles.button}
                 buttonColor="#6366f1"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
-                {t('auth.register.createAccount')}
+                {feedback.actionLabel('auth.register.createAccount', 'register', 'feedback.creatingAccount')}
               </Button>
 
               <TouchableOpacity
                 style={styles.loginLink}
                 onPress={() => navigation.navigate('Login')}
-                disabled={loading}
+                disabled={feedback.anyPending}
               >
                 <Text style={styles.loginLinkText}>{t('auth.register.hasAccount')} </Text>
                 <Text style={styles.loginLinkBold}>{t('auth.register.signIn')}</Text>
@@ -342,5 +424,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#6366f1',
+  },
+  linkBox: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  linkText: {
+    color: '#92400e',
+    fontSize: 13,
+    marginBottom: 8,
+    lineHeight: 18,
   },
 })

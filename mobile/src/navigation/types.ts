@@ -15,6 +15,7 @@ export type HomeStackParamList = {
 
 export type PersonalStackParamList = {
   PersonalMain: { initialTab?: PersonalFinanceTab } | undefined
+  MonthlyPlan: undefined
   OrcamentoPrincipios: undefined
   TirarDinheiroOrcamento: { budgetId?: number } | undefined
 }

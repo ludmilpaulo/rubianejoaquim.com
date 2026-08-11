@@ -17,13 +17,18 @@ import {
 import type { ProductOrSubscription } from 'react-native-iap'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 import { useI18n } from '../contexts/I18nContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage, isApiError, type UploadFilePayload } from '../types/api'
 import { logger } from '../utils/logger'
 
 export default function AccessDeniedScreen() {
   const { t, tw } = useI18n()
+  const { formatOriginal } = useCurrency()
   const alert = useAlert()
+  const feedback = useActionFeedback()
   const dispatch = useAppDispatch()
   const { user, hasPaidAccess } = useAppSelector((state) => state.auth)
   const [subscribing, setSubscribing] = useState(false)
@@ -127,7 +132,7 @@ export default function AccessDeniedScreen() {
   }
 
   const handlePickAndUploadProof = async () => {
-    if (!subscription?.id) return
+    if (!subscription?.id || feedback.isPending('uploadProof')) return
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -136,18 +141,25 @@ export default function AccessDeniedScreen() {
       if (result.canceled) return
       const file = result.assets[0]
       setUploading(true)
-      const filePayload = {
-        uri: file.uri,
-        name: file.name ?? `proof_${Date.now()}.jpg`,
-        type: file.mimeType ?? 'image/jpeg',
-      }
-      await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as UploadFilePayload, uploadNotes || undefined)
-      setUploadNotes('')
-      alert.success(t('access.proofSentLong'), t('profile.proofSentTitle'))
-      await loadSubscription()
-      dispatch(checkPaidAccess())
-    } catch (error: unknown) {
-      alert.error(getApiErrorMessage(error, 'profile.uploadFailed'))
+      await feedback.run(
+        async () => {
+          const filePayload = {
+            uri: file.uri,
+            name: file.name ?? `proof_${Date.now()}.jpg`,
+            type: file.mimeType ?? 'image/jpeg',
+          }
+          await accessApi.uploadSubscriptionPaymentProof(subscription.id, filePayload as UploadFilePayload, uploadNotes || undefined)
+          setUploadNotes('')
+          await loadSubscription()
+          dispatch(checkPaidAccess())
+        },
+        {
+          pendingKey: 'uploadProof',
+          pendingMessage: 'feedback.uploading',
+          successMessage: 'profile.proofSentTitle',
+          errorFallback: 'profile.uploadFailed',
+        },
+      )
     } finally {
       setUploading(false)
     }
@@ -173,16 +185,20 @@ export default function AccessDeniedScreen() {
           text: t('access.yesUsePoints'),
           onPress: async () => {
             setRedeemingSubscription(true)
-            try {
-              await referralApi.redeemSubscription()
-              alert.success(t('profile.redeemSuccess'))
-              await loadSubscription()
-              dispatch(checkPaidAccess())
-            } catch (err: unknown) {
-              alert.error(getApiErrorMessage(err, 'profile.redeemFailed'))
-            } finally {
-              setRedeemingSubscription(false)
-            }
+            await feedback.run(
+              async () => {
+                await referralApi.redeemSubscription()
+                await loadSubscription()
+                dispatch(checkPaidAccess())
+              },
+              {
+                pendingKey: 'redeemSub',
+                pendingMessage: 'feedback.processingSubscription',
+                successMessage: 'profile.redeemSuccess',
+                errorFallback: 'profile.redeemFailed',
+              },
+            )
+            setRedeemingSubscription(false)
           },
         },
       ]
@@ -191,25 +207,32 @@ export default function AccessDeniedScreen() {
 
   const handleStartFreeTrial = async () => {
     setSubscribing(true)
-    try {
-      await accessApi.subscribeToMobileApp()
-      const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
-      if (hasAccess) {
-        alert.success(t('profile.trialStartedMsg'), t('profile.trialStartedTitle'))
-      } else {
-        alert.info(t('common.error'), t('profile.accessPending'))
-      }
-    } catch (error: unknown) {
-      if (isApiError(error) && error.response?.data?.code === 'trial_already_used') {
-        await loadSubscription()
-        alert.info(t('access.trialUsedTitle'), t('access.trialUsedMsg'))
-        return
-      }
-      logger.warn('Subscribe error:', isApiError(error) ? error.response?.status : error)
-      alert.error(getApiErrorMessage(error, 'access.trialFailed'))
-    } finally {
-      setSubscribing(false)
-    }
+    await feedback.run(
+      async () => {
+        await accessApi.subscribeToMobileApp()
+        const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
+        if (hasAccess) {
+          alert.success(t('profile.trialStartedMsg'), t('profile.trialStartedTitle'))
+        } else {
+          alert.info(t('common.error'), t('profile.accessPending'))
+        }
+      },
+      {
+        pendingKey: 'subscribe',
+        pendingMessage: 'feedback.processingSubscription',
+        silentError: true,
+        onError: async (error: unknown) => {
+          if (isApiError(error) && error.response?.data?.code === 'trial_already_used') {
+            await loadSubscription()
+            alert.info(t('access.trialUsedTitle'), t('access.trialUsedMsg'))
+            return
+          }
+          logger.warn('Subscribe error:', isApiError(error) ? error.response?.status : error)
+          alert.error(getApiErrorMessage(error, 'access.trialFailed'))
+        },
+      },
+    )
+    setSubscribing(false)
   }
 
   const handleOpenUrl = async (url: string) => {
@@ -235,22 +258,37 @@ export default function AccessDeniedScreen() {
       return
     }
     setIapPurchasing(true)
-    try {
-      await purchaseIapProduct(SUBSCRIPTION_PRODUCT_ID)
-      const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
-      if (hasAccess) {
-        alert.success(t('access.iapSuccess'))
-      } else {
-        alert.info(t('common.error'), t('profile.accessPending'))
-      }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t('access.iapFailed')
-      if (message !== 'Purchase cancelled') {
-        alert.error(message)
-      }
-    } finally {
-      setIapPurchasing(false)
-    }
+    await feedback.run(
+      async () => {
+        await purchaseIapProduct(SUBSCRIPTION_PRODUCT_ID)
+        const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
+        if (hasAccess) {
+          alert.success(t('access.iapSuccess'))
+        } else {
+          alert.info(t('common.error'), t('profile.accessPending'))
+        }
+      },
+      {
+        pendingKey: 'iapSubscribe',
+        pendingMessage: 'feedback.processingSubscription',
+        silentError: true,
+        onError: (error: unknown) => {
+          const message = error instanceof Error ? error.message : t('access.iapFailed')
+          if (message !== 'Purchase cancelled') {
+            alert.error(message)
+          }
+        },
+      },
+    )
+    setIapPurchasing(false)
+  }
+
+  if (subLoading) {
+    return (
+      <View style={styles.scroll}>
+        <ZendaLoading visible fill message={t('loading.subscription')} />
+      </View>
+    )
   }
 
   return (
@@ -307,7 +345,11 @@ export default function AccessDeniedScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>{t('access.amount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {paymentInfo.monthly_price_kz.toLocaleString('pt-AO')} AOA/mês
+                      {formatOriginal(
+                        paymentInfo.monthly_price_kz,
+                        paymentInfo.currency || 'AOA',
+                      )}
+                      {t('access.perMonth')}
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
@@ -328,16 +370,16 @@ export default function AccessDeniedScreen() {
                 <Button
                   mode="contained"
                   onPress={handleRedeemSubscriptionWithPoints}
-                  loading={redeemingSubscription}
-                  disabled={redeemingSubscription}
+                  loading={redeemingSubscription || feedback.isPending('redeemSub')}
+                  disabled={redeemingSubscription || feedback.isPending('redeemSub')}
                   style={styles.pointsButton}
                   buttonColor="#f59e0b"
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
                   icon={() => <MaterialCommunityIcons name="star" size={22} color="#fff" />}
                 >
-                  {redeemingSubscription
-                    ? t('access.activating')
+                  {(redeemingSubscription || feedback.isPending('redeemSub'))
+                    ? t('feedback.processingSubscription')
                     : tw('access.redeemPoints', { points: pointsForSubscription })}
                 </Button>
               )}
@@ -359,15 +401,17 @@ export default function AccessDeniedScreen() {
               <Button
                 mode="contained"
                 onPress={handlePickAndUploadProof}
-                loading={uploading}
-                disabled={uploading}
+                loading={uploading || feedback.isPending('uploadProof')}
+                disabled={uploading || feedback.isPending('uploadProof')}
                 style={styles.uploadButton}
                 buttonColor="#6366f1"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
                 icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
               >
-                {uploading ? t('access.uploading') : t('access.uploadProof')}
+                {(uploading || feedback.isPending('uploadProof'))
+                  ? t('feedback.uploading')
+                  : t('access.uploadProof')}
               </Button>
               <Text variant="bodySmall" style={styles.uploadHint}>
                 {t('access.proofHint')}
@@ -408,18 +452,22 @@ export default function AccessDeniedScreen() {
                 <Button
                   mode="contained"
                   onPress={handleSubscribeWithApple}
-                  loading={iapPurchasing}
-                  disabled={iapPurchasing || subscribing}
+                  loading={iapPurchasing || feedback.isPending('iapSubscribe')}
+                  disabled={iapPurchasing || feedback.isPending('iapSubscribe') || subscribing || feedback.isPending('subscribe')}
                   style={styles.primaryButton}
                   buttonColor="#000"
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
-                  icon={iapPurchasing ? undefined : () => <MaterialCommunityIcons name="apple" size={22} color="#fff" />}
+                  icon={(iapPurchasing || feedback.isPending('iapSubscribe')) ? undefined : () => <MaterialCommunityIcons name="apple" size={22} color="#fff" />}
                 >
-                  {iapPurchasing ? t('access.activating') : t('access.subscribeWithApple')}
+                  {(iapPurchasing || feedback.isPending('iapSubscribe'))
+                    ? t('feedback.processingSubscription')
+                    : t('access.subscribeWithApple')}
                 </Button>
                 <Text variant="bodySmall" style={styles.buttonHint}>
-                  {t('access.iapOrTrial')}
+                  {subscription?.status === 'expired' || subscription?.status === 'cancelled'
+                    ? t('access.iapRenewHint')
+                    : t('access.iapOrTrial')}
                 </Text>
               </>
             )}
@@ -428,15 +476,17 @@ export default function AccessDeniedScreen() {
                 <Button
                   mode="contained"
                   onPress={handleStartFreeTrial}
-                  loading={subscribing}
-                  disabled={subscribing}
+                  loading={subscribing || feedback.isPending('subscribe')}
+                  disabled={subscribing || feedback.isPending('subscribe') || iapPurchasing || feedback.isPending('iapSubscribe')}
                   style={styles.primaryButton}
                   buttonColor="#6366f1"
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
-                  icon={subscribing ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
+                  icon={(subscribing || feedback.isPending('subscribe')) ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
                 >
-                  {subscribing ? t('access.activating') : t('access.startTrial')}
+                  {(subscribing || feedback.isPending('subscribe'))
+                    ? t('feedback.processingSubscription')
+                    : t('access.startTrial')}
                 </Button>
                 <Text variant="bodySmall" style={styles.buttonHint}>
                   {t('access.trialButtonHint')}

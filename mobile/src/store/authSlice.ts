@@ -6,6 +6,8 @@ import { getApiErrorMessage, type PaidAccessResult } from '../types/api'
 import { logger } from '../utils/logger'
 import { getDefaultCurrency } from '../utils/currency'
 import { getDeviceRegionCode } from '../utils/deviceRegion'
+import { getDeviceLocale } from '../i18n'
+import { ZENDA_PENDING_REF_KEY } from '../navigation/linking'
 
 const initialState: AuthState = {
   user: null,
@@ -50,11 +52,17 @@ export const register = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      const referralCode = (await AsyncStorage.getItem(ZENDA_PENDING_REF_KEY))?.trim()
       const result = await authApi.register({
         ...data,
         preferred_currency: getDefaultCurrency(),
+        preferred_locale: getDeviceLocale(),
         device_region: getDeviceRegionCode(),
+        ...(referralCode ? { referral_code: referralCode } : {}),
       })
+      if (referralCode) {
+        await AsyncStorage.removeItem(ZENDA_PENDING_REF_KEY)
+      }
       await AsyncStorage.setItem('token', result.token)
       await AsyncStorage.setItem('user', JSON.stringify(result.user))
       return { user: result.user, token: result.token }

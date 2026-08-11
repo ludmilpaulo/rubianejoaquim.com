@@ -10,6 +10,8 @@ import { extractYouTubeVideoId, isYouTubeUrl } from '../utils/youtube'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 
 const { width } = Dimensions.get('window')
 const VIDEO_HEIGHT = (width - 32) * 9 / 16 // 16:9 aspect ratio
@@ -48,12 +50,13 @@ interface RouteParams {
 
 export default function LessonDetailScreen() {
   const { t } = useI18n()
+  const feedback = useActionFeedback()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { lessonId } = (route.params as RouteParams) || {}
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
-  const [markingComplete, setMarkingComplete] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
   const playerRef = useRef<any>(null)
   const [quiz, setQuiz] = useState<any | null>(null)
@@ -91,12 +94,14 @@ export default function LessonDetailScreen() {
   const loadLesson = async () => {
     try {
       setLoading(true)
+      setLoadError(null)
       const response = await lessonsApi.get(lessonId)
-      // Handle response - could be direct data or wrapped
       const lessonData = response.data || response
       setLesson(lessonData)
     } catch (error) {
       logger.error('Error loading lesson:', error)
+      setLoadError(getApiErrorMessage(error, 'feedback.tryAgain'))
+      setLesson(null)
     } finally {
       setLoading(false)
     }
@@ -117,20 +122,21 @@ export default function LessonDetailScreen() {
     }
   }
 
-  const handleMarkComplete = async () => {
-    if (!lesson) return
-    
-    try {
-      setMarkingComplete(true)
-      await lessonsApi.markCompleted(lesson.id)
-      // Reload lesson to get updated progress
-      await loadLesson()
-    } catch (error: unknown) {
-      logger.error('Error marking lesson as complete:', error)
-      Alert.alert(t('common.error'), getApiErrorMessage(error, 'education.markCompleteFailed'))
-    } finally {
-      setMarkingComplete(false)
-    }
+  const handleMarkComplete = () => {
+    if (!lesson || feedback.isPending('markComplete')) return
+
+    void feedback.run(
+      async () => {
+        await lessonsApi.markCompleted(lesson.id)
+        await loadLesson()
+      },
+      {
+        pendingKey: 'markComplete',
+        pendingMessage: 'feedback.processing',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'education.markCompleteFailed',
+      },
+    )
   }
 
   const handleOpenAttachment = (url: string) => {
@@ -160,14 +166,28 @@ export default function LessonDetailScreen() {
     }
   }
 
-  if (loading || !lesson) {
+  if (loading && !lesson) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ZendaLoading visible fill message={t('loading.lesson')} />
+      </SafeAreaView>
+    )
+  }
+
+  if (loadError && !lesson) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <Text>Carregando...</Text>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+          <Text variant="bodyLarge" style={styles.errorText}>{loadError}</Text>
+          <Button mode="contained" onPress={loadLesson}>{t('common.retry')}</Button>
         </View>
       </SafeAreaView>
     )
+  }
+
+  if (!lesson) {
+    return null
   }
 
   const isCompleted = lesson.progress?.completed || false
@@ -353,11 +373,13 @@ export default function LessonDetailScreen() {
                   mode="contained"
                   icon="check-circle"
                   onPress={handleMarkComplete}
-                  loading={markingComplete}
-                  disabled={markingComplete}
+                  loading={feedback.isPending('markComplete')}
+                  disabled={feedback.isPending('markComplete')}
                   style={styles.completeButton}
                 >
-                  Marcar como Concluída
+                  {feedback.isPending('markComplete')
+                    ? t('feedback.processing')
+                    : 'Marcar como Concluída'}
                 </Button>
               )}
             </Card.Content>
@@ -490,6 +512,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 32,
+    gap: 12,
+  },
+  errorText: {
+    color: '#666',
+    textAlign: 'center',
   },
   headerCard: {
     margin: 16,

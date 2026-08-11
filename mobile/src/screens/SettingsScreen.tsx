@@ -4,13 +4,19 @@ import { Text, Card, List, Divider } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
 import { Linking } from 'react-native'
-import { areNotificationsEnabled, setNotificationsEnabled as persistNotificationsEnabled } from '../utils/notifications'
+import { areNotificationsEnabled, getNotificationPrefs, setNotificationPrefs as persistNotificationPrefs, setNotificationsEnabled as persistNotificationsEnabled } from '../utils/notifications'
+import type { NotificationPrefs } from '../types'
+import { useAppDispatch } from '../hooks/redux'
+import { setUser } from '../store/authSlice'
 import { useI18n } from '../contexts/I18nContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { useAppAppearance } from '../contexts/AppAppearanceContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import type { Locale } from '../i18n'
-import { resolveUserCurrency, SUPPORTED_CURRENCIES } from '../utils/currency'
 import { authApi } from '../services/api'
+import type { SocialLoginMethods } from '../types/api'
 import {
   authenticateWithBiometric,
   getBiometricType,
@@ -20,23 +26,35 @@ import {
 } from '../utils/biometric'
 
 export default function SettingsScreen() {
-  const { locale, setLocale, locales, t, tw } = useI18n()
+  const dispatch = useAppDispatch()
+  const { locale, localeMode, setLocale, useDeviceLanguage, locales, t, tw } = useI18n()
+  const { currency, setCurrency, currencyLabel, currencies } = useCurrency()
   const { isDarkMode, setDarkMode } = useAppAppearance()
   const alert = useAlert()
+  const { run, isPending, anyPending, pendingLabel } = useActionFeedback()
   const { user } = useAppSelector((state) => state.auth)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [notificationPrefs, setNotificationPrefsState] = useState<NotificationPrefs>({
+    budget_warnings: true,
+    budget_exceeded: true,
+    debt_reminders: true,
+    savings_reminders: true,
+    monthly_summary: true,
+    goal_reminders: true,
+  })
   const [biometricEnabled, setBiometricEnabled] = useState(false)
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricType, setBiometricType] = useState('Biometric')
-  const [loginMethods, setLoginMethods] = useState<{
-    email: boolean
-    google: boolean
-    facebook: boolean
-    tiktok: boolean
-  } | null>(null)
+  const [loginMethods, setLoginMethods] = useState<
+    Pick<SocialLoginMethods, 'email' | 'google' | 'facebook' | 'tiktok' | 'apple'>
+  | null>(null)
 
   useEffect(() => {
     areNotificationsEnabled().then(setNotificationsEnabled)
+    getNotificationPrefs().then(setNotificationPrefsState)
+    if (user?.notification_prefs) {
+      setNotificationPrefsState((prev) => ({ ...prev, ...user.notification_prefs }))
+    }
     isBiometricAvailable()
       .then(async (available) => {
         setBiometricAvailable(available)
@@ -54,10 +72,35 @@ export default function SettingsScreen() {
           google: m.google,
           facebook: m.facebook,
           tiktok: m.tiktok,
+          apple: m.apple,
         })
       )
       .catch(() => setLoginMethods(null))
-  }, [])
+  }, [user?.notification_prefs])
+
+  const persistPrefs = (next: NotificationPrefs) => {
+    run(
+      async () => {
+        setNotificationPrefsState(next)
+        await persistNotificationPrefs(next)
+        const updated = await authApi.updateProfile({ notification_prefs: next })
+        if (updated && typeof updated === 'object') {
+          dispatch(setUser(updated))
+        }
+      },
+      {
+        pendingKey: 'settings',
+        pendingMessage: 'feedback.updatingSettings',
+        silentSuccess: true,
+      },
+    ).catch(() => {})
+  }
+
+  const handleNotificationPrefToggle = (key: keyof NotificationPrefs, value: boolean) => {
+    if (isPending('settings')) return
+    const next = { ...notificationPrefs, [key]: value }
+    persistPrefs(next)
+  }
 
   const handleNotificationsToggle = (value: boolean) => {
     setNotificationsEnabled(value)
@@ -103,12 +146,26 @@ export default function SettingsScreen() {
 
   const localeLabel = (code: Locale) => t(`localeNames.${code}`)
 
+  const languageDescription =
+    localeMode === 'device'
+      ? tw('settings.deviceLanguageActive', { locale: localeLabel(locale) })
+      : localeLabel(locale)
+
   const handlePrivacyPolicy = () => {
     Linking.openURL('https://www.rubianejoaquim.com/privacy-policy')
   }
 
+  const loginMethodLabels: Record<string, string> = {
+    email: t('settings.emailPassword'),
+    google: 'Google',
+    facebook: 'Facebook',
+    tiktok: 'TikTok',
+    apple: 'Apple',
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ZendaLoading visible={anyPending} fullScreen message={pendingLabel} />
       <ScrollView style={styles.container}>
         {/* Account Section */}
         <Card style={styles.card}>
@@ -132,21 +189,22 @@ export default function SettingsScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Login e segurança
+                {t('settings.loginSecurity')}
               </Text>
               {(
                 [
-                  ['email', 'Email / palavra-passe', loginMethods.email],
-                  ['google', 'Google', loginMethods.google],
-                  ['facebook', 'Facebook', loginMethods.facebook],
-                  ['tiktok', 'TikTok', loginMethods.tiktok],
+                  ['email', loginMethods.email],
+                  ['google', loginMethods.google],
+                  ['facebook', loginMethods.facebook],
+                  ['tiktok', loginMethods.tiktok],
+                  ['apple', loginMethods.apple],
                 ] as const
-              ).map(([key, label, linked], index) => (
+              ).map(([key, linked], index) => (
                 <React.Fragment key={key}>
                   {index > 0 ? <Divider /> : null}
                   <List.Item
-                    title={label}
-                    description={linked ? 'Associado' : 'Não associado'}
+                    title={loginMethodLabels[key]}
+                    description={linked ? t('settings.linked') : t('settings.notLinked')}
                     left={(props) => (
                       <List.Icon
                         {...props}
@@ -160,10 +218,11 @@ export default function SettingsScreen() {
                             <Text
                               style={{ color: '#dc2626', alignSelf: 'center', marginRight: 8 }}
                               onPress={() => {
-                                Alert.alert('Remover método', `Remover ${label}?`, [
-                                  { text: 'Cancelar', style: 'cancel' },
+                                const label = loginMethodLabels[key]
+                                Alert.alert(t('settings.removeMethodTitle'), tw('settings.removeMethodConfirm', { label }), [
+                                  { text: t('common.cancel'), style: 'cancel' },
                                   {
-                                    text: 'Remover',
+                                    text: t('common.delete'),
                                     style: 'destructive',
                                     onPress: () => {
                                       authApi
@@ -175,13 +234,13 @@ export default function SettingsScreen() {
                                             google: m.google,
                                             facebook: m.facebook,
                                             tiktok: m.tiktok,
+                                            apple: m.apple,
                                           })
                                         })
                                         .catch((err) => {
                                           alert.info(
-                                            'Login',
-                                            err?.response?.data?.error ||
-                                              'Não foi possível remover este método.'
+                                            t('settings.loginSecurity'),
+                                            err?.response?.data?.error || t('settings.unlinkFailed')
                                           )
                                         })
                                     },
@@ -189,7 +248,7 @@ export default function SettingsScreen() {
                                 ])
                               }}
                             >
-                              Remover
+                              {t('common.delete')}
                             </Text>
                           )
                         : undefined
@@ -207,32 +266,54 @@ export default function SettingsScreen() {
             <Text variant="titleMedium" style={styles.sectionTitle}>{t('settings.title')}</Text>
             <List.Item
               title={t('settings.language')}
-              description={localeLabel(locale)}
+              description={languageDescription}
               left={(props) => <List.Icon {...props} icon="translate" color="#6366f1" />}
+              disabled={isPending('language')}
               onPress={() => {
-                Alert.alert(
-                  t('settings.language'),
-                  '',
-                  locales.map((code) => ({
+                if (isPending('language')) return
+                Alert.alert(t('settings.language'), '', [
+                  {
+                    text: t('settings.useDeviceLanguage'),
+                    onPress: () => {
+                      run(() => useDeviceLanguage(), {
+                        pendingKey: 'language',
+                        pendingMessage: 'feedback.updatingLanguage',
+                        silentSuccess: true,
+                      }).catch(() => {})
+                    },
+                  },
+                  ...locales.map((code) => ({
                     text: localeLabel(code),
-                    onPress: () => setLocale(code),
+                    onPress: () => {
+                      run(() => setLocale(code), {
+                        pendingKey: 'language',
+                        pendingMessage: 'feedback.updatingLanguage',
+                        silentSuccess: true,
+                      }).catch(() => {})
+                    },
                   })),
-                )
+                ])
               }}
             />
             <Divider />
             <List.Item
               title={t('settings.currency')}
-              description={resolveUserCurrency(user?.preferred_currency)}
+              description={currencyLabel(currency)}
               left={(props) => <List.Icon {...props} icon="currency-usd" color="#6366f1" />}
+              disabled={isPending('currency')}
               onPress={() => {
+                if (isPending('currency')) return
                 Alert.alert(
                   t('settings.currency'),
                   '',
-                  SUPPORTED_CURRENCIES.map((code) => ({
-                    text: code,
+                  currencies.map((code) => ({
+                    text: currencyLabel(code),
                     onPress: () => {
-                      authApi.updateProfile({ preferred_currency: code }).catch(() => {})
+                      run(() => setCurrency(code), {
+                        pendingKey: 'currency',
+                        pendingMessage: 'feedback.updatingCurrency',
+                        silentSuccess: true,
+                      }).catch(() => {})
                     },
                   })),
                 )
@@ -252,6 +333,38 @@ export default function SettingsScreen() {
                 />
               )}
             />
+            {notificationsEnabled ? (
+              <>
+                <Divider />
+                <Text variant="labelMedium" style={styles.notifSectionTitle}>
+                  {t('settings.notifTypesTitle')}
+                </Text>
+                {(
+                  [
+                    ['budget_warnings', 'settings.notifBudgetWarnings'],
+                    ['budget_exceeded', 'settings.notifBudgetExceeded'],
+                    ['debt_reminders', 'settings.notifDebtReminders'],
+                    ['savings_reminders', 'settings.notifSavingsReminders'],
+                    ['monthly_summary', 'settings.notifMonthlySummary'],
+                    ['goal_reminders', 'settings.notifGoalReminders'],
+                  ] as const
+                ).map(([key, labelKey]) => (
+                  <List.Item
+                    key={key}
+                    title={t(labelKey)}
+                    right={() => (
+                      <Switch
+                        value={notificationPrefs[key] !== false}
+                        onValueChange={(value) => handleNotificationPrefToggle(key, value)}
+                        trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
+                        thumbColor={notificationPrefs[key] !== false ? '#6366f1' : '#f3f4f6'}
+                        disabled={isPending('settings')}
+                      />
+                    )}
+                  />
+                ))}
+              </>
+            ) : null}
             <Divider />
             <List.Item
               title={t('settings.biometricTitle')}
@@ -364,6 +477,12 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 12,
     letterSpacing: -0.3,
+  },
+  notifSectionTitle: {
+    color: '#6b7280',
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 16,
   },
   appInfo: {
     alignItems: 'center',

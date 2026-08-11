@@ -11,6 +11,8 @@ import type { SubscriptionPaymentInfo } from '../types'
 import type { PointsBalanceResponse } from '../types/points'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
 import { logger } from '../utils/logger'
 
@@ -64,12 +66,14 @@ export default function EducationScreen() {
   const dateLoc =
     locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
   const alert = useAlert()
+  const feedback = useActionFeedback()
   const navigation = useNavigation<any>()
   const { user } = useAppSelector((state) => state.auth)
   const [refreshing, setRefreshing] = useState(false)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [recentLessons, setRecentLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [uploadNotes, setUploadNotes] = useState<Record<number, string>>({})
   const [pointsBalance, setPointsBalance] = useState<number>(0)
@@ -83,6 +87,7 @@ export default function EducationScreen() {
   const loadData = async () => {
     try {
       setLoading(true)
+      setLoadError(null)
       const [enrollmentsRes, lessonsRes, pointsRes, payRes] = await Promise.all([
         coursesApi.myEnrollments(),
         lessonsApi.list(),
@@ -141,6 +146,7 @@ export default function EducationScreen() {
       setRecentLessons(sortedLessons)
     } catch (error) {
       logger.error('Error loading education data:', error)
+      setLoadError(getApiErrorMessage(error, 'feedback.tryAgain'))
     } finally {
       setLoading(false)
     }
@@ -157,6 +163,7 @@ export default function EducationScreen() {
   }
 
   const handleUploadPaymentProof = async (enrollmentId: number) => {
+    if (feedback.isPending(`upload-${enrollmentId}`)) return
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/*', 'application/pdf'],
@@ -165,17 +172,24 @@ export default function EducationScreen() {
       if (result.canceled) return
       const file = result.assets[0]
       setUploadingId(enrollmentId)
-      const filePayload = {
-        uri: file.uri,
-        name: file.name ?? `proof_${Date.now()}.jpg`,
-        type: file.mimeType ?? 'image/jpeg',
-      }
-      await coursesApi.uploadPaymentProof(enrollmentId, filePayload, uploadNotes[enrollmentId] || undefined)
-      setUploadNotes((prev) => ({ ...prev, [enrollmentId]: '' }))
-      alert.success(t('education.proofSentMsg'), t('education.proofSent'))
-      await loadData()
-    } catch (err: unknown) {
-      alert.error(getApiErrorMessage(err, 'education.uploadFailed'))
+      await feedback.run(
+        async () => {
+          const filePayload = {
+            uri: file.uri,
+            name: file.name ?? `proof_${Date.now()}.jpg`,
+            type: file.mimeType ?? 'image/jpeg',
+          }
+          await coursesApi.uploadPaymentProof(enrollmentId, filePayload, uploadNotes[enrollmentId] || undefined)
+          setUploadNotes((prev) => ({ ...prev, [enrollmentId]: '' }))
+          await loadData()
+        },
+        {
+          pendingKey: `upload-${enrollmentId}`,
+          pendingMessage: 'feedback.uploading',
+          successMessage: 'education.proofSent',
+          errorFallback: 'education.uploadFailed',
+        },
+      )
     } finally {
       setUploadingId(null)
     }
@@ -267,12 +281,15 @@ export default function EducationScreen() {
   if (loading && enrollments.length === 0 && recentLessons.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <MaterialCommunityIcons name="book-open-outline" size={64} color="#ccc" />
-          <Text variant="bodyLarge" style={styles.loadingText}>
-            Carregando...
-          </Text>
-        </View>
+        {loadError ? (
+          <View style={styles.loadingContainer}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text variant="bodyLarge" style={styles.loadingText}>{loadError}</Text>
+            <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
+          </View>
+        ) : (
+          <ZendaLoading visible fill message={t('loading.courses')} />
+        )}
       </SafeAreaView>
     )
   }
@@ -348,11 +365,13 @@ export default function EducationScreen() {
                 <View style={styles.pointsInfo}>
                   <Text variant="bodyMedium" style={styles.pointsLabel}>{t('education.pointsAvailable')}</Text>
                   <Text variant="titleLarge" style={styles.pointsValue}>
-                    {pointsBalance.toFixed(1)} pts
+                    {tw('education.pointsShort', { points: pointsBalance.toFixed(1) })}
                   </Text>
-                  <Text variant="bodySmall" style={styles.pointsKz}>
-                    = {pointsBalanceKz.toFixed(0)} KZ
-                  </Text>
+                  {locale === 'pt' && (
+                    <Text variant="bodySmall" style={styles.pointsKz}>
+                      {tw('education.pointsKzEquivalent', { amount: pointsBalanceKz.toFixed(0) })}
+                    </Text>
+                  )}
                 </View>
               </View>
               <Text variant="bodySmall" style={styles.pointsHint}>
@@ -574,7 +593,7 @@ export default function EducationScreen() {
             {pendingEnrollments.map((enrollment) => {
               const hasProof = !!enrollment.payment_proof
               const proofStatus = enrollment.payment_proof?.status
-              const isUploading = uploadingId === enrollment.id
+              const isUploading = uploadingId === enrollment.id || feedback.isPending(`upload-${enrollment.id}`)
               return (
                 <Card key={enrollment.id} style={styles.pendingCard}>
                   <Card.Content>
@@ -624,7 +643,7 @@ export default function EducationScreen() {
                           style={styles.uploadButton}
                           icon="upload"
                         >
-                          {t('education.uploadProof')}
+                          {isUploading ? t('feedback.uploading') : t('education.uploadProof')}
                         </Button>
                       </View>
                     ) : proofStatus === 'pending' ? (
@@ -661,7 +680,7 @@ export default function EducationScreen() {
                           style={styles.uploadButton}
                           icon="upload"
                         >
-                          {t('education.uploadAgain')}
+                          {isUploading ? t('feedback.uploading') : t('education.uploadAgain')}
                         </Button>
                       </View>
                     ) : null}
@@ -730,7 +749,7 @@ export default function EducationScreen() {
                             <View style={styles.lessonMeta}>
                               <MaterialCommunityIcons name="clock-outline" size={14} color="#999" />
                               <Text variant="bodySmall" style={styles.lessonDuration}>
-                                {Math.floor(lesson.duration / 60)} min
+                                {tw('education.minutesShort', { count: Math.floor(lesson.duration / 60) })}
                               </Text>
                             </View>
                           )}

@@ -5,6 +5,7 @@ from .models import (
     Debt, DebtPayment,
     Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency,
     FinancialHealthSnapshot, Receipt,
+    MonthlyFinancialPlan, MonthlyPlanItem,
 )
 
 
@@ -59,7 +60,15 @@ class PersonalIncomeSerializer(serializers.ModelSerializer):
 class ExchangeRateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExchangeRate
-        fields = ['id', 'base_currency', 'target_currency', 'rate', 'updated_at']
+        fields = [
+            'id',
+            'base_currency',
+            'target_currency',
+            'rate',
+            'source',
+            'provider_updated_at',
+            'updated_at',
+        ]
 
 
 class UserFavoriteCurrencySerializer(serializers.ModelSerializer):
@@ -148,7 +157,7 @@ class BudgetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Budget
         fields = [
-            'id', 'category', 'category_name', 'amount',
+            'id', 'category', 'category_name', 'amount', 'currency',
             'period_type', 'date', 'start_date', 'end_date',
             'month', 'year',
             'description', 'spent', 'remaining', 'percentage_used',
@@ -160,8 +169,11 @@ class BudgetSerializer(serializers.ModelSerializer):
 class GoalContributionSerializer(serializers.ModelSerializer):
     class Meta:
         model = GoalContribution
-        fields = ['id', 'amount', 'note', 'created_at']
-        read_only_fields = ['created_at']
+        fields = [
+            'id', 'amount', 'currency', 'exchange_rate', 'converted_amount',
+            'note', 'created_at',
+        ]
+        read_only_fields = ['created_at', 'exchange_rate', 'converted_amount']
 
 
 class GoalSerializer(serializers.ModelSerializer):
@@ -172,7 +184,7 @@ class GoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
         fields = [
-            'id', 'title', 'description', 'target_amount', 'current_amount',
+            'id', 'title', 'description', 'target_amount', 'current_amount', 'currency',
             'target_date', 'status', 'progress_percentage', 'remaining_amount',
             'contributions', 'created_at', 'updated_at'
         ]
@@ -182,8 +194,11 @@ class GoalSerializer(serializers.ModelSerializer):
 class DebtPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = DebtPayment
-        fields = ['id', 'amount', 'payment_date', 'note', 'created_at']
-        read_only_fields = ['created_at']
+        fields = [
+            'id', 'amount', 'currency', 'exchange_rate', 'converted_amount',
+            'payment_date', 'note', 'created_at',
+        ]
+        read_only_fields = ['created_at', 'exchange_rate', 'converted_amount']
 
 
 class DebtSerializer(serializers.ModelSerializer):
@@ -194,8 +209,8 @@ class DebtSerializer(serializers.ModelSerializer):
     class Meta:
         model = Debt
         fields = [
-            'id', 'creditor', 'total_amount', 'paid_amount', 'interest_rate',
-            'due_date', 'description', 'status', 'remaining_amount', 'progress_percentage',
+            'id', 'creditor', 'total_amount', 'paid_amount', 'currency', 'interest_rate',
+            'due_date', 'description', 'notes', 'status', 'remaining_amount', 'progress_percentage',
             'payments', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -207,7 +222,7 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = [
-            'id', 'amount', 'description', 'customer_name', 'date',
+            'id', 'amount', 'currency', 'description', 'customer_name', 'date',
             'payment_method', 'invoice_number', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -231,7 +246,7 @@ class BusinessExpenseSerializer(serializers.ModelSerializer):
         model = BusinessExpense
         fields = [
             'id', 'category', 'category_name', 'category_icon', 'category_color',
-            'amount', 'description', 'date', 'payment_method', 'supplier',
+            'amount', 'currency', 'description', 'date', 'payment_method', 'supplier',
             'invoice_number', 'is_tax_deductible', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
@@ -251,3 +266,61 @@ class ReceiptSerializer(serializers.ModelSerializer):
             'scanned_text', 'status', 'linked_expense', 'is_business', 'created_at',
         ]
         read_only_fields = ['status', 'linked_expense', 'created_at']
+
+
+class MonthlyPlanItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MonthlyPlanItem
+        fields = ['id', 'key', 'label', 'amount', 'bucket', 'sort_order']
+
+
+class MonthlyFinancialPlanSerializer(serializers.ModelSerializer):
+    items = MonthlyPlanItemSerializer(many=True, required=False)
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MonthlyFinancialPlan
+        fields = [
+            'id', 'month', 'year', 'salary', 'spending_limit', 'savings_target',
+            'currency', 'notes', 'items', 'progress',
+            'last_budget_alert_level', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['last_budget_alert_level', 'created_at', 'updated_at']
+
+    def get_progress(self, obj):
+        from finance.budget_alerts import compute_plan_progress
+        return compute_plan_progress(obj)
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        plan = MonthlyFinancialPlan.objects.create(**validated_data)
+        for idx, item in enumerate(items_data):
+            MonthlyPlanItem.objects.create(
+                plan=plan,
+                key=item.get('key', 'other'),
+                label=item.get('label', ''),
+                amount=item.get('amount', 0),
+                bucket=item.get('bucket', 'needs'),
+                sort_order=item.get('sort_order', idx),
+            )
+        return plan
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if 'spending_limit' in validated_data or 'salary' in validated_data:
+            instance.last_budget_alert_level = 0
+        instance.save()
+        if items_data is not None:
+            instance.items.all().delete()
+            for idx, item in enumerate(items_data):
+                MonthlyPlanItem.objects.create(
+                    plan=instance,
+                    key=item.get('key', 'other'),
+                    label=item.get('label', ''),
+                    amount=item.get('amount', 0),
+                    bucket=item.get('bucket', 'needs'),
+                    sort_order=item.get('sort_order', idx),
+                )
+        return instance

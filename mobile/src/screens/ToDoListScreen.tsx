@@ -4,6 +4,7 @@ import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButto
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 import DatePicker from '../components/DatePicker'
 import TimePicker from '../components/TimePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
@@ -35,7 +36,17 @@ interface TaskCategory {
   color: string
 }
 
+interface TaskStats {
+  completed: number
+  pending: number
+  overdue: number
+  total: number
+}
+
 export default function ToDoListScreen() {
+  const { t, tw, locale } = useI18n()
+  const dateLoc =
+    locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [activeFilter, setActiveFilter] = useState<TaskFilter>('all')
   const [refreshing, setRefreshing] = useState(false)
@@ -43,7 +54,7 @@ export default function ToDoListScreen() {
   const [todayTasks, setTodayTasks] = useState<Task[]>([])
   const [upcomingTasks, setUpcomingTasks] = useState<Task[]>([])
   const [categories, setCategories] = useState<TaskCategory[]>([])
-  const [stats, setStats] = useState<any>(null)
+  const [stats, setStats] = useState<TaskStats | null>(null)
   
   // Modal states
   const [showTaskModal, setShowTaskModal] = useState(false)
@@ -224,6 +235,24 @@ export default function ToDoListScreen() {
     }
   }
 
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return t('tasks.priorityUrgent')
+      case 'high': return t('tasks.priorityHigh')
+      case 'medium': return t('tasks.priorityMedium')
+      case 'low': return t('tasks.priorityLow')
+      default: return priority
+    }
+  }
+
+  const filterOptions: { key: TaskFilter; labelKey: string; icon: string }[] = [
+    { key: 'all', labelKey: 'tasks.filterAll', icon: 'view-list' },
+    { key: 'today', labelKey: 'tasks.filterToday', icon: 'calendar-today' },
+    { key: 'upcoming', labelKey: 'tasks.filterUpcoming', icon: 'calendar-clock' },
+    { key: 'overdue', labelKey: 'tasks.filterOverdue', icon: 'alert' },
+    { key: 'completed', labelKey: 'tasks.filterCompleted', icon: 'check-all' },
+  ]
+
   const displayTasks = getDisplayTasks()
 
   return (
@@ -236,10 +265,10 @@ export default function ToDoListScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text variant="headlineSmall" style={styles.title}>Minhas Tarefas</Text>
+            <Text variant="headlineSmall" style={styles.title}>{t('tasks.myTasks')}</Text>
             {stats && (
               <Text variant="bodySmall" style={styles.subtitle}>
-                {stats.completed} de {stats.total} concluídas
+                {tw('tasks.statsCompleted', { completed: stats.completed, total: stats.total })}
               </Text>
             )}
           </View>
@@ -248,7 +277,7 @@ export default function ToDoListScreen() {
 
         {/* Period Selector for Analytics */}
         <View style={styles.periodSection}>
-          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <Text variant="labelMedium" style={styles.periodLabel}>{t('tasks.periodStats')}</Text>
           <PeriodSelector state={periodState} onChange={setPeriodState} />
         </View>
 
@@ -259,21 +288,21 @@ export default function ToDoListScreen() {
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="check-circle" size={24} color="#10b981" />
                 <Text variant="headlineSmall" style={styles.statValue}>{stats.completed}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Concluídas</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('tasks.completed')}</Text>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="clock-outline" size={24} color="#6366f1" />
                 <Text variant="headlineSmall" style={styles.statValue}>{stats.pending}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Pendentes</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('tasks.pending')}</Text>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
                 <Text variant="headlineSmall" style={styles.statValue}>{stats.overdue}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Atrasadas</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('tasks.overdue')}</Text>
               </Card.Content>
             </Card>
           </View>
@@ -282,13 +311,7 @@ export default function ToDoListScreen() {
         {/* Filters */}
         <View style={styles.filtersContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
-            {[
-              { key: 'all', label: 'Todas', icon: 'view-list' },
-              { key: 'today', label: 'Hoje', icon: 'calendar-today' },
-              { key: 'upcoming', label: 'Próximas', icon: 'calendar-clock' },
-              { key: 'overdue', label: 'Atrasadas', icon: 'alert' },
-              { key: 'completed', label: 'Concluídas', icon: 'check-all' },
-            ].map(filter => (
+            {filterOptions.map(filter => (
               <TouchableOpacity
                 key={filter.key}
                 style={[styles.filterChip, activeFilter === filter.key && styles.filterChipActive]}
@@ -300,7 +323,7 @@ export default function ToDoListScreen() {
                   color={activeFilter === filter.key ? '#6366f1' : '#666'}
                 />
                 <Text style={[styles.filterLabel, activeFilter === filter.key && styles.filterLabelActive]}>
-                  {filter.label}
+                  {t(filter.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -314,14 +337,14 @@ export default function ToDoListScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="check-circle-outline" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  {activeFilter === 'completed' 
-                    ? 'Nenhuma tarefa concluída ainda'
+                  {activeFilter === 'completed'
+                    ? t('tasks.emptyCompleted')
                     : activeFilter === 'overdue'
-                    ? 'Nenhuma tarefa atrasada'
-                    : 'Nenhuma tarefa pendente'}
+                    ? t('tasks.emptyOverdue')
+                    : t('tasks.emptyPending')}
                 </Text>
                 <Button mode="contained" onPress={() => setShowTaskModal(true)}>
-                  Criar Tarefa
+                  {t('tasks.addTask')}
                 </Button>
               </Card.Content>
             </Card>
@@ -388,9 +411,7 @@ export default function ToDoListScreen() {
                       textStyle={{ color: getPriorityColor(task.priority) }}
                       compact
                     >
-                      {task.priority === 'urgent' ? 'Urgente' :
-                       task.priority === 'high' ? 'Alta' :
-                       task.priority === 'medium' ? 'Média' : 'Baixa'}
+                      {getPriorityLabel(task.priority)}
                     </Chip>
                     {task.due_date && (
                       <Chip
@@ -398,7 +419,7 @@ export default function ToDoListScreen() {
                         style={[styles.dateChip, task.is_overdue && styles.dateChipOverdue]}
                         compact
                       >
-                        {new Date(task.due_date).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}
+                        {new Date(task.due_date).toLocaleDateString(dateLoc, { day: '2-digit', month: '2-digit' })}
                       </Chip>
                     )}
                   </View>
@@ -429,40 +450,40 @@ export default function ToDoListScreen() {
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}
+              {editingTask ? t('tasks.editTask') : t('tasks.newTask')}
             </Text>
             <TextInput
-              label="Título"
+              label={t('tasks.taskTitle')}
               value={taskForm.title}
               onChangeText={(text) => setTaskForm({ ...taskForm, title: text })}
               style={styles.input}
             />
             <TextInput
-              label="Descrição"
+              label={t('tasks.taskDescription')}
               multiline
               value={taskForm.description}
               onChangeText={(text) => setTaskForm({ ...taskForm, description: text })}
               style={styles.input}
             />
             <DatePicker
-              label="Data de Vencimento"
+              label={t('tasks.dueDate')}
               value={taskForm.due_date}
               onChange={(date) => setTaskForm({ ...taskForm, due_date: date })}
             />
             <TimePicker
-              label="Hora de Vencimento"
+              label={t('tasks.dueTime')}
               value={taskForm.due_time}
               onChange={(time) => setTaskForm({ ...taskForm, due_time: time })}
             />
-            <Text variant="bodyMedium" style={styles.label}>Prioridade</Text>
+            <Text variant="bodyMedium" style={styles.label}>{t('tasks.priority')}</Text>
             <SegmentedButtons
               value={taskForm.priority}
               onValueChange={(value) => setTaskForm({ ...taskForm, priority: value })}
               buttons={[
-                { value: 'low', label: 'Baixa' },
-                { value: 'medium', label: 'Média' },
-                { value: 'high', label: 'Alta' },
-                { value: 'urgent', label: 'Urgente' },
+                { value: 'low', label: t('tasks.priorityLow') },
+                { value: 'medium', label: t('tasks.priorityMedium') },
+                { value: 'high', label: t('tasks.priorityHigh') },
+                { value: 'urgent', label: t('tasks.priorityUrgent') },
               ]}
               style={styles.segmentedButtons}
             />
@@ -473,11 +494,11 @@ export default function ToDoListScreen() {
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name="delete-outline" size={20} color="#fff" />
-                <RNText style={styles.modalDeleteButtonText}>Excluir Tarefa</RNText>
+                <RNText style={styles.modalDeleteButtonText}>{t('tasks.deleteTask')}</RNText>
               </TouchableOpacity>
             )}
             <Button mode="contained" onPress={handleSaveTask} style={styles.modalButton}>
-              Salvar
+              {t('common.save')}
             </Button>
           </ScrollView>
         </Modal>

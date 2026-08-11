@@ -1,0 +1,21 @@
+# Keep EAS archives small — native dirs are generated on the build server.
+ios/
+android/
+node_modules/
+.expo/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+.DS_Store
+.env
+.env.*
+!.env.example
+.maestro/
+playwright-report/
+test-results/
+*.log

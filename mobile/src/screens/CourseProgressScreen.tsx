@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import { coursesApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 import { unwrapEnvelope } from '../types/api'
 import { logger } from '../utils/logger'
 
@@ -41,6 +42,7 @@ interface RouteParams {
 }
 
 export default function CourseProgressScreen() {
+  const { t, tw } = useI18n()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { courseId, enrollmentId } = (route.params as RouteParams) || {}
@@ -80,7 +82,7 @@ export default function CourseProgressScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text variant="bodyLarge">Carregando progresso...</Text>
+          <Text variant="bodyLarge">{t('education.loadingProgress')}</Text>
         </View>
       </SafeAreaView>
     )
@@ -90,8 +92,8 @@ export default function CourseProgressScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <Text variant="bodyMedium" style={styles.errorText}>Progresso não encontrado.</Text>
-          <Button mode="contained" onPress={() => navigation.goBack()}>Voltar</Button>
+          <Text variant="bodyMedium" style={styles.errorText}>{t('education.progressNotFound')}</Text>
+          <Button mode="contained" onPress={() => navigation.goBack()}>{t('education.backToLessons')}</Button>
         </View>
       </SafeAreaView>
     )
@@ -108,7 +110,7 @@ export default function CourseProgressScreen() {
           {progress.course_title}
         </Text>
         <Text variant="bodySmall" style={styles.sectionSubtitle}>
-          Acompanhe seu progresso e resultados dos quizzes
+          {t('education.progressTrackSubtitle')}
         </Text>
 
         <View style={styles.statsRow}>
@@ -118,7 +120,7 @@ export default function CourseProgressScreen() {
               <Text variant="titleMedium" style={styles.statValue}>
                 {progress.average_score.toFixed(1)}%
               </Text>
-              <Text variant="bodySmall" style={styles.statLabel}>Média</Text>
+              <Text variant="bodySmall" style={styles.statLabel}>{t('education.statAverage')}</Text>
             </Card.Content>
           </Card>
           <Card style={styles.statCard}>
@@ -127,7 +129,7 @@ export default function CourseProgressScreen() {
               <Text variant="titleMedium" style={styles.statValue}>
                 {progress.completed_quizzes}/{progress.total_quizzes}
               </Text>
-              <Text variant="bodySmall" style={styles.statLabel}>Quizzes</Text>
+              <Text variant="bodySmall" style={styles.statLabel}>{t('education.statQuizzes')}</Text>
             </Card.Content>
           </Card>
           <Card style={[styles.statCard, progress.course_passed ? styles.passedCard : styles.failedCard]}>
@@ -138,7 +140,7 @@ export default function CourseProgressScreen() {
                 color={progress.course_passed ? '#10b981' : '#ef4444'}
               />
               <Text variant="titleSmall" style={styles.statLabel}>
-                {progress.course_passed ? 'Aprovado' : 'Em curso'}
+                {progress.course_passed ? t('education.coursePassed') : t('education.courseInProgress')}
               </Text>
             </Card.Content>
           </Card>
@@ -149,18 +151,18 @@ export default function CourseProgressScreen() {
             <View style={[styles.progressFill, { width: `${completionPct}%` }]} />
           </View>
           <Text variant="bodySmall" style={styles.progressPct}>
-            {completionPct.toFixed(0)}% completo
+            {tw('education.percentComplete', { pct: completionPct.toFixed(0) })}
           </Text>
         </View>
 
         <Text variant="titleSmall" style={styles.listTitle}>
-          Resultados por aula
+          {t('education.resultsByLesson')}
         </Text>
         {(progress.quiz_results ?? []).length === 0 ? (
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="bodyMedium" style={styles.emptyText}>
-                Nenhum quiz neste curso.
+                {t('education.noQuizzesInCourse')}
               </Text>
             </Card.Content>
           </Card>
@@ -197,7 +199,10 @@ export default function CourseProgressScreen() {
                             {r.score.toFixed(0)}%
                           </Text>
                           <Text variant="bodySmall" style={styles.metaText}>
-                            {r.correct_answers}/{r.total_questions} corretas
+                            {tw('education.correctAnswers', {
+                              correct: r.correct_answers,
+                              total: r.total_questions,
+                            })}
                           </Text>
                           {r.passed ? (
                             <MaterialCommunityIcons name="check-circle" size={18} color="#10b981" />
@@ -207,7 +212,7 @@ export default function CourseProgressScreen() {
                         </View>
                       ) : (
                         <Text variant="bodySmall" style={styles.notDone}>
-                          Quiz não realizado
+                          {t('education.quizNotDone')}
                         </Text>
                       )}
                     </View>
@@ -225,7 +230,7 @@ export default function CourseProgressScreen() {
           onPress={() => Linking.openURL(`${WEB_APP_URL}/certificado/${enrollmentId}`)}
           style={styles.certificateButton}
         >
-          Ver certificado (abre no browser)
+          {t('education.viewCertificate')}
         </Button>
 
         <Button
@@ -233,7 +238,7 @@ export default function CourseProgressScreen() {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          Voltar às aulas
+          {t('education.backToLessons')}
         </Button>
       </ScrollView>
     </SafeAreaView>

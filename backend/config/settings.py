@@ -217,6 +217,9 @@ APP_STORE_URL_ANDROID = config('APP_STORE_URL_ANDROID', default='https://play.go
 # App Store Connect → Your App → App Information → App-Specific Shared Secret
 APPLE_SHARED_SECRET = config('APPLE_SHARED_SECRET', default=None)
 APPLE_BUNDLE_ID = config('APPLE_BUNDLE_ID', default='com.rubianejoaquim.zenda')
+# Sign in with Apple — comma-separated extra JWT audiences (e.g. Services ID for web)
+APPLE_SIGN_IN_AUDIENCES = config('APPLE_SIGN_IN_AUDIENCES', default='')
+APPLE_SIGN_IN_ENABLED = config('APPLE_SIGN_IN_ENABLED', default=True, cast=bool)
 
 # ---------------------------------------------------------------------------
 # Social login (Google / Facebook / TikTok)
@@ -243,3 +246,7 @@ TIKTOK_SCOPES = config('TIKTOK_SCOPES', default='user.info.basic')
 
 # Mobile deep-link target after TikTok OAuth (must match app scheme)
 MOBILE_OAUTH_REDIRECT_URI = config('MOBILE_OAUTH_REDIRECT_URI', default='zenda://social-callback')
+
+# Live FX cache TTL (hours). Soft-refresh when older; clients see stale=true past this.
+# See EXCHANGE_RATES.md — cron: python manage.py refresh_exchange_rates --force
+FX_CACHE_TTL_HOURS = config('FX_CACHE_TTL_HOURS', default=6, cast=int)

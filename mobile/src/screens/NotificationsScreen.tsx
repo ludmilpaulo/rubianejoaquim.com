@@ -4,6 +4,10 @@ import { Text, Card, Button, Chip, Badge, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
+import { getApiErrorMessage } from '../types/api'
 import { materialIcon } from '../utils/icons'
 import { logger } from '../utils/logger'
 
@@ -21,7 +25,13 @@ interface Notification {
 }
 
 export default function NotificationsScreen() {
+  const { t, tw, locale } = useI18n()
+  const feedback = useActionFeedback()
+  const dateLoc =
+    locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
   const [refreshing, setRefreshing] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
@@ -37,6 +47,8 @@ export default function NotificationsScreen() {
 
   const loadData = async () => {
     try {
+      setLoading(true)
+      setLoadError(null)
       const isRead = filter === 'unread' ? false : undefined
       const [notificationsRes, countRes] = await Promise.all([
         tasksApi.getNotifications(isRead),
@@ -47,6 +59,9 @@ export default function NotificationsScreen() {
       setUnreadCount(countRes.count || 0)
     } catch (error) {
       logger.error('Error loading notifications:', error)
+      setLoadError(getApiErrorMessage(error, 'feedback.tryAgain'))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -65,24 +80,40 @@ export default function NotificationsScreen() {
     setRefreshing(false)
   }
 
-  const handleMarkAsRead = async (notification: Notification) => {
-    if (notification.is_read) return
+  const handleMarkAsRead = (notification: Notification) => {
+    if (notification.is_read || feedback.isPending(`read-${notification.id}`)) return
     
-    try {
-      await tasksApi.markNotificationRead(notification.id)
-      loadData()
-    } catch (error) {
-      logger.error('Error marking notification as read:', error)
-    }
+    void feedback.run(
+      async () => {
+        await tasksApi.markNotificationRead(notification.id)
+        await loadData()
+      },
+      {
+        pendingKey: `read-${notification.id}`,
+        pendingMessage: 'feedback.markingRead',
+        silentSuccess: true,
+        silentError: true,
+        onError: (error) => logger.error('Error marking notification as read:', error),
+      },
+    )
   }
 
-  const handleMarkAllAsRead = async () => {
-    try {
-      await tasksApi.markAllNotificationsRead()
-      loadData()
-    } catch (error) {
-      logger.error('Error marking all as read:', error)
-    }
+  const handleMarkAllAsRead = () => {
+    if (feedback.isPending('markAllRead')) return
+
+    void feedback.run(
+      async () => {
+        await tasksApi.markAllNotificationsRead()
+        await loadData()
+      },
+      {
+        pendingKey: 'markAllRead',
+        pendingMessage: 'feedback.markingRead',
+        silentSuccess: true,
+        silentError: true,
+        onError: (error) => logger.error('Error marking all as read:', error),
+      },
+    )
   }
 
   const getNotificationIcon = (type: string) => {
@@ -111,13 +142,13 @@ export default function NotificationsScreen() {
 
   const getNotificationTypeLabel = (type: string) => {
     switch (type) {
-      case 'task_reminder': return 'Lembrete'
-      case 'target_milestone': return 'Meta'
-      case 'goal_achievement': return 'Conquista'
-      case 'payment_due': return 'Pagamento'
-      case 'achievement': return 'Conquista'
-      case 'reminder': return 'Lembrete'
-      default: return 'Sistema'
+      case 'task_reminder': return t('notifications.typeTaskReminder')
+      case 'target_milestone': return t('notifications.typeTargetMilestone')
+      case 'goal_achievement': return t('notifications.typeGoalAchievement')
+      case 'payment_due': return t('notifications.typePaymentDue')
+      case 'achievement': return t('notifications.typeAchievement')
+      case 'reminder': return t('notifications.typeReminder')
+      default: return t('notifications.typeSystem')
     }
   }
 
@@ -126,11 +157,17 @@ export default function NotificationsScreen() {
     const now = new Date()
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
     
-    if (diffInSeconds < 60) return 'Agora'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min atrás`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} h atrás`
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} dias atrás`
-    return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    if (diffInSeconds < 60) return t('notifications.now')
+    if (diffInSeconds < 3600) {
+      return tw('notifications.minutesAgo', { count: Math.floor(diffInSeconds / 60) })
+    }
+    if (diffInSeconds < 86400) {
+      return tw('notifications.hoursAgo', { count: Math.floor(diffInSeconds / 3600) })
+    }
+    if (diffInSeconds < 604800) {
+      return tw('notifications.daysAgo', { count: Math.floor(diffInSeconds / 86400) })
+    }
+    return date.toLocaleDateString(dateLoc, { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
   const filteredNotifications = filter === 'unread'
@@ -143,16 +180,21 @@ export default function NotificationsScreen() {
         {/* Header */}
         <View style={styles.header}>
         <View>
-          <Text variant="headlineSmall" style={styles.title}>Notificações</Text>
+          <Text variant="headlineSmall" style={styles.title}>{t('notifications.title')}</Text>
           {unreadCount > 0 && (
             <Text variant="bodySmall" style={styles.subtitle}>
-              {unreadCount} não lidas
+              {tw('notifications.unreadCount', { count: unreadCount })}
             </Text>
           )}
         </View>
         {unreadCount > 0 && (
-          <Button mode="text" onPress={handleMarkAllAsRead}>
-            Marcar todas como lidas
+          <Button
+            mode="text"
+            onPress={handleMarkAllAsRead}
+            loading={feedback.isPending('markAllRead')}
+            disabled={feedback.isPending('markAllRead')}
+          >
+            {feedback.isPending('markAllRead') ? t('feedback.markingRead') : t('notifications.markAllRead')}
           </Button>
         )}
       </View>
@@ -164,7 +206,7 @@ export default function NotificationsScreen() {
           onPress={() => setFilter('all')}
         >
           <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>
-            Todas
+            {t('notifications.filterAll')}
           </Text>
           {filter === 'all' && notifications.length > 0 && (
             <Badge style={styles.badge}>{notifications.length}</Badge>
@@ -175,7 +217,7 @@ export default function NotificationsScreen() {
           onPress={() => setFilter('unread')}
         >
           <Text style={[styles.filterText, filter === 'unread' && styles.filterTextActive]}>
-            Não Lidas
+            {t('notifications.filterUnread')}
           </Text>
           {unreadCount > 0 && (
             <Badge style={styles.badge}>{unreadCount}</Badge>
@@ -184,6 +226,17 @@ export default function NotificationsScreen() {
       </View>
 
       {/* Notifications List */}
+      {loading && notifications.length === 0 ? (
+        loadError ? (
+          <View style={styles.centered}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text variant="bodyLarge" style={styles.emptyText}>{loadError}</Text>
+            <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
+          </View>
+        ) : (
+          <ZendaLoading visible fill message={t('loading.notifications')} />
+        )
+      ) : (
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -194,9 +247,9 @@ export default function NotificationsScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="bell-off" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  {filter === 'unread' 
-                    ? 'Nenhuma notificação não lida'
-                    : 'Nenhuma notificação'}
+                  {filter === 'unread'
+                    ? t('notifications.emptyUnread')
+                    : t('notifications.empty')}
                 </Text>
               </Card.Content>
             </Card>
@@ -267,6 +320,7 @@ export default function NotificationsScreen() {
           )}
         </View>
       </ScrollView>
+      )}
       </View>
     </SafeAreaView>
   )
@@ -331,6 +385,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    gap: 12,
   },
   content: {
     padding: 16,

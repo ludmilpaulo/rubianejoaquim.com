@@ -8,6 +8,18 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 
+def _user_currency(user) -> str:
+    """Preferred currency for new records — original amount currency, not display FX."""
+    code = getattr(user, 'preferred_currency', None) or 'AOA'
+    return str(code).upper()[:3]
+
+
+def save_with_user_currency(serializer, user, **extra):
+    """Persist row with user + default currency when client omitted currency."""
+    currency = serializer.validated_data.get('currency') or _user_currency(user)
+    serializer.save(user=user, currency=currency, **extra)
+
+
 def get_period_dates(request):
     """Parse period params: daily, monthly, yearly, custom. Returns (start_date, end_date). Default: current month."""
     period = request.query_params.get('period', 'monthly')
@@ -50,12 +62,13 @@ from .models import (
     Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
     Debt, DebtPayment,
     Sale, BusinessExpense, ExchangeRate, UserFavoriteCurrency, Receipt,
+    MonthlyFinancialPlan,
 )
 from .serializers import (
     CategorySerializer, PersonalExpenseSerializer, PersonalIncomeSerializer,
     BudgetSerializer, GoalSerializer, DebtSerializer, SaleSerializer,
     BusinessExpenseSerializer, ExchangeRateSerializer, UserFavoriteCurrencySerializer,
-    ReceiptSerializer,
+    ReceiptSerializer, MonthlyFinancialPlanSerializer,
 )
 from .services import (
     build_dashboard,
@@ -125,19 +138,35 @@ class PersonalIncomeViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
         user = request.user
         start, end = get_period_dates(request)
         incomes = PersonalIncome.objects.filter(user=user, date__gte=start, date__lte=end)
-        total = incomes.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        by_source = incomes.values('source_type').annotate(total=Sum('amount'), count=Count('id'))
+        preferred = _user_currency(user)
+        from finance.fx import sum_in_currency, convert_amount
+
+        rows = [(i.amount, i.currency or preferred) for i in incomes.only('amount', 'currency')]
+        total = sum_in_currency(rows, preferred)
+        by_source_map: dict[str, dict] = {}
+        for inc in incomes.only('amount', 'currency', 'source_type'):
+            key = inc.source_type or 'other'
+            converted = convert_amount(inc.amount, inc.currency or preferred, preferred)
+            amt = converted['converted_amount'] if converted else Decimal(str(inc.amount))
+            entry = by_source_map.setdefault(key, {'source_type': key, 'total': Decimal('0'), 'count': 0})
+            entry['total'] += amt
+            entry['count'] += 1
+        by_source = [
+            {'source_type': v['source_type'], 'total': str(v['total'].quantize(Decimal('0.01'))), 'count': v['count']}
+            for v in by_source_map.values()
+        ]
         return Response({
             'total': str(total),
-            'by_source': list(by_source),
+            'by_source': by_source,
             'count': incomes.count(),
+            'currency': preferred,
             'period': {'start': str(start), 'end': str(end)},
         })
 
@@ -173,7 +202,27 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
+        expense = serializer.instance
+        alerts = []
+        try:
+            from finance.budget_alerts import maybe_emit_budget_alerts
+            alerts = maybe_emit_budget_alerts(
+                self.request.user,
+                month=expense.date.month,
+                year=expense.date.year,
+            )
+        except Exception:
+            alerts = []
+        # Stash for create() response enrichment
+        self._budget_alerts = alerts
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        alerts = getattr(self, '_budget_alerts', []) or []
+        if isinstance(response.data, dict) and alerts:
+            response.data['budget_alerts'] = alerts
+        return response
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -185,16 +234,33 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
         start, end = get_period_dates(request)
         expenses = PersonalExpense.objects.filter(user=user, date__gte=start, date__lte=end)
         
-        total = expenses.aggregate(Sum('amount'))['amount__sum'] or Decimal('0.00')
-        by_category = expenses.values('category__name').annotate(
-            total=Sum('amount'),
-            count=Count('id')
-        )
+        preferred = _user_currency(user)
+        from finance.fx import sum_in_currency, convert_amount
+
+        rows = [(e.amount, e.currency or preferred) for e in expenses.only('amount', 'currency')]
+        total = sum_in_currency(rows, preferred)
+        by_cat_map: dict[str, dict] = {}
+        for exp in expenses.select_related('category').only('amount', 'currency', 'category__name'):
+            key = exp.category.name if exp.category else 'Other'
+            converted = convert_amount(exp.amount, exp.currency or preferred, preferred)
+            amt = converted['converted_amount'] if converted else Decimal(str(exp.amount))
+            entry = by_cat_map.setdefault(key, {'category__name': key, 'total': Decimal('0'), 'count': 0})
+            entry['total'] += amt
+            entry['count'] += 1
+        by_category = [
+            {
+                'category__name': v['category__name'],
+                'total': str(v['total'].quantize(Decimal('0.01'))),
+                'count': v['count'],
+            }
+            for v in by_cat_map.values()
+        ]
         
         return Response({
             'total': str(total),
-            'by_category': list(by_category),
+            'by_category': by_category,
             'count': expenses.count(),
+            'currency': preferred,
             'period': {'start': str(start), 'end': str(end)},
         })
 
@@ -266,7 +332,7 @@ class BudgetViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-year', '-month', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=True, methods=['get'])
     def expenses(self, request, pk=None):
@@ -325,7 +391,7 @@ class GoalViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=True, methods=['post'], url_path='add-money')
     def add_money(self, request, pk=None):
@@ -359,15 +425,41 @@ class GoalViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            from finance.fx import convert_amount
+
+            pay_currency = (
+                str(request.data.get('currency') or goal.currency or _user_currency(request.user))
+                .upper()[:3]
+            )
+            goal_currency = (goal.currency or 'AOA').upper()
+            fx = convert_amount(amount_decimal, pay_currency, goal_currency)
+            if not fx:
+                if pay_currency != goal_currency:
+                    return Response(
+                        {
+                            'error': 'Taxa de câmbio indisponível para esta conversão. Tente novamente.',
+                            'code': 'fx_unavailable',
+                        },
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
+                converted = amount_decimal
+                rate = Decimal('1')
+            else:
+                converted = fx['converted_amount']
+                rate = fx['exchange_rate']
+
             note = str(request.data.get('note', '') or '')[:255]
             GoalContribution.objects.create(
                 user=request.user,
                 goal=goal,
                 amount=amount_decimal,
+                currency=pay_currency,
+                exchange_rate=rate,
+                converted_amount=converted,
                 note=note,
             )
 
-            goal.current_amount += amount_decimal
+            goal.current_amount += converted
 
             if goal.current_amount >= goal.target_amount:
                 goal.status = 'completed'
@@ -401,7 +493,7 @@ class DebtViewSet(viewsets.ModelViewSet):
         return queryset.order_by('due_date', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=True, methods=['post'], url_path='pay')
     def pay(self, request, pk=None):
@@ -429,15 +521,41 @@ class DebtViewSet(viewsets.ModelViewSet):
             else:
                 payment_date = timezone.now().date()
 
+            from finance.fx import convert_amount
+
+            pay_currency = (
+                str(request.data.get('currency') or debt.currency or _user_currency(request.user))
+                .upper()[:3]
+            )
+            debt_currency = (debt.currency or 'AOA').upper()
+            fx = convert_amount(amount_decimal, pay_currency, debt_currency)
+            if not fx:
+                if pay_currency != debt_currency:
+                    return Response(
+                        {
+                            'error': 'Taxa de câmbio indisponível para esta conversão. Tente novamente.',
+                            'code': 'fx_unavailable',
+                        },
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    )
+                converted = amount_decimal
+                rate = Decimal('1')
+            else:
+                converted = fx['converted_amount']
+                rate = fx['exchange_rate']
+
             note = str(request.data.get('note', '') or '')
             DebtPayment.objects.create(
                 debt=debt,
                 amount=amount_decimal,
+                currency=pay_currency,
+                exchange_rate=rate,
+                converted_amount=converted,
                 payment_date=payment_date,
                 note=note,
             )
 
-            debt.paid_amount += amount_decimal
+            debt.paid_amount += converted
             if debt.paid_amount >= debt.total_amount:
                 debt.paid_amount = debt.total_amount
                 debt.status = 'paid'
@@ -475,7 +593,7 @@ class SaleViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -519,7 +637,7 @@ class BusinessExpenseViewSet(viewsets.ModelViewSet):
         return queryset.order_by('-date', '-created_at')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        save_with_user_currency(serializer, self.request.user)
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -610,35 +728,81 @@ class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ExchangeRateSerializer
     permission_classes = [AllowAny]
 
+    def list(self, request, *args, **kwargs):
+        """Optionally refresh live rates when ?refresh=1. Always expose source/stale."""
+        from finance.fx import get_fx_meta, refresh_exchange_rates
+
+        if request.query_params.get('refresh') in ('1', 'true', 'True'):
+            refresh_exchange_rates(force=True)
+        else:
+            refresh_exchange_rates(force=False)
+
+        response = super().list(request, *args, **kwargs)
+        meta = get_fx_meta()
+        if isinstance(response.data, list):
+            return Response({'results': response.data, **meta})
+        if isinstance(response.data, dict):
+            response.data.update(meta)
+        return response
+
+    @action(detail=False, methods=['get'])
+    def supported(self, request):
+        from accounts.currency_defaults import SUPPORTED_CURRENCIES
+        from finance.fx import get_fx_meta, refresh_exchange_rates
+
+        refresh_exchange_rates(force=False)
+        return Response({
+            'currencies': sorted(SUPPORTED_CURRENCIES),
+            **get_fx_meta(),
+        })
+
     @action(detail=False, methods=['get'])
     def convert(self, request):
-        amount = Decimal(request.query_params.get('amount', '0'))
+        """
+        Convert amount using cached market rates.
+        Returns original amount, converted amount, unit rate, source, timestamps, stale.
+        Converted values are display-only — originals are never overwritten.
+        """
+        from finance.fx import convert_amount, get_fx_meta, refresh_exchange_rates
+
+        if request.query_params.get('refresh') in ('1', 'true', 'True'):
+            refresh_exchange_rates(force=True)
+        else:
+            refresh_exchange_rates(force=False)
+
+        try:
+            amount = Decimal(request.query_params.get('amount', '0'))
+        except Exception:
+            return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+
         from_cur = request.query_params.get('from', 'USD').upper()
         to_cur = request.query_params.get('to', 'AOA').upper()
-        if from_cur == to_cur:
-            return Response({'amount': str(amount), 'from': from_cur, 'to': to_cur, 'rate': '1'})
-        rate_obj = ExchangeRate.objects.filter(
-            base_currency=from_cur, target_currency=to_cur
-        ).first()
-        if not rate_obj:
-            inverse = ExchangeRate.objects.filter(
-                base_currency=to_cur, target_currency=from_cur
-            ).first()
-            if inverse and inverse.rate != 0:
-                converted = amount / inverse.rate
-                return Response({
-                    'amount': str(converted.quantize(Decimal('0.01'))),
+
+        fx = convert_amount(amount, from_cur, to_cur)
+        if not fx:
+            meta = get_fx_meta(stale_override=True)
+            return Response(
+                {
+                    'error': 'Rate not found',
                     'from': from_cur,
                     'to': to_cur,
-                    'rate': str((Decimal('1') / inverse.rate).quantize(Decimal('0.00000001'))),
-                })
-            return Response({'error': 'Rate not found'}, status=status.HTTP_404_NOT_FOUND)
-        converted = amount * rate_obj.rate
+                    **meta,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         return Response({
-            'amount': str(converted.quantize(Decimal('0.01'))),
+            'original_amount': str(Decimal(str(amount)).quantize(Decimal('0.01'))),
+            'amount': str(fx['converted_amount']),
+            'converted': str(fx['converted_amount']),
             'from': from_cur,
             'to': to_cur,
-            'rate': str(rate_obj.rate),
+            'rate': str(fx['exchange_rate']),
+            'rate_line': f"1 {from_cur} = {fx['exchange_rate']} {to_cur}",
+            'updated_at': fx.get('updated_at'),
+            'provider_updated_at': fx.get('provider_updated_at'),
+            'source': fx.get('source'),
+            'stale': bool(fx.get('stale')),
         })
 
 
@@ -651,3 +815,119 @@ class UserFavoriteCurrencyViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class MonthlyFinancialPlanViewSet(viewsets.ModelViewSet):
+    """Salary / monthly spending plan with planned expense lines + live progress."""
+    serializer_class = MonthlyFinancialPlanSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return MonthlyFinancialPlan.objects.filter(user=self.request.user).prefetch_related('items')
+
+    def perform_create(self, serializer):
+        currency = serializer.validated_data.get('currency') or _user_currency(self.request.user)
+        serializer.save(user=self.request.user, currency=currency)
+
+    @action(detail=False, methods=['get', 'put', 'patch'], url_path='current')
+    def current(self, request):
+        """Get or upsert plan for month/year (defaults to current calendar month)."""
+        now = timezone.now().date()
+        try:
+            month = int(request.query_params.get('month', now.month))
+            year = int(request.query_params.get('year', now.year))
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid month/year'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan = MonthlyFinancialPlan.objects.filter(
+            user=request.user, month=month, year=year
+        ).prefetch_related('items').first()
+
+        if request.method == 'GET':
+            from finance.budget_alerts import month_actual_expenses
+            if not plan:
+                return Response({
+                    'id': None,
+                    'month': month,
+                    'year': year,
+                    'salary': '0',
+                    'spending_limit': '0',
+                    'savings_target': '0',
+                    'currency': _user_currency(request.user),
+                    'notes': '',
+                    'items': [],
+                    'progress': {
+                        'salary': '0',
+                        'spending_limit': '0',
+                        'savings_target': '0',
+                        'planned_expenses': '0',
+                        'planned_needs': '0',
+                        'planned_wants': '0',
+                        'planned_savings': '0',
+                        'actual_expenses': str(month_actual_expenses(request.user, month, year)),
+                        'actual_savings': '0',
+                        'remaining': '0',
+                        'percent_used': '0',
+                        'status': 'ok',
+                        'currency': _user_currency(request.user),
+                        'month': month,
+                        'year': year,
+                    },
+                    'last_budget_alert_level': 0,
+                })
+            return Response(self.get_serializer(plan).data)
+
+        payload = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        payload['month'] = month
+        payload['year'] = year
+        if plan:
+            serializer = self.get_serializer(plan, data=payload, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        serializer = self.get_serializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='dashboard')
+    def dashboard(self, request):
+        """Monthly financial dashboard for month/year."""
+        from finance.budget_alerts import compute_plan_progress, month_actual_expenses
+
+        now = timezone.now().date()
+        try:
+            month = int(request.query_params.get('month', now.month))
+            year = int(request.query_params.get('year', now.year))
+        except (TypeError, ValueError):
+            return Response({'error': 'Invalid month/year'}, status=status.HTTP_400_BAD_REQUEST)
+
+        plan = MonthlyFinancialPlan.objects.filter(
+            user=request.user, month=month, year=year
+        ).prefetch_related('items').first()
+        if plan:
+            data = compute_plan_progress(plan)
+            data['items'] = MonthlyFinancialPlanSerializer(plan).data.get('items', [])
+            data['has_plan'] = True
+            return Response(data)
+
+        actual = month_actual_expenses(request.user, month, year)
+        return Response({
+            'has_plan': False,
+            'month': month,
+            'year': year,
+            'salary': '0',
+            'spending_limit': '0',
+            'savings_target': '0',
+            'planned_expenses': '0',
+            'planned_needs': '0',
+            'planned_wants': '0',
+            'planned_savings': '0',
+            'actual_expenses': str(actual),
+            'actual_savings': '0',
+            'remaining': '0',
+            'percent_used': '0',
+            'status': 'ok',
+            'currency': _user_currency(request.user),
+            'items': [],
+        })

@@ -7,38 +7,44 @@ import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { authApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage, isApiError } from '../types/api'
 
 type Props = StackScreenProps<AuthStackParamList, 'ForgotPassword'>
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
   const { t } = useI18n()
+  const feedback = useActionFeedback()
   const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const trimmed = email.trim()
     if (!trimmed) {
       setError(t('auth.forgotPassword.emailRequired'))
       return
     }
     setError('')
-    setLoading(true)
-    try {
-      await authApi.requestPasswordReset(trimmed)
-      setSent(true)
-    } catch (err: unknown) {
-      const msg = getApiErrorMessage(err, 'auth.forgotPassword.sendFailed')
-      if (isApiError(err) && err.response?.status === 503) {
-        setError(t('auth.forgotPassword.emailUnavailable'))
-      } else {
-        setError(msg)
-      }
-    } finally {
-      setLoading(false)
-    }
+    void feedback.run(
+      async () => {
+        await authApi.requestPasswordReset(trimmed)
+        setSent(true)
+      },
+      {
+        pendingKey: 'reset',
+        pendingMessage: 'feedback.resettingPassword',
+        silentError: true,
+        onError: (err: unknown) => {
+          const msg = getApiErrorMessage(err, 'auth.forgotPassword.sendFailed')
+          if (isApiError(err) && err.response?.status === 503) {
+            setError(t('auth.forgotPassword.emailUnavailable'))
+          } else {
+            setError(msg)
+          }
+        },
+      },
+    )
   }
 
   if (sent) {
@@ -111,17 +117,17 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               <Button
                 mode="contained"
                 onPress={handleSubmit}
-                loading={loading}
-                disabled={loading}
+                {...feedback.buttonProps('reset')}
                 style={styles.button}
                 buttonColor="#6366f1"
               >
-                {t('auth.forgotPassword.sendLink')}
+                {feedback.actionLabel('auth.forgotPassword.sendLink', 'reset', 'feedback.resettingPassword')}
               </Button>
 
               <Button
                 mode="text"
                 onPress={() => navigation.navigate('Login')}
+                disabled={feedback.anyPending}
                 style={styles.backLink}
                 textColor="#6366f1"
               >

@@ -6,10 +6,12 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppDispatch } from '../hooks/redux'
 import { login, socialSession, checkPaidAccess } from '../store/authSlice'
 import SocialAuthButtons from '../components/SocialAuthButtons'
+import ScreenErrorBoundary from '../components/ScreenErrorBoundary'
 import { authApi } from '../services/api'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiBaseUrl } from '../config/api'
 import { getThunkErrorMessage } from '../utils/thunkError'
 import { logger } from '../utils/logger'
@@ -59,10 +61,10 @@ function isConnectionError(msg: string) {
 export default function LoginScreen({ navigation }: Props) {
   const dispatch = useAppDispatch()
   const { t, tw, resolve } = useI18n()
+  const feedback = useActionFeedback()
   const [emailOrUsername, setEmailOrUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [biometricAvailable, setBiometricAvailable] = useState(false)
   const [biometricType, setBiometricType] = useState('')
@@ -128,33 +130,37 @@ export default function LoginScreen({ navigation }: Props) {
     }
   }
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     if (!emailOrUsername || !password) {
       setError(t('auth.login.fillAllFields'))
       return
     }
 
-    setLoading(true)
     setError('')
+    void feedback.run(
+      async () => {
+        await dispatch(login({ emailOrUsername, password })).unwrap()
 
-    try {
-      await dispatch(login({ emailOrUsername, password })).unwrap()
-
-      if (enableBiometricOption && biometricAvailable) {
-        try {
-          await enableBiometric(emailOrUsername, password)
-          setBiometricEnabled(true)
-        } catch (err) {
-          logger.error('Error enabling biometric:', err)
+        if (enableBiometricOption && biometricAvailable) {
+          try {
+            await enableBiometric(emailOrUsername, password)
+            setBiometricEnabled(true)
+          } catch (err) {
+            logger.error('Error enabling biometric:', err)
+          }
         }
-      }
-    } catch (err: unknown) {
-      const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
-      setError(formatError(errorMessage))
-      showLoginErrorAlert(errorMessage)
-    } finally {
-      setLoading(false)
-    }
+      },
+      {
+        pendingKey: 'login',
+        pendingMessage: 'feedback.signingIn',
+        silentError: true,
+        onError: (err: unknown) => {
+          const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
+          setError(formatError(errorMessage))
+          showLoginErrorAlert(errorMessage)
+        },
+      },
+    )
   }
 
   const handleBiometricLogin = async () => {
@@ -177,23 +183,27 @@ export default function LoginScreen({ navigation }: Props) {
       return
     }
 
-    setLoading(true)
     setError('')
+    void feedback.run(
+      async () => {
+        await dispatch(login(credentials)).unwrap()
+      },
+      {
+        pendingKey: 'biometric',
+        pendingMessage: 'feedback.signingIn',
+        silentError: true,
+        onError: async (err: unknown) => {
+          const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
+          setError(formatError(errorMessage))
+          showLoginErrorAlert(errorMessage)
 
-    try {
-      await dispatch(login(credentials)).unwrap()
-    } catch (err: unknown) {
-      const errorMessage = getThunkErrorMessage(err, t('auth.login.loginFailed'))
-      setError(formatError(errorMessage))
-      showLoginErrorAlert(errorMessage)
-
-      if (isApiError(err) && (err.response?.status === 401 || err.response?.status === 400)) {
-        await clearBiometricCredentials()
-        setBiometricEnabled(false)
-      }
-    } finally {
-      setLoading(false)
-    }
+          if (isApiError(err) && (err.response?.status === 401 || err.response?.status === 400)) {
+            await clearBiometricCredentials()
+            setBiometricEnabled(false)
+          }
+        },
+      },
+    )
   }
 
   const displayError = error
@@ -255,35 +265,44 @@ export default function LoginScreen({ navigation }: Props) {
                 </View>
               ) : null}
 
-              <SocialAuthButtons
-                disabled={loading}
-                onSuccess={async ({ user, token }) => {
-                  setLoading(true)
-                  try {
-                    await dispatch(socialSession({ user, token })).unwrap()
-                    await dispatch(checkPaidAccess()).unwrap()
-                  } catch (err) {
-                    const msg = getThunkErrorMessage(err, 'api.errors.login.failed')
-                    setError(msg)
-                    showLoginErrorAlert(msg)
-                  } finally {
-                    setLoading(false)
-                  }
-                }}
-                onLinkRequired={(payload) => {
-                  setLinkState(payload)
-                  setError('')
-                }}
-              />
+              <ScreenErrorBoundary>
+                <SocialAuthButtons
+                  disabled={feedback.anyPending}
+                  onSuccess={async ({ user, token }) => {
+                    await feedback.run(
+                      async () => {
+                        await dispatch(socialSession({ user, token })).unwrap()
+                        await dispatch(checkPaidAccess()).unwrap()
+                      },
+                      {
+                        pendingKey: 'social',
+                        pendingMessage: 'feedback.signingIn',
+                        silentError: true,
+                        onError: (err: unknown) => {
+                          const msg = getThunkErrorMessage(err, 'api.errors.login.failed')
+                          setError(msg)
+                          showLoginErrorAlert(msg)
+                        },
+                      },
+                    )
+                  }}
+                  onLinkRequired={(payload) => {
+                    setLinkState(payload)
+                    setError('')
+                  }}
+                />
+              </ScreenErrorBoundary>
 
               {linkState ? (
                 <View style={styles.linkBox}>
                   <Text style={styles.linkText}>
-                    Já existe uma conta com {linkState.email}. Introduza a palavra-passe para associar{' '}
-                    {linkState.provider}.
+                    {tw('auth.social.linkBody', {
+                      email: linkState.email,
+                      provider: linkState.provider,
+                    })}
                   </Text>
                   <TextInput
-                    label="Palavra-passe"
+                    label={t('auth.social.linkPassword')}
                     value={linkPassword}
                     onChangeText={setLinkPassword}
                     mode="outlined"
@@ -292,31 +311,36 @@ export default function LoginScreen({ navigation }: Props) {
                   />
                   <Button
                     mode="contained"
-                    loading={loading}
-                    disabled={loading || !linkPassword}
-                    onPress={async () => {
-                      setLoading(true)
-                      setError('')
-                      try {
-                        const data = await authApi.socialLinkConfirm(linkState.link_token, linkPassword)
-                        if (data.token && data.user) {
-                          await dispatch(socialSession({ user: data.user, token: data.token })).unwrap()
-                          await dispatch(checkPaidAccess()).unwrap()
-                          setLinkState(null)
-                          setLinkPassword('')
-                        }
-                      } catch (err) {
-                        const msg = getApiErrorMessage(err, 'Não foi possível associar a conta.')
-                        setError(msg)
-                        Alert.alert('Associar conta', msg)
-                      } finally {
-                        setLoading(false)
-                      }
+                    {...feedback.buttonProps('socialLink')}
+                    disabled={feedback.isPending('socialLink') || !linkPassword}
+                    onPress={() => {
+                      void feedback.run(
+                        async () => {
+                          setError('')
+                          const data = await authApi.socialLinkConfirm(linkState.link_token, linkPassword)
+                          if (data.token && data.user) {
+                            await dispatch(socialSession({ user: data.user, token: data.token })).unwrap()
+                            await dispatch(checkPaidAccess()).unwrap()
+                            setLinkState(null)
+                            setLinkPassword('')
+                          }
+                        },
+                        {
+                          pendingKey: 'socialLink',
+                          pendingMessage: 'feedback.signingIn',
+                          silentError: true,
+                          onError: (err: unknown) => {
+                            const msg = getApiErrorMessage(err, t('auth.social.linkFailed'))
+                            setError(msg)
+                            Alert.alert(t('auth.social.linkTitle'), msg)
+                          },
+                        },
+                      )
                     }}
                     buttonColor="#b45309"
                     style={styles.button}
                   >
-                    Associar e entrar
+                    {feedback.actionLabel('auth.social.linkConfirm', 'socialLink', 'feedback.signingIn')}
                   </Button>
                 </View>
               ) : null}
@@ -351,7 +375,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <TouchableOpacity
                   style={styles.forgotLink}
                   onPress={() => navigation.navigate('ForgotPassword')}
-                  disabled={loading}
+                  disabled={feedback.anyPending}
                 >
                   <Text style={styles.forgotLinkText}>{t('auth.login.forgotPassword')}</Text>
                 </TouchableOpacity>
@@ -361,8 +385,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <Button
                   mode="outlined"
                   onPress={handleBiometricLogin}
-                  loading={loading}
-                  disabled={loading}
+                  {...feedback.buttonProps('biometric')}
                   style={styles.biometricButton}
                   icon={() => (
                     <MaterialCommunityIcons
@@ -372,7 +395,9 @@ export default function LoginScreen({ navigation }: Props) {
                     />
                   )}
                 >
-                  {tw('auth.login.signInWith', { type: biometricType })}
+                  {feedback.isPending('biometric')
+                    ? t('feedback.signingIn')
+                    : tw('auth.login.signInWith', { type: biometricType })}
                 </Button>
               )}
 
@@ -390,21 +415,20 @@ export default function LoginScreen({ navigation }: Props) {
                 testID="login-submit"
                 mode="contained"
                 onPress={handleLogin}
-                loading={loading}
-                disabled={loading}
+                {...feedback.buttonProps('login')}
                 style={styles.button}
                 buttonColor="#6366f1"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
-                {t('auth.login.signIn')}
+                {feedback.actionLabel('auth.login.signIn', 'login', 'feedback.signingIn')}
               </Button>
 
               {biometricAvailable && (
                 <TouchableOpacity
                   style={styles.biometricOption}
                   onPress={() => setEnableBiometricOption(!enableBiometricOption)}
-                  disabled={loading}
+                  disabled={feedback.anyPending}
                 >
                   <Checkbox
                     status={enableBiometricOption ? 'checked' : 'unchecked'}
@@ -421,7 +445,7 @@ export default function LoginScreen({ navigation }: Props) {
                 testID="login-register-link"
                 style={styles.registerLink}
                 onPress={() => navigation.navigate('Register')}
-                disabled={loading}
+                disabled={feedback.anyPending}
               >
                 <Text style={styles.registerLinkText}>{t('auth.login.noAccount')} </Text>
                 <Text style={styles.registerLinkBold}>{t('auth.login.register')}</Text>

@@ -6,9 +6,11 @@ import { personalFinanceApi } from '../../services/api'
 import type { IncomePayload } from '../../types/api'
 import { unwrapList } from '../../types/api'
 import { colors, spacing, radius } from '../../theme'
-import { formatCurrency, resolveUserCurrency, type CurrencyCode } from '../../utils/currency'
-import { useAppSelector } from '../../hooks/redux'
+import { useCurrency } from '../../contexts/CurrencyContext'
+import { useI18n } from '../../contexts/I18nContext'
 import { getApiErrorMessage } from '../../types/api'
+import type { CurrencyCode } from '../../utils/currency'
+import CurrencyPicker from '../CurrencyPicker'
 import type { PeriodState } from '../PeriodSelector'
 
 type IncomeRecord = {
@@ -23,24 +25,16 @@ type IncomeRecord = {
   notes?: string
 }
 
-const SOURCE_OPTIONS: { value: IncomePayload['source_type']; label: string }[] = [
-  { value: 'salary', label: 'Salário' },
-  { value: 'business', label: 'Negócio' },
-  { value: 'freelance', label: 'Freelance' },
-  { value: 'investment', label: 'Investimento' },
-  { value: 'gift', label: 'Presente' },
-  { value: 'other', label: 'Outro' },
-]
+const SOURCE_VALUES = ['salary', 'business', 'freelance', 'investment', 'gift', 'other'] as const
 
 interface Props {
   periodState: PeriodState
-  currency?: CurrencyCode
   onRefreshParent?: () => void
 }
 
-export default function PersonalIncomeTab({ periodState, currency: currencyProp, onRefreshParent }: Props) {
-  const { user } = useAppSelector((state) => state.auth)
-  const currency = currencyProp ?? resolveUserCurrency(user?.preferred_currency)
+export default function PersonalIncomeTab({ periodState, onRefreshParent }: Props) {
+  const { t, tw } = useI18n()
+  const { currency: preferredCurrency, format, formatDual } = useCurrency()
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
   const [summary, setSummary] = useState<{ total?: string; count?: number } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,6 +42,7 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
   const [editing, setEditing] = useState<IncomeRecord | null>(null)
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [formCurrency, setFormCurrency] = useState<CurrencyCode>(preferredCurrency)
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [sourceType, setSourceType] = useState<IncomePayload['source_type']>('salary')
   const [isRecurring, setIsRecurring] = useState(false)
@@ -84,6 +79,7 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
     setEditing(null)
     setAmount('')
     setDescription('')
+    setFormCurrency(preferredCurrency)
     setDate(new Date().toISOString().slice(0, 10))
     setSourceType('salary')
     setIsRecurring(false)
@@ -94,6 +90,7 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
     setEditing(item)
     setAmount(String(item.amount))
     setDescription(item.description)
+    setFormCurrency((item.currency || preferredCurrency) as CurrencyCode)
     setDate(item.date)
     setSourceType((item.source_type as IncomePayload['source_type']) || 'salary')
     setIsRecurring(!!item.is_recurring)
@@ -103,7 +100,7 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
   const save = async () => {
     const parsed = parseFloat(amount.replace(',', '.'))
     if (!parsed || parsed <= 0 || !description.trim()) {
-      Alert.alert('Dados inválidos', 'Indique valor e descrição.')
+      Alert.alert(t('common.error'), t('personal.invalidAmount'))
       return
     }
     setSaving(true)
@@ -113,7 +110,7 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
         description: description.trim(),
         date,
         source_type: sourceType,
-        currency,
+        currency: formCurrency,
         is_recurring: isRecurring,
         recurrence: isRecurring ? 'monthly' : 'none',
       }
@@ -126,17 +123,17 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
       await load()
       onRefreshParent?.()
     } catch (error: unknown) {
-      Alert.alert('Erro', getApiErrorMessage(error))
+      Alert.alert(t('common.error'), getApiErrorMessage(error))
     } finally {
       setSaving(false)
     }
   }
 
   const remove = (item: IncomeRecord) => {
-    Alert.alert('Eliminar receita', 'Tem a certeza?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('common.delete'), t('personal.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Eliminar',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -144,39 +141,49 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
             await load()
             onRefreshParent?.()
           } catch (error: unknown) {
-            Alert.alert('Erro', getApiErrorMessage(error))
+            Alert.alert(t('common.error'), getApiErrorMessage(error))
           }
         },
       },
     ])
   }
 
-  const sourceLabel = (v: string) => SOURCE_OPTIONS.find((s) => s.value === v)?.label ?? v
+  const sourceLabel = (v: string) => {
+    const labels: Record<string, string> = {
+      salary: t('personal.incomeSourceSalary'),
+      business: t('personal.incomeSourceBusiness'),
+      freelance: t('personal.incomeSourceFreelance'),
+      investment: t('personal.incomeSourceInvestment'),
+      gift: t('personal.incomeSourceGift'),
+      other: t('personal.incomeSourceOther'),
+    }
+    return labels[v] ?? v
+  }
 
   return (
     <View style={styles.wrap}>
       <Card style={styles.summaryCard}>
         <Card.Content>
           <Text variant="titleMedium" style={styles.summaryTitle}>
-            Receitas do período
+            {t('personal.periodIncome')}
           </Text>
           <Text variant="headlineMedium" style={styles.summaryAmount}>
-            {formatCurrency(summary?.total ?? '0', currency)}
+            {format(summary?.total ?? '0', preferredCurrency)}
           </Text>
           <Text variant="bodySmall" style={styles.muted}>
-            {summary?.count ?? incomes.length} entradas
+            {tw('personal.incomeEntries', { count: summary?.count ?? incomes.length })}
           </Text>
         </Card.Content>
       </Card>
 
       <Button mode="contained" icon="plus" onPress={openCreate} style={styles.addBtn}>
-        Adicionar receita
+        {t('personal.addIncome')}
       </Button>
 
       {loading ? (
-        <Text style={styles.muted}>A carregar...</Text>
+        <Text style={styles.muted}>{t('common.loading')}</Text>
       ) : incomes.length === 0 ? (
-        <Text style={styles.muted}>Sem receitas neste período.</Text>
+        <Text style={styles.muted}>{t('personal.emptyIncome')}</Text>
       ) : (
         <ScrollView>
           {incomes.map((item) => (
@@ -187,12 +194,24 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
                     <Text variant="titleMedium">{item.description}</Text>
                     <Text variant="bodySmall" style={styles.muted}>
                       {sourceLabel(item.source_type)} · {item.date}
-                      {item.is_recurring ? ' · Recorrente' : ''}
+                      {item.is_recurring ? ` · ${t('personal.recurringTag')}` : ''}
                     </Text>
                   </View>
-                  <Text variant="titleMedium" style={styles.incomeAmount}>
-                    +{formatCurrency(item.amount, item.currency || currency)}
-                  </Text>
+                  <View style={styles.amountCol}>
+                    {(() => {
+                      const dual = formatDual(item.amount, item.currency || preferredCurrency)
+                      return (
+                        <>
+                          <Text variant="titleMedium" style={styles.incomeAmount}>
+                            +{dual.primary}
+                          </Text>
+                          {dual.secondary ? (
+                            <Text variant="bodySmall" style={styles.muted}>{dual.secondary}</Text>
+                          ) : null}
+                        </>
+                      )
+                    })()}
+                  </View>
                 </View>
                 <View style={styles.actions}>
                   <TouchableOpacity onPress={() => openEdit(item)}>
@@ -210,34 +229,35 @@ export default function PersonalIncomeTab({ periodState, currency: currencyProp,
 
       <Portal>
         <Dialog visible={modalVisible} onDismiss={() => setModalVisible(false)}>
-          <Dialog.Title>{editing ? 'Editar receita' : 'Nova receita'}</Dialog.Title>
+          <Dialog.Title>{editing ? t('personal.editIncome') : t('personal.newIncome')}</Dialog.Title>
           <Dialog.Content>
-            <TextInput label="Valor" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" mode="outlined" style={styles.input} />
-            <TextInput label="Descrição" value={description} onChangeText={setDescription} mode="outlined" style={styles.input} />
-            <TextInput label="Data (AAAA-MM-DD)" value={date} onChangeText={setDate} mode="outlined" style={styles.input} />
+            <TextInput label={t('personal.amount')} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" mode="outlined" style={styles.input} />
+            <CurrencyPicker value={formCurrency} onChange={setFormCurrency} label={t('market.selectCurrency')} />
+            <TextInput label={t('personal.description')} value={description} onChangeText={setDescription} mode="outlined" style={styles.input} />
+            <TextInput label={t('personal.date')} value={date} onChangeText={setDate} mode="outlined" style={styles.input} />
             <Text variant="labelMedium" style={styles.chipLabel}>
-              Origem
+              {t('personal.incomeSource')}
             </Text>
             <View style={styles.chips}>
-              {SOURCE_OPTIONS.map((opt) => (
+              {SOURCE_VALUES.map((opt) => (
                 <Chip
-                  key={opt.value}
-                  selected={sourceType === opt.value}
-                  onPress={() => setSourceType(opt.value)}
+                  key={opt}
+                  selected={sourceType === opt}
+                  onPress={() => setSourceType(opt)}
                   style={styles.chip}
                 >
-                  {opt.label}
+                  {sourceLabel(opt)}
                 </Chip>
               ))}
             </View>
             <Chip selected={isRecurring} onPress={() => setIsRecurring(!isRecurring)} icon="repeat">
-              Receita recorrente
+              {t('personal.recurringIncome')}
             </Chip>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setModalVisible(false)}>Cancelar</Button>
+            <Button onPress={() => setModalVisible(false)}>{t('common.cancel')}</Button>
             <Button loading={saving} onPress={save}>
-              Guardar
+              {t('common.save')}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -256,6 +276,7 @@ const styles = StyleSheet.create({
   itemCard: { marginBottom: spacing.sm, borderRadius: radius.md },
   row: { flexDirection: 'row', alignItems: 'center' },
   flex: { flex: 1 },
+  amountCol: { alignItems: 'flex-end' },
   incomeAmount: { color: colors.brand.secondary, fontWeight: '600' },
   actions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
   input: { marginBottom: spacing.sm },

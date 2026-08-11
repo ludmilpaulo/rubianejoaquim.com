@@ -13,7 +13,12 @@ class User(AbstractUser):
     address = models.TextField(blank=True, help_text="Endereço completo")
     referral_code = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="Código de referência único")
     referred_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='referrals', help_text="Usuário que indicou este usuário")
-    preferred_locale = models.CharField(max_length=5, default='pt', help_text='pt, en, fr, es')
+    preferred_locale = models.CharField(
+        max_length=5,
+        default='pt',
+        blank=True,
+        help_text='pt, en, fr, es — blank means follow device language',
+    )
     preferred_currency = models.CharField(max_length=3, default='AOA')
     onboarding_completed = models.BooleanField(default=False)
     onboarding_goals = models.JSONField(default=list, blank=True, help_text='Goal ids from onboarding: save, debt, business, learn, budget')
@@ -26,6 +31,14 @@ class User(AbstractUser):
     profile_photo = models.ImageField(upload_to='profiles/', blank=True, null=True)
     profile_image_url = models.URLField(max_length=500, blank=True, help_text='External profile image from social providers')
     dark_mode = models.BooleanField(default=False)
+    notification_prefs = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Notification preferences: enabled, budget_warnings, budget_exceeded, '
+            'debt_reminders, savings_reminders, monthly_summary, goal_reminders'
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -59,10 +72,12 @@ class SocialAccount(models.Model):
     PROVIDER_GOOGLE = 'google'
     PROVIDER_FACEBOOK = 'facebook'
     PROVIDER_TIKTOK = 'tiktok'
+    PROVIDER_APPLE = 'apple'
     PROVIDER_CHOICES = [
         (PROVIDER_GOOGLE, 'Google'),
         (PROVIDER_FACEBOOK, 'Facebook'),
         (PROVIDER_TIKTOK, 'TikTok'),
+        (PROVIDER_APPLE, 'Apple'),
     ]
 
     user = models.ForeignKey(
@@ -94,6 +109,52 @@ class SocialAccount(models.Model):
 
     def __str__(self):
         return f'{self.provider}:{self.provider_user_id} → {self.user_id}'
+
+
+class AppReferralEvent(models.Model):
+    """
+    Tracks share/download/register funnel for Zenda app referrals.
+    Architecture for future rewards — click → install → register.
+    """
+    EVENT_CLICK = 'click'
+    EVENT_INSTALL = 'install'
+    EVENT_REGISTER = 'register'
+    EVENT_CHOICES = [
+        (EVENT_CLICK, 'Download link click'),
+        (EVENT_INSTALL, 'App open / install attributed'),
+        (EVENT_REGISTER, 'User registered'),
+    ]
+
+    referral_code = models.CharField(max_length=20, db_index=True)
+    referrer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='app_referral_events_sent',
+    )
+    event_type = models.CharField(max_length=20, choices=EVENT_CHOICES, default=EVENT_CLICK)
+    platform = models.CharField(max_length=20, blank=True, help_text='ios | android | web | unknown')
+    user_agent = models.CharField(max_length=500, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='app_referral_events_received',
+    )
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['referral_code', 'event_type']),
+        ]
+
+    def __str__(self):
+        return f'{self.event_type}:{self.referral_code}'
 
 
 class OAuthState(models.Model):
