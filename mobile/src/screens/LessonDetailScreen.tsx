@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, Linking, TouchableOpacity, Alert, Dimensions } from 'react-native'
+import { View, StyleSheet, ScrollView, Linking, TouchableOpacity, Dimensions } from 'react-native'
 import { Text, Card, Button, Chip, Divider } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'

@@ -17,6 +17,7 @@ import { useI18n } from '../contexts/I18nContext'
 import FinancialHealthCard from '../components/dashboard/FinancialHealthCard'
 import ZendaCard from '../components/ui/ZendaCard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
+import { ZendaLoader } from '../components/ui/ZendaLoader'
 import { colors, spacing, radius } from '../theme'
 import { formatCurrency, resolveUserCurrency } from '../utils/currency'
 import { fetchWithCache } from '../utils/apiCache'
@@ -174,6 +175,7 @@ export default function HomeScreen() {
   if (loading && !dashboard) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
+        <ZendaLoader message={t('loading.dashboard')} size="lg" />
         <DashboardSkeleton />
       </SafeAreaView>
     )

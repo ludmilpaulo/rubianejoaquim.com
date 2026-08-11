@@ -102,6 +102,7 @@ export default function TargetsScreen() {
 
     void feedback.run(
       async () => {
+        const targetDate = targetForm.target_date!
         const targetData: TargetPayload = {
           title: targetForm.title.trim(),
           description: targetForm.description.trim(),
@@ -110,7 +111,7 @@ export default function TargetsScreen() {
           unit: targetForm.unit.trim(),
           status: targetForm.status,
           start_date: targetForm.start_date.toISOString().split('T')[0],
-          target_date: targetForm.target_date.toISOString().split('T')[0],
+          target_date: targetDate.toISOString().split('T')[0],
           target_value:
             targetForm.target_value && targetForm.target_value.trim()
               ? targetForm.target_value
@@ -690,7 +691,9 @@ export default function TargetsScreen() {
                 style={styles.modalButton}
                 {...feedback.buttonProps('updateProgress')}
               >
-                {feedback.actionLabel('tasks.updateProgress', 'updateProgress', 'feedback.processing')}
+                {feedback.isPending('updateProgress')
+                  ? t('feedback.processing')
+                  : 'Atualizar'}
               </Button>
             </>
           )}

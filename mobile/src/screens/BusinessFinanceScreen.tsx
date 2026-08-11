@@ -12,7 +12,6 @@ import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
 import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } from '../components/PeriodSelector'
 import { useI18n } from '../contexts/I18nContext'
-import { useAlert } from '../hooks/useAlert'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import {
@@ -67,11 +66,10 @@ interface Category {
 export default function BusinessFinanceScreen() {
   const { t, tw, locale } = useI18n()
   const { currency: preferredCurrency, format, formatDual } = useCurrency()
+  const feedback = useActionFeedback()
 
   const fmtDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
     formatDate(locale, new Date(dateStr), options)
-  const alert = useAlert()
-  const feedback = useActionFeedback()
   const [activeTab, setActiveTab] = useState<BusinessTab>('overview')
   const [periodState, setPeriodState] = useState<PeriodState>(getDefaultPeriod)
   const [refreshing, setRefreshing] = useState(false)

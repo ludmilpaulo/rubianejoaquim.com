@@ -19,6 +19,8 @@ import { handleBudgetAlerts } from '../utils/budgetAlerts'
 import { logger } from '../utils/logger'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
+import { useActionFeedback } from '../hooks/useActionFeedback'
+import { ZendaLoading } from '../components/ui/ZendaLoader'
 import type { RouteProp } from '@react-navigation/native'
 import type { StackNavigationProp } from '@react-navigation/stack'
 import type { PersonalStackParamList } from '../navigation/types'
@@ -115,12 +117,14 @@ export default function PersonalFinanceScreen() {
     return t('personal.paymentOther')
   }
   const alert = useAlert()
+  const feedback = useActionFeedback()
   const navigation = useNavigation<PersonalFinanceNavigation>()
   const route = useRoute<PersonalFinanceRoute>()
   const routeParams: PersonalFinanceRouteParams = route.params ?? {}
   const [activeTab, setActiveTab] = useState<PersonalFinanceTab>(
     routeParams.initialTab || 'principios'
   )
+  const [initialLoading, setInitialLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
@@ -145,7 +149,6 @@ export default function PersonalFinanceScreen() {
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentCurrency, setPaymentCurrency] = useState<CurrencyCode>(preferredCurrency)
   const [contributeCurrency, setContributeCurrency] = useState<CurrencyCode>(preferredCurrency)
-  const [payingDebt, setPayingDebt] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
   const [showBudgetPeriodMenu, setShowBudgetPeriodMenu] = useState(false)
@@ -188,51 +191,55 @@ export default function PersonalFinanceScreen() {
   }, [periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
 
   const loadData = async () => {
-    const periodParams = getPeriodParams(periodState)
-    let dateFrom: string | undefined
-    let dateTo: string | undefined
-    const month = periodState.period === 'monthly' ? periodState.month : new Date().getMonth() + 1
-    const year = periodState.period === 'yearly' ? periodState.year : periodState.year
-    if (periodState.period === 'custom' && periodState.dateFrom && periodState.dateTo) {
-      dateFrom = periodState.dateFrom.toISOString().split('T')[0]
-      dateTo = periodState.dateTo.toISOString().split('T')[0]
-    } else if (periodState.period === 'daily') {
-      const d = periodState.dailyDate || new Date()
-      dateFrom = dateTo = d.toISOString().split('T')[0]
-    } else if (periodState.period === 'monthly') {
-      dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
-      const lastDay = new Date(year, month, 0).getDate()
-      dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    } else if (periodState.period === 'yearly') {
-      dateFrom = `${year}-01-01`
-      dateTo = `${year}-12-31`
-    }
-    const endpointNames = ['expenses', 'budgets', 'goals', 'debts', 'categories', 'summary'] as const
-    const results = await Promise.allSettled([
-      personalFinanceApi.getExpenses(month, year, undefined, dateFrom, dateTo),
-      personalFinanceApi.getBudgets(month, year),
-      personalFinanceApi.getGoals(),
-      personalFinanceApi.getDebts(),
-      personalFinanceApi.getCategories(true),
-      personalFinanceApi.getExpensesSummary(periodParams),
-    ])
-
-    results.forEach((result, i) => {
-      const name = endpointNames[i]
-      if (result.status === 'fulfilled') {
-        const data = result.value
-        switch (name) {
-          case 'expenses': setExpenses(unwrapList(data as Expense[])); break
-          case 'budgets': setBudgets(unwrapList(data as Budget[])); break
-          case 'goals': setGoals(unwrapList(data as Goal[])); break
-          case 'debts': setDebts(unwrapList(data as Debt[])); break
-          case 'categories': setCategories(unwrapList(data as Category[])); break
-          case 'summary': setSummary(data as ExpenseSummary); break
-        }
-      } else {
-        logger.error(`[PersonalFinance] Endpoint "${name}" failed:`, result.reason)
+    try {
+      const periodParams = getPeriodParams(periodState)
+      let dateFrom: string | undefined
+      let dateTo: string | undefined
+      const month = periodState.period === 'monthly' ? periodState.month : new Date().getMonth() + 1
+      const year = periodState.period === 'yearly' ? periodState.year : periodState.year
+      if (periodState.period === 'custom' && periodState.dateFrom && periodState.dateTo) {
+        dateFrom = periodState.dateFrom.toISOString().split('T')[0]
+        dateTo = periodState.dateTo.toISOString().split('T')[0]
+      } else if (periodState.period === 'daily') {
+        const d = periodState.dailyDate || new Date()
+        dateFrom = dateTo = d.toISOString().split('T')[0]
+      } else if (periodState.period === 'monthly') {
+        dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
+        const lastDay = new Date(year, month, 0).getDate()
+        dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      } else if (periodState.period === 'yearly') {
+        dateFrom = `${year}-01-01`
+        dateTo = `${year}-12-31`
       }
-    })
+      const endpointNames = ['expenses', 'budgets', 'goals', 'debts', 'categories', 'summary'] as const
+      const results = await Promise.allSettled([
+        personalFinanceApi.getExpenses(month, year, undefined, dateFrom, dateTo),
+        personalFinanceApi.getBudgets(month, year),
+        personalFinanceApi.getGoals(),
+        personalFinanceApi.getDebts(),
+        personalFinanceApi.getCategories(true),
+        personalFinanceApi.getExpensesSummary(periodParams),
+      ])
+
+      results.forEach((result, i) => {
+        const name = endpointNames[i]
+        if (result.status === 'fulfilled') {
+          const data = result.value
+          switch (name) {
+            case 'expenses': setExpenses(unwrapList(data as Expense[])); break
+            case 'budgets': setBudgets(unwrapList(data as Budget[])); break
+            case 'goals': setGoals(unwrapList(data as Goal[])); break
+            case 'debts': setDebts(unwrapList(data as Debt[])); break
+            case 'categories': setCategories(unwrapList(data as Category[])); break
+            case 'summary': setSummary(data as ExpenseSummary); break
+          }
+        } else {
+          logger.error(`[PersonalFinance] Endpoint "${name}" failed:`, result.reason)
+        }
+      })
+    } finally {
+      setInitialLoading(false)
+    }
   }
 
   const onRefresh = async () => {
@@ -242,38 +249,43 @@ export default function PersonalFinanceScreen() {
   }
 
   const handleSaveExpense = async () => {
-    try {
-      const expenseData: ExpensePayload = {
-        amount: expenseForm.amount,
-        description: expenseForm.description,
-        date: expenseForm.date.toISOString().split('T')[0],
-        payment_method: expenseForm.payment_method,
-        currency: expenseForm.currency,
-      }
+    await feedback.run(
+      async () => {
+        const expenseData: ExpensePayload = {
+          amount: expenseForm.amount,
+          description: expenseForm.description,
+          date: expenseForm.date.toISOString().split('T')[0],
+          payment_method: expenseForm.payment_method,
+          currency: expenseForm.currency,
+        }
 
-      if (expenseForm.category) {
-        expenseData.category = parseInt(expenseForm.category, 10)
-      }
+        if (expenseForm.category) {
+          expenseData.category = parseInt(expenseForm.category, 10)
+        }
 
-      if (editingItem && 'payment_method' in editingItem) {
-        const updated = await personalFinanceApi.updateExpense(editingItem.id, expenseData)
-        await handleBudgetAlerts((updated as ExpenseCreateResponse).budget_alerts)
-      } else {
-        const created = await personalFinanceApi.createExpense(expenseData)
-        await handleBudgetAlerts((created as ExpenseCreateResponse).budget_alerts)
-      }
-      setShowExpenseModal(false)
-      setEditingItem(null)
-      resetExpenseForm()
-      await loadData()
-      // Reload budget expenses if modal is open
-      if (showBudgetExpensesModal && selectedBudget) {
-        await loadBudgetExpenses(selectedBudget.id)
-      }
-    } catch (error: unknown) {
-      logger.error('Error saving expense:', error)
-      alert.error(getApiErrorMessage(error, 'personal.saveExpenseFailed'))
-    }
+        if (editingItem && 'payment_method' in editingItem) {
+          const updated = await personalFinanceApi.updateExpense(editingItem.id, expenseData)
+          await handleBudgetAlerts((updated as ExpenseCreateResponse).budget_alerts)
+        } else {
+          const created = await personalFinanceApi.createExpense(expenseData)
+          await handleBudgetAlerts((created as ExpenseCreateResponse).budget_alerts)
+        }
+        setShowExpenseModal(false)
+        setEditingItem(null)
+        resetExpenseForm()
+        await loadData()
+        if (showBudgetExpensesModal && selectedBudget) {
+          await loadBudgetExpenses(selectedBudget.id)
+        }
+      },
+      {
+        pendingKey: 'saveExpense',
+        pendingMessage: 'feedback.savingExpense',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'personal.saveExpenseFailed',
+        onError: (error) => logger.error('Error saving expense:', error),
+      },
+    )
   }
 
   const handleDeleteExpense = async (expenseId: number) => {
@@ -304,87 +316,105 @@ export default function PersonalFinanceScreen() {
   }
 
   const handleSaveCategory = async () => {
-    try {
-      await personalFinanceApi.createCategory({
-        ...categoryForm,
-        is_personal: true,
-      })
-      setShowCategoryModal(false)
-      setCategoryForm({ name: '', icon: 'tag', color: '#6366f1' })
-      loadData() // Reload to get new categories
-    } catch (error: unknown) {
-      logger.error('Error saving category:', error)
-      alert.error(getApiErrorMessage(error, 'personal.saveCategoryFailed'))
-    }
+    await feedback.run(
+      async () => {
+        await personalFinanceApi.createCategory({
+          ...categoryForm,
+          is_personal: true,
+        })
+        setShowCategoryModal(false)
+        setCategoryForm({ name: '', icon: 'tag', color: '#6366f1' })
+        await loadData()
+      },
+      {
+        pendingKey: 'saveCategory',
+        pendingMessage: 'feedback.savingCategory',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'personal.saveCategoryFailed',
+        onError: (error) => logger.error('Error saving category:', error),
+      },
+    )
   }
 
   const handleSaveBudget = async () => {
-    try {
-      // Format budget data based on period type
-      const budgetData: BudgetPayload & { description?: string } = {
-        category: budgetForm.category ? parseInt(budgetForm.category, 10) : undefined,
-        amount: budgetForm.amount,
-        period_type: budgetForm.period_type as BudgetPayload['period_type'],
-        description: budgetForm.description,
-        currency: budgetForm.currency,
-      }
-
-      // Add period-specific fields
-      if (budgetForm.period_type === 'daily' && budgetForm.date) {
-        budgetData.date = budgetForm.date.toISOString().split('T')[0]
-        budgetData.month = budgetForm.date.getMonth() + 1
-        budgetData.year = budgetForm.date.getFullYear()
-      } else if (budgetForm.period_type === 'monthly') {
-        budgetData.month = budgetForm.month
-        budgetData.year = budgetForm.year
-      } else if (budgetForm.period_type === 'yearly') {
-        budgetData.year = budgetForm.year
-        budgetData.month = 1 // Default to January for yearly
-      } else if (budgetForm.period_type === 'custom') {
-        if (budgetForm.start_date) {
-          budgetData.start_date = budgetForm.start_date.toISOString().split('T')[0]
-          budgetData.month = budgetForm.start_date.getMonth() + 1
-          budgetData.year = budgetForm.start_date.getFullYear()
+    await feedback.run(
+      async () => {
+        const budgetData: BudgetPayload & { description?: string } = {
+          category: budgetForm.category ? parseInt(budgetForm.category, 10) : undefined,
+          amount: budgetForm.amount,
+          period_type: budgetForm.period_type as BudgetPayload['period_type'],
+          description: budgetForm.description,
+          currency: budgetForm.currency,
         }
-        if (budgetForm.end_date) {
-          budgetData.end_date = budgetForm.end_date.toISOString().split('T')[0]
-        }
-      }
 
-      if (editingItem) {
-        await personalFinanceApi.updateBudget(editingItem.id, budgetData)
-      } else {
-        await personalFinanceApi.createBudget(budgetData)
-      }
-      setShowBudgetModal(false)
-      setEditingItem(null)
-      resetBudgetForm()
-      loadData()
-    } catch (error) {
-      logger.error('Error saving budget:', error)
-    }
+        if (budgetForm.period_type === 'daily' && budgetForm.date) {
+          budgetData.date = budgetForm.date.toISOString().split('T')[0]
+          budgetData.month = budgetForm.date.getMonth() + 1
+          budgetData.year = budgetForm.date.getFullYear()
+        } else if (budgetForm.period_type === 'monthly') {
+          budgetData.month = budgetForm.month
+          budgetData.year = budgetForm.year
+        } else if (budgetForm.period_type === 'yearly') {
+          budgetData.year = budgetForm.year
+          budgetData.month = 1
+        } else if (budgetForm.period_type === 'custom') {
+          if (budgetForm.start_date) {
+            budgetData.start_date = budgetForm.start_date.toISOString().split('T')[0]
+            budgetData.month = budgetForm.start_date.getMonth() + 1
+            budgetData.year = budgetForm.start_date.getFullYear()
+          }
+          if (budgetForm.end_date) {
+            budgetData.end_date = budgetForm.end_date.toISOString().split('T')[0]
+          }
+        }
+
+        if (editingItem) {
+          await personalFinanceApi.updateBudget(editingItem.id, budgetData)
+        } else {
+          await personalFinanceApi.createBudget(budgetData)
+        }
+        setShowBudgetModal(false)
+        setEditingItem(null)
+        resetBudgetForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveBudget',
+        pendingMessage: editingItem ? 'feedback.savingBudget' : 'feedback.creatingBudget',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'feedback.tryAgain',
+        onError: (error) => logger.error('Error saving budget:', error),
+      },
+    )
   }
 
   const handleSaveGoal = async () => {
-    try {
-      const goalData = {
-        ...goalForm,
-        target_date: goalForm.target_date 
-          ? `${goalForm.target_date.getFullYear()}-${String(goalForm.target_date.getMonth() + 1).padStart(2, '0')}-${String(goalForm.target_date.getDate()).padStart(2, '0')}`
-          : '',
-      }
-      if (editingItem) {
-        await personalFinanceApi.updateGoal(editingItem.id, goalData)
-      } else {
-        await personalFinanceApi.createGoal(goalData)
-      }
-      setShowGoalModal(false)
-      setEditingItem(null)
-      resetGoalForm()
-      loadData()
-    } catch (error) {
-      logger.error('Error saving goal:', error)
-    }
+    await feedback.run(
+      async () => {
+        const goalData = {
+          ...goalForm,
+          target_date: goalForm.target_date
+            ? `${goalForm.target_date.getFullYear()}-${String(goalForm.target_date.getMonth() + 1).padStart(2, '0')}-${String(goalForm.target_date.getDate()).padStart(2, '0')}`
+            : '',
+        }
+        if (editingItem) {
+          await personalFinanceApi.updateGoal(editingItem.id, goalData)
+        } else {
+          await personalFinanceApi.createGoal(goalData)
+        }
+        setShowGoalModal(false)
+        setEditingItem(null)
+        resetGoalForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveGoal',
+        pendingMessage: 'feedback.savingGoal',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'feedback.tryAgain',
+        onError: (error) => logger.error('Error saving goal:', error),
+      },
+    )
   }
 
   const handleAddMoneyToGoal = async () => {
@@ -393,18 +423,28 @@ export default function PersonalFinanceScreen() {
       return
     }
 
-    try {
-      await personalFinanceApi.addMoneyToGoal(selectedGoal.id, parseFloat(addMoneyAmount), undefined, contributeCurrency)
-      setShowAddMoneyModal(false)
-      setSelectedGoal(null)
-      setAddMoneyAmount('')
-      setContributeCurrency(preferredCurrency)
-      loadData()
-      alert.success(t('personal.goalFunded'))
-    } catch (error: unknown) {
-      logger.error('Error adding money to goal:', getApiErrorMessage(error))
-      alert.error(getApiErrorMessage(error, t('personal.addGoalFailed')))
-    }
+    await feedback.run(
+      async () => {
+        await personalFinanceApi.addMoneyToGoal(
+          selectedGoal.id,
+          parseFloat(addMoneyAmount),
+          undefined,
+          contributeCurrency,
+        )
+        setShowAddMoneyModal(false)
+        setSelectedGoal(null)
+        setAddMoneyAmount('')
+        setContributeCurrency(preferredCurrency)
+        await loadData()
+      },
+      {
+        pendingKey: 'contributeGoal',
+        pendingMessage: 'feedback.addingContribution',
+        successMessage: 'personal.goalFunded',
+        errorFallback: 'personal.addGoalFailed',
+        onError: (error) => logger.error('Error adding money to goal:', getApiErrorMessage(error)),
+      },
+    )
   }
 
   const openAddMoneyModal = (goal: Goal) => {
@@ -415,25 +455,32 @@ export default function PersonalFinanceScreen() {
   }
 
   const handleSaveDebt = async () => {
-    try {
-      const debtData = {
-        ...debtForm,
-        due_date: debtForm.due_date
-          ? `${debtForm.due_date.getFullYear()}-${String(debtForm.due_date.getMonth() + 1).padStart(2, '0')}-${String(debtForm.due_date.getDate()).padStart(2, '0')}`
-          : '',
-      }
-      if (editingItem) {
-        await personalFinanceApi.updateDebt(editingItem.id, debtData)
-      } else {
-        await personalFinanceApi.createDebt(debtData)
-      }
-      setShowDebtModal(false)
-      setEditingItem(null)
-      resetDebtForm()
-      loadData()
-    } catch (error) {
-      logger.error('Error saving debt:', error)
-    }
+    await feedback.run(
+      async () => {
+        const debtData = {
+          ...debtForm,
+          due_date: debtForm.due_date
+            ? `${debtForm.due_date.getFullYear()}-${String(debtForm.due_date.getMonth() + 1).padStart(2, '0')}-${String(debtForm.due_date.getDate()).padStart(2, '0')}`
+            : '',
+        }
+        if (editingItem) {
+          await personalFinanceApi.updateDebt(editingItem.id, debtData)
+        } else {
+          await personalFinanceApi.createDebt(debtData)
+        }
+        setShowDebtModal(false)
+        setEditingItem(null)
+        resetDebtForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'saveDebt',
+        pendingMessage: 'feedback.savingDebt',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'feedback.tryAgain',
+        onError: (error) => logger.error('Error saving debt:', error),
+      },
+    )
   }
 
   const resetExpenseForm = () => setExpenseForm({ category: '', amount: '', description: '', date: new Date(), payment_method: 'cash', currency: preferredCurrency })
@@ -470,25 +517,28 @@ export default function PersonalFinanceScreen() {
       }
     }
 
-    try {
-      setPayingDebt(true)
-      await personalFinanceApi.payDebt(selectedDebt.id, {
-        amount: paymentValue,
-        payment_date: new Date().toISOString().slice(0, 10),
-        currency: paymentCurrency,
-      })
-      setShowPayDebtModal(false)
-      setPaymentAmount('')
-      setPaymentCurrency(preferredCurrency)
-      setSelectedDebt(null)
-      await loadData()
-      alert.success(tw('personal.paymentRecorded', { amount: format(paymentValue, paymentCurrency) }))
-    } catch (error: unknown) {
-      logger.error('Error paying debt:', getApiErrorMessage(error))
-      alert.error(getApiErrorMessage(error, t('personal.paymentFailed')))
-    } finally {
-      setPayingDebt(false)
-    }
+    await feedback.run(
+      async () => {
+        await personalFinanceApi.payDebt(selectedDebt.id, {
+          amount: paymentValue,
+          payment_date: new Date().toISOString().slice(0, 10),
+          currency: paymentCurrency,
+        })
+        setShowPayDebtModal(false)
+        setPaymentAmount('')
+        setPaymentCurrency(preferredCurrency)
+        setSelectedDebt(null)
+        await loadData()
+        alert.success(tw('personal.paymentRecorded', { amount: format(paymentValue, paymentCurrency) }))
+      },
+      {
+        pendingKey: 'payDebt',
+        pendingMessage: 'feedback.processingPayment',
+        silentSuccess: true,
+        errorFallback: 'personal.paymentFailed',
+        onError: (error) => logger.error('Error paying debt:', getApiErrorMessage(error)),
+      },
+    )
   }
 
   const openEditExpense = (expense: Expense) => {
@@ -633,6 +683,14 @@ export default function PersonalFinanceScreen() {
   const dailyBudgetTotal = dailyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
   const monthlyBudgetTotal = monthlyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
   const yearlyBudgetTotal = yearlyBudgets.reduce((sum, b) => sum + parseFloat(b.amount || '0'), 0)
+
+  if (initialLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ZendaLoading visible fill message={t('loading.personal')} />
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -1440,8 +1498,13 @@ export default function PersonalFinanceScreen() {
                 <RNText style={styles.modalDeleteButtonText}>{t('personal.deleteExpense')}</RNText>
               </TouchableOpacity>
             )}
-            <Button mode="contained" onPress={handleSaveExpense} style={styles.modalButton}>
-              {t('common.save')}
+            <Button
+              mode="contained"
+              onPress={handleSaveExpense}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveExpense')}
+            >
+              {feedback.actionLabel('common.save', 'saveExpense', 'feedback.savingExpense')}
             </Button>
           </ScrollView>
         </Modal>
@@ -1513,9 +1576,10 @@ export default function PersonalFinanceScreen() {
             mode="contained" 
             onPress={handleSaveCategory} 
             style={styles.modalButton}
-            disabled={!categoryForm.name.trim()}
+            loading={feedback.isPending('saveCategory')}
+            disabled={!categoryForm.name.trim() || feedback.isPending('saveCategory')}
           >
-            {t('personal.createCategory')}
+            {feedback.actionLabel('personal.createCategory', 'saveCategory', 'feedback.savingCategory')}
           </Button>
         </Modal>
       </Portal>
@@ -1667,8 +1731,17 @@ export default function PersonalFinanceScreen() {
               </>
             )}
 
-            <Button mode="contained" onPress={handleSaveBudget} style={styles.modalButton}>
-              {t('common.save')}
+            <Button
+              mode="contained"
+              onPress={handleSaveBudget}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveBudget')}
+            >
+              {feedback.actionLabel(
+                'common.save',
+                'saveBudget',
+                editingItem ? 'feedback.savingBudget' : 'feedback.creatingBudget',
+              )}
             </Button>
           </ScrollView>
         </Modal>
@@ -1693,8 +1766,13 @@ export default function PersonalFinanceScreen() {
             value={goalForm.target_date}
             onChange={(date) => setGoalForm({ ...goalForm, target_date: date })}
           />
-          <Button mode="contained" onPress={handleSaveGoal} style={styles.modalButton}>
-            {t('common.save')}
+          <Button
+            mode="contained"
+            onPress={handleSaveGoal}
+            style={styles.modalButton}
+            {...feedback.buttonProps('saveGoal')}
+          >
+            {feedback.actionLabel('common.save', 'saveGoal', 'feedback.savingGoal')}
           </Button>
         </Modal>
       </Portal>
@@ -1721,8 +1799,13 @@ export default function PersonalFinanceScreen() {
               onChange={(date) => setDebtForm({ ...debtForm, due_date: date })}
             />
             <TextInput label={t('personal.description')} value={debtForm.description} onChangeText={(text) => setDebtForm({ ...debtForm, description: text })} multiline numberOfLines={3} style={styles.input} />
-            <Button mode="contained" onPress={handleSaveDebt} style={styles.modalButton}>
-              {t('common.save')}
+            <Button
+              mode="contained"
+              onPress={handleSaveDebt}
+              style={styles.modalButton}
+              {...feedback.buttonProps('saveDebt')}
+            >
+              {feedback.actionLabel('common.save', 'saveDebt', 'feedback.savingDebt')}
             </Button>
           </ScrollView>
         </Modal>
@@ -1831,12 +1914,20 @@ export default function PersonalFinanceScreen() {
                   mode="contained" 
                   onPress={handlePayDebt} 
                   style={styles.modalButton}
-                  disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || payingDebt}
-                  loading={payingDebt}
+                  disabled={
+                    !paymentAmount ||
+                    parseFloat(paymentAmount) <= 0 ||
+                    feedback.isPending('payDebt')
+                  }
+                  loading={feedback.isPending('payDebt')}
                   icon="cash-check"
                   buttonColor="#10b981"
                 >
-                  {payingDebt ? t('personal.processing') : t('personal.recordPayment')}
+                  {feedback.actionLabel(
+                    'personal.recordPayment',
+                    'payDebt',
+                    'feedback.processingPayment',
+                  )}
                 </Button>
               </>
             )}
@@ -1916,10 +2007,15 @@ export default function PersonalFinanceScreen() {
                   mode="contained" 
                   onPress={handleAddMoneyToGoal} 
                   style={styles.modalButton}
-                  disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0}
+                  disabled={
+                    !addMoneyAmount ||
+                    parseFloat(addMoneyAmount) <= 0 ||
+                    feedback.isPending('contributeGoal')
+                  }
+                  loading={feedback.isPending('contributeGoal')}
                   icon="check-circle"
                 >
-                  {t('common.add')}
+                  {feedback.actionLabel('common.add', 'contributeGoal', 'feedback.addingContribution')}
                 </Button>
               </>
             )}

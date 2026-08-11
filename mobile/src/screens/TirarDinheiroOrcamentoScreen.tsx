@@ -19,6 +19,7 @@ import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } f
 import { materialIcon } from '../utils/icons'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage } from '../types/api'
+import { useActionFeedback } from '../hooks/useActionFeedback'
 
 interface Budget {
   id: number
@@ -51,6 +52,7 @@ interface Expense {
 export default function TirarDinheiroOrcamentoScreen() {
   const { t, tw, locale } = useI18n()
   const { currency: preferredCurrency, format, formatDual } = useCurrency()
+  const feedback = useActionFeedback()
   const fmtDate = (d: string) => formatDate(locale, new Date(d))
   const navigation = useNavigation()
   const route = useRoute()
@@ -139,52 +141,57 @@ export default function TirarDinheiroOrcamentoScreen() {
 
   const handleSaveExpense = async () => {
     if (!selectedBudget) {
-      Alert.alert('Erro', 'Selecione um orçamento primeiro')
+      Alert.alert(t('common.error'), t('personal.invalidAmount'))
       return
     }
     if (!expenseForm.amount || parseFloat(expenseForm.amount) <= 0) {
-      Alert.alert('Erro', 'Digite um valor válido')
+      Alert.alert(t('common.error'), t('personal.invalidAmount'))
       return
     }
     if (!expenseForm.description.trim()) {
-      Alert.alert('Erro', 'Digite uma descrição')
+      Alert.alert(t('common.error'), t('personal.invalidAmount'))
       return
     }
 
-    try {
-      // Find category ID from budget's category_name
-      let categoryId: number | null = null
-      if (selectedBudget.category_name) {
-        const category = categories.find(c => c.name === selectedBudget.category_name)
-        categoryId = category?.id || null
-      }
-      
-      const expenseData = {
-        category: categoryId,
-        amount: expenseForm.amount,
-        description: expenseForm.description.trim(),
-        date: expenseForm.date.toISOString().split('T')[0],
-        payment_method: expenseForm.payment_method,
-        currency: expenseForm.currency,
-      }
-      
-      await personalFinanceApi.createExpense(expenseData)
-      setShowExpenseModal(false)
-      setExpenseForm({
-        budget_id: '',
-        amount: '',
-        description: '',
-        date: new Date(),
-        payment_method: 'cash',
-        currency: preferredCurrency,
-      })
-      await loadBudgets()
-      await loadBudgetExpenses(selectedBudget.id)
-      Alert.alert('Sucesso', 'Despesa adicionada ao orçamento')
-    } catch (error: unknown) {
-      logger.error('Error saving expense:', error)
-      Alert.alert('Erro', getApiErrorMessage(error, 'personal.saveExpenseFailed'))
-    }
+    const budgetId = selectedBudget.id
+    await feedback.run(
+      async () => {
+        let categoryId: number | null = null
+        if (selectedBudget.category_name) {
+          const category = categories.find((c) => c.name === selectedBudget.category_name)
+          categoryId = category?.id || null
+        }
+
+        const expenseData = {
+          category: categoryId,
+          amount: expenseForm.amount,
+          description: expenseForm.description.trim(),
+          date: expenseForm.date.toISOString().split('T')[0],
+          payment_method: expenseForm.payment_method,
+          currency: expenseForm.currency,
+        }
+
+        await personalFinanceApi.createExpense(expenseData)
+        setShowExpenseModal(false)
+        setExpenseForm({
+          budget_id: '',
+          amount: '',
+          description: '',
+          date: new Date(),
+          payment_method: 'cash',
+          currency: preferredCurrency,
+        })
+        await loadBudgets()
+        await loadBudgetExpenses(budgetId)
+      },
+      {
+        pendingKey: 'saveBudgetExpense',
+        pendingMessage: 'feedback.savingExpense',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'personal.saveExpenseFailed',
+        onError: (error) => logger.error('Error saving expense:', error),
+      },
+    )
   }
 
   const handleDeleteExpense = async (expenseId: number) => {
@@ -565,8 +572,16 @@ export default function TirarDinheiroOrcamentoScreen() {
                 >
                   Cancelar
                 </Button>
-                <Button mode="contained" onPress={handleSaveExpense}>
-                  Adicionar Despesa
+                <Button
+                  mode="contained"
+                  onPress={handleSaveExpense}
+                  {...feedback.buttonProps('saveBudgetExpense')}
+                >
+                  {feedback.actionLabel(
+                    'personal.addExpense',
+                    'saveBudgetExpense',
+                    'feedback.savingExpense',
+                  )}
                 </Button>
               </View>
             </ScrollView>

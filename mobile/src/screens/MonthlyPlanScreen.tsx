@@ -93,7 +93,6 @@ function statusColor(status: PlanProgressStatus): string {
 export default function MonthlyPlanScreen() {
   const { t, tw, locale } = useI18n()
   const { currency: preferredCurrency, format } = useCurrency()
-  const alert = useAlert()
   const feedback = useActionFeedback()
 
   const now = new Date()

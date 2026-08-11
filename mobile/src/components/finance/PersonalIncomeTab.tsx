@@ -8,10 +8,11 @@ import { unwrapList } from '../../types/api'
 import { colors, spacing, radius } from '../../theme'
 import { useCurrency } from '../../contexts/CurrencyContext'
 import { useI18n } from '../../contexts/I18nContext'
-import { getApiErrorMessage } from '../../types/api'
 import type { CurrencyCode } from '../../utils/currency'
 import CurrencyPicker from '../CurrencyPicker'
 import type { PeriodState } from '../PeriodSelector'
+import { useActionFeedback } from '../../hooks/useActionFeedback'
+import { ListSkeleton } from '../ui/Skeleton'
 
 type IncomeRecord = {
   id: number
@@ -35,9 +36,11 @@ interface Props {
 export default function PersonalIncomeTab({ periodState, onRefreshParent }: Props) {
   const { t, tw } = useI18n()
   const { currency: preferredCurrency, format, formatDual } = useCurrency()
+  const feedback = useActionFeedback()
   const [incomes, setIncomes] = useState<IncomeRecord[]>([])
   const [summary, setSummary] = useState<{ total?: string; count?: number } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editing, setEditing] = useState<IncomeRecord | null>(null)
   const [amount, setAmount] = useState('')
@@ -46,10 +49,10 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
   const [sourceType, setSourceType] = useState<IncomePayload['source_type']>('salary')
   const [isRecurring, setIsRecurring] = useState(false)
-  const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const month = periodState.month
       const year = periodState.year
@@ -66,6 +69,7 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
     } catch {
       setIncomes([])
       setSummary(null)
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -103,30 +107,33 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
       Alert.alert(t('common.error'), t('personal.invalidAmount'))
       return
     }
-    setSaving(true)
-    try {
-      const payload: IncomePayload = {
-        amount: parsed.toFixed(2),
-        description: description.trim(),
-        date,
-        source_type: sourceType,
-        currency: formCurrency,
-        is_recurring: isRecurring,
-        recurrence: isRecurring ? 'monthly' : 'none',
-      }
-      if (editing) {
-        await personalFinanceApi.updateIncome(editing.id, payload)
-      } else {
-        await personalFinanceApi.createIncome(payload)
-      }
-      setModalVisible(false)
-      await load()
-      onRefreshParent?.()
-    } catch (error: unknown) {
-      Alert.alert(t('common.error'), getApiErrorMessage(error))
-    } finally {
-      setSaving(false)
-    }
+    await feedback.run(
+      async () => {
+        const payload: IncomePayload = {
+          amount: parsed.toFixed(2),
+          description: description.trim(),
+          date,
+          source_type: sourceType,
+          currency: formCurrency,
+          is_recurring: isRecurring,
+          recurrence: isRecurring ? 'monthly' : 'none',
+        }
+        if (editing) {
+          await personalFinanceApi.updateIncome(editing.id, payload)
+        } else {
+          await personalFinanceApi.createIncome(payload)
+        }
+        setModalVisible(false)
+        await load()
+        onRefreshParent?.()
+      },
+      {
+        pendingKey: 'saveIncome',
+        pendingMessage: sourceType === 'salary' ? 'feedback.savingSalary' : 'feedback.savingIncome',
+        successMessage: 'feedback.successSaved',
+        errorFallback: 'feedback.tryAgain',
+      },
+    )
   }
 
   const remove = (item: IncomeRecord) => {
@@ -135,14 +142,20 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
       {
         text: t('common.delete'),
         style: 'destructive',
-        onPress: async () => {
-          try {
-            await personalFinanceApi.deleteIncome(item.id)
-            await load()
-            onRefreshParent?.()
-          } catch (error: unknown) {
-            Alert.alert(t('common.error'), getApiErrorMessage(error))
-          }
+        onPress: () => {
+          void feedback.run(
+            async () => {
+              await personalFinanceApi.deleteIncome(item.id)
+              await load()
+              onRefreshParent?.()
+            },
+            {
+              pendingKey: `deleteIncome-${item.id}`,
+              pendingMessage: 'feedback.deleting',
+              successMessage: 'feedback.successDeleted',
+              errorFallback: 'feedback.tryAgain',
+            },
+          )
         },
       },
     ])
@@ -181,7 +194,14 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
       </Button>
 
       {loading ? (
-        <Text style={styles.muted}>{t('common.loading')}</Text>
+        <ListSkeleton count={3} />
+      ) : loadError ? (
+        <View style={styles.errorWrap}>
+          <Text style={styles.muted}>{t('feedback.tryAgain')}</Text>
+          <Button mode="outlined" onPress={() => void load()} style={styles.retryBtn}>
+            {t('common.retry')}
+          </Button>
+        </View>
       ) : incomes.length === 0 ? (
         <Text style={styles.muted}>{t('personal.emptyIncome')}</Text>
       ) : (
@@ -255,9 +275,18 @@ export default function PersonalIncomeTab({ periodState, onRefreshParent }: Prop
             </Chip>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setModalVisible(false)}>{t('common.cancel')}</Button>
-            <Button loading={saving} onPress={save}>
-              {t('common.save')}
+            <Button
+              onPress={() => setModalVisible(false)}
+              disabled={feedback.isPending('saveIncome')}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button {...feedback.buttonProps('saveIncome')} onPress={save}>
+              {feedback.actionLabel(
+                'common.save',
+                'saveIncome',
+                sourceType === 'salary' ? 'feedback.savingSalary' : 'feedback.savingIncome',
+              )}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -283,4 +312,6 @@ const styles = StyleSheet.create({
   chipLabel: { marginBottom: spacing.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
   chip: { marginBottom: spacing.xs },
+  errorWrap: { gap: spacing.sm, alignItems: 'flex-start', marginTop: spacing.sm },
+  retryBtn: { alignSelf: 'flex-start' },
 })
