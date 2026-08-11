@@ -48,7 +48,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 31,
+      "versionCode": 32,
       "intentFilters": [
         {
           "action": "VIEW",
