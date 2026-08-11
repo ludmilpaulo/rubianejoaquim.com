@@ -1,10 +1,19 @@
-# Keep EAS archives small — native dirs are generated on the build server.
-ios/
-android/
+# Keep EAS archives small.
+# Note: with a committed `ios/` directory EAS uses the bare workflow and
+# still needs native sources — do NOT ignore ios/android for store builds.
 node_modules/
 .expo/
 dist/
 web-build/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.maestro/
+e2e-web/
+*.apk
+*.aab
+*.ipa
 *.jks
 *.p8
 *.p12
@@ -15,7 +24,6 @@ web-build/
 .env
 .env.*
 !.env.example
-.maestro/
-playwright-report/
-test-results/
 *.log
+*.md
+!README.md
