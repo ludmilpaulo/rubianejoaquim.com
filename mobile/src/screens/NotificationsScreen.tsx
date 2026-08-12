@@ -130,12 +130,12 @@ export default function NotificationsScreen() {
 
   const getNotificationColor = (type: string) => {
     switch (type) {
-      case 'task_reminder': return '#6366f1'
-      case 'target_milestone': return '#10b981'
+      case 'task_reminder': return '#3534C9'
+      case 'target_milestone': return '#4DB83D'
       case 'goal_achievement': return '#f59e0b'
       case 'payment_due': return '#ef4444'
-      case 'achievement': return '#8b5cf6'
-      case 'reminder': return '#06b6d4'
+      case 'achievement': return '#3C3BD4'
+      case 'reminder': return '#5B5AD6'
       default: return '#6b7280'
     }
   }
@@ -376,12 +376,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterTextActive: {
-    color: '#6366f1',
+    color: '#3534C9',
     fontWeight: '600',
   },
   badge: {
     marginLeft: 8,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
   },
   scrollView: {
     flex: 1,
@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   },
   notificationCardUnread: {
     borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: '#3534C9',
     backgroundColor: '#f8fafc',
   },
   notificationHeader: {
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     marginLeft: 8,
   },
   notificationMessage: {

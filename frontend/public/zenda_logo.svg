@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3534C9"/>
+      <stop offset="55%" stop-color="#1E2070"/>
+      <stop offset="100%" stop-color="#030412"/>
+    </linearGradient>
+    <linearGradient id="word" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#05050B"/>
+      <stop offset="55%" stop-color="#11145A"/>
+      <stop offset="100%" stop-color="#3C3BD4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Zenda brand background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Financial growth bars -->
+  <g fill="#050505">
+    <rect x="302" y="420" width="105" height="305" rx="2"/>
+    <rect x="454" y="300" width="105" height="425" rx="2"/>
+    <rect x="606" y="190" width="105" height="535" rx="2"/>
+  </g>
+
+  <!-- Small upward continuation behind the arrows -->
+  <path d="M606 315 L711 288 L711 392 L676 401 L676 350 L606 369 Z" fill="#050505"/>
+
+  <!-- Main green growth arrow -->
+  <path d="
+    M150 610
+    C215 680 315 690 410 650
+    C500 612 578 544 660 470
+    L615 438
+    L711 405
+    L695 505
+    L662 476
+    C565 565 487 641 394 684
+    C294 730 204 710 150 610 Z"
+    fill="#4DB83D"/>
+
+  <!-- Upper growth arrow -->
+  <path d="
+    M120 595
+    C205 650 286 632 365 585
+    C455 531 542 441 632 365
+    L600 338
+    L708 300
+    L695 405
+    L662 375
+    C562 462 479 557 381 616
+    C281 676 181 667 120 595 Z"
+    fill="#4DB83D"/>
+
+  <!-- Inner dark cut-outs that make the arrows read as layered ribbons -->
+  <path d="M615 438 L653 462 L620 493 L588 470 Z" fill="#05050B"/>
+  <path d="M600 338 L632 365 L610 384 L582 360 Z" fill="#05050B"/>
+
+  <!-- Zenda wordmark -->
+  <text x="512" y="850"
+        text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="154"
+        font-weight="800"
+        letter-spacing="-8"
+        fill="url(#word)">Zenda</text>
+</svg>

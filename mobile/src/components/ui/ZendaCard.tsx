@@ -51,9 +51,11 @@ const styles = StyleSheet.create({
   },
   elevated: {
     backgroundColor: colors.background.paper,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.md,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border.light,
     ...shadows.elevated,
   },
 })

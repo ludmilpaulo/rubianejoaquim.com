@@ -323,7 +323,7 @@ export default function CourseListScreen() {
                 <Card.Content>
                   <View style={styles.courseHeader}>
                     <View style={styles.courseIconWrap}>
-                      <MaterialCommunityIcons name="book-open" size={28} color="#6366f1" />
+                      <MaterialCommunityIcons name="book-open" size={28} color="#3534C9" />
                     </View>
                     <View style={styles.courseInfo}>
                       <Text variant="titleMedium" style={styles.courseTitle}>
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   courseInfo: { flex: 1 },
   courseTitle: { fontWeight: '600', color: '#111' },
   courseDesc: { color: '#666', marginTop: 4 },
-  price: { color: '#6366f1', fontWeight: '600', marginTop: 4 },
+  price: { color: '#3534C9', fontWeight: '600', marginTop: 4 },
   btn: { marginTop: 4 },
   buttonGroup: { gap: 8, marginTop: 4 },
   redeemBtn: { backgroundColor: '#f59e0b' },

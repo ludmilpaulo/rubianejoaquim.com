@@ -11,30 +11,25 @@ import {
 } from 'react-native'
 import { Text } from 'react-native-paper'
 import { colors, motion, radius, spacing } from '../../theme'
-
-const NAVY = colors.background.dark
-const GOLD = '#C9A84C'
+import ZendaLogo from './ZendaLogo'
 
 type Size = 'sm' | 'md' | 'lg'
 
-const SIZE_MAP: Record<Size, { mark: number; font: number; ring: number }> = {
-  sm: { mark: 28, font: 14, ring: 36 },
-  md: { mark: 48, font: 22, ring: 64 },
-  lg: { mark: 72, font: 34, ring: 96 },
+const SIZE_MAP: Record<Size, { logo: 'small' | 'medium' | 'large'; ring: number }> = {
+  sm: { logo: 'small', ring: 56 },
+  md: { logo: 'medium', ring: 96 },
+  lg: { logo: 'large', ring: 148 },
 }
 
 interface ZendaLoaderProps {
-  /** Optional status text under the mark */
   message?: string
   size?: Size
-  /** Compact inline row (spinner + text) for buttons / list footers */
   inline?: boolean
   style?: StyleProp<ViewStyle>
-  /** Use light text on dark backgrounds */
   inverse?: boolean
 }
 
-/** Branded gold-Z / navy loader for inline or embedded use. */
+/** Branded loader using official Zenda mark colors. */
 export function ZendaLoader({
   message,
   size = 'md',
@@ -87,7 +82,7 @@ export function ZendaLoader({
   if (inline) {
     return (
       <View style={[styles.inlineRow, style]} accessibilityRole="progressbar">
-        <ActivityIndicator size="small" color={GOLD} />
+        <ActivityIndicator size="small" color={colors.brand.primary} />
         {message ? (
           <Text style={[styles.inlineText, inverse && styles.inverseText]} numberOfLines={2}>
             {message}
@@ -113,20 +108,14 @@ export function ZendaLoader({
           ]}
         />
         <Animated.View
-          style={[
-            styles.mark,
-            {
-              width: dims.mark,
-              height: dims.mark,
-              borderRadius: dims.mark / 2,
-              opacity: pulse.interpolate({
-                inputRange: [0.55, 1],
-                outputRange: [0.85, 1],
-              }),
-            },
-          ]}
+          style={{
+            opacity: pulse.interpolate({
+              inputRange: [0.55, 1],
+              outputRange: [0.9, 1],
+            }),
+          }}
         >
-          <Text style={[styles.markLetter, { fontSize: dims.font }]}>Z</Text>
+          <ZendaLogo size={dims.logo} variant="mark" />
         </Animated.View>
       </View>
       {message ? (
@@ -141,17 +130,11 @@ export function ZendaLoader({
 interface ZendaLoadingProps {
   visible: boolean
   message?: string
-  /** When true, covers the full screen with a modal overlay */
   fullScreen?: boolean
-  /** Non-modal filled container (e.g. first paint of a screen) */
   fill?: boolean
   style?: StyleProp<ViewStyle>
 }
 
-/**
- * Full-screen / fill loading state with branded Zenda mark.
- * Prefer `fill` for initial screen loads; `fullScreen` for blocking overlays.
- */
 export function ZendaLoading({
   visible,
   message,
@@ -185,7 +168,6 @@ export function ZendaLoading({
   return content
 }
 
-/** Alias matching the deliverable name. */
 export const ZendaLoadingView = ZendaLoading
 
 const styles = StyleSheet.create({
@@ -201,22 +183,10 @@ const styles = StyleSheet.create({
   },
   ring: {
     position: 'absolute',
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: 'transparent',
-    borderTopColor: GOLD,
-    borderRightColor: `${GOLD}66`,
-  },
-  mark: {
-    backgroundColor: NAVY,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: GOLD,
-  },
-  markLetter: {
-    color: GOLD,
-    fontWeight: '800',
-    letterSpacing: -1,
+    borderTopColor: colors.brand.growth,
+    borderRightColor: `${colors.brand.primary}66`,
   },
   message: {
     color: colors.text.secondary,
@@ -254,7 +224,7 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    backgroundColor: 'rgba(3, 4, 18, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
   },

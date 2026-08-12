@@ -14,6 +14,7 @@ import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } f
 import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
+import { colors } from '../theme'
 import {
   getApiErrorMessage,
   unwrapList,
@@ -320,17 +321,8 @@ export default function BusinessFinanceScreen() {
 
   const salesChartData = sales.slice(0, 7).map(sale => parseFloat(sale.amount))
   
-  // Color palette for pie chart - different colors for each category
-  const pieChartColors = [
-    '#6366f1', // Indigo
-    '#ec4899', // Pink
-    '#10b981', // Green
-    '#f59e0b', // Amber
-    '#ef4444', // Red
-    '#8b5cf6', // Purple
-    '#06b6d4', // Cyan
-    '#f97316', // Orange
-  ]
+  // Brand chart palette (logo blues / growth green / semantic accents)
+  const pieChartColors = [...colors.chart]
 
   const expensesChartData = expensesSummary?.by_category?.slice(0, 5).map((cat: ExpenseCategorySummary, index: number) => ({
     name: cat.category__name || cat.category_name || t('personal.others'),
@@ -379,7 +371,7 @@ export default function BusinessFinanceScreen() {
           <Card.Content>
             <View style={styles.metricRow}>
               <View style={styles.metric}>
-                <MaterialCommunityIcons name="trending-up" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="trending-up" size={24} color="#3534C9" />
                 <Text variant="bodySmall" style={styles.metricLabel}>{t('business.sales')}</Text>
                 <Text variant="headlineSmall" style={styles.metricValue}>
                   {format(totalSales)}
@@ -399,7 +391,7 @@ export default function BusinessFinanceScreen() {
               <MaterialCommunityIcons
                 name={profit >= 0 ? "check-circle" : "alert-circle"}
                 size={32}
-                color={profit >= 0 ? "#10b981" : "#ef4444"}
+                color={profit >= 0 ? "#4DB83D" : "#ef4444"}
               />
               <Text variant="bodySmall" style={styles.profitLabel}>{t('business.netProfit')}</Text>
               <Text variant="headlineMedium" style={[styles.profitValue, profit < 0 && styles.profitNegative]}>
@@ -428,7 +420,7 @@ export default function BusinessFinanceScreen() {
                 <MaterialCommunityIcons
                   name={materialIcon(tab.icon) as MaterialIconName}
                   size={20}
-                  color={activeTab === tab.key ? '#10b981' : '#666'}
+                  color={activeTab === tab.key ? '#4DB83D' : '#666'}
                 />
                 <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
                   {tab.label}
@@ -492,7 +484,7 @@ export default function BusinessFinanceScreen() {
             <View style={styles.statsGrid}>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="receipt" size={24} color="#10b981" />
+                  <MaterialCommunityIcons name="receipt" size={24} color="#4DB83D" />
                   <Text variant="headlineSmall" style={styles.statValue}>{sales.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('business.sales')}</Text>
                 </Card.Content>
@@ -506,7 +498,7 @@ export default function BusinessFinanceScreen() {
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="percent" size={24} color="#6366f1" />
+                  <MaterialCommunityIcons name="percent" size={24} color="#3534C9" />
                   <Text variant="headlineSmall" style={styles.statValue}>
                     {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(0) : 0}%
                   </Text>
@@ -538,7 +530,7 @@ export default function BusinessFinanceScreen() {
                     <View style={styles.saleHeader}>
                       <View style={styles.saleLeft}>
                         <View style={styles.saleIcon}>
-                          <MaterialCommunityIcons name="cash-plus" size={24} color="#10b981" />
+                          <MaterialCommunityIcons name="cash-plus" size={24} color="#4DB83D" />
                         </View>
                         <View>
                           <Text variant="titleMedium">{sale.customer_name || t('business.unspecifiedCustomer')}</Text>
@@ -863,7 +855,7 @@ export default function BusinessFinanceScreen() {
             {/* Color Selection */}
             <Text variant="bodySmall" style={styles.label}>Cor</Text>
             <View style={styles.colorGrid}>
-              {['#ef4444', '#f59e0b', '#10b981', '#6366f1', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'].map(color => (
+              {[...colors.chart].map(color => (
                 <TouchableOpacity
                   key={color}
                   style={[
@@ -951,7 +943,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontWeight: 'bold',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   expenseValue: {
     color: '#ef4444',
@@ -974,7 +966,7 @@ const styles = StyleSheet.create({
   },
   profitValue: {
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#4DB83D',
   },
   profitNegative: {
     color: '#ef4444',
@@ -1008,7 +1000,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   tabLabelActive: {
-    color: '#10b981',
+    color: '#4DB83D',
     fontWeight: '600',
   },
   content: {
@@ -1060,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   saleAmount: {
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#4DB83D',
   },
   amountCol: {
     alignItems: 'flex-end',
@@ -1154,7 +1146,7 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
-    backgroundColor: '#10b981',
+    backgroundColor: '#4DB83D',
   },
   modal: {
     backgroundColor: '#fff',

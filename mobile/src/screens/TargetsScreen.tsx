@@ -248,20 +248,20 @@ export default function TargetsScreen() {
 
   const getTargetTypeColor = (type: string) => {
     switch (type) {
-      case 'financial': return '#10b981'
-      case 'career': return '#6366f1'
+      case 'financial': return '#4DB83D'
+      case 'career': return '#3534C9'
       case 'health': return '#ef4444'
       case 'education': return '#f59e0b'
-      case 'business': return '#8b5cf6'
-      case 'personal': return '#ec4899'
+      case 'business': return '#3C3BD4'
+      case 'personal': return '#5B5AD6'
       default: return '#6b7280'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return '#10b981'
-      case 'completed': return '#6366f1'
+      case 'active': return '#4DB83D'
+      case 'completed': return '#3534C9'
       case 'paused': return '#f59e0b'
       case 'cancelled': return '#ef4444'
       default: return '#6b7280'
@@ -298,21 +298,21 @@ export default function TargetsScreen() {
           <View style={styles.statsContainer}>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
-                <MaterialCommunityIcons name="flag" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="flag" size={24} color="#3534C9" />
                 <RNText style={styles.statValue}>{stats.total}</RNText>
                 <RNText style={styles.statLabel}>Total</RNText>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
-                <MaterialCommunityIcons name="play-circle" size={24} color="#10b981" />
+                <MaterialCommunityIcons name="play-circle" size={24} color="#4DB83D" />
                 <RNText style={styles.statValue}>{stats.active}</RNText>
                 <RNText style={styles.statLabel}>Ativas</RNText>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
-                <MaterialCommunityIcons name="check-circle" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="check-circle" size={24} color="#3534C9" />
                 <RNText style={styles.statValue}>{stats.completed}</RNText>
                 <RNText style={styles.statLabel}>Concluídas</RNText>
               </Card.Content>
@@ -337,7 +337,7 @@ export default function TargetsScreen() {
                 <MaterialCommunityIcons
                   name={materialIcon(filter.icon) as MaterialIconName}
                   size={18}
-                  color={activeFilter === filter.key ? '#6366f1' : '#666'}
+                  color={activeFilter === filter.key ? '#3534C9' : '#666'}
                 />
                 <Text style={[styles.filterLabel, activeFilter === filter.key && styles.filterLabelActive]}>
                   {filter.label}
@@ -459,7 +459,7 @@ export default function TargetsScreen() {
                             onPress={() => openEditTarget(target)}
                             activeOpacity={0.7}
                           >
-                            <MaterialCommunityIcons name="pencil" size={18} color="#6366f1" />
+                            <MaterialCommunityIcons name="pencil" size={18} color="#3534C9" />
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.targetDeleteButton}
@@ -551,7 +551,7 @@ export default function TargetsScreen() {
                   }}
                   title="Pessoal"
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="target" size={20} color="#ec4899" />
+                    <MaterialCommunityIcons name="target" size={20} color="#5B5AD6" />
                   )}
                 />
                 <Menu.Item
@@ -561,7 +561,7 @@ export default function TargetsScreen() {
                   }}
                   title="Financeira"
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="cash-multiple" size={20} color="#10b981" />
+                    <MaterialCommunityIcons name="cash-multiple" size={20} color="#4DB83D" />
                   )}
                 />
                 <Menu.Item
@@ -571,7 +571,7 @@ export default function TargetsScreen() {
                   }}
                   title="Carreira"
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="briefcase" size={20} color="#6366f1" />
+                    <MaterialCommunityIcons name="briefcase" size={20} color="#3534C9" />
                   )}
                 />
                 <Menu.Item
@@ -601,7 +601,7 @@ export default function TargetsScreen() {
                   }}
                   title="Negócio"
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="store" size={20} color="#8b5cf6" />
+                    <MaterialCommunityIcons name="store" size={20} color="#3C3BD4" />
                   )}
                 />
               </Menu>
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   filterLabelActive: {
-    color: '#6366f1',
+    color: '#3534C9',
     fontWeight: '600',
   },
   content: {
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
   },
   progressPercentage: {
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   progressBar: {
     height: 8,
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
   },
   modal: {
     backgroundColor: '#fff',
@@ -965,12 +965,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 20,
     gap: 8,
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -993,7 +993,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
   },
   targetDeleteButton: {
     width: 44,

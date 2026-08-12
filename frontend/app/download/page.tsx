@@ -2,6 +2,8 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import Image from 'next/image'
+import { zendaBrand } from '@/lib/zenda-brand'
 
 export const metadata: Metadata = {
   title: 'Download Zenda',
@@ -54,7 +56,6 @@ async function trackClick(ref: string | null, platform: string, ua: string) {
         platform,
         path: '/download',
       }),
-      // fire-and-forget; don't block redirect hard
       cache: 'no-store',
     })
   } catch {
@@ -97,10 +98,6 @@ export default async function DownloadPage({
   if (platform === 'ios' && stores.ios) {
     redirect(withRef(stores.ios))
   }
-  // iOS without App Store URL yet → soft landing with both buttons
-  if (platform === 'ios' && !stores.ios) {
-    // fall through to chooser
-  }
 
   const androidUrl = withRef(stores.android || PLAY_FALLBACK)
   const iosUrl = stores.ios ? withRef(stores.ios) : WEB_FALLBACK
@@ -114,12 +111,15 @@ export default async function DownloadPage({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2rem',
-        background: 'linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)',
+        background: `linear-gradient(160deg, ${zendaBrand.primary} 0%, ${zendaBrand.primaryDark} 50%, ${zendaBrand.primaryDeep} 100%)`,
         color: '#f8fafc',
         fontFamily: 'system-ui, sans-serif',
       }}
     >
       <div style={{ maxWidth: 420, width: '100%', textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <Image src="/zenda_logo.svg" alt="Zenda" width={88} height={88} priority style={{ borderRadius: 20 }} />
+        </div>
         <p style={{ letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, fontSize: 12 }}>
           Zenda
         </p>
@@ -139,7 +139,7 @@ export default async function DownloadPage({
               display: 'block',
               padding: '14px 18px',
               borderRadius: 12,
-              background: '#22c55e',
+              background: zendaBrand.growth,
               color: '#052e16',
               fontWeight: 700,
               textDecoration: 'none',
@@ -154,7 +154,7 @@ export default async function DownloadPage({
               padding: '14px 18px',
               borderRadius: 12,
               background: '#f8fafc',
-              color: '#0f172a',
+              color: zendaBrand.navy,
               fontWeight: 700,
               textDecoration: 'none',
             }}
@@ -163,7 +163,7 @@ export default async function DownloadPage({
           </a>
           <Link
             href="/zenda"
-            style={{ color: '#c7d2fe', marginTop: 8, fontSize: 14, textDecoration: 'underline' }}
+            style={{ color: '#C8C7F5', marginTop: 8, fontSize: 14, textDecoration: 'underline' }}
           >
             Learn more about Zenda
           </Link>

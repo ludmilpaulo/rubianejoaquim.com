@@ -348,7 +348,7 @@ export default function AICopilotScreen() {
               >
                 {message.role === 'assistant' && (
                   <View style={styles.assistantIcon}>
-                    <MaterialCommunityIcons name="robot" size={20} color="#8b5cf6" />
+                    <MaterialCommunityIcons name="robot" size={20} color="#3C3BD4" />
                   </View>
                 )}
                 <Card
@@ -376,7 +376,7 @@ export default function AICopilotScreen() {
                 </Card>
                 {message.role === 'user' && (
                   <View style={styles.userIcon}>
-                    <MaterialCommunityIcons name="account" size={20} color="#6366f1" />
+                    <MaterialCommunityIcons name="account" size={20} color="#3534C9" />
                   </View>
                 )}
               </View>
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     elevation: 2,
-    shadowColor: '#8b5cf6',
+    shadowColor: '#3C3BD4',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   userMessageCard: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     borderRadius: 20,
     borderBottomRightRadius: 4,
   },
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#3C3BD4',
   },
   inputContainer: {
     backgroundColor: '#ffffff',

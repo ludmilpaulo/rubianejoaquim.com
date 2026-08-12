@@ -164,7 +164,7 @@ function AppContent() {
         {appLocked ? (
           <View style={[styles.lockScreen, isDarkMode && styles.lockScreenDark]}>
             <View style={styles.lockIcon}>
-              <MaterialCommunityIcons name="shield-lock" size={42} color="#6366f1" />
+              <MaterialCommunityIcons name="shield-lock" size={42} color="#3534C9" />
             </View>
             <Text style={[styles.lockTitle, isDarkMode && styles.lockTitleDark]}>
               {t('settings.appLockedTitle')}
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#E8E8FA',
   },
   lockTitle: {
     color: '#0F172A',

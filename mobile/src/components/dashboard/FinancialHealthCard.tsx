@@ -54,7 +54,7 @@ export default function FinancialHealthCard({ health, onPress }: FinancialHealth
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#EEF2FF' },
+  card: { backgroundColor: '#E8E8FA' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   textCol: { flex: 1, paddingRight: spacing.md },
   label: { color: colors.text.secondary, textTransform: 'uppercase', letterSpacing: 0.5 },

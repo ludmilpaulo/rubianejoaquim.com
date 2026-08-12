@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.light,
   },
-  goalRowActive: { borderColor: colors.brand.primaryLight, backgroundColor: '#EEF2FF' },
+  goalRowActive: { borderColor: colors.brand.primaryLight, backgroundColor: '#E8E8FA' },
   goalLabel: { ...typography.body, color: colors.text.primary, flex: 1 },
   levelList: { gap: spacing.sm },
   levelCard: {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.light,
   },
-  levelCardActive: { borderColor: colors.brand.primary, backgroundColor: '#EEF2FF' },
+  levelCardActive: { borderColor: colors.brand.primary, backgroundColor: '#E8E8FA' },
   levelTitle: { ...typography.h3, color: colors.text.primary },
   levelTitleActive: { color: colors.brand.primary },
   levelDesc: { ...typography.caption, color: colors.text.secondary, marginTop: 4 },

@@ -13,6 +13,8 @@ import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage } from '../types/api'
+import { ZendaLogo } from '../components/ui'
+import { colors } from '../theme'
 
 type Props = StackScreenProps<AuthStackParamList, 'Register'>
 
@@ -101,12 +103,10 @@ export default function RegisterScreen({ navigation }: Props) {
                 onPress={() => navigation.goBack()}
                 disabled={feedback.anyPending}
               >
-                <MaterialCommunityIcons name="arrow-left" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="arrow-left" size={24} color="#3534C9" />
               </TouchableOpacity>
               <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}>
-                  <MaterialCommunityIcons name="account-plus" size={40} color="#6366f1" />
-                </View>
+                <ZendaLogo size="large" variant="full" />
               </View>
               <Text variant="headlineMedium" style={styles.title}>
                 {t('auth.register.title')}
@@ -268,7 +268,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 onPress={handleRegister}
                 {...feedback.buttonProps('register')}
                 style={styles.button}
-                buttonColor="#6366f1"
+                buttonColor="#3534C9"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     opacity: 0.06,
     top: -80,
     right: -80,
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#3C3BD4',
     opacity: 0.06,
     bottom: -60,
     left: -60,
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
     backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   loginLinkBold: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   linkBox: {
     backgroundColor: '#fffbeb',

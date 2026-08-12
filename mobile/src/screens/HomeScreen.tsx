@@ -18,6 +18,7 @@ import FinancialHealthCard from '../components/dashboard/FinancialHealthCard'
 import ZendaCard from '../components/ui/ZendaCard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
 import { ZendaLoader } from '../components/ui/ZendaLoader'
+import ZendaLogo from '../components/ui/ZendaLogo'
 import { colors, spacing, radius } from '../theme'
 import { formatCurrency, resolveUserCurrency } from '../utils/currency'
 import { fetchWithCache } from '../utils/apiCache'
@@ -198,7 +199,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View style={styles.logoBadge}>
-            <MaterialCommunityIcons name="shield-check" size={28} color={colors.brand.primary} />
+            <ZendaLogo size="small" variant="full" />
           </View>
         </View>
 
@@ -494,10 +495,10 @@ const styles = StyleSheet.create({
   greeting: { fontWeight: '700', color: colors.text.primary },
   subtitle: { color: colors.text.secondary, marginTop: 4 },
   logoBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#EEF2FF',
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },

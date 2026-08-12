@@ -16,6 +16,8 @@ import { getApiBaseUrl } from '../config/api'
 import { getThunkErrorMessage } from '../utils/thunkError'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage, isApiError } from '../types/api'
+import { ZendaLogo } from '../components/ui'
+import { colors } from '../theme'
 
 type Props = StackScreenProps<AuthStackParamList, 'Login'>
 import {
@@ -229,9 +231,7 @@ export default function LoginScreen({ navigation }: Props) {
           <Card style={styles.card} elevation={8 as 0 | 1 | 2 | 3 | 4 | 5}>
             <Card.Content style={styles.cardContent}>
               <View style={styles.logoContainer}>
-                <View style={styles.logoCircle}>
-                  <MaterialCommunityIcons name="wallet" size={40} color="#6366f1" />
-                </View>
+                <ZendaLogo size="large" variant="full" />
               </View>
               <Text variant="headlineMedium" style={styles.title}>
                 {t('home.zendaTitle')}
@@ -391,7 +391,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <MaterialCommunityIcons
                       name={biometricType === 'Face ID' ? 'face-recognition' : 'fingerprint'}
                       size={24}
-                      color="#6366f1"
+                      color="#3534C9"
                     />
                   )}
                 >
@@ -417,7 +417,7 @@ export default function LoginScreen({ navigation }: Props) {
                 onPress={handleLogin}
                 {...feedback.buttonProps('login')}
                 style={styles.button}
-                buttonColor="#6366f1"
+                buttonColor="#3534C9"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
@@ -433,7 +433,7 @@ export default function LoginScreen({ navigation }: Props) {
                   <Checkbox
                     status={enableBiometricOption ? 'checked' : 'unchecked'}
                     onPress={() => setEnableBiometricOption(!enableBiometricOption)}
-                    color="#6366f1"
+                    color="#3534C9"
                   />
                   <Text style={styles.biometricOptionText}>
                     {tw('auth.login.enableBiometric', { type: biometricType })}
@@ -463,11 +463,11 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
     position: 'relative',
   },
   backgroundDecor: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     opacity: 0.06,
     top: -80,
     right: -80,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#3C3BD4',
     opacity: 0.06,
     bottom: -60,
     left: -60,
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
     backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   },
   forgotLinkText: {
     fontSize: 14,
-    color: '#6366f1',
+    color: '#3534C9',
     fontWeight: '500',
   },
   button: {
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   biometricButton: {
     marginBottom: 16,
     paddingVertical: 4,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
   },
   divider: {
     flexDirection: 'row',
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   registerLinkBold: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   note: {
     marginTop: 8,

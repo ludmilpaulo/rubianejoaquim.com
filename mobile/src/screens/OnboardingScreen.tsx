@@ -13,10 +13,10 @@ const { width } = Dimensions.get('window')
 const ONBOARDING_KEY = 'ZENDA_ONBOARDING_DONE'
 
 const SLIDES = [
-  { icon: 'wallet-plus' as const, titleKey: 'onboarding.slide1Title', bodyKey: 'onboarding.slide1Body', color: '#EEF2FF' },
+  { icon: 'wallet-plus' as const, titleKey: 'onboarding.slide1Title', bodyKey: 'onboarding.slide1Body', color: '#E8E8FA' },
   { icon: 'chart-line' as const, titleKey: 'onboarding.slide2Title', bodyKey: 'onboarding.slide2Body', color: '#ECFDF5' },
   { icon: 'school' as const, titleKey: 'onboarding.slide3Title', bodyKey: 'onboarding.slide3Body', color: '#FFFBEB' },
-  { icon: 'rocket-launch' as const, titleKey: 'onboarding.slide4Title', bodyKey: 'onboarding.slide4Body', color: '#F5F3FF' },
+  { icon: 'rocket-launch' as const, titleKey: 'onboarding.slide4Title', bodyKey: 'onboarding.slide4Body', color: '#E8F8E6' },
 ]
 
 interface OnboardingScreenProps {

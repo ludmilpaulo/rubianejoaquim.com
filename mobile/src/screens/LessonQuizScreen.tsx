@@ -130,7 +130,7 @@ export default function LessonQuizScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#6366f1" />
+          <ActivityIndicator size="large" color="#3534C9" />
           <Text variant="bodyLarge" style={styles.loadingText}>Carregando quiz...</Text>
         </View>
       </SafeAreaView>
@@ -180,7 +180,7 @@ export default function LessonQuizScreen() {
                 <MaterialCommunityIcons
                   name={result.passed ? 'check-circle' : 'close-circle'}
                   size={72}
-                  color={result.passed ? '#10b981' : '#ef4444'}
+                  color={result.passed ? '#4DB83D' : '#ef4444'}
                 />
               </View>
               <Text variant="headlineSmall" style={styles.resultTitle}>
@@ -237,7 +237,7 @@ export default function LessonQuizScreen() {
                       onPress={() => handleSelectAnswer(q.id, choice.id)}
                       activeOpacity={0.7}
                     >
-                      <RadioButton.Android value={String(choice.id)} color="#6366f1" />
+                      <RadioButton.Android value={String(choice.id)} color="#3534C9" />
                       <Text variant="bodyLarge" style={styles.choiceText}>{choice.choice_text}</Text>
                     </TouchableOpacity>
                   ))}
@@ -287,12 +287,12 @@ const styles = StyleSheet.create({
   backButton: { marginTop: 24 },
   resultContainer: { padding: 16, flexGrow: 1 },
   resultCard: { borderRadius: 16, elevation: 4, overflow: 'hidden' },
-  resultPassedCard: { borderWidth: 2, borderColor: '#10b981', backgroundColor: '#f0fdf4' },
+  resultPassedCard: { borderWidth: 2, borderColor: '#4DB83D', backgroundColor: '#f0fdf4' },
   resultFailedCard: { borderWidth: 2, borderColor: '#ef4444', backgroundColor: '#fef2f2' },
   resultIconWrap: { alignItems: 'center', marginBottom: 16 },
   resultTitle: { textAlign: 'center', fontWeight: '700', color: '#1f2937', marginBottom: 8 },
   resultScore: { textAlign: 'center', fontWeight: '800', marginBottom: 8 },
-  scorePassed: { color: '#10b981' },
+  scorePassed: { color: '#4DB83D' },
   scoreFailed: { color: '#ef4444' },
   resultDetail: { textAlign: 'center', color: '#4b5563', marginBottom: 4 },
   passingText: { textAlign: 'center', color: '#6b7280', marginBottom: 16 },

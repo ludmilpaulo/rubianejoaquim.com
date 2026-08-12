@@ -277,7 +277,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                       onPress={() => setShowBudgetMenu(true)}
                     >
                       <View style={styles.budgetSelectorContent}>
-                        <MaterialCommunityIcons name="wallet-outline" size={20} color="#6366f1" />
+                        <MaterialCommunityIcons name="wallet-outline" size={20} color="#3534C9" />
                         <Text variant="bodyLarge" style={styles.budgetSelectorText}>
                           {selectedBudget 
                             ? `${selectedBudget.category_name || 'Geral'} - ${getBudgetPeriodLabel(selectedBudget)}`
@@ -334,7 +334,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                         styles.progressFill,
                         {
                           width: `${Math.min(parseFloat(selectedBudget.percentage_used), 100)}%`,
-                          backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? '#ef4444' : '#6366f1',
+                          backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? '#ef4444' : '#3534C9',
                         },
                       ]}
                     />
@@ -413,7 +413,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                           <View style={styles.expenseLeft}>
                             <View style={[
                               styles.categoryIcon,
-                              { backgroundColor: expense.category_color || '#6366f1' }
+                              { backgroundColor: expense.category_color || '#3534C9' }
                             ]}>
                               <MaterialCommunityIcons 
                                 name={materialIcon(expense.category_icon)} 
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   },
   budgetCard: {
     marginTop: 16,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
   },
   budgetHeader: {
     flexDirection: 'row',
@@ -805,7 +805,7 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
   },
   modal: {
     backgroundColor: '#fff',

@@ -1,6 +1,7 @@
 import React from 'react'
 import { createStackNavigator } from '@react-navigation/stack'
 import { useI18n } from '../contexts/I18nContext'
+import { colors } from '../theme'
 import ProfileScreen from '../screens/ProfileScreen'
 import SettingsScreen from '../screens/SettingsScreen'
 import AboutScreen from '../screens/AboutScreen'
@@ -18,7 +19,7 @@ export default function ProfileOnlyNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        headerStyle: { backgroundColor: '#6366f1' },
+        headerStyle: { backgroundColor: colors.brand.primary },
         headerTintColor: '#fff',
       }}
     >

@@ -35,7 +35,7 @@ const Stack = createStackNavigator()
 
 function HomeStack() {
   const { t } = useI18n()
-  const headerStyle = { backgroundColor: '#6366f1' as const }
+  const headerStyle = { backgroundColor: colors.brand.primary }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -61,14 +61,14 @@ function HomeStack() {
       <Stack.Screen 
         name="AICopilot" 
         component={AICopilotScreen}
-        options={{ title: t('navigation.aiCopilot'), headerStyle: { backgroundColor: '#8b5cf6' }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.aiCopilot'), headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="Market" 
         component={MarketScreen}
-        options={{ title: t('navigation.market'), headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.market'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle: { backgroundColor: colors.brand.primary }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }} />
       <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle: { backgroundColor: colors.brand.accent }, headerTintColor: '#fff' }} />
       <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle: { backgroundColor: colors.brand.secondary }, headerTintColor: '#fff' }} />
@@ -78,7 +78,7 @@ function HomeStack() {
 
 function EducationStack() {
   const { t } = useI18n()
-  const headerStyle = { backgroundColor: '#6366f1' as const }
+  const headerStyle = { backgroundColor: colors.brand.primary }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -129,7 +129,7 @@ function PersonalStack() {
         component={OrcamentoPrincipiosScreen}
         options={{
           title: t('navigation.budgetPrinciples'),
-          headerStyle: { backgroundColor: '#6366f1' },
+          headerStyle: { backgroundColor: colors.brand.primary },
           headerTintColor: '#fff',
         }}
       />
@@ -145,7 +145,7 @@ function PersonalStack() {
         component={MonthlyPlanScreen}
         options={{
           title: t('navigation.monthlyPlan'),
-          headerStyle: { backgroundColor: '#6366f1' },
+          headerStyle: { backgroundColor: colors.brand.primary },
           headerTintColor: '#fff',
         }}
       />
@@ -155,7 +155,7 @@ function PersonalStack() {
 
 function ProfileStack() {
   const { t } = useI18n()
-  const headerStyle = { backgroundColor: '#6366f1' as const }
+  const headerStyle = { backgroundColor: colors.brand.primary }
   return (
     <Stack.Navigator>
       <Stack.Screen 
@@ -209,6 +209,12 @@ export default function MainNavigator() {
         },
         tabBarActiveTintColor: colors.brand.primary,
         tabBarInactiveTintColor: colors.text.muted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          flexShrink: 1,
+        },
+        tabBarAllowFontScaling: true,
         headerShown: true,
         headerStyle: {
           backgroundColor: colors.brand.primary,
@@ -216,6 +222,9 @@ export default function MainNavigator() {
         headerTintColor: '#fff',
         tabBarStyle: {
           paddingBottom: 8,
+          paddingTop: 4,
+          backgroundColor: colors.background.paper,
+          borderTopColor: colors.border.light,
         },
       })}
     >

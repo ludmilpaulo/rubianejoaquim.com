@@ -7,6 +7,7 @@ import { useI18n } from '../contexts/I18nContext'
 import { publicApi } from '../services/api'
 import type { PublicSiteSettings, PublicZendaContent } from '../types/api'
 import { colors, radius, spacing } from '../theme'
+import ZendaLogo from '../components/ui/ZendaLogo'
 
 const WEBSITE_URL = 'https://www.rubianejoaquim.com'
 const DEFAULT_WHATSAPP = '244944905246'
@@ -89,7 +90,7 @@ export default function AboutScreen() {
       >
         <View style={styles.logoSection}>
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="wallet" size={58} color={colors.brand.primary} />
+            <ZendaLogo size="large" variant="full" />
           </View>
           <Text variant="headlineMedium" style={styles.appName}>
             {title}
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     width: 112,
     height: 112,
     borderRadius: 56,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#E8E8FA',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#E8E8FA',
     marginBottom: spacing.sm,
   },
   featureCardTitle: {

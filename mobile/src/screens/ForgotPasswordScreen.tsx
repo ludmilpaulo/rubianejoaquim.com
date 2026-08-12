@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <Card style={styles.card} elevation={4}>
             <Card.Content style={styles.cardContent}>
               <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="email-check" size={56} color="#10b981" />
+                <MaterialCommunityIcons name="email-check" size={56} color="#4DB83D" />
               </View>
               <Text variant="titleLarge" style={styles.successTitle}>
                 {t('auth.forgotPassword.checkEmailTitle')}
@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 mode="contained"
                 onPress={() => navigation.navigate('Login')}
                 style={styles.button}
-                buttonColor="#6366f1"
+                buttonColor="#3534C9"
               >
                 {t('auth.forgotPassword.backToLogin')}
               </Button>
@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <Card style={styles.card} elevation={4}>
             <Card.Content style={styles.cardContent}>
               <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="lock-reset" size={48} color="#6366f1" />
+                <MaterialCommunityIcons name="lock-reset" size={48} color="#3534C9" />
               </View>
               <Text variant="titleLarge" style={styles.title}>
                 {t('auth.forgotPassword.forgotTitle')}
@@ -119,7 +119,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 onPress={handleSubmit}
                 {...feedback.buttonProps('reset')}
                 style={styles.button}
-                buttonColor="#6366f1"
+                buttonColor="#3534C9"
               >
                 {feedback.actionLabel('auth.forgotPassword.sendLink', 'reset', 'feedback.resettingPassword')}
               </Button>
@@ -129,7 +129,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 onPress={() => navigation.navigate('Login')}
                 disabled={feedback.anyPending}
                 style={styles.backLink}
-                textColor="#6366f1"
+                textColor="#3534C9"
               >
                 ← {t('auth.forgotPassword.backToLogin')}
               </Button>

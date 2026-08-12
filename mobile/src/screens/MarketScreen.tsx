@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#E8E8FA',
   },
   currencyHint: { ...typography.caption, color: colors.text.muted },
   currencyText: { ...typography.h3, color: colors.brand.primary },

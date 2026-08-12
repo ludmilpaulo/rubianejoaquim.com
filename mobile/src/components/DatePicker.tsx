@@ -80,7 +80,7 @@ export default function DatePicker({
           <MaterialCommunityIcons
             name={mode === 'time' ? 'clock-outline' : 'calendar'}
             size={20}
-            color="#6366f1"
+            color="#3534C9"
             style={styles.icon}
           />
           <Text

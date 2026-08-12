@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
 import SocialLoginButtons from '@/components/SocialLoginButtons'
+import ZendaLogo from '@/components/zenda/ZendaLogo'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
 
@@ -186,7 +187,10 @@ function LoginPageInner() {
       }}
     >
       <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6 text-center">
+        <div className="flex justify-center mb-4">
+          <ZendaLogo size="md" priority />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-zenda-navy mb-4 sm:mb-6 text-center">
           {isLogin ? 'Entrar' : 'Registar'}
         </h1>
 

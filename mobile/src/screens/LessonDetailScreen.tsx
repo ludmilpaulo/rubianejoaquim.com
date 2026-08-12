@@ -200,7 +200,7 @@ export default function LessonDetailScreen() {
           <Card.Content>
             <View style={styles.headerTop}>
               <View style={styles.courseBadge}>
-                <MaterialCommunityIcons name="book" size={16} color="#6366f1" />
+                <MaterialCommunityIcons name="book" size={16} color="#3534C9" />
                 <Text variant="bodySmall" style={styles.courseName}>
                   {lesson.course.title}
                 </Text>
@@ -252,7 +252,7 @@ export default function LessonDetailScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <View style={styles.videoHeader}>
-                <MaterialCommunityIcons name="play-circle" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="play-circle" size={24} color="#3534C9" />
                 <Text variant="titleMedium" style={styles.sectionTitle}>
                   Vídeo da Aula
                 </Text>
@@ -317,7 +317,7 @@ export default function LessonDetailScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <View style={styles.attachmentsHeader}>
-                <MaterialCommunityIcons name="file-document" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="file-document" size={24} color="#3534C9" />
                 <Text variant="titleMedium" style={styles.sectionTitle}>
                   Materiais de Apoio
                 </Text>
@@ -334,7 +334,7 @@ export default function LessonDetailScreen() {
                       <MaterialCommunityIcons
                         name={attachment.file_type === 'pdf' ? 'file-pdf-box' : 'file'}
                         size={24}
-                        color="#6366f1"
+                        color="#3534C9"
                       />
                     </View>
                     <View style={styles.attachmentInfo}>
@@ -348,7 +348,7 @@ export default function LessonDetailScreen() {
                       )}
                     </View>
                   </View>
-                  <MaterialCommunityIcons name="download" size={24} color="#6366f1" />
+                  <MaterialCommunityIcons name="download" size={24} color="#3534C9" />
                 </TouchableOpacity>
               ))}
             </Card.Content>
@@ -391,7 +391,7 @@ export default function LessonDetailScreen() {
           <Card style={[styles.card, styles.completedCard]}>
             <Card.Content>
               <View style={styles.completedMessage}>
-                <MaterialCommunityIcons name="check-circle" size={48} color="#10b981" />
+                <MaterialCommunityIcons name="check-circle" size={48} color="#4DB83D" />
                 <Text variant="titleLarge" style={styles.completedTitle}>
                   Aula Concluída!
                 </Text>
@@ -409,7 +409,7 @@ export default function LessonDetailScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <View style={styles.quizHeader}>
-                <MaterialCommunityIcons name="file-question" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="file-question" size={24} color="#3534C9" />
                 <Text variant="titleMedium" style={styles.sectionTitle}>
                   Quiz da Aula
                 </Text>
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   courseName: {
-    color: '#6366f1',
+    color: '#3534C9',
     fontWeight: '600',
   },
   completedChip: {
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
   completedChipText: {
     fontSize: 11,
-    color: '#10b981',
+    color: '#4DB83D',
   },
   lessonTitle: {
     fontWeight: 'bold',
@@ -661,7 +661,7 @@ const styles = StyleSheet.create({
   completedCard: {
     backgroundColor: '#f0fdf4',
     borderWidth: 2,
-    borderColor: '#10b981',
+    borderColor: '#4DB83D',
   },
   completedMessage: {
     alignItems: 'center',
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
   },
   completedTitle: {
     fontWeight: 'bold',
-    color: '#10b981',
+    color: '#4DB83D',
     marginTop: 12,
     marginBottom: 8,
   },
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   resultPassed: {
-    color: '#10b981',
+    color: '#4DB83D',
   },
   resultFailed: {
     color: '#ef4444',
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   passedChipText: {
-    color: '#10b981',
+    color: '#4DB83D',
     fontSize: 12,
   },
   failedChip: {

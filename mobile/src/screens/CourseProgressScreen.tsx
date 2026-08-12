@@ -116,7 +116,7 @@ export default function CourseProgressScreen() {
         <View style={styles.statsRow}>
           <Card style={styles.statCard}>
             <Card.Content>
-              <MaterialCommunityIcons name="chart-line" size={28} color="#6366f1" />
+              <MaterialCommunityIcons name="chart-line" size={28} color="#3534C9" />
               <Text variant="titleMedium" style={styles.statValue}>
                 {progress.average_score.toFixed(1)}%
               </Text>
@@ -125,7 +125,7 @@ export default function CourseProgressScreen() {
           </Card>
           <Card style={styles.statCard}>
             <Card.Content>
-              <MaterialCommunityIcons name="file-question" size={28} color="#6366f1" />
+              <MaterialCommunityIcons name="file-question" size={28} color="#3534C9" />
               <Text variant="titleMedium" style={styles.statValue}>
                 {progress.completed_quizzes}/{progress.total_quizzes}
               </Text>
@@ -137,7 +137,7 @@ export default function CourseProgressScreen() {
               <MaterialCommunityIcons
                 name={progress.course_passed ? 'trophy' : 'close-circle'}
                 size={28}
-                color={progress.course_passed ? '#10b981' : '#ef4444'}
+                color={progress.course_passed ? '#4DB83D' : '#ef4444'}
               />
               <Text variant="titleSmall" style={styles.statLabel}>
                 {progress.course_passed ? t('education.coursePassed') : t('education.courseInProgress')}
@@ -205,7 +205,7 @@ export default function CourseProgressScreen() {
                             })}
                           </Text>
                           {r.passed ? (
-                            <MaterialCommunityIcons name="check-circle" size={18} color="#10b981" />
+                            <MaterialCommunityIcons name="check-circle" size={18} color="#4DB83D" />
                           ) : (
                             <MaterialCommunityIcons name="close-circle" size={18} color="#ef4444" />
                           )}
@@ -259,13 +259,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     elevation: 2,
   },
-  passedCard: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#10b981' },
+  passedCard: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#4DB83D' },
   failedCard: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#ef4444' },
   statValue: { fontWeight: '700', color: '#1f2937', marginTop: 4 },
   statLabel: { color: '#666', marginTop: 2 },
   progressBarContainer: { marginBottom: 20 },
   progressBar: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#6366f1', borderRadius: 4 },
+  progressFill: { height: '100%', backgroundColor: '#3534C9', borderRadius: 4 },
   progressPct: { color: '#666', marginTop: 4 },
   listTitle: { fontWeight: '600', color: '#374151', marginBottom: 12 },
   card: { marginBottom: 12, borderRadius: 12, elevation: 2 },
@@ -281,13 +281,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  resultIndexText: { color: '#6366f1', fontWeight: '700' },
+  resultIndexText: { color: '#3534C9', fontWeight: '700' },
   resultBody: { flex: 1 },
   lessonTitle: { fontWeight: '600', color: '#1f2937' },
   quizTitle: { color: '#666', marginTop: 2 },
   resultMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
   scoreBadge: { fontWeight: '700' },
-  scorePassed: { color: '#10b981' },
+  scorePassed: { color: '#4DB83D' },
   scoreFailed: { color: '#ef4444' },
   metaText: { color: '#666' },
   notDone: { color: '#9ca3af', fontStyle: 'italic', marginTop: 4 },

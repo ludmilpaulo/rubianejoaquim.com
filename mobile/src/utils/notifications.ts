@@ -58,7 +58,7 @@ export async function setupNotifications(): Promise<boolean> {
       vibrationPattern: [0, 250, 250, 250],
       enableVibrate: true,
       enableLights: true,
-      lightColor: '#6366f1',
+      lightColor: '#3534C9', // Zenda primary
       sound: 'default',
     })
     await Notifications.setNotificationChannelAsync('budget_alerts', {

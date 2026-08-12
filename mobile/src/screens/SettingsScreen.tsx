@@ -174,13 +174,13 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.email')}
               description={user?.email}
-              left={(props) => <List.Icon {...props} icon="email" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="email" color="#3534C9" />}
             />
             <Divider />
             <List.Item
               title={t('settings.name')}
               description={`${user?.first_name || ''} ${user?.last_name || ''}`}
-              left={(props) => <List.Icon {...props} icon="account" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="account" color="#3534C9" />}
             />
           </Card.Content>
         </Card>
@@ -267,7 +267,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.language')}
               description={languageDescription}
-              left={(props) => <List.Icon {...props} icon="translate" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="translate" color="#3534C9" />}
               disabled={isPending('language')}
               onPress={() => {
                 if (isPending('language')) return
@@ -299,7 +299,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.currency')}
               description={currencyLabel(currency)}
-              left={(props) => <List.Icon {...props} icon="currency-usd" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="currency-usd" color="#3534C9" />}
               disabled={isPending('currency')}
               onPress={() => {
                 if (isPending('currency')) return
@@ -323,13 +323,13 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.notifications')}
               description={t('settings.notificationsDesc')}
-              left={(props) => <List.Icon {...props} icon="bell" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="bell" color="#3534C9" />}
               right={() => (
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={handleNotificationsToggle}
                   trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
-                  thumbColor={notificationsEnabled ? '#6366f1' : '#f3f4f6'}
+                  thumbColor={notificationsEnabled ? '#3534C9' : '#f3f4f6'}
                 />
               )}
             />
@@ -357,7 +357,7 @@ export default function SettingsScreen() {
                         value={notificationPrefs[key] !== false}
                         onValueChange={(value) => handleNotificationPrefToggle(key, value)}
                         trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
-                        thumbColor={notificationPrefs[key] !== false ? '#6366f1' : '#f3f4f6'}
+                        thumbColor={notificationPrefs[key] !== false ? '#3534C9' : '#f3f4f6'}
                         disabled={isPending('settings')}
                       />
                     )}
@@ -373,13 +373,13 @@ export default function SettingsScreen() {
                   ? tw('settings.biometricAppLockDesc', { type: biometricType })
                   : t('settings.biometricUnavailableBody')
               }
-              left={(props) => <List.Icon {...props} icon="fingerprint" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="fingerprint" color="#3534C9" />}
               right={() => (
                 <Switch
                   value={biometricEnabled}
                   onValueChange={handleBiometricToggle}
                   trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
-                  thumbColor={biometricEnabled ? '#6366f1' : '#f3f4f6'}
+                  thumbColor={biometricEnabled ? '#3534C9' : '#f3f4f6'}
                   disabled={!biometricAvailable}
                 />
               )}
@@ -388,13 +388,13 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.darkModeTitle')}
               description={t('settings.darkModeDesc')}
-              left={(props) => <List.Icon {...props} icon="theme-light-dark" color="#6366f1" />}
+              left={(props) => <List.Icon {...props} icon="theme-light-dark" color="#3534C9" />}
               right={() => (
                 <Switch
                   value={isDarkMode}
                   onValueChange={handleDarkModeToggle}
                   trackColor={{ false: '#d1d5db', true: '#a5b4fc' }}
-                  thumbColor={isDarkMode ? '#6366f1' : '#f3f4f6'}
+                  thumbColor={isDarkMode ? '#3534C9' : '#f3f4f6'}
                 />
               )}
             />
@@ -408,7 +408,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.exportData')}
               description={t('settings.exportDataDesc')}
-              left={(props) => <List.Icon {...props} icon="download" color="#10b981" />}
+              left={(props) => <List.Icon {...props} icon="download" color="#4DB83D" />}
               onPress={handleExportData}
             />
             <Divider />
@@ -428,7 +428,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.privacy')}
               description={t('settings.privacyDesc')}
-              left={(props) => <List.Icon {...props} icon="shield-lock" color="#8b5cf6" />}
+              left={(props) => <List.Icon {...props} icon="shield-lock" color="#3C3BD4" />}
               onPress={handlePrivacyPolicy}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
             />
@@ -436,7 +436,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.terms')}
               description={t('settings.termsDesc')}
-              left={(props) => <List.Icon {...props} icon="file-document" color="#8b5cf6" />}
+              left={(props) => <List.Icon {...props} icon="file-document" color="#3C3BD4" />}
               onPress={() => Linking.openURL('https://www.rubianejoaquim.com/legal')}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
             />

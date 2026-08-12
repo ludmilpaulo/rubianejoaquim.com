@@ -1,38 +1,33 @@
-import React, { type ReactNode } from 'react'
+import React from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { colors, radius, spacing, typography } from '../../theme'
 import ZendaButton from './ZendaButton'
 
-interface EmptyStateProps {
-  icon?: keyof typeof MaterialCommunityIcons.glyphMap
+interface ErrorStateProps {
   title: string
   description?: string
-  actionLabel?: string
-  onAction?: () => void
-  children?: ReactNode
+  retryLabel?: string
+  onRetry?: () => void
 }
 
-export default function EmptyState({
-  icon = 'inbox-outline',
+export default function ErrorState({
   title,
   description,
-  actionLabel,
-  onAction,
-  children,
-}: EmptyStateProps) {
+  retryLabel,
+  onRetry,
+}: ErrorStateProps) {
   return (
     <View style={styles.wrap}>
       <View style={styles.iconCircle}>
-        <MaterialCommunityIcons name={icon} size={40} color={colors.brand.primary} />
+        <MaterialCommunityIcons name="alert-circle-outline" size={40} color={colors.semantic.error} />
       </View>
       <Text style={styles.title}>{title}</Text>
       {description ? <Text style={styles.desc}>{description}</Text> : null}
-      {children}
-      {actionLabel && onAction ? (
-        <ZendaButton variant="primary" onPress={onAction} style={styles.btn}>
-          {actionLabel}
+      {retryLabel && onRetry ? (
+        <ZendaButton variant="primary" onPress={onRetry} style={styles.btn}>
+          {retryLabel}
         </ZendaButton>
       ) : null}
     </View>
@@ -45,7 +40,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.brand.primaryContainer,
+    backgroundColor: '#FDECEA',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,

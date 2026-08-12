@@ -304,7 +304,7 @@ export default function AccessDeniedScreen() {
               <MaterialCommunityIcons
                 name="lock-outline"
                 size={56}
-                color="#6366f1"
+                color="#3534C9"
               />
             </View>
           </View>
@@ -396,7 +396,7 @@ export default function AccessDeniedScreen() {
                 onChangeText={setUploadNotes}
                 style={styles.notesInput}
                 outlineColor="#e0e7ff"
-                activeOutlineColor="#6366f1"
+                activeOutlineColor="#3534C9"
               />
               <Button
                 mode="contained"
@@ -404,7 +404,7 @@ export default function AccessDeniedScreen() {
                 loading={uploading || feedback.isPending('uploadProof')}
                 disabled={uploading || feedback.isPending('uploadProof')}
                 style={styles.uploadButton}
-                buttonColor="#6366f1"
+                buttonColor="#3534C9"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
                 icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
@@ -479,7 +479,7 @@ export default function AccessDeniedScreen() {
                   loading={subscribing || feedback.isPending('subscribe')}
                   disabled={subscribing || feedback.isPending('subscribe') || iapPurchasing || feedback.isPending('iapSubscribe')}
                   style={styles.primaryButton}
-                  buttonColor="#6366f1"
+                  buttonColor="#3534C9"
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
                   icon={(subscribing || feedback.isPending('subscribe')) ? undefined : () => <MaterialCommunityIcons name="gift-outline" size={22} color="#fff" />}
@@ -499,7 +499,7 @@ export default function AccessDeniedScreen() {
               style={styles.secondaryButton}
               contentStyle={styles.buttonContent}
               labelStyle={styles.secondaryButtonLabel}
-              icon={() => <MaterialCommunityIcons name="book-open-variant" size={20} color="#6366f1" />}
+              icon={() => <MaterialCommunityIcons name="book-open-variant" size={20} color="#3534C9" />}
             >
               {t('access.browseCourses')}
             </Button>
@@ -509,7 +509,7 @@ export default function AccessDeniedScreen() {
               style={styles.tertiaryButton}
               contentStyle={styles.buttonContent}
               labelStyle={styles.tertiaryButtonLabel}
-              icon={() => <MaterialCommunityIcons name="refresh" size={20} color="#6366f1" />}
+              icon={() => <MaterialCommunityIcons name="refresh" size={20} color="#3534C9" />}
             >
               {t('access.verifyAgain')}
             </Button>
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     opacity: 0.05,
     top: -100,
     right: -100,
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#3C3BD4',
     opacity: 0.05,
     bottom: -80,
     left: -80,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     maxWidth: 420,
     borderRadius: 24,
     backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iapLink: {
-    color: '#6366f1',
+    color: '#3534C9',
     textDecorationLine: 'underline',
     fontWeight: '600',
   },
@@ -694,14 +694,14 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: 12,
     elevation: 3,
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
   secondaryButton: {
     borderRadius: 12,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
     borderWidth: 1.5,
     marginTop: 12,
   },
@@ -717,7 +717,7 @@ const styles = StyleSheet.create({
   secondaryButtonLabel: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   tertiaryButton: {
     marginTop: 8,
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   tertiaryButtonLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   expiredBlock: {
     width: '100%',

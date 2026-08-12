@@ -159,7 +159,7 @@ export default function CourseLessonsScreen() {
                   </View>
                   <ProgressBar
                     progress={progress / 100}
-                    color="#6366f1"
+                    color="#3534C9"
                     style={styles.progressBar}
                   />
                 </View>
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   progressButton: {
     marginTop: 12,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
   },
   progressHeader: {
     flexDirection: 'row',
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   progressPercentage: {
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   progressBar: {
     height: 8,
@@ -377,7 +377,7 @@ const styles = StyleSheet.create({
   },
   lessonCardCompleted: {
     borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+    borderLeftColor: '#4DB83D',
   },
   lessonCardLocked: {
     opacity: 0.6,
@@ -402,14 +402,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   lessonNumberCompleted: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#4DB83D',
   },
   lessonNumberLocked: {
     backgroundColor: '#f3f4f6',
   },
   lessonNumber: {
     fontWeight: 'bold',
-    color: '#6366f1',
+    color: '#3534C9',
     fontSize: 16,
   },
   lessonInfo: {
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
   },
   completedChipText: {
     fontSize: 11,
-    color: '#10b981',
+    color: '#4DB83D',
   },
   centered: {
     flex: 1,

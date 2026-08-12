@@ -340,17 +340,17 @@ export default function EducationScreen() {
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <MaterialCommunityIcons name="book-open" size={24} color="#6366f1" />
+                <MaterialCommunityIcons name="book-open" size={24} color="#3534C9" />
                 <Text variant="headlineSmall" style={styles.statValue}>{totalCourses}</Text>
                 <Text variant="bodySmall" style={styles.statLabel}>{t('education.statCourses')}</Text>
               </View>
               <View style={styles.statCard}>
-                <MaterialCommunityIcons name="play-circle" size={24} color="#10b981" />
+                <MaterialCommunityIcons name="play-circle" size={24} color="#4DB83D" />
                 <Text variant="headlineSmall" style={styles.statValue}>{completedLessons}</Text>
                 <Text variant="bodySmall" style={styles.statLabel}>{t('education.statCompleted')}</Text>
               </View>
               <View style={styles.statCard}>
-                <MaterialCommunityIcons name="certificate" size={24} color="#8b5cf6" />
+                <MaterialCommunityIcons name="certificate" size={24} color="#3C3BD4" />
                 <Text variant="headlineSmall" style={styles.statValue}>
                   {activeEnrollments.filter(e => e.progress && e.progress.percentage === 100).length}
                 </Text>
@@ -432,7 +432,7 @@ export default function EducationScreen() {
                           <MaterialCommunityIcons 
                             name={isCompleted ? "trophy" : "book-open"} 
                             size={28} 
-                            color={isCompleted ? "#f59e0b" : "#6366f1"} 
+                            color={isCompleted ? "#f59e0b" : "#3534C9"} 
                           />
                         </View>
                         <View style={styles.courseInfo}>
@@ -479,7 +479,7 @@ export default function EducationScreen() {
                           </View>
                           <ProgressBar
                             progress={progress.percentage / 100}
-                            color={isCompleted ? "#10b981" : "#6366f1"}
+                            color={isCompleted ? "#4DB83D" : "#3534C9"}
                             style={styles.courseProgressBar}
                           />
                         </View>
@@ -512,7 +512,7 @@ export default function EducationScreen() {
                           <IconButton
                             icon="share-variant"
                             size={20}
-                            iconColor="#6366f1"
+                            iconColor="#3534C9"
                             onPress={() => handleShareCourse(enrollment.course.id, enrollment.course.title)}
                             style={styles.shareButton}
                           />
@@ -729,7 +729,7 @@ export default function EducationScreen() {
                           <MaterialCommunityIcons
                             name={lesson.progress?.completed ? "check-circle" : "play-circle"}
                             size={24}
-                            color={lesson.progress?.completed ? "#10b981" : "#6366f1"}
+                            color={lesson.progress?.completed ? "#4DB83D" : "#3534C9"}
                           />
                         </View>
                         <View style={styles.lessonInfo}>
@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
   },
   courseCardCompleted: {
     borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
+    borderLeftColor: '#4DB83D',
   },
   courseHeader: {
     flexDirection: 'row',
@@ -948,7 +948,7 @@ const styles = StyleSheet.create({
   },
   statusChipText: {
     fontSize: 11,
-    color: '#6366f1',
+    color: '#3534C9',
   },
   activatedDate: {
     color: '#999',
@@ -970,7 +970,7 @@ const styles = StyleSheet.create({
   },
   courseProgressPercentage: {
     fontWeight: '600',
-    color: '#6366f1',
+    color: '#3534C9',
   },
   courseProgressBar: {
     height: 8,
@@ -1049,7 +1049,7 @@ const styles = StyleSheet.create({
   },
   completedChipText: {
     fontSize: 11,
-    color: '#10b981',
+    color: '#4DB83D',
   },
   loadingContainer: {
     flex: 1,

@@ -16,7 +16,7 @@ const SECTIONS = [
   {
     id: '1',
     icon: 'cog' as const,
-    color: '#6366f1',
+    color: '#3534C9',
     titleKey: 'budgetSection1Title',
     subtitleKey: 'budgetSection1Subtitle',
     points: [
@@ -30,7 +30,7 @@ const SECTIONS = [
   {
     id: '2',
     icon: 'briefcase-check' as const,
-    color: '#10b981',
+    color: '#4DB83D',
     titleKey: 'budgetSection2Title',
     subtitleKey: 'budgetSection2Subtitle',
     points: [
@@ -74,7 +74,7 @@ const SECTIONS = [
   {
     id: '5',
     icon: 'account-tie' as const,
-    color: '#8b5cf6',
+    color: '#3C3BD4',
     titleKey: 'budgetSection5Title',
     subtitleKey: 'budgetSection5Subtitle',
     points: [
@@ -86,7 +86,7 @@ const SECTIONS = [
   {
     id: '6',
     icon: 'trending-up' as const,
-    color: '#06b6d4',
+    color: '#5B5AD6',
     titleKey: 'budgetSection6Title',
     subtitleKey: 'budgetSection6Subtitle',
     points: [
@@ -129,7 +129,7 @@ export default function OrcamentoPrincipiosScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.heroIconWrap}>
-            <MaterialCommunityIcons name="wallet-outline" size={40} color="#6366f1" />
+            <MaterialCommunityIcons name="wallet-outline" size={40} color="#3534C9" />
           </View>
           <Text variant="headlineMedium" style={styles.heroTitle}>
             {t('personal.budgetWithdrawTitle')}
@@ -203,7 +203,7 @@ export default function OrcamentoPrincipiosScreen() {
         <Card style={[styles.card, styles.actionCard]}>
           <Card.Content>
             <View style={styles.actionHeader}>
-              <MaterialCommunityIcons name="calculator" size={32} color="#6366f1" />
+              <MaterialCommunityIcons name="calculator" size={32} color="#3534C9" />
               <View style={styles.actionText}>
                 <Text variant="titleLarge" style={styles.actionTitle}>
                   {t('personal.budgetPrinciplesUsePractice')}
@@ -218,7 +218,7 @@ export default function OrcamentoPrincipiosScreen() {
               icon="arrow-right"
               onPress={() => navigation.navigate('TirarDinheiroOrcamento')}
               style={styles.actionButton}
-              buttonColor="#6366f1"
+              buttonColor="#3534C9"
             >
               {t('personal.budgetPrinciplesOpenTool')}
             </Button>
@@ -373,13 +373,13 @@ const styles = StyleSheet.create({
   actionsCard: {
     marginTop: 8,
     borderWidth: 2,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
     backgroundColor: '#f8fafc',
   },
   actionCard: {
     marginTop: 16,
     borderWidth: 2,
-    borderColor: '#6366f1',
+    borderColor: '#3534C9',
     backgroundColor: '#eef2ff',
   },
   actionHeader: {

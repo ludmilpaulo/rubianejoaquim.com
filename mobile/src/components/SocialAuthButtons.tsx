@@ -302,7 +302,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
   if (!config && !googleOn && !appleOn) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="small" color="#6366f1" />
+        <ActivityIndicator size="small" color="#3534C9" />
         <Text style={styles.loadingText}>{t('auth.social.loadingOptions')}</Text>
       </View>
     )

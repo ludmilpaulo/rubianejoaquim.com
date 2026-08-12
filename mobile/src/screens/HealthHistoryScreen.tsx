@@ -37,7 +37,7 @@ export default function HealthHistoryScreen() {
                 height={200}
                 chartConfig={{
                   backgroundColor: colors.background.paper,
-                  backgroundGradientFrom: '#EEF2FF',
+                  backgroundGradientFrom: '#E8E8FA',
                   backgroundGradientTo: colors.background.paper,
                   color: () => colors.brand.primary,
                   labelColor: () => colors.text.secondary,

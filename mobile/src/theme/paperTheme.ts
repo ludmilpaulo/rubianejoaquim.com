@@ -1,5 +1,6 @@
 import { MD3LightTheme, MD3DarkTheme, configureFonts } from 'react-native-paper'
 import { colors } from './index'
+import { brandPalette } from './colors'
 
 const fontConfig = configureFonts({ config: { fontFamily: 'System' } })
 
@@ -9,15 +10,16 @@ export const zendaLightTheme = {
   colors: {
     ...MD3LightTheme.colors,
     primary: colors.brand.primary,
-    primaryContainer: '#EEF2FF',
+    primaryContainer: brandPalette.primaryContainer,
     secondary: colors.brand.secondary,
-    secondaryContainer: '#D1FAE5',
+    secondaryContainer: brandPalette.growthContainer,
     tertiary: colors.brand.ai,
     background: colors.background.default,
     surface: colors.background.paper,
-    surfaceVariant: '#F8FAFC',
+    surfaceVariant: brandPalette.background,
     error: colors.brand.danger,
     onPrimary: '#FFFFFF',
+    onSecondary: '#FFFFFF',
     onSurface: colors.text.primary,
     onSurfaceVariant: colors.text.secondary,
     outline: colors.border.light,
@@ -30,12 +32,20 @@ export const zendaDarkTheme = {
   fonts: fontConfig,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: colors.brand.primaryLight,
-    primaryContainer: '#312E81',
-    secondary: colors.brand.secondary,
-    background: colors.background.dark,
-    surface: '#1E293B',
-    onSurface: colors.text.inverse,
+    primary: colors.dark.primary,
+    primaryContainer: colors.dark.primaryContainer,
+    secondary: colors.dark.secondary,
+    secondaryContainer: '#1A3D1A',
+    tertiary: brandPalette.primaryMuted,
+    background: colors.dark.background,
+    surface: colors.dark.surface,
+    surfaceVariant: colors.dark.elevated,
+    error: colors.brand.danger,
+    onPrimary: '#FFFFFF',
+    onSecondary: colors.dark.background,
+    onSurface: colors.dark.text,
+    onSurfaceVariant: colors.dark.textSecondary,
+    outline: colors.dark.border,
   },
   roundness: 16,
 }

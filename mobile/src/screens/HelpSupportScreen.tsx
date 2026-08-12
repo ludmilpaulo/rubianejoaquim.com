@@ -35,7 +35,7 @@ export default function HelpSupportScreen() {
         <Card style={styles.card}>
           <Card.Content>
             <View style={styles.quickHelpHeader}>
-              <MaterialCommunityIcons name="help-circle" size={32} color="#6366f1" />
+              <MaterialCommunityIcons name="help-circle" size={32} color="#3534C9" />
               <Text variant="titleLarge" style={styles.sectionTitle}>{t('help.quickTitle')}</Text>
             </View>
             <Text variant="bodyMedium" style={styles.description}>
@@ -53,7 +53,7 @@ export default function HelpSupportScreen() {
                   title={faq.question}
                   expanded={expandedFAQ === String(index)}
                   onPress={() => setExpandedFAQ(expandedFAQ === String(index) ? null : String(index))}
-                  left={(props) => <List.Icon {...props} icon="help-circle" color="#6366f1" />}
+                  left={(props) => <List.Icon {...props} icon="help-circle" color="#3534C9" />}
                   style={styles.faqItem}
                 >
                   <List.Item
@@ -95,7 +95,7 @@ export default function HelpSupportScreen() {
               icon="email"
               onPress={handleSendMessage}
               style={styles.sendButton}
-              buttonColor="#6366f1"
+              buttonColor="#3534C9"
             >
               {t('help.sendEmail')}
             </Button>

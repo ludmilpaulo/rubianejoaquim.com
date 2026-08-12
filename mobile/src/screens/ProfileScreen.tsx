@@ -342,7 +342,7 @@ export default function ProfileScreen() {
             <Card.Content style={styles.subscriptionContent}>
               <View style={styles.subscriptionHeader}>
                 <View style={styles.subscriptionTitleRow}>
-                  <MaterialCommunityIcons name="shield-check" size={28} color="#6366f1" />
+                  <MaterialCommunityIcons name="shield-check" size={28} color="#3534C9" />
                   <Text variant="titleLarge" style={styles.subscriptionTitle}>
                     {t('profile.mySubscription')}
                   </Text>
@@ -375,7 +375,7 @@ export default function ProfileScreen() {
 
               {subscription?.status === 'trial' && subscription.days_until_expiry != null && subscription.days_until_expiry <= 3 && (
                 <View style={styles.reminderBanner}>
-                  <MaterialCommunityIcons name="information" size={20} color="#6366f1" />
+                  <MaterialCommunityIcons name="information" size={20} color="#3534C9" />
                   <Text variant="bodySmall" style={styles.reminderBannerText}>
                     {t('profile.trialEndingBanner')}
                   </Text>
@@ -385,7 +385,7 @@ export default function ProfileScreen() {
               {subscription?.status === 'trial' && (
                 <>
                   <View style={styles.subscriptionStatusRow}>
-                    <MaterialCommunityIcons name="calendar-clock" size={20} color="#6366f1" />
+                    <MaterialCommunityIcons name="calendar-clock" size={20} color="#3534C9" />
                     <Text variant="bodyLarge" style={styles.subscriptionStatusText}>
                       {subscription.days_until_expiry != null
                         ? subscription.days_until_expiry === 1
@@ -402,7 +402,7 @@ export default function ProfileScreen() {
 
               {subscription?.status === 'active' && subscription.subscription_ends_at && (
                 <View style={styles.subscriptionStatusRow}>
-                  <MaterialCommunityIcons name="check-circle" size={20} color="#10b981" />
+                  <MaterialCommunityIcons name="check-circle" size={20} color="#4DB83D" />
                   <Text variant="bodyLarge" style={styles.subscriptionStatusText}>
                     {tw('profile.activeSubscriptionUntil', {
                       date: new Date(subscription.subscription_ends_at).toLocaleDateString(dateLoc, {
@@ -461,14 +461,14 @@ export default function ProfileScreen() {
                     onChangeText={setUploadNotes}
                     style={styles.notesInput}
                     outlineColor="#e0e7ff"
-                    activeOutlineColor="#6366f1"
+                    activeOutlineColor="#3534C9"
                   />
                   <Button
                     mode="contained"
                     onPress={handlePickAndUploadProof}
                     {...buttonProps('upload')}
                     style={styles.uploadButton}
-                    buttonColor="#6366f1"
+                    buttonColor="#3534C9"
                     contentStyle={styles.uploadButtonContent}
                     labelStyle={styles.uploadButtonLabel}
                     icon={() => <MaterialCommunityIcons name="upload" size={22} color="#fff" />}
@@ -506,7 +506,7 @@ export default function ProfileScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIconContainer, { backgroundColor: '#eef2ff' }]}>
-                    <MaterialCommunityIcons name="share-variant" size={24} color="#6366f1" />
+                    <MaterialCommunityIcons name="share-variant" size={24} color="#3534C9" />
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
@@ -528,7 +528,7 @@ export default function ProfileScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIconContainer, { backgroundColor: '#f0f4ff' }]}>
-                    <MaterialCommunityIcons name="cog" size={24} color="#6366f1" />
+                    <MaterialCommunityIcons name="cog" size={24} color="#3534C9" />
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
@@ -550,7 +550,7 @@ export default function ProfileScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIconContainer, { backgroundColor: '#ecfdf5' }]}>
-                    <MaterialCommunityIcons name="information" size={24} color="#10b981" />
+                    <MaterialCommunityIcons name="information" size={24} color="#4DB83D" />
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     elevation: 4,
     backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#6366f1',
+    backgroundColor: '#3534C9',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     elevation: 4,
     backgroundColor: '#ffffff',
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -804,7 +804,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   badgeTextTrial: {
-    color: '#4338ca',
+    color: '#1E2070',
   },
   badgeTextActive: {
     color: '#047857',
@@ -821,11 +821,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: '#3534C9',
   },
   reminderBannerText: {
     flex: 1,
-    color: '#4338ca',
+    color: '#1E2070',
     fontWeight: '500',
   },
   subscriptionStatusRow: {
@@ -897,7 +897,7 @@ const styles = StyleSheet.create({
   uploadButton: {
     borderRadius: 12,
     elevation: 2,
-    shadowColor: '#6366f1',
+    shadowColor: '#3534C9',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
