@@ -38,7 +38,7 @@
           }
         ]
       },
-      "buildNumber": "34"
+      "buildNumber": "35"
     },
     "android": {
       "adaptiveIcon": {
@@ -48,7 +48,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 32,
+      "versionCode": 33,
       "intentFilters": [
         {
           "action": "VIEW",
