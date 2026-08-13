@@ -727,33 +727,36 @@ class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ExchangeRate.objects.all()
     serializer_class = ExchangeRateSerializer
     permission_classes = [AllowAny]
+    pagination_class = None
 
     def list(self, request, *args, **kwargs):
-        """Optionally refresh live rates when ?refresh=1. Always expose source/stale."""
+        """Optionally refresh live rates when ?refresh=1. Always expose source/stale/freshness."""
         from finance.fx import get_fx_meta, refresh_exchange_rates
 
-        if request.query_params.get('refresh') in ('1', 'true', 'True'):
-            refresh_exchange_rates(force=True)
-        else:
-            refresh_exchange_rates(force=False)
-
-        response = super().list(request, *args, **kwargs)
-        meta = get_fx_meta()
-        if isinstance(response.data, list):
-            return Response({'results': response.data, **meta})
-        if isinstance(response.data, dict):
-            response.data.update(meta)
-        return response
+        force = request.query_params.get('refresh') in ('1', 'true', 'True')
+        result = refresh_exchange_rates(force=force)
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        meta = get_fx_meta(
+            just_refreshed=bool(result.get('refreshed')),
+            fetch_failed=bool(result.get('error')),
+            refresh_error=result.get('error'),
+        )
+        return Response({'results': serializer.data, 'count': len(serializer.data), **meta})
 
     @action(detail=False, methods=['get'])
     def supported(self, request):
         from accounts.currency_defaults import SUPPORTED_CURRENCIES
         from finance.fx import get_fx_meta, refresh_exchange_rates
 
-        refresh_exchange_rates(force=False)
+        result = refresh_exchange_rates(force=False)
         return Response({
             'currencies': sorted(SUPPORTED_CURRENCIES),
-            **get_fx_meta(),
+            **get_fx_meta(
+                just_refreshed=bool(result.get('refreshed')),
+                fetch_failed=bool(result.get('error')),
+                refresh_error=result.get('error'),
+            ),
         })
 
     @action(detail=False, methods=['get'])
@@ -765,10 +768,8 @@ class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
         """
         from finance.fx import convert_amount, get_fx_meta, refresh_exchange_rates
 
-        if request.query_params.get('refresh') in ('1', 'true', 'True'):
-            refresh_exchange_rates(force=True)
-        else:
-            refresh_exchange_rates(force=False)
+        force = request.query_params.get('refresh') in ('1', 'true', 'True')
+        refresh_result = refresh_exchange_rates(force=force)
 
         try:
             amount = Decimal(request.query_params.get('amount', '0'))
@@ -779,8 +780,14 @@ class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
         to_cur = request.query_params.get('to', 'AOA').upper()
 
         fx = convert_amount(amount, from_cur, to_cur)
+        fetch_failed = bool(refresh_result.get('error'))
+        refresh_error = refresh_result.get('error')
         if not fx:
-            meta = get_fx_meta(stale_override=True)
+            meta = get_fx_meta(
+                stale_override=True,
+                fetch_failed=fetch_failed,
+                refresh_error=refresh_error,
+            )
             return Response(
                 {
                     'error': 'Rate not found',
@@ -791,19 +798,31 @@ class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        return Response({
+        payload = {
             'original_amount': str(Decimal(str(amount)).quantize(Decimal('0.01'))),
+            'original_currency': from_cur,
+            'converted_amount': str(fx['converted_amount']),
+            'converted_currency': to_cur,
             'amount': str(fx['converted_amount']),
             'converted': str(fx['converted_amount']),
             'from': from_cur,
             'to': to_cur,
             'rate': str(fx['exchange_rate']),
+            'exchange_rate': str(fx['exchange_rate']),
+            'rate_timestamp': fx.get('provider_updated_at') or fx.get('updated_at'),
             'rate_line': f"1 {from_cur} = {fx['exchange_rate']} {to_cur}",
             'updated_at': fx.get('updated_at'),
             'provider_updated_at': fx.get('provider_updated_at'),
+            'fetched_at': fx.get('fetched_at'),
+            'last_successful_update': fx.get('fetched_at'),
             'source': fx.get('source'),
-            'stale': bool(fx.get('stale')),
-        })
+            'stale': bool(fx.get('stale')) or fetch_failed,
+            'freshness': 'stale' if fetch_failed else fx.get('freshness'),
+            'market_closed': bool(fx.get('market_closed')),
+        }
+        if refresh_error:
+            payload['refresh_error'] = refresh_error
+        return Response(payload)
 
 
 class UserFavoriteCurrencyViewSet(viewsets.ModelViewSet):

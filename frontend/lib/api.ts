@@ -417,3 +417,71 @@ export const adminApi = {
     },
   },
 }
+
+export type FxFreshness = 'live' | 'cached' | 'stale' | 'unavailable'
+
+export interface FxRateRow {
+  id?: number
+  base_currency: string
+  target_currency: string
+  rate: string | number
+  source?: string
+  provider_updated_at?: string | null
+  updated_at?: string
+}
+
+export interface FxListResponse {
+  results: FxRateRow[]
+  count: number
+  base?: string
+  source?: string
+  updated_at?: string | null
+  provider_updated_at?: string | null
+  fetched_at?: string | null
+  last_successful_update?: string | null
+  freshness?: FxFreshness
+  stale?: boolean
+  market_closed?: boolean
+  refresh_error?: string
+}
+
+export interface FxConvertResponse {
+  original_amount: string
+  original_currency: string
+  converted_amount: string
+  converted_currency: string
+  amount: string
+  converted: string
+  from: string
+  to: string
+  rate: string
+  exchange_rate: string
+  rate_timestamp?: string | null
+  rate_line?: string
+  updated_at?: string | null
+  provider_updated_at?: string | null
+  fetched_at?: string | null
+  last_successful_update?: string | null
+  source?: string
+  stale?: boolean
+  freshness?: FxFreshness
+  market_closed?: boolean
+  refresh_error?: string
+  error?: string
+}
+
+/** Public FX endpoints — rates are cached on the Django backend; no provider keys on the client. */
+export const financeApi = {
+  getExchangeRates: async (refresh = false) => {
+    const { data } = await api.get<FxListResponse>('/finance/exchange-rates/', {
+      params: refresh ? { refresh: '1' } : undefined,
+    })
+    return data
+  },
+  convertCurrency: async (amount: number, from: string, to: string, refresh = false) => {
+    const { data } = await api.get<FxConvertResponse>('/finance/exchange-rates/convert/', {
+      params: { amount, from, to, ...(refresh ? { refresh: '1' } : {}) },
+    })
+    return data
+  },
+}

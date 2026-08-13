@@ -5,7 +5,7 @@ from finance.fx import refresh_exchange_rates
 
 
 class Command(BaseCommand):
-    help = 'Refresh exchange rates from live FX providers (Frankfurter / open.er-api)'
+    help = 'Refresh exchange rates from live FX providers (open.er-api / exchangerate-api / Frankfurter)'
 
     def add_arguments(self, parser):
         parser.add_argument(

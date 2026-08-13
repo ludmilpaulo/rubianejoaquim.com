@@ -35,8 +35,11 @@ from finance.models import ExchangeRate
 
 logger = logging.getLogger(__name__)
 
-# How long cached rates are considered "fresh" before a refresh is preferred.
-FX_CACHE_TTL = timedelta(hours=int(getattr(settings, 'FX_CACHE_TTL_HOURS', 6) or 6))
+# Soft-refresh interval: skip outbound provider calls while our last live fetch is this young.
+FX_CACHE_TTL = timedelta(hours=int(getattr(settings, 'FX_CACHE_TTL_HOURS', 1) or 1))
+# After this, cached live quotes are marked stale (not "current") even if we have rows.
+FX_STALE_AFTER = timedelta(hours=int(getattr(settings, 'FX_STALE_AFTER_HOURS', 24) or 24))
+LIVE_WINDOW = timedelta(minutes=15)
 
 CACHE_SOURCE_KEY = 'zenda_fx_source'
 CACHE_PROVIDER_TS_KEY = 'zenda_fx_provider_updated_at'
@@ -118,10 +121,27 @@ def fetch_usd_rates_frankfurter() -> tuple[dict[str, Decimal], str, datetime | N
     return rates, 'frankfurter.app (ECB)', provider_ts
 
 
+def fetch_usd_rates_exchangerate_api_v4() -> tuple[dict[str, Decimal], str, datetime | None]:
+    """Same publisher as open.er-api; alternate host if the open endpoint is blocked."""
+    url = 'https://api.exchangerate-api.com/v4/latest/USD'
+    data = _http_get_json(url)
+    rates_raw = data.get('rates') or {}
+    if not rates_raw:
+        raise ValueError('exchangerate-api v4 returned no rates')
+    rates = {
+        code: Decimal(str(val))
+        for code, val in rates_raw.items()
+        if code in SUPPORTED_CURRENCIES
+    }
+    rates['USD'] = Decimal('1')
+    provider_ts = _parse_provider_timestamp(data.get('time_last_updated') or data.get('date'))
+    return rates, 'exchangerate-api.com', provider_ts
+
+
 def fetch_live_usd_rates() -> tuple[dict[str, Decimal], str, datetime | None]:
     errors: list[str] = []
-    # Prefer open.er-api for broader coverage (AOA/MZN/ZAR); Frankfurter (ECB) as fallback.
-    for fetcher in (fetch_usd_rates_open_er, fetch_usd_rates_frankfurter):
+    # Prefer broad-coverage USD feeds (AOA/ZAR/MZN); ECB Frankfurter last (often omits AOA).
+    for fetcher in (fetch_usd_rates_open_er, fetch_usd_rates_exchangerate_api_v4, fetch_usd_rates_frankfurter):
         try:
             return fetcher()
         except (URLError, HTTPError, TimeoutError, ValueError, KeyError, json.JSONDecodeError, OSError) as exc:
@@ -181,45 +201,84 @@ def _latest_row() -> ExchangeRate | None:
     return ExchangeRate.objects.order_by('-updated_at').first()
 
 
+def _last_live_row() -> ExchangeRate | None:
+    return (
+        ExchangeRate.objects.exclude(source='')
+        .exclude(source__iexact='seed')
+        .order_by('-updated_at')
+        .first()
+    )
+
+
 def _provider_ts_from_row(row: ExchangeRate | None) -> datetime | None:
     if not row:
         return None
     return row.provider_updated_at or row.updated_at
 
 
-def is_rate_stale(as_of: datetime | None = None) -> bool:
-    """True when cache age exceeds TTL or rates are seed-only / missing."""
-    latest = _latest_row()
-    if not latest:
-        return True
-    # Seed-only rows are never "live market"
-    if (latest.source or '').lower() in ('seed', ''):
-        # If any live-sourced row exists, use that for freshness
-        live = (
-            ExchangeRate.objects.exclude(source='')
-            .exclude(source__iexact='seed')
-            .order_by('-updated_at')
-            .first()
-        )
-        if not live:
-            return True
-        latest = live
-    ts = _provider_ts_from_row(latest) or latest.updated_at
-    if not ts:
-        return True
+def _aware(ts: datetime | None) -> datetime | None:
+    if ts is None:
+        return None
+    if timezone.is_naive(ts):
+        return timezone.make_aware(ts, dt_timezone.utc)
+    return ts
+
+
+def classify_freshness(
+    *,
+    just_refreshed: bool = False,
+    fetch_failed: bool = False,
+    as_of: datetime | None = None,
+) -> str:
+    """
+    live — provider was contacted successfully just now, or last live write < 15 min
+    cached — last successful live write within STALE_AFTER
+    stale — seed-only, or last live write older than STALE_AFTER, or fetch failed with cache
+    unavailable — no rows at all
+    """
     now = as_of or timezone.now()
-    return (now - ts) > FX_CACHE_TTL
+    live = _last_live_row()
+    if not live:
+        return 'stale' if ExchangeRate.objects.exists() else 'unavailable'
+    if fetch_failed:
+        return 'stale'
+    if just_refreshed:
+        return 'live'
+    fetched = _aware(live.updated_at)
+    if not fetched:
+        return 'stale'
+    age = now - fetched
+    if age <= LIVE_WINDOW:
+        return 'live'
+    if age <= FX_STALE_AFTER:
+        return 'cached'
+    return 'stale'
 
 
-def get_fx_meta(*, stale_override: bool | None = None) -> dict[str, Any]:
-    """Metadata for clients: source, timestamps, stale flag."""
+def is_rate_stale(as_of: datetime | None = None) -> bool:
+    """True when we cannot present a current market cache (seed / missing / too old)."""
+    return classify_freshness(as_of=as_of) in ('stale', 'unavailable')
+
+
+def _market_closed(provider_ts: datetime | None, as_of: datetime | None = None) -> bool:
+    """True when the provider quote calendar date is before today (weekends/holidays)."""
+    ts = _aware(provider_ts)
+    if not ts:
+        return False
+    now = as_of or timezone.now()
+    return ts.date() < now.date()
+
+
+def get_fx_meta(
+    *,
+    stale_override: bool | None = None,
+    just_refreshed: bool = False,
+    fetch_failed: bool = False,
+    refresh_error: str | None = None,
+) -> dict[str, Any]:
+    """Metadata for clients: source, timestamps, freshness."""
     latest = _latest_row()
-    live = (
-        ExchangeRate.objects.exclude(source='')
-        .exclude(source__iexact='seed')
-        .order_by('-updated_at')
-        .first()
-    )
+    live = _last_live_row()
     sample = live or latest
     source = (
         (sample.source if sample and sample.source else None)
@@ -227,38 +286,55 @@ def get_fx_meta(*, stale_override: bool | None = None) -> dict[str, Any]:
         or ('seed' if latest else 'unavailable')
     )
     provider_ts = _provider_ts_from_row(sample)
-    stale = is_rate_stale() if stale_override is None else stale_override
-    return {
+    fetched_at = _aware(live.updated_at) if live else None
+    freshness = classify_freshness(
+        just_refreshed=just_refreshed,
+        fetch_failed=fetch_failed,
+    )
+    if stale_override is True:
+        freshness = 'stale' if sample else 'unavailable'
+    elif stale_override is False and freshness in ('stale', 'unavailable'):
+        freshness = 'cached' if sample else 'unavailable'
+    stale = freshness in ('stale', 'unavailable')
+    meta: dict[str, Any] = {
         'base': 'USD',
         'source': source,
-        'updated_at': provider_ts.isoformat() if provider_ts else (
+        'updated_at': (fetched_at or provider_ts).isoformat() if (fetched_at or provider_ts) else (
             latest.updated_at.isoformat() if latest and latest.updated_at else None
         ),
         'provider_updated_at': provider_ts.isoformat() if provider_ts else None,
+        'fetched_at': fetched_at.isoformat() if fetched_at else None,
         'cached_at': latest.updated_at.isoformat() if latest and latest.updated_at else None,
+        'freshness': freshness,
         'stale': stale,
+        'market_closed': _market_closed(provider_ts),
+        'last_successful_update': fetched_at.isoformat() if fetched_at else None,
         'ttl_hours': int(FX_CACHE_TTL.total_seconds() // 3600),
+        'stale_after_hours': int(FX_STALE_AFTER.total_seconds() // 3600),
     }
+    if refresh_error:
+        meta['refresh_error'] = refresh_error
+    return meta
 
 
 def refresh_exchange_rates(*, force: bool = False) -> dict[str, Any]:
     """
     Refresh ExchangeRate table from live market providers.
-    If not force and rates are fresh, skip network and return cached metadata.
+    If not force and last live fetch is within TTL, skip network and return cached metadata.
+    Stale uses our last successful live write — not the provider's quote clock
+    (daily APIs often have provider_updated_at many hours old while still being the current quote).
     On failure: keep last valid cache and return stale=True.
     """
-    latest = _latest_row()
-    if (
-        not force
-        and latest
-        and not is_rate_stale()
-    ):
-        meta = get_fx_meta(stale_override=False)
-        return {
-            'refreshed': False,
-            'count': ExchangeRate.objects.filter(base_currency='USD').count(),
-            **meta,
-        }
+    live = _last_live_row()
+    if not force and live and classify_freshness() in ('live', 'cached'):
+        fetched = _aware(live.updated_at)
+        if fetched and (timezone.now() - fetched) <= FX_CACHE_TTL:
+            meta = get_fx_meta(just_refreshed=False)
+            return {
+                'refreshed': False,
+                'count': ExchangeRate.objects.filter(base_currency='USD').count(),
+                **meta,
+            }
 
     try:
         rates, source, provider_ts = fetch_live_usd_rates()
@@ -269,10 +345,10 @@ def refresh_exchange_rates(*, force: bool = False) -> dict[str, Any]:
         retained: set[str] = set()
         for code in SUPPORTED_CURRENCIES:
             if code not in rates and code in existing:
-                rates[code] = existing[code].rate
                 retained.add(code)
-        count = upsert_usd_rates(rates, source, provider_ts, retained_codes=retained)
-        meta = get_fx_meta(stale_override=False)
+        # Do not rewrite omitted codes — keeps previous source/timestamp intact.
+        count = upsert_usd_rates(rates, source, provider_ts)
+        meta = get_fx_meta(just_refreshed=True)
         return {
             'refreshed': True,
             'count': count,
@@ -281,7 +357,7 @@ def refresh_exchange_rates(*, force: bool = False) -> dict[str, Any]:
         }
     except Exception as exc:
         logger.error('FX refresh failed: %s', exc, exc_info=True)
-        meta = get_fx_meta(stale_override=True)
+        meta = get_fx_meta(fetch_failed=True, refresh_error=str(exc))
         return {
             'refreshed': False,
             'count': ExchangeRate.objects.filter(base_currency='USD').count(),
@@ -348,6 +424,15 @@ def convert_amount(
     from_cur = (from_cur or 'USD').upper()
     to_cur = (to_cur or 'USD').upper()
     meta = get_fx_meta()
+    extra = {
+        'updated_at': meta.get('updated_at'),
+        'provider_updated_at': meta.get('provider_updated_at'),
+        'fetched_at': meta.get('fetched_at'),
+        'source': meta.get('source'),
+        'stale': meta.get('stale', False),
+        'freshness': meta.get('freshness'),
+        'market_closed': meta.get('market_closed', False),
+    }
     if from_cur == to_cur:
         q = amt.quantize(Decimal('0.01'))
         return {
@@ -356,10 +441,7 @@ def convert_amount(
             'converted_amount': q,
             'display_currency': to_cur,
             'exchange_rate': Decimal('1'),
-            'updated_at': meta.get('updated_at'),
-            'provider_updated_at': meta.get('provider_updated_at'),
-            'source': meta.get('source'),
-            'stale': meta.get('stale', False),
+            **extra,
         }
     resolved = get_cross_rate(from_cur, to_cur)
     if not resolved:
@@ -378,14 +460,17 @@ def convert_amount(
         'converted_amount': converted,
         'display_currency': to_cur,
         'exchange_rate': rate.quantize(Decimal('0.00000001')),
-        'updated_at': sample_ts.isoformat() if sample_ts else meta.get('updated_at'),
+        'updated_at': sample_ts.isoformat() if sample_ts else extra.get('updated_at'),
         'provider_updated_at': (
             sample.provider_updated_at.isoformat()
             if sample and sample.provider_updated_at
-            else meta.get('provider_updated_at')
+            else extra.get('provider_updated_at')
         ),
+        'fetched_at': extra.get('fetched_at'),
         'source': sample_source,
-        'stale': meta.get('stale', False),
+        'stale': extra.get('stale', False),
+        'freshness': extra.get('freshness'),
+        'market_closed': extra.get('market_closed', False),
     }
 
 

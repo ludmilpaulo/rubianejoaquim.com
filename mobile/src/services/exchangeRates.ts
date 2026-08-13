@@ -1,6 +1,7 @@
 /**
- * Client-side FX helpers: fetch rates from API, cache briefly, convert safely.
- * Never invent rates — if the API fails, callers must show stale/unavailable UI.
+ * Client-side FX helpers: fetch rates from the Zenda backend, cache briefly, convert safely.
+ * Never invent rates — if the API fails, callers must show stale/unavailable/offline UI.
+ * Provider credentials stay on the Django backend; this module never talks to FX vendors.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { personalFinanceApi } from './api'
@@ -9,13 +10,16 @@ import { SUPPORTED_CURRENCIES } from '../utils/currency'
 import { logger } from '../utils/logger'
 
 const CACHE_KEY = 'ZENDA_FX_CACHE_V1'
-const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes client cache
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes — backend is the source of truth
+
+export type FxFreshness = 'live' | 'cached' | 'stale' | 'unavailable'
 
 export interface FxRateRow {
   base_currency: string
   target_currency: string
   rate: string | number
   updated_at?: string
+  provider_updated_at?: string | null
   source?: string
 }
 
@@ -25,6 +29,11 @@ export interface FxCachePayload {
   stale: boolean
   source?: string | null
   updatedAt?: string | null
+  fetchedAtIso?: string | null
+  freshness: FxFreshness
+  marketClosed: boolean
+  offline: boolean
+  refreshError?: string | null
 }
 
 export interface ConvertResult {
@@ -32,20 +41,49 @@ export interface ConvertResult {
   from: string
   to: string
   rate: number
+  originalAmount?: number
+  originalCurrency?: string
+  convertedCurrency?: string
   updatedAt?: string | null
+  fetchedAt?: string | null
   source?: string | null
   live: boolean
+  freshness: FxFreshness
+  marketClosed: boolean
+  offline: boolean
 }
 
 let memoryCache: FxCachePayload | null = null
+
+function emptyPayload(now = Date.now()): FxCachePayload {
+  return {
+    rates: [],
+    fetchedAt: now,
+    stale: true,
+    source: null,
+    updatedAt: null,
+    fetchedAtIso: null,
+    freshness: 'unavailable',
+    marketClosed: false,
+    offline: false,
+    refreshError: null,
+  }
+}
 
 async function readDiskCache(): Promise<FxCachePayload | null> {
   try {
     const raw = await AsyncStorage.getItem(CACHE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as FxCachePayload
+    const parsed = JSON.parse(raw) as Partial<FxCachePayload>
     if (!parsed?.rates || !Array.isArray(parsed.rates)) return null
-    return parsed
+    return {
+      ...emptyPayload(parsed.fetchedAt || 0),
+      ...parsed,
+      rates: parsed.rates,
+      freshness: parsed.freshness || (parsed.stale ? 'stale' : 'cached'),
+      marketClosed: parsed.marketClosed === true,
+      offline: parsed.offline === true,
+    }
   } catch {
     return null
   }
@@ -68,64 +106,114 @@ function normalizeList(data: unknown): FxRateRow[] {
   return []
 }
 
+function parseFreshness(raw: unknown, stale: boolean, empty: boolean): FxFreshness {
+  if (raw === 'live' || raw === 'cached' || raw === 'stale' || raw === 'unavailable') return raw
+  if (empty) return 'unavailable'
+  return stale ? 'stale' : 'cached'
+}
+
+function parseMeta(data: unknown, rates: FxRateRow[]): Pick<
+  FxCachePayload,
+  'source' | 'updatedAt' | 'fetchedAtIso' | 'stale' | 'freshness' | 'marketClosed' | 'refreshError'
+> {
+  let source: string | null = null
+  let updatedAt: string | null = getLatestUpdatedAt(rates)
+  let fetchedAtIso: string | null = null
+  let stale = rates.length === 0
+  let freshness: FxFreshness = rates.length === 0 ? 'unavailable' : 'cached'
+  let marketClosed = false
+  let refreshError: string | null = null
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const meta = data as {
+      source?: string
+      stale?: boolean
+      updated_at?: string
+      provider_updated_at?: string
+      fetched_at?: string
+      last_successful_update?: string
+      freshness?: string
+      market_closed?: boolean
+      refresh_error?: string
+    }
+    if (typeof meta.source === 'string') source = meta.source
+    if (typeof meta.fetched_at === 'string') fetchedAtIso = meta.fetched_at
+    else if (typeof meta.last_successful_update === 'string') fetchedAtIso = meta.last_successful_update
+    if (typeof meta.provider_updated_at === 'string') updatedAt = meta.provider_updated_at
+    else if (typeof meta.updated_at === 'string') updatedAt = meta.updated_at
+    if (meta.stale === true) stale = true
+    if ((source || '').toLowerCase() === 'seed') stale = true
+    freshness = parseFreshness(meta.freshness, stale, rates.length === 0)
+    if (meta.market_closed === true) marketClosed = true
+    if (typeof meta.refresh_error === 'string') refreshError = meta.refresh_error
+  }
+  return { source, updatedAt, fetchedAtIso, stale, freshness, marketClosed, refreshError }
+}
+
 export async function loadExchangeRates(options?: {
   forceRefresh?: boolean
 }): Promise<FxCachePayload> {
   const force = options?.forceRefresh === true
   const now = Date.now()
 
-  if (!force && memoryCache && now - memoryCache.fetchedAt < CACHE_TTL_MS && !memoryCache.stale) {
+  if (!force && memoryCache && now - memoryCache.fetchedAt < CACHE_TTL_MS && !memoryCache.stale && !memoryCache.offline) {
     return memoryCache
   }
 
   if (!force) {
     const disk = memoryCache || (await readDiskCache())
-    if (disk && now - disk.fetchedAt < CACHE_TTL_MS && !disk.stale) {
+    if (disk && now - disk.fetchedAt < CACHE_TTL_MS && !disk.stale && !disk.offline && disk.rates.length > 0) {
       memoryCache = disk
       return disk
     }
   }
 
   try {
-    const data = await personalFinanceApi.getExchangeRates(
-      force ? { refresh: true } : undefined,
-    )
+    const data = await personalFinanceApi.getExchangeRates(force ? { refresh: true } : undefined)
     const rates = normalizeList(data)
-    let source: string | null = null
-    let updatedAt: string | null = getLatestUpdatedAt(rates)
-    let stale = rates.length === 0
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const meta = data as {
-        source?: string
-        stale?: boolean
-        updated_at?: string
-        provider_updated_at?: string
+    const meta = parseMeta(data, rates)
+    if (rates.length === 0) {
+      const previous = memoryCache || (await readDiskCache())
+      if (previous && previous.rates.length > 0) {
+        const kept: FxCachePayload = {
+          ...previous,
+          stale: true,
+          freshness: 'stale',
+          offline: false,
+          refreshError: meta.refreshError || 'empty_rates',
+        }
+        memoryCache = kept
+        return kept
       }
-      if (typeof meta.source === 'string') source = meta.source
-      if (typeof meta.provider_updated_at === 'string') updatedAt = meta.provider_updated_at
-      else if (typeof meta.updated_at === 'string') updatedAt = meta.updated_at
-      if (meta.stale === true) stale = true
-      if ((source || '').toLowerCase() === 'seed') stale = true
     }
     const payload: FxCachePayload = {
       rates,
       fetchedAt: now,
-      stale,
-      source,
-      updatedAt,
+      stale: meta.stale || rates.length === 0,
+      source: meta.source,
+      updatedAt: meta.updatedAt,
+      fetchedAtIso: meta.fetchedAtIso,
+      freshness: meta.freshness,
+      marketClosed: meta.marketClosed,
+      offline: false,
+      refreshError: meta.refreshError,
     }
     memoryCache = payload
-    await writeDiskCache(payload)
+    if (rates.length > 0) await writeDiskCache(payload)
     return payload
   } catch (err) {
     logger.warn('exchangeRates: fetch failed, using cache if any', err)
     const disk = memoryCache || (await readDiskCache())
     if (disk && disk.rates.length > 0) {
-      const stale: FxCachePayload = { ...disk, stale: true }
+      const stale: FxCachePayload = {
+        ...disk,
+        stale: true,
+        freshness: 'stale',
+        offline: true,
+      }
       memoryCache = stale
       return stale
     }
-    const empty: FxCachePayload = { rates: [], fetchedAt: now, stale: true, source: null, updatedAt: null }
+    const empty = { ...emptyPayload(now), offline: true }
     memoryCache = empty
     return empty
   }
@@ -148,8 +236,9 @@ export function buildUsdRateMap(rates: FxRateRow[]): Record<string, number> {
 export function getLatestUpdatedAt(rates: FxRateRow[]): string | null {
   let latest: string | null = null
   for (const row of rates) {
-    if (!row.updated_at) continue
-    if (!latest || row.updated_at > latest) latest = row.updated_at
+    const stamp = row.provider_updated_at || row.updated_at
+    if (!stamp) continue
+    if (!latest || stamp > latest) latest = stamp
   }
   return latest
 }
@@ -172,8 +261,14 @@ export function convertLocally(
       from: fromCur,
       to: toCur,
       rate: 1,
+      originalAmount: amount,
+      originalCurrency: fromCur,
+      convertedCurrency: toCur,
       updatedAt: getLatestUpdatedAt(rates),
-      live: rates.length > 0,
+      live: false,
+      freshness: rates.length > 0 ? 'cached' : 'unavailable',
+      marketClosed: false,
+      offline: false,
     }
   }
   const map = buildUsdRateMap(rates)
@@ -188,8 +283,14 @@ export function convertLocally(
     from: fromCur,
     to: toCur,
     rate,
+    originalAmount: amount,
+    originalCurrency: fromCur,
+    convertedCurrency: toCur,
     updatedAt: getLatestUpdatedAt(rates),
-    live: true,
+    live: false,
+    freshness: 'cached',
+    marketClosed: false,
+    offline: false,
   }
 }
 
@@ -201,38 +302,95 @@ export async function convertAmount(
   const fromCur = from.toUpperCase()
   const toCur = to.toUpperCase()
   if (fromCur === toCur) {
-    return { amount, from: fromCur, to: toCur, rate: 1, live: true }
+    return {
+      amount,
+      from: fromCur,
+      to: toCur,
+      rate: 1,
+      originalAmount: amount,
+      originalCurrency: fromCur,
+      convertedCurrency: toCur,
+      live: true,
+      freshness: 'live',
+      marketClosed: false,
+      offline: false,
+    }
   }
 
   try {
     const res = await personalFinanceApi.convertCurrency(amount, fromCur, toCur)
-    const convertedRaw = res.converted ?? res.amount ?? res.result
+    const convertedRaw = res.converted_amount ?? res.converted ?? res.amount ?? res.result
     const converted = typeof convertedRaw === 'string' ? parseFloat(convertedRaw) : Number(convertedRaw)
-    const rateRaw = res.rate
+    const rateRaw = res.exchange_rate ?? res.rate
     const rate = typeof rateRaw === 'string' ? parseFloat(rateRaw) : Number(rateRaw)
     if (Number.isNaN(converted)) return null
+    const freshness = parseFreshness(res.freshness, res.stale === true, false)
     return {
       amount: converted,
       from: fromCur,
       to: toCur,
       rate: Number.isNaN(rate) ? 0 : rate,
+      originalAmount:
+        typeof res.original_amount === 'string' ? parseFloat(res.original_amount) : amount,
+      originalCurrency: typeof res.original_currency === 'string' ? res.original_currency : fromCur,
+      convertedCurrency: typeof res.converted_currency === 'string' ? res.converted_currency : toCur,
       updatedAt:
-        typeof res.provider_updated_at === 'string'
-          ? res.provider_updated_at
-          : typeof res.updated_at === 'string'
-            ? res.updated_at
-            : null,
+        typeof res.rate_timestamp === 'string'
+          ? res.rate_timestamp
+          : typeof res.provider_updated_at === 'string'
+            ? res.provider_updated_at
+            : typeof res.updated_at === 'string'
+              ? res.updated_at
+              : null,
+      fetchedAt: typeof res.fetched_at === 'string' ? res.fetched_at : null,
       source: typeof res.source === 'string' ? res.source : null,
-      live: res.stale !== true,
+      live: freshness === 'live',
+      freshness,
+      marketClosed: res.market_closed === true,
+      offline: false,
     }
   } catch {
     const cache = await loadExchangeRates()
     const local = convertLocally(amount, fromCur, toCur, cache.rates)
     if (!local) return null
-    return { ...local, source: cache.source ?? null, live: !cache.stale }
+    return {
+      ...local,
+      source: cache.source ?? null,
+      fetchedAt: cache.fetchedAtIso ?? null,
+      live: false,
+      freshness: cache.offline ? 'stale' : cache.freshness,
+      marketClosed: cache.marketClosed,
+      offline: cache.offline,
+    }
   }
 }
 
 export function isSupportedCurrency(code: string): code is CurrencyCode {
   return SUPPORTED_CURRENCIES.includes(code as CurrencyCode)
+}
+
+/**
+ * Parse user-entered amounts (1,000 / 1.000 / 1,250.75 / 1.250,75 / 0.50).
+ */
+export function parseFxAmount(raw: string): number | null {
+  const text = raw.trim().replace(/\s/g, '')
+  if (!text) return null
+  const lastComma = text.lastIndexOf(',')
+  const lastDot = text.lastIndexOf('.')
+  let normalized = text
+  if (lastComma >= 0 && lastDot >= 0) {
+    normalized =
+      lastComma > lastDot ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '')
+  } else if (lastComma >= 0) {
+    const frac = text.slice(lastComma + 1)
+    normalized = frac.length <= 2 ? text.replace(',', '.') : text.replace(/,/g, '')
+  } else if (lastDot >= 0) {
+    const frac = text.slice(lastDot + 1)
+    if (frac.length === 3 && /^\d+$/.test(frac) && text.split('.').length <= 3) {
+      normalized = text.replace(/\./g, '')
+    }
+  }
+  const num = Number(normalized)
+  if (!Number.isFinite(num) || num < 0) return null
+  return num
 }

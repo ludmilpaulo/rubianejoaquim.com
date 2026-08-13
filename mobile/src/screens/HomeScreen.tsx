@@ -14,6 +14,7 @@ import { useAppSelector } from '../hooks/redux'
 import { personalFinanceApi } from '../services/api'
 import type { DashboardData } from '../types/dashboard'
 import { useI18n } from '../contexts/I18nContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import FinancialHealthCard from '../components/dashboard/FinancialHealthCard'
 import ZendaCard from '../components/ui/ZendaCard'
 import { DashboardSkeleton } from '../components/ui/Skeleton'
@@ -35,6 +36,7 @@ export default function HomeScreen() {
       | undefined
   }>()
   const { t, tw, messages } = useI18n()
+  const { rates, ratesSource, ratesUpdatedAt } = useCurrency()
   const { run, isPending } = useActionFeedback()
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -45,6 +47,17 @@ export default function HomeScreen() {
   const [lastSyncedCount, setLastSyncedCount] = useState(0)
 
   const currency = resolveUserCurrency(user?.preferred_currency || dashboard?.currency)
+  const usdToHome = rates.rates.find(
+    (row) => row.base_currency === 'USD' && row.target_currency === currency,
+  )
+  const hasActivity = Boolean(
+    dashboard &&
+      (Number(dashboard.summary.income) !== 0 ||
+        Number(dashboard.summary.expenses) !== 0 ||
+        dashboard.goals.length > 0 ||
+        dashboard.budgets.length > 0 ||
+        dashboard.debts.length > 0),
+  )
 
   const syncQueuedExpenses = useCallback(async () => {
     try {
@@ -252,6 +265,43 @@ export default function HomeScreen() {
 
         {dashboard && (
           <>
+            {!hasActivity ? (
+              <ZendaCard accentColor={colors.brand.primary} style={styles.getStartedCard}>
+                <Text variant="titleMedium" style={styles.getStartedTitle}>
+                  {t('home.getStartedTitle')}
+                </Text>
+                <Text variant="bodyMedium" style={styles.getStartedBody}>
+                  {t('home.getStartedBody')}
+                </Text>
+                <View style={styles.getStartedActions}>
+                  <TouchableOpacity
+                    style={styles.getStartedBtn}
+                    onPress={() => navigateToTab('Personal')}
+                  >
+                    <Text style={styles.getStartedBtnText}>{t('home.addSalary')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.getStartedBtn, styles.getStartedBtnAlt]}
+                    onPress={() => navigateToTab('Personal')}
+                  >
+                    <Text style={styles.getStartedBtnAltText}>{t('home.addExpense')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.getStartedBtn, styles.getStartedBtnAlt]}
+                    onPress={() => navigation.getParent()?.navigate('Personal', { screen: 'MonthlyPlan' })}
+                  >
+                    <Text style={styles.getStartedBtnAltText}>{t('home.createBudget')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.getStartedBtn, styles.getStartedBtnAlt]}
+                    onPress={() => navigateToTab('Personal')}
+                  >
+                    <Text style={styles.getStartedBtnAltText}>{t('home.setGoal')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </ZendaCard>
+            ) : (
+              <>
             <FinancialHealthCard
               health={dashboard.health}
               onPress={() => navigation.navigate('HealthHistory')}
@@ -324,6 +374,31 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             </ZendaCard>
+              </>
+            )}
+
+            <TouchableOpacity onPress={() => navigation.navigate('Market')} activeOpacity={0.85}>
+              <ZendaCard accentColor={colors.brand.primary}>
+                <View style={styles.fxRow}>
+                  <MaterialCommunityIcons name="swap-horizontal" size={26} color={colors.brand.primary} />
+                  <View style={styles.fxCopy}>
+                    <Text variant="titleSmall" style={styles.fxTitle}>{t('home.fxRates')}</Text>
+                    <Text variant="bodySmall" style={styles.fxBody}>
+                      {usdToHome
+                        ? `1 USD ≈ ${Number(usdToHome.rate).toFixed(2)} ${currency}`
+                        : t('home.fxSubtitle')}
+                    </Text>
+                    {ratesSource ? (
+                      <Text variant="labelSmall" style={styles.fxMeta}>
+                        {tw('market.source', { source: ratesSource })}
+                        {ratesUpdatedAt ? ` · ${t('market.lastUpdated')}` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={22} color={colors.text.muted} />
+                </View>
+              </ZendaCard>
+            </TouchableOpacity>
 
             <Text variant="labelLarge" style={styles.sectionTitle}>{t('home.quickActions')}</Text>
             <View style={styles.quickGrid}>
@@ -502,6 +577,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  getStartedCard: { marginBottom: spacing.md },
+  getStartedTitle: { fontWeight: '700', color: colors.text.primary, marginBottom: 8 },
+  getStartedBody: { color: colors.text.secondary, lineHeight: 22, marginBottom: spacing.md },
+  getStartedActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  getStartedBtn: {
+    backgroundColor: colors.brand.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+  },
+  getStartedBtnText: { color: colors.text.inverse, fontWeight: '600', fontSize: 13 },
+  getStartedBtnAlt: {
+    backgroundColor: colors.brand.primaryContainer,
+  },
+  getStartedBtnAltText: { color: colors.brand.primary, fontWeight: '600', fontSize: 13 },
+  fxRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  fxCopy: { flex: 1 },
+  fxTitle: { fontWeight: '700', color: colors.text.primary },
+  fxBody: { color: colors.text.secondary, marginTop: 2 },
+  fxMeta: { color: colors.text.muted, marginTop: 4 },
   sectionTitle: {
     color: colors.text.secondary,
     marginBottom: spacing.sm,

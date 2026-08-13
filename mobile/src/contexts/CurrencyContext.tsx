@@ -9,6 +9,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react'
+import { AppState } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAppDispatch, useAppSelector } from '../hooks/redux'
 import { setUser } from '../store/authSlice'
@@ -19,6 +20,7 @@ import {
   loadExchangeRates,
   type ConvertResult,
   type FxCachePayload,
+  type FxFreshness,
 } from '../services/exchangeRates'
 import {
   CURRENCY_META,
@@ -49,6 +51,9 @@ interface CurrencyContextValue {
   ratesUpdatedAt: string | null
   ratesStale: boolean
   ratesSource: string | null
+  ratesFreshness: FxFreshness
+  ratesMarketClosed: boolean
+  ratesOffline: boolean
   /** True while exchange rates are being fetched or refreshed. */
   ratesSyncing: boolean
   currencyLabel: (code: CurrencyCode) => string
@@ -67,6 +72,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     stale: true,
     source: null,
     updatedAt: null,
+    fetchedAtIso: null,
+    freshness: 'unavailable',
+    marketClosed: false,
+    offline: false,
   })
   const [ratesSyncing, setRatesSyncing] = useState(false)
 
@@ -102,6 +111,15 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshRates(false).catch(() => {})
+  }, [refreshRates])
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        refreshRates(false).catch(() => {})
+      }
+    })
+    return () => sub.remove()
   }, [refreshRates])
 
   const setCurrency = useCallback(
@@ -173,9 +191,12 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       convert,
       rates,
       refreshRates,
-      ratesUpdatedAt: rates.updatedAt || getLatestUpdatedAt(rates.rates),
-      ratesStale: rates.stale,
+      ratesUpdatedAt: rates.fetchedAtIso || rates.updatedAt || getLatestUpdatedAt(rates.rates),
+      ratesStale: rates.stale || rates.freshness === 'stale' || rates.freshness === 'unavailable',
       ratesSource: rates.source ?? null,
+      ratesFreshness: rates.freshness,
+      ratesMarketClosed: rates.marketClosed,
+      ratesOffline: rates.offline,
       ratesSyncing,
       currencyLabel: currencyLabelFn,
     }),

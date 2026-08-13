@@ -670,17 +670,27 @@ export const personalFinanceApi = {
     })
     return response.data as {
       original_amount?: string
+      original_currency?: string
+      converted_amount?: string | number
+      converted_currency?: string
       amount?: string | number
       converted?: string | number
       result?: string | number
       from: string
       to: string
       rate?: string | number
+      exchange_rate?: string | number
       rate_line?: string
+      rate_timestamp?: string | null
       updated_at?: string | null
       provider_updated_at?: string | null
+      fetched_at?: string | null
+      last_successful_update?: string | null
       source?: string
       stale?: boolean
+      freshness?: 'live' | 'cached' | 'stale' | 'unavailable'
+      market_closed?: boolean
+      refresh_error?: string
       error?: string
     }
   },

@@ -52,7 +52,7 @@
    # Replace with market data (required in production):
    python manage.py refresh_exchange_rates --force
    ```
-   Schedule `refresh_exchange_rates --force` every ~6 hours (PythonAnywhere scheduled task).
+   Schedule `refresh_exchange_rates --force` every hour (PythonAnywhere scheduled task).
    Never treat seed rates as live market truth.
 
 7. **CMS & course content** (JSON fixtures):

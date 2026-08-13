@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
 import { Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect } from '@react-navigation/native'
 import { personalFinanceApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -19,7 +19,10 @@ import { formatDate, formatTime, isSameCalendarDay, minutesSince } from '../i18n
 import ZendaCard from '../components/ui/ZendaCard'
 import EmptyState from '../components/ui/EmptyState'
 import { ZendaLoader, ZendaLoading } from '../components/ui/ZendaLoader'
+import CurrencyPicker from '../components/CurrencyPicker'
 import { colors, radius, spacing, typography } from '../theme'
+import type { FxFreshness } from '../services/exchangeRates'
+import { parseFxAmount } from '../services/exchangeRates'
 import type { CurrencyCode } from '../utils/currency'
 
 interface ExchangeRateRow {
@@ -45,18 +48,17 @@ const QUICK_PAIRS: { from: CurrencyCode; to: CurrencyCode }[] = [
   { from: 'USD', to: 'ZAR' },
   { from: 'GBP', to: 'USD' },
   { from: 'USD', to: 'GBP' },
+  { from: 'EUR', to: 'ZAR' },
+  { from: 'ZAR', to: 'EUR' },
 ]
 
 function parseAmount(raw: string): number | null {
-  const num = parseFloat(raw.replace(',', '.').trim())
-  if (!Number.isFinite(num) || num <= 0) return null
-  return num
+  return parseFxAmount(raw)
 }
 
-function rateFreshnessLabel(
+function relativeUpdated(
   iso: string | null,
   locale: Parameters<typeof formatDate>[0],
-  stale: boolean,
   t: (key: string) => string,
   tw: (key: string, vars?: Record<string, string | number>) => string,
 ): string | null {
@@ -65,29 +67,42 @@ function rateFreshnessLabel(
   if (Number.isNaN(date.getTime())) return null
   const now = new Date()
   const mins = minutesSince(date, now)
-  let relative: string
-  if (mins < 2) {
-    relative = t('market.updatedJustNow')
-  } else if (mins < 60) {
-    relative = tw('market.updatedAgoMinutes', { count: mins })
-  } else if (mins < 24 * 60) {
-    relative = tw('market.updatedAgoHours', { count: Math.floor(mins / 60) })
-  } else if (isSameCalendarDay(date, now)) {
-    relative = tw('market.updatedTodayAt', {
+  if (mins < 2) return t('market.updatedJustNow')
+  if (mins < 60) return tw('market.updatedAgoMinutes', { count: mins })
+  if (mins < 24 * 60) return tw('market.updatedAgoHours', { count: Math.floor(mins / 60) })
+  if (isSameCalendarDay(date, now)) {
+    return tw('market.updatedTodayAt', {
       time: formatTime(locale, date, { hour: '2-digit', minute: '2-digit' }),
     })
-  } else {
-    relative = tw('market.updatedAt', {
-      date: formatDate(locale, date, {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-    })
   }
-  return stale ? tw('market.cachedUpdated', { relative }) : relative
+  return tw('market.updatedAt', {
+    date: formatDate(locale, date, {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  })
+}
+
+function freshnessCopy(opts: {
+  freshness: FxFreshness
+  offline: boolean
+  marketClosed: boolean
+  relative: string | null
+  t: (key: string) => string
+  tw: (key: string, vars?: Record<string, string | number>) => string
+}): { text: string; tone: 'ok' | 'warn' | 'error' } {
+  const { freshness, offline, marketClosed, relative, t, tw } = opts
+  const rel = relative || t('market.lastUpdatedUnknown')
+  if (offline) return { text: tw('market.offlineCached', { relative: rel }), tone: 'warn' }
+  if (freshness === 'unavailable') return { text: t('market.ratesUnavailable'), tone: 'error' }
+  if (freshness === 'stale') return { text: tw('market.freshnessStale', { relative: rel }), tone: 'warn' }
+  if (marketClosed) return { text: tw('market.marketClosed', { relative: rel }), tone: 'warn' }
+  if (freshness === 'cached') return { text: tw('market.freshnessCached', { relative: rel }), tone: 'ok' }
+  return { text: tw('market.freshnessLive', { relative: rel }), tone: 'ok' }
 }
 
 export default function MarketScreen() {
@@ -95,37 +110,44 @@ export default function MarketScreen() {
   const { run, isPending } = useActionFeedback()
   const {
     currency,
-    currencies,
-    currencyLabel,
     format,
     convert,
     refreshRates,
     ratesUpdatedAt,
-    ratesStale,
     ratesSource,
+    ratesFreshness,
+    ratesMarketClosed,
+    ratesOffline,
     ratesSyncing,
   } = useCurrency()
 
   const [rates, setRates] = useState<ExchangeRateRow[]>([])
   const [listSource, setListSource] = useState<string | null>(null)
   const [listUpdatedAt, setListUpdatedAt] = useState<string | null>(null)
-  const [listStale, setListStale] = useState(false)
+  const [listFreshness, setListFreshness] = useState<FxFreshness>('unavailable')
+  const [listMarketClosed, setListMarketClosed] = useState(false)
+  const [listOffline, setListOffline] = useState(false)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [amount, setAmount] = useState('100')
-  const [fromCur, setFromCur] = useState<CurrencyCode>('ZAR')
-  const [toCur, setToCur] = useState<CurrencyCode>(currency)
+  const [fromCur, setFromCur] = useState<CurrencyCode>('AOA')
+  const [toCur, setToCur] = useState<CurrencyCode>(currency === 'AOA' ? 'USD' : currency)
   const [convertResult, setConvertResult] = useState<string | null>(null)
   const [unitRate, setUnitRate] = useState<number | null>(null)
   const [convertMeta, setConvertMeta] = useState<{
     source?: string | null
     updatedAt?: string | null
-    stale?: boolean
+    fetchedAt?: string | null
+    freshness?: FxFreshness
+    marketClosed?: boolean
+    offline?: boolean
   }>({})
+  const convertSeq = useRef(0)
 
-  const loadRates = useCallback(async () => {
+  const loadRates = useCallback(async (force = false) => {
     try {
-      const data = await personalFinanceApi.getExchangeRates()
+      const data = await personalFinanceApi.getExchangeRates(force ? { refresh: true } : undefined)
       const list = Array.isArray(data) ? data : data.results || []
       setRates(list)
       if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -133,140 +155,158 @@ export default function MarketScreen() {
           source?: string
           updated_at?: string
           provider_updated_at?: string
+          fetched_at?: string
+          last_successful_update?: string
           stale?: boolean
+          freshness?: FxFreshness
+          market_closed?: boolean
+          refresh_error?: string
         }
         setListSource(typeof meta.source === 'string' ? meta.source : null)
         setListUpdatedAt(
-          typeof meta.provider_updated_at === 'string'
-            ? meta.provider_updated_at
-            : typeof meta.updated_at === 'string'
-              ? meta.updated_at
-              : null,
+          typeof meta.fetched_at === 'string'
+            ? meta.fetched_at
+            : typeof meta.last_successful_update === 'string'
+              ? meta.last_successful_update
+              : typeof meta.provider_updated_at === 'string'
+                ? meta.provider_updated_at
+                : typeof meta.updated_at === 'string'
+                  ? meta.updated_at
+                  : null,
         )
-        setListStale(meta.stale === true)
+        setListFreshness(
+          meta.freshness === 'live' ||
+            meta.freshness === 'cached' ||
+            meta.freshness === 'stale' ||
+            meta.freshness === 'unavailable'
+            ? meta.freshness
+            : list.length === 0
+              ? 'unavailable'
+              : meta.stale
+                ? 'stale'
+                : 'cached',
+        )
+        setListMarketClosed(meta.market_closed === true)
+        setListOffline(false)
+        setRefreshError(typeof meta.refresh_error === 'string' ? meta.refresh_error : null)
       }
     } catch {
-      setRates([])
-      setListStale(true)
+      setListOffline(true)
+      setListFreshness('stale')
+      setRefreshError('network')
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
   }, [])
 
-  useEffect(() => {
-    loadRates()
-  }, [loadRates])
-
-  useEffect(() => {
-    setToCur(currency)
-  }, [currency])
+  useFocusEffect(
+    useCallback(() => {
+      loadRates(false).catch(() => {})
+    }, [loadRates]),
+  )
 
   const onRefresh = async () => {
     setRefreshing(true)
     await run(
       async () => {
-        await Promise.all([loadRates(), refreshRates(true)])
+        await Promise.all([loadRates(true), refreshRates(true)])
       },
       {
         pendingKey: 'refresh',
-        pendingMessage: 'feedback.updatingExchangeRates',
-        silentSuccess: true,
+        pendingMessage: 'market.refreshing',
+        successMessage: 'market.refreshSuccess',
       },
-    )
-  }
-
-  const pickCurrency = (current: CurrencyCode, onPick: (code: CurrencyCode) => void) => {
-    Alert.alert(
-      t('market.selectCurrency'),
-      '',
-      [
-        ...currencies.map((code) => ({
-          text: currencyLabel(code),
-          onPress: () => onPick(code),
-        })),
-        { text: t('common.cancel'), style: 'cancel' as const },
-      ],
     )
   }
 
   const swapCurrencies = () => {
     setFromCur(toCur)
     setToCur(fromCur)
-    setConvertResult(null)
-    setUnitRate(null)
   }
+
+  const performConvert = useCallback(
+    async (num: number, from: CurrencyCode, to: CurrencyCode) => {
+      const seq = ++convertSeq.current
+      try {
+        const res = await convert(num, from, to)
+        if (seq !== convertSeq.current) return
+        if (res) {
+          setConvertResult(format(res.amount, to))
+          setUnitRate(res.rate > 0 ? res.rate : null)
+          setConvertMeta({
+            source: res.source || ratesSource || listSource,
+            updatedAt: res.updatedAt || ratesUpdatedAt || listUpdatedAt,
+            fetchedAt: res.fetchedAt || ratesUpdatedAt || listUpdatedAt,
+            freshness: res.freshness,
+            marketClosed: res.marketClosed,
+            offline: res.offline,
+          })
+          return
+        }
+        setConvertResult(null)
+        setUnitRate(null)
+        setConvertMeta({ freshness: 'unavailable' })
+      } catch {
+        if (seq !== convertSeq.current) return
+        setConvertResult(null)
+        setUnitRate(null)
+        setConvertMeta({ freshness: 'unavailable', offline: true })
+      }
+    },
+    [convert, format, listSource, listUpdatedAt, ratesSource, ratesUpdatedAt],
+  )
+
+  useEffect(() => {
+    const num = parseAmount(amount)
+    if (num == null || num === 0) {
+      setConvertResult(null)
+      setUnitRate(null)
+      return
+    }
+    const handle = setTimeout(() => {
+      performConvert(num, fromCur, toCur).catch(() => {})
+    }, 280)
+    return () => clearTimeout(handle)
+  }, [amount, fromCur, toCur, performConvert])
 
   const handleConvert = () => {
     const num = parseAmount(amount)
     if (num == null || isPending('convert')) return
     run(
       async () => {
-        const res = await convert(num, fromCur, toCur)
-        if (res) {
-          setConvertResult(format(res.amount, toCur))
-          setUnitRate(res.rate > 0 ? res.rate : null)
-          setConvertMeta({
-            source: ratesSource || listSource,
-            updatedAt: res.updatedAt || ratesUpdatedAt || listUpdatedAt,
-            stale: !res.live || ratesStale || listStale,
-          })
-        } else {
-        const apiRes = await personalFinanceApi.convertCurrency(num, fromCur, toCur)
-        const convertedRaw = apiRes.converted ?? apiRes.amount ?? apiRes.result
-        const convertedAmount =
-          typeof convertedRaw === 'number'
-            ? convertedRaw
-            : typeof convertedRaw === 'string' && convertedRaw.trim() !== ''
-              ? convertedRaw
-              : null
-        if (convertedAmount == null) {
-          setConvertResult(null)
-          setUnitRate(null)
-          setConvertMeta({ stale: true })
-          return
-        }
-        const rateRaw = apiRes.rate
-        const rate = typeof rateRaw === 'string' ? parseFloat(rateRaw) : Number(rateRaw)
-        setConvertResult(format(convertedAmount, toCur))
-        setUnitRate(Number.isFinite(rate) && rate > 0 ? rate : null)
-          setConvertMeta({
-            source: typeof apiRes.source === 'string' ? apiRes.source : listSource,
-            updatedAt:
-              typeof apiRes.provider_updated_at === 'string'
-                ? apiRes.provider_updated_at
-                : typeof apiRes.updated_at === 'string'
-                  ? apiRes.updated_at
-                  : listUpdatedAt,
-            stale: apiRes.stale === true || listStale,
-          })
-        }
+        await performConvert(num, fromCur, toCur)
       },
       {
         pendingKey: 'convert',
         pendingMessage: 'feedback.convertingCurrency',
         silentSuccess: true,
         silentError: true,
-        onError: () => {
-          setConvertResult(null)
-          setUnitRate(null)
-          setConvertMeta({ stale: true })
-        },
       },
     ).catch(() => {})
   }
 
   const usdRates = rates.filter((r) => r.base_currency === 'USD')
 
-  const displayUpdatedAt = convertMeta.updatedAt || listUpdatedAt || ratesUpdatedAt
+  const displayUpdatedAt = convertMeta.fetchedAt || convertMeta.updatedAt || listUpdatedAt || ratesUpdatedAt
   const displaySource = convertMeta.source || listSource || ratesSource
-  const displayStale = convertMeta.stale === true || listStale || ratesStale
-
-  const ratesMeta = rateFreshnessLabel(displayUpdatedAt, locale, displayStale, t, tw)
+  const displayFreshness: FxFreshness =
+    convertMeta.freshness || listFreshness || ratesFreshness || 'unavailable'
+  const displayOffline = convertMeta.offline === true || listOffline || ratesOffline
+  const displayMarketClosed = convertMeta.marketClosed === true || listMarketClosed || ratesMarketClosed
+  const relative = relativeUpdated(displayUpdatedAt, locale, t, tw)
+  const banner = freshnessCopy({
+    freshness: displayFreshness,
+    offline: displayOffline,
+    marketClosed: displayMarketClosed,
+    relative,
+    t,
+    tw,
+  })
 
   const amountNum = useMemo(() => parseAmount(amount), [amount])
 
-  if (loading && rates.length === 0) {
+  if (loading && rates.length === 0 && !listOffline) {
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <ZendaLoading visible fill message={t('loading.market')} />
@@ -278,21 +318,36 @@ export default function MarketScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.brand.primary} />
         }
       >
         {(isPending('refresh') || ratesSyncing) && !refreshing ? (
-          <ZendaLoader inline message={t('feedback.updatingExchangeRates')} style={styles.syncBanner} />
+          <ZendaLoader inline message={t('market.refreshing')} style={styles.syncBanner} />
         ) : null}
         <Text style={styles.title}>{t('market.title')}</Text>
-        <Text style={styles.subtitle}>{t('market.subtitle')}</Text>
-        {ratesMeta ? <Text style={styles.meta}>{ratesMeta}</Text> : null}
+        <Text style={styles.subtitle}>{t('market.poweredBy')}</Text>
+        <Text style={[styles.meta, banner.tone === 'warn' && styles.warn, banner.tone === 'error' && styles.stale]}>
+          {banner.text}
+        </Text>
         {displaySource ? (
           <Text style={styles.meta}>{tw('market.source', { source: displaySource })}</Text>
         ) : null}
-        {displayStale && !ratesMeta ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
+        {refreshError && displayFreshness !== 'live' ? (
+          <Text style={styles.warn}>{tw('market.refreshFailed', { relative: relative || t('market.lastUpdatedUnknown') })}</Text>
+        ) : null}
         <Text style={styles.disclaimer}>{t('market.disclaimer')}</Text>
+
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          onPress={onRefresh}
+          disabled={isPending('refresh') || ratesSyncing}
+          accessibilityLabel={t('market.refreshRates')}
+        >
+          <MaterialCommunityIcons name="refresh" size={18} color={colors.brand.primary} />
+          <Text style={styles.refreshBtnText}>{t('market.refreshRates')}</Text>
+        </TouchableOpacity>
 
         <ZendaCard variant="glass">
           <Text style={styles.sectionLabel}>{t('market.convert')}</Text>
@@ -303,16 +358,16 @@ export default function MarketScreen() {
             keyboardType="decimal-pad"
             placeholder={t('market.amount')}
             placeholderTextColor={colors.text.muted}
+            accessibilityLabel={t('market.amount')}
           />
           <View style={styles.row}>
-            <TouchableOpacity
-              style={styles.currencyBtn}
-              onPress={() => pickCurrency(fromCur, setFromCur)}
-              accessibilityLabel={t('market.from')}
-            >
-              <Text style={styles.currencyHint}>{t('market.from')}</Text>
-              <Text style={styles.currencyText}>{fromCur}</Text>
-            </TouchableOpacity>
+            <CurrencyPicker
+              value={fromCur}
+              onChange={setFromCur}
+              label={t('market.from')}
+              showName
+              searchable
+            />
             <TouchableOpacity
               style={styles.swapBtn}
               onPress={swapCurrencies}
@@ -320,14 +375,13 @@ export default function MarketScreen() {
             >
               <MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.brand.primary} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.currencyBtn}
-              onPress={() => pickCurrency(toCur, setToCur)}
-              accessibilityLabel={t('market.to')}
-            >
-              <Text style={styles.currencyHint}>{t('market.to')}</Text>
-              <Text style={styles.currencyText}>{toCur}</Text>
-            </TouchableOpacity>
+            <CurrencyPicker
+              value={toCur}
+              onChange={setToCur}
+              label={t('market.to')}
+              showName
+              searchable
+            />
           </View>
           <TouchableOpacity
             style={[styles.convertBtn, isPending('convert') && styles.convertBtnDisabled]}
@@ -354,15 +408,15 @@ export default function MarketScreen() {
                   })}
                 </Text>
               ) : null}
-              {ratesMeta ? (
-                <Text style={styles.metaSmall}>{ratesMeta}</Text>
-              ) : null}
+              <Text style={styles.metaSmall}>{banner.text}</Text>
               {displaySource ? (
                 <Text style={styles.metaSmall}>{tw('market.source', { source: displaySource })}</Text>
               ) : null}
-              {displayStale && !ratesMeta ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
             </View>
           )}
+          {amountNum != null && convertResult == null && displayFreshness === 'unavailable' ? (
+            <Text style={styles.stale}>{t('market.convertFailed')}</Text>
+          ) : null}
           <View style={styles.quickRow}>
             {QUICK_PAIRS.map((p) => (
               <TouchableOpacity
@@ -371,8 +425,6 @@ export default function MarketScreen() {
                 onPress={() => {
                   setFromCur(p.from)
                   setToCur(p.to)
-                  setConvertResult(null)
-                  setUnitRate(null)
                 }}
               >
                 <Text style={styles.quickChipText}>
@@ -396,9 +448,7 @@ export default function MarketScreen() {
                   <Text style={styles.ratePair}>
                     {r.base_currency} / {r.target_currency}
                   </Text>
-                  {r.source ? (
-                    <Text style={styles.rateSource}>{r.source}</Text>
-                  ) : null}
+                  {r.source ? <Text style={styles.rateSource}>{r.source}</Text> : null}
                 </View>
                 <Text style={styles.rateValue}>{Number(r.rate).toFixed(4)}</Text>
               </View>
@@ -417,7 +467,8 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.body, color: colors.text.secondary, marginBottom: spacing.sm },
   meta: { ...typography.caption, color: colors.text.muted, marginBottom: spacing.xs },
   metaSmall: { ...typography.caption, color: colors.text.muted, marginTop: spacing.xs, textAlign: 'center' },
-  stale: { ...typography.caption, color: '#E67E22', marginBottom: spacing.sm, textAlign: 'center' },
+  stale: { ...typography.caption, color: colors.status.error, marginBottom: spacing.sm, textAlign: 'center' },
+  warn: { ...typography.caption, color: colors.status.warning, marginBottom: spacing.sm, textAlign: 'center' },
   disclaimer: { ...typography.caption, color: colors.text.muted, marginBottom: spacing.md },
   sectionLabel: { ...typography.label, color: colors.text.secondary, marginBottom: spacing.sm, marginTop: spacing.md },
   input: {
@@ -430,19 +481,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     backgroundColor: colors.background.paper,
   },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  currencyBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: '#E8E8FA',
-  },
-  currencyHint: { ...typography.caption, color: colors.text.muted },
-  currencyText: { ...typography.h3, color: colors.brand.primary },
+  row: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: spacing.sm, marginBottom: spacing.md },
   swapBtn: {
     padding: spacing.sm,
+    marginBottom: 6,
     borderRadius: radius.full,
     backgroundColor: colors.background.paper,
   },
@@ -455,6 +497,17 @@ const styles = StyleSheet.create({
   convertBtnDisabled: {
     opacity: 0.85,
   },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand.primaryContainer,
+  },
+  refreshBtnText: { ...typography.label, color: colors.brand.primary },
   syncBanner: {
     marginBottom: spacing.sm,
   },

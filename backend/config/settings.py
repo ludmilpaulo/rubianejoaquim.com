@@ -250,6 +250,8 @@ TIKTOK_SCOPES = config('TIKTOK_SCOPES', default='user.info.basic')
 # Mobile deep-link target after TikTok OAuth (must match app scheme)
 MOBILE_OAUTH_REDIRECT_URI = config('MOBILE_OAUTH_REDIRECT_URI', default='zenda://social-callback')
 
-# Live FX cache TTL (hours). Soft-refresh when older; clients see stale=true past this.
-# See EXCHANGE_RATES.md — cron: python manage.py refresh_exchange_rates --force
-FX_CACHE_TTL_HOURS = config('FX_CACHE_TTL_HOURS', default=6, cast=int)
+# Live FX: skip outbound fetch while last successful write is this young.
+# Stale flag uses FX_STALE_AFTER_HOURS against our last live write, not the provider clock
+# (daily APIs often have quote timestamps many hours old while still being current).
+FX_CACHE_TTL_HOURS = config('FX_CACHE_TTL_HOURS', default=1, cast=int)
+FX_STALE_AFTER_HOURS = config('FX_STALE_AFTER_HOURS', default=24, cast=int)
