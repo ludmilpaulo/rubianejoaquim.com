@@ -134,13 +134,13 @@ export const linking: LinkingOptions<RootLinkingParamList> = {
         ],
       }
     }
-    if (normalized === 'download' || normalized.startsWith('invite/')) {
+    if (normalized === 'download' || normalized.startsWith('download') || normalized.startsWith('invite/') || normalized === 'zenda' || normalized.startsWith('zenda')) {
       return {
         routes: [
           {
-            name: 'Personal',
+            name: 'Home',
             state: {
-              routes: [{ name: 'MonthlyPlan' }],
+              routes: [{ name: 'HomeMain' }],
             },
           },
         ],

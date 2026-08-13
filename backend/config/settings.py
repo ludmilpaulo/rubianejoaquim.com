@@ -210,8 +210,11 @@ SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Pat
 # Mobile App (Zenda) store update check - bump when you publish a new version
 APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.0')
 APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.0')
-APP_STORE_URL_IOS = config('APP_STORE_URL_IOS', default='')  # e.g. https://apps.apple.com/app/id1234567890
-APP_STORE_URL_ANDROID = config('APP_STORE_URL_ANDROID', default='https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda')
+APP_STORE_URL_IOS = config('APP_STORE_URL_IOS', default='https://apps.apple.com/app/id6758412176') or 'https://apps.apple.com/app/id6758412176'
+APP_STORE_URL_ANDROID = config(
+    'APP_STORE_URL_ANDROID',
+    default='https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda',
+) or 'https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda'
 
 # Apple In-App Purchase (Guideline 3.1.1) - for receipt verification
 # App Store Connect → Your App → App Information → App-Specific Shared Secret

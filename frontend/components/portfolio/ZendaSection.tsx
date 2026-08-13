@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import type { HomeSection, SiteSettings, ZendaContent } from '@/lib/public-types'
+import { ZENDA_APP_STORE_URL, ZENDA_PLAY_STORE_URL } from '@/lib/zenda-stores'
 import SectionIntro from './SectionIntro'
 import Reveal from './Reveal'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
@@ -28,8 +29,10 @@ export default function ZendaSection({
   const badge = intro?.badge || ''
   const whatLabel = settings?.what_is_label || ''
   const whoLabel = settings?.who_label || ''
-  const playLabel = settings?.play_store_label || ''
-  const appLabel = settings?.app_store_label || ''
+  const playUrl = zenda.play_store_url || ZENDA_PLAY_STORE_URL
+  const appUrl = zenda.app_store_url || ZENDA_APP_STORE_URL
+  const playLabel = settings?.play_store_label || 'Download for Android'
+  const appLabel = settings?.app_store_label || 'Download for iPhone'
 
   return (
     <section id="zenda" className="py-24 md:py-32 relative overflow-hidden">
@@ -105,26 +108,22 @@ export default function ZendaSection({
                     {exploreLabel}
                   </Link>
                 )}
-                {zenda.play_store_url && playLabel && (
-                  <a
-                    href={zenda.play_store_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-zenda-growth"
-                  >
-                    {playLabel}
-                  </a>
-                )}
-                {zenda.app_store_url && appLabel && (
-                  <a
-                    href={zenda.app_store_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-secondary"
-                  >
-                    {appLabel}
-                  </a>
-                )}
+                <a
+                  href={playUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-zenda-growth"
+                >
+                  {playLabel}
+                </a>
+                <a
+                  href={appUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary"
+                >
+                  {appLabel}
+                </a>
               </div>
             </div>
           </Reveal>

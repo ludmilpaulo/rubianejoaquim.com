@@ -69,6 +69,11 @@
             {
               "scheme": "https",
               "host": "www.rubianejoaquim.com",
+              "pathPrefix": "/zenda"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rubianejoaquim.com",
               "pathPrefix": "/download"
             },
             {
@@ -80,6 +85,11 @@
               "scheme": "https",
               "host": "www.rubianejoaquim.com",
               "pathPrefix": "/course"
+            },
+            {
+              "scheme": "https",
+              "host": "rubianejoaquim.com",
+              "pathPrefix": "/zenda"
             },
             {
               "scheme": "https",

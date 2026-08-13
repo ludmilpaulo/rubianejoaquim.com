@@ -14,10 +14,14 @@ async function getServerLocale(): Promise<Locale> {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getServerLocale()
   const seo = await fetchPageSeo('zenda', locale)
-  return seoToMetadata(seo, {
+  const base = seoToMetadata(seo, {
     title: 'Zenda App | Finance & Education',
-    description: 'Zenda — personal and business finance by Rubiane Joaquim.',
+    description: 'Zenda — One app. Your money. Your life. Your business.',
   })
+  return {
+    ...base,
+    itunes: { appId: '6758412176' },
+  }
 }
 
 export default function ZendaPage() {

@@ -404,7 +404,7 @@ class Command(BaseCommand):
         content, _ = ZendaContent.objects.update_or_create(
             pk=1,
             defaults={
-                'app_store_url': '',
+                'app_store_url': 'https://apps.apple.com/app/id6758412176',
                 'play_store_url': 'https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda',
                 'monthly_price_kz': 10000,
                 'translations': t(

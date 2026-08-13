@@ -35,7 +35,7 @@ export async function checkStoreUpdate(): Promise<void> {
 
     const storeUrl =
       Platform.OS === 'ios'
-        ? data.ios_store_url || 'https://apps.apple.com/app/id000000000'
+        ? data.ios_store_url || 'https://apps.apple.com/app/id6758412176'
         : data.android_store_url || 'https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda'
 
     Alert.alert(

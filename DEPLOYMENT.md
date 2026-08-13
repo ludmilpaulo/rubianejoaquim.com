@@ -92,6 +92,17 @@ Typical hosts: **Vercel**, **Netlify**, or your own server.
 
 If you use a custom domain (e.g. `www.rubianejoaquim.com`), add it in the hosting dashboard.
 
+### Zenda share / App Store links
+
+Verified listings (do not guess):
+
+- iOS: `https://apps.apple.com/app/id6758412176` (App Store Connect ID `6758412176`, team `WF3T257QTW`)
+- Android: `https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda`
+
+Set `APP_STORE_URL_IOS` on PythonAnywhere if it was previously blank, then `python manage.py migrate` (seeds Zenda CMS store URLs) and reload the web app.
+
+Universal Links are served from `/.well-known/apple-app-site-association`. For Android App Links, set `ANDROID_APP_LINK_SHA256` (Play Console → App signing certificate, colon-separated SHA-256) on the frontend host.
+
 ### Build locally
 
 ```bash

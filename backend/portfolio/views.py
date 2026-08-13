@@ -98,9 +98,30 @@ class ZendaContentViewSet(viewsets.ViewSet):
     def list(self, request):
         content = ZendaContent.objects.filter(is_active=True).first()
         if not content:
-            return Response({})
+            return Response({
+                'headline': 'Zenda',
+                'subheadline': 'One app. Your money. Your life. Your business.',
+                'what_is': 'Download Zenda and manage your finances, money, business and more.',
+                'who_it_helps': 'Individuals, families and small businesses.',
+                'benefits': [
+                    'Salary and budgets',
+                    'Expenses and debts',
+                    'Savings and goals',
+                    'Business finance',
+                ],
+                'features': [],
+                'screenshots': [],
+                'app_store_url': settings.APP_STORE_URL_IOS,
+                'play_store_url': settings.APP_STORE_URL_ANDROID,
+                'monthly_price_kz': '10000',
+            })
         serializer = ZendaContentSerializer(content, context={'request': request})
-        return Response(serializer.data)
+        data = serializer.data
+        if not data.get('app_store_url'):
+            data['app_store_url'] = settings.APP_STORE_URL_IOS
+        if not data.get('play_store_url'):
+            data['play_store_url'] = settings.APP_STORE_URL_ANDROID
+        return Response(data)
 
 
 class HomeSectionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -286,7 +307,15 @@ class PortfolioHomeViewSet(viewsets.ViewSet):
             'zenda': (
                 ZendaContentSerializer(zenda_obj, context=ctx).data
                 if (zenda_obj := ZendaContent.objects.filter(is_active=True).first())
-                else {}
+                else {
+                    'headline': 'Zenda',
+                    'subheadline': 'One app. Your money. Your life. Your business.',
+                    'app_store_url': settings.APP_STORE_URL_IOS,
+                    'play_store_url': settings.APP_STORE_URL_ANDROID,
+                    'benefits': [],
+                    'features': [],
+                    'screenshots': [],
+                }
             ),
             'settings': (
                 SiteSettingsSerializer(SiteSettings.objects.first(), context=ctx).data

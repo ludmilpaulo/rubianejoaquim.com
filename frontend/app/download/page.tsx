@@ -4,15 +4,24 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import { zendaBrand } from '@/lib/zenda-brand'
+import {
+  ZENDA_APP_STORE_URL,
+  ZENDA_DOWNLOAD_BLURB,
+  ZENDA_IOS_APP_ID,
+  ZENDA_PLAY_STORE_URL,
+  ZENDA_TAGLINE,
+} from '@/lib/zenda-stores'
 
 export const metadata: Metadata = {
   title: 'Download Zenda',
-  description: 'Download Zenda for iOS or Android — manage finances, budgets, savings and goals.',
+  description: `${ZENDA_TAGLINE} ${ZENDA_DOWNLOAD_BLURB}`,
+  itunes: {
+    appId: ZENDA_IOS_APP_ID,
+  },
+  other: {
+    'apple-itunes-app': `app-id=${ZENDA_IOS_APP_ID}, app-argument=https://www.rubianejoaquim.com/download`,
+  },
 }
-
-const PLAY_FALLBACK =
-  'https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda'
-const WEB_FALLBACK = 'https://www.rubianejoaquim.com/zenda'
 
 function detectPlatform(ua: string): 'ios' | 'android' | 'other' {
   const lower = ua.toLowerCase()
@@ -26,22 +35,22 @@ async function fetchStoreUrls(): Promise<{ ios: string; android: string }> {
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ||
     'https://ludmilpaulo.pythonanywhere.com/api'
   try {
-    const res = await fetch(`${api}/config/app-version/`, { next: { revalidate: 300 } })
+    const res = await fetch(`${api}/config/app-version/`, { next: { revalidate: 60 } })
     if (!res.ok) throw new Error('config fetch failed')
     const data = (await res.json()) as {
       ios_store_url?: string
       android_store_url?: string
     }
     return {
-      ios: data.ios_store_url || '',
-      android: data.android_store_url || PLAY_FALLBACK,
+      ios: data.ios_store_url || ZENDA_APP_STORE_URL,
+      android: data.android_store_url || ZENDA_PLAY_STORE_URL,
     }
   } catch {
-    return { ios: '', android: PLAY_FALLBACK }
+    return { ios: ZENDA_APP_STORE_URL, android: ZENDA_PLAY_STORE_URL }
   }
 }
 
-async function trackClick(ref: string | null, platform: string, ua: string) {
+async function trackClick(ref: string | null, platform: string) {
   if (!ref) return
   const api =
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ||
@@ -61,7 +70,6 @@ async function trackClick(ref: string | null, platform: string, ua: string) {
   } catch {
     // ignore tracking failures
   }
-  void ua
 }
 
 type SearchParams = Promise<{ ref?: string; platform?: string }>
@@ -73,35 +81,25 @@ export default async function DownloadPage({
 }) {
   const params = await searchParams
   const ref = typeof params.ref === 'string' ? params.ref : null
+  const forced =
+    params.platform === 'ios' || params.platform === 'android' ? params.platform : null
   const headerList = await headers()
   const ua = headerList.get('user-agent') || ''
-  const platform = detectPlatform(ua)
+  const platform = forced || detectPlatform(ua)
   const stores = await fetchStoreUrls()
+  const iosUrl = stores.ios || ZENDA_APP_STORE_URL
+  const androidUrl = stores.android || ZENDA_PLAY_STORE_URL
 
-  await trackClick(ref, platform, ua)
+  await trackClick(ref, platform)
 
-  const withRef = (url: string) => {
-    if (!url) return WEB_FALLBACK
-    if (!ref) return url
-    try {
-      const u = new URL(url)
-      u.searchParams.set('ref', ref)
-      return u.toString()
-    } catch {
-      return url
-    }
+  // Universal Links open the installed app first. If this page renders, the app
+  // is not installed (or the in-app browser blocked App Links) — send store URLs.
+  if (platform === 'android') {
+    redirect(androidUrl)
   }
-
-  if (platform === 'android' && stores.android) {
-    redirect(withRef(stores.android))
+  if (platform === 'ios') {
+    redirect(iosUrl)
   }
-  if (platform === 'ios' && stores.ios) {
-    redirect(withRef(stores.ios))
-  }
-
-  const androidUrl = withRef(stores.android || PLAY_FALLBACK)
-  const iosUrl = stores.ios ? withRef(stores.ios) : WEB_FALLBACK
-  const inviteNote = ref ? `Referral: ${ref}` : null
 
   return (
     <main
@@ -123,30 +121,10 @@ export default async function DownloadPage({
         <p style={{ letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7, fontSize: 12 }}>
           Zenda
         </p>
-        <h1 style={{ fontSize: '2rem', margin: '0.5rem 0 0.75rem', fontWeight: 700 }}>
-          Download Zenda
-        </h1>
-        <p style={{ opacity: 0.85, lineHeight: 1.5, marginBottom: '1.75rem' }}>
-          Manage salary, budgets, savings, debts and financial education in one app.
-        </p>
-        {inviteNote ? (
-          <p style={{ fontSize: 13, opacity: 0.7, marginBottom: '1rem' }}>{inviteNote}</p>
-        ) : null}
+        <h1 style={{ fontSize: '2rem', margin: '0.5rem 0 0.75rem', fontWeight: 700 }}>Zenda</h1>
+        <p style={{ opacity: 0.9, fontWeight: 600, marginBottom: 8 }}>{ZENDA_TAGLINE}</p>
+        <p style={{ opacity: 0.85, lineHeight: 1.5, marginBottom: '1.75rem' }}>{ZENDA_DOWNLOAD_BLURB}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <a
-            href={androidUrl}
-            style={{
-              display: 'block',
-              padding: '14px 18px',
-              borderRadius: 12,
-              background: zendaBrand.growth,
-              color: '#052e16',
-              fontWeight: 700,
-              textDecoration: 'none',
-            }}
-          >
-            Download for Android
-          </a>
           <a
             href={iosUrl}
             style={{
@@ -161,11 +139,25 @@ export default async function DownloadPage({
           >
             Download for iPhone
           </a>
+          <a
+            href={androidUrl}
+            style={{
+              display: 'block',
+              padding: '14px 18px',
+              borderRadius: 12,
+              background: zendaBrand.growth,
+              color: '#052e16',
+              fontWeight: 700,
+              textDecoration: 'none',
+            }}
+          >
+            Download for Android
+          </a>
           <Link
-            href="/zenda"
+            href="/"
             style={{ color: '#C8C7F5', marginTop: 8, fontSize: 14, textDecoration: 'underline' }}
           >
-            Learn more about Zenda
+            Open Zenda Web
           </Link>
         </div>
       </div>

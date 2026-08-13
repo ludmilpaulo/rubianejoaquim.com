@@ -667,7 +667,7 @@ export const commonScreens: Record<
     },
     share: {
       title: 'Partilhar Zenda',
-      message: 'Experimente o Zenda — a sua app de finanças pessoais: {{url}}',
+      message: 'Zenda — Uma app. O seu dinheiro. A sua vida. O seu negócio.\nDescarregue o Zenda e gira as suas finanças, dinheiro, negócio e muito mais.\n{{url}}',
       button: 'Partilhar Zenda',
       error: 'Não foi possível partilhar.',
     },
@@ -1323,7 +1323,7 @@ export const commonScreens: Record<
     },
     share: {
       title: 'Share Zenda',
-      message: 'Try Zenda — your personal finance app: {{url}}',
+      message: 'Zenda — One app. Your money. Your life. Your business.\nDownload Zenda and manage your finances, money, business and more.\n{{url}}',
       button: 'Share Zenda',
       error: 'Could not share.',
     },
@@ -1943,7 +1943,7 @@ export const commonScreens: Record<
     },
     share: {
       title: 'Partager Zenda',
-      message: 'Essayez Zenda — votre app de finances personnelles : {{url}}',
+      message: 'Zenda — Une app. Votre argent. Votre vie. Votre entreprise.\nTéléchargez Zenda et gérez vos finances, votre argent, votre entreprise et plus encore.\n{{url}}',
       button: 'Partager Zenda',
       error: 'Impossible de partager.',
     },
@@ -2563,7 +2563,7 @@ export const commonScreens: Record<
     },
     share: {
       title: 'Compartir Zenda',
-      message: 'Prueba Zenda — tu app de finanzas personales: {{url}}',
+      message: 'Zenda — Una app. Tu dinero. Tu vida. Tu negocio.\nDescarga Zenda y gestiona tus finanzas, dinero, negocio y más.\n{{url}}',
       button: 'Compartir Zenda',
       error: 'No se pudo compartir.',
     },
