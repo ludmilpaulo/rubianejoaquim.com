@@ -45,7 +45,7 @@ function ResetPasswordForm() {
   if (!valid) {
     return (
       <div
-        className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
+        className="bg-zenda-bg w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
         style={{
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
           paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
@@ -80,7 +80,7 @@ function ResetPasswordForm() {
   if (success) {
     return (
       <div
-        className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
+        className="bg-zenda-bg w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
         style={{
           paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
           paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
@@ -109,7 +109,7 @@ function ResetPasswordForm() {
 
   return (
     <div
-      className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
+      className="bg-zenda-bg w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
       style={{
         paddingLeft: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
         paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
@@ -212,7 +212,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center">
+      <div className="bg-zenda-bg w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center">
         <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full text-center">
           <p className="text-gray-600">A carregar...</p>
         </div>

@@ -209,7 +209,7 @@ export default function AdminUserPointsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 min-w-0">
+    <div className="min-h-screen bg-zenda-bg min-w-0">
       <div
         className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8"
         style={{

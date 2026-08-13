@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import Link from 'next/link'
 import { adminApi, authApi } from '@/lib/api'
+import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
 
 interface Stats {
   totalCourses: number
@@ -73,9 +74,7 @@ export default function AdminDashboard() {
 
   if (!mounted || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
-      </div>
+      <ZendaPageLoading />
     )
   }
 
@@ -84,7 +83,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 min-w-0">
+    <div className="min-h-screen bg-zenda-bg min-w-0">
       <div
         className="max-w-7xl mx-auto py-4 sm:py-6 md:py-8 px-4 sm:px-6 lg:px-8"
         style={{

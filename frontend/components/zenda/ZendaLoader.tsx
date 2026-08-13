@@ -12,6 +12,7 @@ interface ZendaLoaderProps {
   message?: string
   size?: Size
   className?: string
+  inverse?: boolean
 }
 
 /**
@@ -22,6 +23,7 @@ export default function ZendaLoader({
   message,
   size = 'md',
   className = '',
+  inverse = false,
 }: ZendaLoaderProps) {
   const px = SIZE_PX[size]
   const ring = px + 16
@@ -40,7 +42,7 @@ export default function ZendaLoader({
         />
       </div>
       {message ? (
-        <p className="text-sm text-zenda-textSecondary text-center max-w-[17.5rem] leading-snug">
+        <p className={`text-sm text-center max-w-[17.5rem] leading-snug ${inverse ? 'text-white/80' : 'text-zenda-textSecondary'}`}>
           {message}
         </p>
       ) : (

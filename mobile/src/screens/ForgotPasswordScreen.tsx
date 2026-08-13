@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native'
-import { TextInput, Button, Text, Card } from 'react-native-paper'
+import { TextInput, Text, Card } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { StackScreenProps } from '@react-navigation/stack'
@@ -9,6 +9,8 @@ import { authApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage, isApiError } from '../types/api'
+import { ZendaButton, ZendaLogo } from '../components/ui'
+import { colors } from '../theme'
 
 type Props = StackScreenProps<AuthStackParamList, 'ForgotPassword'>
 
@@ -62,14 +64,12 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               <Text variant="bodyMedium" style={styles.successText}>
                 {t('auth.forgotPassword.successDetail')}
               </Text>
-              <Button
-                mode="contained"
+              <ZendaButton
                 onPress={() => navigation.navigate('Login')}
                 style={styles.button}
-                buttonColor="#3534C9"
               >
                 {t('auth.forgotPassword.backToLogin')}
-              </Button>
+              </ZendaButton>
             </Card.Content>
           </Card>
         </View>
@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
           <Card style={styles.card} elevation={4}>
             <Card.Content style={styles.cardContent}>
               <View style={styles.iconWrap}>
-                <MaterialCommunityIcons name="lock-reset" size={48} color="#3534C9" />
+                <MaterialCommunityIcons name="lock-reset" size={48} color={colors.brand.primary} />
               </View>
               <Text variant="titleLarge" style={styles.title}>
                 {t('auth.forgotPassword.forgotTitle')}
@@ -114,25 +114,22 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                 placeholder={t('auth.forgotPassword.emailPlaceholder')}
               />
 
-              <Button
-                mode="contained"
+              <ZendaButton
                 onPress={handleSubmit}
                 {...feedback.buttonProps('reset')}
                 style={styles.button}
-                buttonColor="#3534C9"
               >
                 {feedback.actionLabel('auth.forgotPassword.sendLink', 'reset', 'feedback.resettingPassword')}
-              </Button>
+              </ZendaButton>
 
-              <Button
-                mode="text"
+              <ZendaButton
+                variant="ghost"
                 onPress={() => navigation.navigate('Login')}
                 disabled={feedback.anyPending}
                 style={styles.backLink}
-                textColor="#3534C9"
               >
                 ← {t('auth.forgotPassword.backToLogin')}
-              </Button>
+              </ZendaButton>
             </Card.Content>
           </Card>
         </View>

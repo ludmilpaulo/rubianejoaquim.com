@@ -16,7 +16,7 @@ import { getApiBaseUrl } from '../config/api'
 import { getThunkErrorMessage } from '../utils/thunkError'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage, isApiError } from '../types/api'
-import { ZendaLogo } from '../components/ui'
+import { ZendaLogo, ZendaButton } from '../components/ui'
 import AuthLegalFooter from '../components/AuthLegalFooter'
 import { colors } from '../theme'
 
@@ -383,8 +383,8 @@ export default function LoginScreen({ navigation }: Props) {
               </View>
 
               {biometricAvailable && biometricEnabled && (
-                <Button
-                  mode="outlined"
+                <ZendaButton
+                  variant="outline"
                   onPress={handleBiometricLogin}
                   {...feedback.buttonProps('biometric')}
                   style={styles.biometricButton}
@@ -399,7 +399,7 @@ export default function LoginScreen({ navigation }: Props) {
                   {feedback.isPending('biometric')
                     ? t('feedback.signingIn')
                     : tw('auth.login.signInWith', { type: biometricType })}
-                </Button>
+                </ZendaButton>
               )}
 
               <View style={styles.divider}>
@@ -412,18 +412,16 @@ export default function LoginScreen({ navigation }: Props) {
                 )}
               </View>
 
-              <Button
+              <ZendaButton
                 testID="login-submit"
-                mode="contained"
                 onPress={handleLogin}
                 {...feedback.buttonProps('login')}
                 style={styles.button}
-                buttonColor={colors.brand.primary}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
                 {feedback.actionLabel('auth.login.signIn', 'login', 'feedback.signingIn')}
-              </Button>
+              </ZendaButton>
 
               {biometricAvailable && (
                 <TouchableOpacity
@@ -484,7 +482,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#3534C9',
+    backgroundColor: colors.brand.primary,
     opacity: 0.06,
     top: -80,
     right: -80,
@@ -494,7 +492,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#3C3BD4',
+    backgroundColor: colors.brand.ai,
     opacity: 0.06,
     bottom: -60,
     left: -60,
@@ -508,7 +506,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
     backgroundColor: '#ffffff',
-    shadowColor: '#3534C9',
+    shadowColor: colors.brand.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -525,35 +523,35 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f0f4ff',
+    backgroundColor: colors.brand.primaryContainer,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#e0e7ff',
+    borderColor: colors.border.light,
   },
   title: {
     textAlign: 'center',
     marginBottom: 8,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text.primary,
     letterSpacing: -0.5,
   },
   subtitle: {
     textAlign: 'center',
     marginBottom: 32,
-    color: '#6b7280',
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   linkBox: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: colors.brand.primaryContainer,
     borderWidth: 1,
-    borderColor: '#fcd34d',
+    borderColor: colors.border.medium,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
   },
   linkText: {
-    color: '#92400e',
+    color: colors.text.primary,
     fontSize: 13,
     marginBottom: 8,
     lineHeight: 18,
@@ -574,7 +572,7 @@ const styles = StyleSheet.create({
   },
   forgotLinkText: {
     fontSize: 14,
-    color: '#3534C9',
+    color: colors.brand.primary,
     fontWeight: '500',
   },
   button: {
@@ -591,7 +589,7 @@ const styles = StyleSheet.create({
   biometricButton: {
     marginBottom: 16,
     paddingVertical: 4,
-    borderColor: '#3534C9',
+    borderColor: colors.brand.primary,
   },
   divider: {
     flexDirection: 'row',
@@ -601,11 +599,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: colors.border.light,
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#999',
+    color: colors.text.muted,
     fontSize: 14,
   },
   biometricOption: {
@@ -617,7 +615,7 @@ const styles = StyleSheet.create({
   biometricOptionText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: colors.text.secondary,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -648,7 +646,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   errorDangerText: {
-    color: '#d32f2f',
+    color: colors.danger,
   },
   registerLink: {
     flexDirection: 'row',
@@ -659,17 +657,17 @@ const styles = StyleSheet.create({
   },
   registerLinkText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
   },
   registerLinkBold: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3534C9',
+    color: colors.brand.primary,
   },
   note: {
     marginTop: 8,
     textAlign: 'center',
     fontSize: 12,
-    color: '#999',
+    color: colors.text.muted,
   },
 })

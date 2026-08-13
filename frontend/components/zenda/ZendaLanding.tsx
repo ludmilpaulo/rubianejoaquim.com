@@ -5,6 +5,7 @@ import Link from 'next/link'
 import PhoneSlideshow from '@/components/PhoneSlideshow'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
+import ZendaLoader from '@/components/zenda/ZendaLoader'
 import { useLocale } from '@/contexts/LocaleContext'
 import { publicApi } from '@/lib/public-api'
 import type { FAQ, SiteSettings, ZendaContent } from '@/lib/public-types'
@@ -104,9 +105,8 @@ export default function ZendaLanding() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zenda-deep flex flex-col items-center justify-center gap-4">
-        <ZendaLogo size="lg" priority />
-        <div className="w-10 h-10 border-2 border-zenda-growth border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-zenda-deep flex flex-col items-center justify-center">
+        <ZendaLoader inverse message="A carregar o Zenda…" size="lg" />
       </div>
     )
   }

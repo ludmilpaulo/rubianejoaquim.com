@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
 } from 'react-native'
 import { Text, Card, Button, RadioButton, Divider } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
@@ -15,6 +14,7 @@ import { lessonQuizApi, lessonsApi } from '../services/api'
 import { getApiErrorMessage, unwrapEnvelope } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
 import { colors } from '../theme'
+import { ZendaLoader } from '../components/ui/ZendaLoader'
 
 interface RouteParams {
   lessonId: number
@@ -131,8 +131,7 @@ export default function LessonQuizScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#3534C9" />
-          <Text variant="bodyLarge" style={styles.loadingText}>Carregando quiz...</Text>
+          <ZendaLoader message="Carregando quiz..." size="lg" />
         </View>
       </SafeAreaView>
     )

@@ -61,7 +61,7 @@ function HomeStack() {
       <Stack.Screen 
         name="AICopilot" 
         component={AICopilotScreen}
-        options={{ title: t('navigation.aiCopilot'), headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }}
+        options={{ title: t('navigation.aiCopilot'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen 
         name="Market" 
@@ -69,9 +69,9 @@ function HomeStack() {
         options={{ title: t('navigation.market'), headerStyle, headerTintColor: '#fff' }}
       />
       <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
-      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle: { backgroundColor: colors.brand.ai }, headerTintColor: '#fff' }} />
-      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle: { backgroundColor: colors.brand.accent }, headerTintColor: '#fff' }} />
-      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle: { backgroundColor: colors.brand.secondary }, headerTintColor: '#fff' }} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle, headerTintColor: '#fff' }} />
+      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle, headerTintColor: '#fff' }} />
+      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle, headerTintColor: '#fff' }} />
     </Stack.Navigator>
   )
 }

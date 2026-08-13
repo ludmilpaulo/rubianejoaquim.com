@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/store'
 import SocialLoginButtons from '@/components/SocialLoginButtons'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
+import ZendaButton from '@/components/zenda/ZendaButton'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
 
@@ -180,6 +181,7 @@ function LoginPageInner() {
   }
 
   return (
+    <div className="bg-zenda-bg min-h-[calc(100vh-4rem)]">
     <div
       className="w-full max-w-md mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 lg:py-20 min-w-0 min-h-[calc(100vh-8rem)] flex flex-col justify-center"
       style={{
@@ -431,13 +433,13 @@ function LoginPageInner() {
             </div>
           )}
 
-          <button
+          <ZendaButton
             type="submit"
             disabled={loading}
-            className="w-full btn-zenda disabled:opacity-50"
+            className="w-full"
           >
             {loading ? 'A processar...' : isLogin ? 'Entrar' : 'Registar'}
-          </button>
+          </ZendaButton>
         </form>
 
         <div className="mt-6 text-center space-y-2">
@@ -460,6 +462,7 @@ function LoginPageInner() {
           </p>
         </div>
       </div>
+    </div>
     </div>
   )
 }

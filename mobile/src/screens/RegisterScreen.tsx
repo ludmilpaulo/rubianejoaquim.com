@@ -13,8 +13,9 @@ import type { AuthStackParamList } from '../navigation/AuthNavigator'
 import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage } from '../types/api'
-import { ZendaLogo } from '../components/ui'
+import { ZendaLogo, ZendaButton } from '../components/ui'
 import AuthLegalFooter from '../components/AuthLegalFooter'
+import { colors } from '../theme'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -109,7 +110,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 onPress={() => navigation.goBack()}
                 disabled={feedback.anyPending}
               >
-                <MaterialCommunityIcons name="arrow-left" size={24} color="#3534C9" />
+                <MaterialCommunityIcons name="arrow-left" size={24} color={colors.brand.primary} />
               </TouchableOpacity>
               <View style={styles.logoContainer}>
                 <ZendaLogo size="large" variant="full" />
@@ -269,17 +270,15 @@ export default function RegisterScreen({ navigation }: Props) {
                 style={styles.input}
               />
 
-              <Button
-                mode="contained"
+              <ZendaButton
                 onPress={handleRegister}
                 {...feedback.buttonProps('register')}
                 style={styles.button}
-                buttonColor="#3534C9"
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
                 {feedback.actionLabel('auth.register.createAccount', 'register', 'feedback.creatingAccount')}
-              </Button>
+              </ZendaButton>
 
               <TouchableOpacity
                 style={styles.loginLink}
@@ -302,11 +301,11 @@ export default function RegisterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background.default,
     position: 'relative',
   },
   backgroundDecor: {
@@ -321,7 +320,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: '#3534C9',
+    backgroundColor: colors.brand.primary,
     opacity: 0.06,
     top: -80,
     right: -80,
@@ -331,7 +330,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#3C3BD4',
+    backgroundColor: colors.brand.ai,
     opacity: 0.06,
     bottom: -60,
     left: -60,
@@ -345,7 +344,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
     backgroundColor: '#ffffff',
-    shadowColor: '#3534C9',
+    shadowColor: colors.brand.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
@@ -379,13 +378,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
     fontWeight: '700',
-    color: '#1f2937',
+    color: colors.text.primary,
     letterSpacing: -0.5,
   },
   subtitle: {
     textAlign: 'center',
     marginBottom: 24,
-    color: '#6b7280',
+    color: colors.text.secondary,
     lineHeight: 20,
   },
   input: {
@@ -426,12 +425,12 @@ const styles = StyleSheet.create({
   },
   loginLinkText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
   },
   loginLinkBold: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#3534C9',
+    color: colors.brand.primary,
   },
   linkBox: {
     backgroundColor: '#fffbeb',

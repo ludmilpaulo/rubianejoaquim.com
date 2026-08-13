@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
-import ZendaLoader from '@/components/zenda/ZendaLoader'
+import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
 
 type AuthGuardProps = {
   children: React.ReactNode
@@ -27,17 +27,13 @@ export default function AuthGuard({ children, requireAdmin = false }: AuthGuardP
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zenda-bg">
-        <ZendaLoader message="A carregar…" />
-      </div>
+      <ZendaPageLoading message="A carregar…" />
     )
   }
 
   if (!user || (requireAdmin && !user.is_admin)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-zenda-bg px-4 text-center">
-        <ZendaLoader message="A redirecionar para o login…" />
-      </div>
+      <ZendaPageLoading message="A redirecionar para o login…" />
     )
   }
 

@@ -75,7 +75,7 @@ export default function AdminAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-zenda-bg flex items-center justify-center">
         <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
@@ -83,7 +83,7 @@ export default function AdminAnalyticsPage() {
 
   if (loadError || !stats) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 text-center">
+      <div className="min-h-screen bg-zenda-bg flex flex-col items-center justify-center px-4 text-center">
         <p className="text-gray-700 mb-4">Não foi possível carregar as estatísticas.</p>
         <button
           type="button"
@@ -97,7 +97,7 @@ export default function AdminAnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-zenda-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Estatísticas e Relatórios</h1>
