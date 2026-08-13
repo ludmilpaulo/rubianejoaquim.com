@@ -1,12 +1,13 @@
 {
   "name": "mobile",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "index.ts",
   "scripts": {
     "version:bump": "node scripts/bump-version.js",
-    "build": "npm run version:bump && eas build",
-    "build:production": "npm run version:bump && eas build --profile production",
-    "build:preview": "npm run version:bump && eas build --profile preview",
+    "build": "npm run version:bump && eas build --local",
+    "build:production": "npm run version:bump && eas build --profile production --local",
+    "build:preview": "npm run version:bump && eas build --profile preview --local",
+    "build:production:local": "eas build --profile production --local",
     "update:production": "eas update --branch production --message \"Production update\"",
     "update:preview": "eas update --branch preview --message \"Preview update\"",
     "update:development": "eas update --branch development --message \"Development update\"",
