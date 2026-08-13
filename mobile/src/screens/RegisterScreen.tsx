@@ -14,7 +14,9 @@ import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage } from '../types/api'
 import { ZendaLogo } from '../components/ui'
-import { colors } from '../theme'
+import AuthLegalFooter from '../components/AuthLegalFooter'
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type Props = StackScreenProps<AuthStackParamList, 'Register'>
 
@@ -41,6 +43,10 @@ export default function RegisterScreen({ navigation }: Props) {
     setError('')
     if (!email.trim() || !username.trim() || !password || !passwordConfirm || !firstName.trim() || !lastName.trim()) {
       setError(t('auth.register.fillAllFields'))
+      return
+    }
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      setError(t('auth.register.invalidEmail'))
       return
     }
     if (password.length < 8) {
@@ -283,6 +289,8 @@ export default function RegisterScreen({ navigation }: Props) {
                 <Text style={styles.loginLinkText}>{t('auth.register.hasAccount')} </Text>
                 <Text style={styles.loginLinkBold}>{t('auth.register.signIn')}</Text>
               </TouchableOpacity>
+
+              <AuthLegalFooter />
             </Card.Content>
           </Card>
         </ScrollView>

@@ -12,7 +12,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#3534C9"
     },
@@ -27,6 +27,8 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
         "ITSAppUsesNonExemptEncryption": false,
+        "FacebookAppID": "2691305731001778",
+        "FacebookDisplayName": "Zenda",
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
@@ -52,7 +54,7 @@
       "intentFilters": [
         {
           "action": "VIEW",
-          "autoVerify": false,
+          "autoVerify": true,
           "category": [
             "BROWSABLE",
             "DEFAULT"

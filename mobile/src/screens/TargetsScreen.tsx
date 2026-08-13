@@ -159,12 +159,12 @@ export default function TargetsScreen() {
 
   const handleDeleteTarget = async (targetId: number) => {
     Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir esta meta? Esta ação não pode ser desfeita.',
+      t('goals.deleteTitle'),
+      t('goals.deleteConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -268,6 +268,28 @@ export default function TargetsScreen() {
     }
   }
 
+  const getTargetTypeLabel = (type: string) => {
+    switch (type) {
+      case 'personal': return t('goals.typePersonal')
+      case 'financial': return t('goals.typeFinancial')
+      case 'career': return t('goals.typeCareer')
+      case 'health': return t('goals.typeHealth')
+      case 'education': return t('goals.typeEducation')
+      case 'business': return t('goals.typeBusiness')
+      default: return t('goals.typeOther')
+    }
+  }
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active': return t('goals.active')
+      case 'completed': return t('goals.completed')
+      case 'paused': return t('goals.paused')
+      case 'cancelled': return t('goals.cancelled')
+      default: return status
+    }
+  }
+
   const filteredTargets = activeFilter === 'all' 
     ? targets 
     : targets.filter(t => t.status === activeFilter)
@@ -284,14 +306,14 @@ export default function TargetsScreen() {
           <View>
             <Text variant="headlineSmall" style={styles.title}>{t('tasks.screenTitle')}</Text>
             <Text variant="bodySmall" style={styles.subtitle}>
-              {targets.filter(t => t.status === 'active').length} metas ativas
+              {tw('goals.activeCount', { count: targets.filter((item) => item.status === 'active').length })}
             </Text>
           </View>
         </View>
 
         {/* Period Selector & Stats */}
         <View style={styles.periodSection}>
-          <Text variant="labelMedium" style={styles.periodLabel}>Estatísticas do período</Text>
+          <Text variant="labelMedium" style={styles.periodLabel}>{t('goals.periodStats')}</Text>
           <PeriodSelector state={periodState} onChange={setPeriodState} />
         </View>
         {stats && (
@@ -300,21 +322,21 @@ export default function TargetsScreen() {
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="flag" size={24} color="#3534C9" />
                 <RNText style={styles.statValue}>{stats.total}</RNText>
-                <RNText style={styles.statLabel}>Total</RNText>
+                <RNText style={styles.statLabel}>{t('goals.total')}</RNText>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="play-circle" size={24} color="#4DB83D" />
                 <RNText style={styles.statValue}>{stats.active}</RNText>
-                <RNText style={styles.statLabel}>Ativas</RNText>
+                <RNText style={styles.statLabel}>{t('goals.active')}</RNText>
               </Card.Content>
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
                 <MaterialCommunityIcons name="check-circle" size={24} color="#3534C9" />
                 <RNText style={styles.statValue}>{stats.completed}</RNText>
-                <RNText style={styles.statLabel}>Concluídas</RNText>
+                <RNText style={styles.statLabel}>{t('goals.completed')}</RNText>
               </Card.Content>
             </Card>
           </View>
@@ -324,10 +346,10 @@ export default function TargetsScreen() {
         <View style={styles.filtersContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filters}>
             {[
-              { key: 'all', label: 'Todas', icon: 'view-list' },
-              { key: 'active', label: 'Ativas', icon: 'play-circle' },
-              { key: 'completed', label: 'Concluídas', icon: 'check-circle' },
-              { key: 'paused', label: 'Pausadas', icon: 'pause-circle' },
+              { key: 'all', label: t('goals.filterAll'), icon: 'view-list' },
+              { key: 'active', label: t('goals.active'), icon: 'play-circle' },
+              { key: 'completed', label: t('goals.completed'), icon: 'check-circle' },
+              { key: 'paused', label: t('goals.paused'), icon: 'pause-circle' },
             ].map(filter => (
               <TouchableOpacity
                 key={filter.key}
@@ -354,10 +376,10 @@ export default function TargetsScreen() {
               <Card.Content style={styles.emptyContent}>
                 <MaterialCommunityIcons name="target" size={64} color="#ccc" />
                 <Text variant="bodyLarge" style={styles.emptyText}>
-                  Nenhuma meta criada ainda
+                  {t('goals.empty')}
                 </Text>
                 <Button mode="contained" onPress={() => setShowTargetModal(true)}>
-                  Criar Meta
+                  {t('goals.create')}
                 </Button>
               </Card.Content>
             </Card>
@@ -393,9 +415,7 @@ export default function TargetsScreen() {
                         textStyle={{ color: getStatusColor(target.status) }}
                         compact
                       >
-                        {target.status === 'active' ? 'Ativa' :
-                         target.status === 'completed' ? 'Concluída' :
-                         target.status === 'paused' ? 'Pausada' : 'Cancelada'}
+                        {getStatusLabel(target.status)}
                       </Chip>
                     </View>
 
@@ -426,10 +446,10 @@ export default function TargetsScreen() {
                     {/* Dates */}
                     <View style={styles.targetFooter}>
                       <Chip icon="calendar-start" compact>
-                        Início: {new Date(target.start_date).toLocaleDateString('pt-PT')}
+                        {tw('goals.start', { date: formatDate(locale, new Date(target.start_date)) })}
                       </Chip>
                       <Chip icon="calendar-end" compact>
-                        Meta: {new Date(target.target_date).toLocaleDateString('pt-PT')}
+                        {tw('goals.due', { date: formatDate(locale, new Date(target.target_date)) })}
                       </Chip>
                       {target.days_remaining !== null && (
                         <Chip
@@ -437,7 +457,7 @@ export default function TargetsScreen() {
                           style={target.days_remaining < 30 ? styles.daysChipUrgent : styles.daysChip}
                           compact
                         >
-                          {target.days_remaining} dias restantes
+                          {tw('goals.daysRemaining', { count: target.days_remaining })}
                         </Chip>
                       )}
                     </View>
@@ -451,7 +471,7 @@ export default function TargetsScreen() {
                           activeOpacity={0.7}
                         >
                           <MaterialCommunityIcons name="chart-line" size={18} color="#fff" />
-                          <RNText style={styles.updateButtonText}>Atualizar Progresso</RNText>
+                          <RNText style={styles.updateButtonText}>{t('goals.updateProgress')}</RNText>
                         </TouchableOpacity>
                         <View style={styles.targetActionButtons}>
                           <TouchableOpacity
@@ -499,23 +519,23 @@ export default function TargetsScreen() {
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              {editingTarget ? 'Editar Meta' : 'Nova Meta'}
+              {editingTarget ? t('goals.editGoal') : t('goals.newGoal')}
             </Text>
             <TextInput
-              label="Título"
+              label={t('goals.title')}
               value={targetForm.title}
               onChangeText={(text) => setTargetForm({ ...targetForm, title: text })}
               style={styles.input}
             />
             <TextInput
-              label="Descrição"
+              label={t('goals.description')}
               multiline
               value={targetForm.description}
               onChangeText={(text) => setTargetForm({ ...targetForm, description: text })}
               style={styles.input}
             />
             <View style={styles.dropdownContainer}>
-              <Text variant="bodySmall" style={styles.label}>Tipo de Meta</Text>
+              <Text variant="bodySmall" style={styles.label}>{t('goals.type')}</Text>
               <Menu
                 visible={showTypeMenu}
                 onDismiss={() => setShowTypeMenu(false)}
@@ -532,12 +552,7 @@ export default function TargetsScreen() {
                         style={styles.dropdownIcon}
                       />
                       <Text variant="bodyLarge" style={styles.dropdownText}>
-                        {targetForm.target_type === 'personal' ? 'Pessoal' :
-                         targetForm.target_type === 'financial' ? 'Financeira' :
-                         targetForm.target_type === 'career' ? 'Carreira' :
-                         targetForm.target_type === 'health' ? 'Saúde' :
-                         targetForm.target_type === 'education' ? 'Educação' :
-                         targetForm.target_type === 'business' ? 'Negócio' : 'Outro'}
+                        {getTargetTypeLabel(targetForm.target_type)}
                       </Text>
                     </View>
                     <MaterialCommunityIcons name="chevron-down" size={20} color="#999" />
@@ -549,7 +564,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'personal' })
                     setShowTypeMenu(false)
                   }}
-                  title="Pessoal"
+                  title={t('goals.typePersonal')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="target" size={20} color="#5B5AD6" />
                   )}
@@ -559,7 +574,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'financial' })
                     setShowTypeMenu(false)
                   }}
-                  title="Financeira"
+                  title={t('goals.typeFinancial')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="cash-multiple" size={20} color="#4DB83D" />
                   )}
@@ -569,7 +584,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'career' })
                     setShowTypeMenu(false)
                   }}
-                  title="Carreira"
+                  title={t('goals.typeCareer')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="briefcase" size={20} color="#3534C9" />
                   )}
@@ -579,7 +594,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'health' })
                     setShowTypeMenu(false)
                   }}
-                  title="Saúde"
+                  title={t('goals.typeHealth')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="heart" size={20} color="#ef4444" />
                   )}
@@ -589,7 +604,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'education' })
                     setShowTypeMenu(false)
                   }}
-                  title="Educação"
+                  title={t('goals.typeEducation')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="school" size={20} color="#f59e0b" />
                   )}
@@ -599,7 +614,7 @@ export default function TargetsScreen() {
                     setTargetForm({ ...targetForm, target_type: 'business' })
                     setShowTypeMenu(false)
                   }}
-                  title="Negócio"
+                  title={t('goals.typeBusiness')}
                   leadingIcon={() => (
                     <MaterialCommunityIcons name="store" size={20} color="#3C3BD4" />
                   )}
@@ -607,25 +622,25 @@ export default function TargetsScreen() {
               </Menu>
             </View>
             <TextInput
-              label="Valor Alvo (opcional)"
+              label={t('goals.targetValue')}
               keyboardType="numeric"
               value={targetForm.target_value}
               onChangeText={(text) => setTargetForm({ ...targetForm, target_value: text })}
               style={styles.input}
             />
             <TextInput
-              label="Unidade (ex: AOA, kg, horas)"
+              label={t('goals.unit')}
               value={targetForm.unit}
               onChangeText={(text) => setTargetForm({ ...targetForm, unit: text })}
               style={styles.input}
             />
             <DatePicker
-              label="Data de Início"
+              label={t('goals.startDate')}
               value={targetForm.start_date}
               onChange={(date) => setTargetForm({ ...targetForm, start_date: date || new Date() })}
             />
             <DatePicker
-              label="Data Alvo"
+              label={t('goals.targetDate')}
               value={targetForm.target_date}
               onChange={(date) => setTargetForm({ ...targetForm, target_date: date })}
             />
@@ -636,7 +651,7 @@ export default function TargetsScreen() {
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons name="delete-outline" size={20} color="#fff" />
-                <RNText style={styles.modalDeleteButtonText}>Excluir Meta</RNText>
+                <RNText style={styles.modalDeleteButtonText}>{t('goals.deleteGoal')}</RNText>
               </TouchableOpacity>
             )}
             <Button
@@ -663,7 +678,7 @@ export default function TargetsScreen() {
           contentContainerStyle={styles.modal}
         >
           <Text variant="headlineSmall" style={styles.modalTitle}>
-            Atualizar Progresso
+            {t('goals.updateProgress')}
           </Text>
           {selectedTarget && (
             <>
@@ -671,15 +686,21 @@ export default function TargetsScreen() {
                 {selectedTarget.title}
               </Text>
               <Text variant="bodyMedium" style={styles.progressInfo}>
-                Valor atual: {format(parseFloat(selectedTarget.current_value))} {selectedTarget.unit}
+                {tw('goals.currentValue', {
+                  amount: format(parseFloat(selectedTarget.current_value)),
+                  unit: selectedTarget.unit,
+                })}
               </Text>
               {selectedTarget.target_value && (
                 <Text variant="bodyMedium" style={styles.progressInfo}>
-                  Valor alvo: {format(parseFloat(selectedTarget.target_value))} {selectedTarget.unit}
+                  {tw('goals.targetValueLabel', {
+                    amount: format(parseFloat(selectedTarget.target_value)),
+                    unit: selectedTarget.unit,
+                  })}
                 </Text>
               )}
               <TextInput
-                label="Novo Valor"
+                label={t('goals.newValue')}
                 keyboardType="numeric"
                 value={progressValue}
                 onChangeText={setProgressValue}
@@ -693,7 +714,7 @@ export default function TargetsScreen() {
               >
                 {feedback.isPending('updateProgress')
                   ? t('feedback.processing')
-                  : 'Atualizar'}
+                  : t('goals.update')}
               </Button>
             </>
           )}

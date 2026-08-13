@@ -44,6 +44,10 @@
         </array>
       </dict>
     </array>
+    <key>FacebookAppID</key>
+    <string>2691305731001778</string>
+    <key>FacebookDisplayName</key>
+    <string>Zenda</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>fbapi</string>

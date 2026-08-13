@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { View, StyleSheet, Alert, Platform } from 'react-native'
-import { Button, Text, ActivityIndicator } from 'react-native-paper'
+import { Button, Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
 import * as Google from 'expo-auth-session/providers/google'
-import * as Facebook from 'expo-auth-session/providers/facebook'
 import * as Linking from 'expo-linking'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { authApi } from '../services/api'
@@ -15,6 +14,7 @@ import type { SocialAuthResult, SocialConfigResponse } from '../types/api'
 import { logger } from '../utils/logger'
 import type { User } from '../types'
 import { useI18n } from '../contexts/I18nContext'
+import { ZendaLoader } from './ui/ZendaLoader'
 
 WebBrowser.maybeCompleteAuthSession()
 
@@ -24,6 +24,34 @@ WebBrowser.maybeCompleteAuthSession()
  */
 const GOOGLE_PLACEHOLDER = '000000000000-placeholder.apps.googleusercontent.com'
 const FACEBOOK_PLACEHOLDER = '000000000000000'
+const TIKTOK_RETURN_URL = 'zenda://social-callback'
+const NATIVE_GOOGLE_REDIRECT = 'com.rubianejoaquim.zenda:/oauthredirect'
+
+const FACEBOOK_DISCOVERY: AuthSession.DiscoveryDocument = {
+  authorizationEndpoint: 'https://www.facebook.com/v21.0/dialog/oauth',
+  tokenEndpoint: 'https://graph.facebook.com/v21.0/oauth/access_token',
+}
+
+function googleNativeRedirectUri(iosClientId: string): string {
+  if (
+    Platform.OS === 'ios' &&
+    iosClientId &&
+    iosClientId !== GOOGLE_PLACEHOLDER &&
+    iosClientId.endsWith('.apps.googleusercontent.com')
+  ) {
+    const clientKey = iosClientId.replace(/\.apps\.googleusercontent\.com$/, '')
+    return `com.googleusercontent.apps.${clientKey}:/oauthredirect`
+  }
+  return NATIVE_GOOGLE_REDIRECT
+}
+
+function paramFromUrl(url: string, key: string): string {
+  const hash = url.split('#')[1] || ''
+  const query = (url.split('?')[1] || '').split('#')[0]
+  const source = `${query}&${hash}`
+  const match = source.match(new RegExp(`(?:^|[&])${key}=([^&]*)`))
+  return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : ''
+}
 
 type Props = {
   onSuccess: (payload: { user: User; token: string }) => void
@@ -41,6 +69,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
   const [config, setConfig] = useState<SocialConfigResponse | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [appleAvailable, setAppleAvailable] = useState(false)
+  const tiktokHandledRef = useRef('')
 
   const googleWebClientId =
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || config?.google_client_id || ''
@@ -55,29 +84,31 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
   const facebookAppId =
     process.env.EXPO_PUBLIC_FACEBOOK_APP_ID || config?.facebook_app_id || ''
 
-  const facebookRedirectUri = AuthSession.makeRedirectUri({
-    native: `fb${facebookAppId || FACEBOOK_PLACEHOLDER}://authorize`,
-  })
+  const facebookRedirectUri = `fb${facebookAppId || FACEBOOK_PLACEHOLDER}://authorize`
 
-  // AuthSession uses a browser redirect (`com.rubianejoaquim.zenda:/oauthredirect`).
-  // That works reliably with the Web OAuth client; Android/iOS native clients are
-  // still accepted by the backend when verifying the ID token audience.
   const googleAuthClientId = googleWebClientId || GOOGLE_PLACEHOLDER
-  const [googleRequest, googleResponse, googlePrompt] = Google.useIdTokenAuthRequest({
-    clientId: googleAuthClientId,
-    webClientId: googleAuthClientId,
-    iosClientId: googleIosClientId || googleAuthClientId,
-    androidClientId: googleAndroidClientId || googleAuthClientId,
-    selectAccount: true,
-  })
+  const [googleRequest, googleResponse, googlePrompt] = Google.useIdTokenAuthRequest(
+    {
+      clientId: googleAuthClientId,
+      webClientId: googleAuthClientId,
+      iosClientId: googleIosClientId || googleAuthClientId,
+      androidClientId: googleAndroidClientId || googleAuthClientId,
+      selectAccount: true,
+    },
+    { native: googleNativeRedirectUri(googleIosClientId || googleAuthClientId) }
+  )
 
-  const [fbRequest, fbResponse, fbPrompt] = Facebook.useAuthRequest({
-    clientId: facebookAppId || FACEBOOK_PLACEHOLDER,
-    iosClientId: facebookAppId || FACEBOOK_PLACEHOLDER,
-    androidClientId: facebookAppId || FACEBOOK_PLACEHOLDER,
-    redirectUri: facebookRedirectUri,
-    scopes: ['public_profile', 'email'],
-  })
+  const [fbRequest, fbResponse, fbPrompt] = AuthSession.useAuthRequest(
+    {
+      clientId: facebookAppId || FACEBOOK_PLACEHOLDER,
+      redirectUri: facebookRedirectUri,
+      scopes: ['public_profile', 'email'],
+      responseType: AuthSession.ResponseType.Token,
+      usePKCE: false,
+      extraParams: { display: 'popup' },
+    },
+    FACEBOOK_DISCOVERY
+  )
 
   useEffect(() => {
     void WebBrowser.warmUpAsync().catch(() => undefined)
@@ -108,23 +139,74 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     }
   }, [])
 
-  const handleSocialResult = async (data: SocialAuthResult) => {
-    if (data.status === 'link_required' && data.link_token) {
-      onLinkRequired?.({
-        link_token: data.link_token,
-        email: data.email || '',
-        provider: data.provider || '',
-        message: data.message,
-      })
-      return
-    }
-    if (data.status === 'cancelled') return
-    if (data.token && data.user) {
-      onSuccess({ user: data.user, token: data.token })
-      return
-    }
-    Alert.alert(t('auth.login.signIn'), data.message || t('auth.social.loginFailed'))
-  }
+  const handleSocialResult = useCallback(
+    async (data: SocialAuthResult) => {
+      if (data.status === 'link_required' && data.link_token) {
+        onLinkRequired?.({
+          link_token: data.link_token,
+          email: data.email || '',
+          provider: data.provider || '',
+          message: data.message,
+        })
+        return
+      }
+      if (data.status === 'cancelled') return
+      if (data.token && data.user) {
+        onSuccess({ user: data.user, token: data.token })
+        return
+      }
+      Alert.alert(t('auth.login.signIn'), data.message || t('auth.social.loginFailed'))
+    },
+    [onLinkRequired, onSuccess, t]
+  )
+
+  const finishTikTokFromUrl = useCallback(
+    async (url: string) => {
+      if (!url.includes('social-callback')) return
+      if (tiktokHandledRef.current === url) return
+      tiktokHandledRef.current = url
+
+      const status = paramFromUrl(url, 'status')
+      if (status === 'cancelled') return
+      if (status === 'link_required') {
+        onLinkRequired?.({
+          link_token: paramFromUrl(url, 'link_token'),
+          email: paramFromUrl(url, 'email'),
+          provider: paramFromUrl(url, 'provider') || 'tiktok',
+        })
+        return
+      }
+      const exchangeCode = paramFromUrl(url, 'exchange_code')
+      if (exchangeCode) {
+        setBusy('tiktok')
+        try {
+          const data = await authApi.socialExchange(exchangeCode, 'tiktok')
+          await handleSocialResult(data)
+        } catch (err) {
+          Alert.alert('TikTok', getApiErrorMessage(err, t('auth.social.tiktokFailed')))
+        } finally {
+          setBusy(null)
+        }
+        return
+      }
+      const token = paramFromUrl(url, 'token')
+      if (token) {
+        await authApi.setSessionToken(token)
+        const user = await authApi.me()
+        onSuccess({ user, token })
+        return
+      }
+      Alert.alert('TikTok', paramFromUrl(url, 'message') || t('auth.social.tiktokFailed'))
+    },
+    [handleSocialResult, onLinkRequired, onSuccess, t]
+  )
+
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', (event) => {
+      void finishTikTokFromUrl(event.url)
+    })
+    return () => sub.remove()
+  }, [finishTikTokFromUrl])
 
   useEffect(() => {
     const run = async () => {
@@ -142,8 +224,9 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       const idToken =
         googleResponse.params.id_token ||
         googleResponse.authentication?.idToken ||
-        ''
+        paramFromUrl(googleResponse.url || '', 'id_token')
       if (!idToken) {
+        logger.error('Google auth succeeded without id_token')
         Alert.alert('Google', t('auth.social.googleFailed'))
         return
       }
@@ -158,8 +241,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       }
     }
     void run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleResponse])
+  }, [googleResponse, handleSocialResult, t])
 
   useEffect(() => {
     const run = async () => {
@@ -177,8 +259,9 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       const accessToken =
         fbResponse.authentication?.accessToken ||
         fbResponse.params.access_token ||
-        ''
+        paramFromUrl(fbResponse.url || '', 'access_token')
       if (!accessToken) {
+        logger.error('Facebook auth succeeded without access_token')
         Alert.alert('Facebook', t('auth.social.facebookFailed'))
         return
       }
@@ -196,8 +279,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       }
     }
     void run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fbResponse])
+  }, [fbResponse, handleSocialResult, t])
 
   const handleApple = async () => {
     if (busy || disabled) return
@@ -238,53 +320,27 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
 
   const handleTikTok = async () => {
     if (busy || disabled) return
+    tiktokHandledRef.current = ''
     setBusy('tiktok')
     try {
       const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
       const startUrl = `${apiRoot}/api/auth/social/tiktok/?client=mobile&purpose=login&redirect=${encodeURIComponent('/')}`
-      // Must match backend MOBILE_OAUTH_REDIRECT_URI (zenda://social-callback)
-      const redirectUrl = Linking.createURL('social-callback', { scheme: 'zenda' })
-      const result = await WebBrowser.openAuthSessionAsync(startUrl, redirectUrl)
-      if (result.type !== 'success' || !('url' in result) || !result.url) {
+      const result = await WebBrowser.openAuthSessionAsync(startUrl, TIKTOK_RETURN_URL, {
+        preferEphemeralSession: true,
+        showInRecents: true,
+      })
+      if (result.type === 'success' && 'url' in result && result.url) {
+        await finishTikTokFromUrl(result.url)
         return
       }
-      const parsed = Linking.parse(result.url)
-      const params = (parsed.queryParams || {}) as Record<string, string | string[] | undefined>
-      const getParam = (key: string) => {
-        const v = params[key]
-        return Array.isArray(v) ? v[0] || '' : v || ''
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        if (tiktokHandledRef.current) return
       }
-      const status = getParam('status')
-      if (status === 'cancelled') return
-      if (status === 'link_required') {
-        onLinkRequired?.({
-          link_token: getParam('link_token'),
-          email: getParam('email'),
-          provider: getParam('provider') || 'tiktok',
-        })
-        return
-      }
-      const exchangeCode = getParam('exchange_code')
-      if (exchangeCode) {
-        const data = await authApi.socialExchange(exchangeCode, 'tiktok')
-        await handleSocialResult(data)
-        return
-      }
-      const token = getParam('token')
-      if (token) {
-        await authApi.setSessionToken(token)
-        const user = await authApi.me()
-        onSuccess({ user, token })
-        return
-      }
-      Alert.alert(
-        'TikTok',
-        getParam('message') || t('auth.social.tiktokFailed')
-      )
     } catch (err) {
       Alert.alert('TikTok', getApiErrorMessage(err, t('auth.social.tiktokFailed')))
     } finally {
-      setBusy(null)
+      if (!tiktokHandledRef.current) setBusy(null)
     }
   }
 
@@ -302,14 +358,15 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
   if (!config && !googleOn && !appleOn) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator size="small" color="#3534C9" />
-        <Text style={styles.loadingText}>{t('auth.social.loadingOptions')}</Text>
+        <ZendaLoader inline message={t('auth.social.loadingOptions')} />
       </View>
     )
   }
   if (!googleOn && !facebookEnabled && !tiktokOn && !appleOn) {
     return null
   }
+
+  const promptOptions = { showInRecents: true, preferEphemeralSession: true }
 
   return (
     <View style={styles.wrap}>
@@ -332,7 +389,9 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           loading={busy === 'google'}
           onPress={() => {
             if (!googleRequest) return
-            void googlePrompt({ showInRecents: true })
+            void googlePrompt(promptOptions).catch((err: unknown) => {
+              Alert.alert('Google', getApiErrorMessage(err, t('auth.social.googleFailed')))
+            })
           }}
           style={styles.btn}
           icon={() => <MaterialCommunityIcons name="google" size={20} color="#4285F4" />}
@@ -347,7 +406,12 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           loading={busy === 'facebook'}
           onPress={() => {
             if (!fbRequest || !facebookAppId) return
-            void fbPrompt({ showInRecents: true })
+            void fbPrompt(promptOptions).catch((err: unknown) => {
+              Alert.alert(
+                'Facebook',
+                getApiErrorMessage(err, t('auth.social.facebookFailed'))
+              )
+            })
           }}
           style={styles.btn}
           buttonColor="#1877F2"
@@ -383,8 +447,8 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12, gap: 8 },
-  btn: { borderRadius: 10 },
-  appleBtn: { width: '100%', height: 44 },
+  btn: { borderRadius: 12 },
+  appleBtn: { width: '100%', height: 48 },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -401,5 +465,4 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  loadingText: { color: '#6b7280', fontSize: 13 },
 })

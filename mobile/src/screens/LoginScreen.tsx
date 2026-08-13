@@ -17,6 +17,7 @@ import { getThunkErrorMessage } from '../utils/thunkError'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage, isApiError } from '../types/api'
 import { ZendaLogo } from '../components/ui'
+import AuthLegalFooter from '../components/AuthLegalFooter'
 import { colors } from '../theme'
 
 type Props = StackScreenProps<AuthStackParamList, 'Login'>
@@ -451,6 +452,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <Text style={styles.registerLinkBold}>{t('auth.login.register')}</Text>
               </TouchableOpacity>
 
+              <AuthLegalFooter />
               <Text style={styles.note}>{t('auth.login.trialNote')}</Text>
             </Card.Content>
           </Card>

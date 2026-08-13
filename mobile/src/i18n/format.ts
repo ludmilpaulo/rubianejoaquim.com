@@ -26,3 +26,15 @@ export function formatTime(
 ): string {
   return date.toLocaleTimeString(getBcp47(locale), options)
 }
+
+export function minutesSince(date: Date, now = new Date()): number {
+  return Math.max(0, Math.round((now.getTime() - date.getTime()) / 60000))
+}
+
+export function isSameCalendarDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  )
+}

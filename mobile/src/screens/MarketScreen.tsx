@@ -15,7 +15,7 @@ import { personalFinanceApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
-import { formatDate } from '../i18n/format'
+import { formatDate, formatTime, isSameCalendarDay, minutesSince } from '../i18n/format'
 import ZendaCard from '../components/ui/ZendaCard'
 import EmptyState from '../components/ui/EmptyState'
 import { ZendaLoader, ZendaLoading } from '../components/ui/ZendaLoader'
@@ -51,6 +51,43 @@ function parseAmount(raw: string): number | null {
   const num = parseFloat(raw.replace(',', '.').trim())
   if (!Number.isFinite(num) || num <= 0) return null
   return num
+}
+
+function rateFreshnessLabel(
+  iso: string | null,
+  locale: Parameters<typeof formatDate>[0],
+  stale: boolean,
+  t: (key: string) => string,
+  tw: (key: string, vars?: Record<string, string | number>) => string,
+): string | null {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const now = new Date()
+  const mins = minutesSince(date, now)
+  let relative: string
+  if (mins < 2) {
+    relative = t('market.updatedJustNow')
+  } else if (mins < 60) {
+    relative = tw('market.updatedAgoMinutes', { count: mins })
+  } else if (mins < 24 * 60) {
+    relative = tw('market.updatedAgoHours', { count: Math.floor(mins / 60) })
+  } else if (isSameCalendarDay(date, now)) {
+    relative = tw('market.updatedTodayAt', {
+      time: formatTime(locale, date, { hour: '2-digit', minute: '2-digit' }),
+    })
+  } else {
+    relative = tw('market.updatedAt', {
+      date: formatDate(locale, date, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    })
+  }
+  return stale ? tw('market.cachedUpdated', { relative }) : relative
 }
 
 export default function MarketScreen() {
@@ -225,17 +262,7 @@ export default function MarketScreen() {
   const displaySource = convertMeta.source || listSource || ratesSource
   const displayStale = convertMeta.stale === true || listStale || ratesStale
 
-  const ratesMeta = displayUpdatedAt
-    ? tw('market.updatedAt', {
-        date: formatDate(locale, new Date(displayUpdatedAt), {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-      })
-    : null
+  const ratesMeta = rateFreshnessLabel(displayUpdatedAt, locale, displayStale, t, tw)
 
   const amountNum = useMemo(() => parseAmount(amount), [amount])
 
@@ -264,7 +291,7 @@ export default function MarketScreen() {
         {displaySource ? (
           <Text style={styles.meta}>{tw('market.source', { source: displaySource })}</Text>
         ) : null}
-        {displayStale ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
+        {displayStale && !ratesMeta ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
         <Text style={styles.disclaimer}>{t('market.disclaimer')}</Text>
 
         <ZendaCard variant="glass">
@@ -327,23 +354,13 @@ export default function MarketScreen() {
                   })}
                 </Text>
               ) : null}
-              {displayUpdatedAt ? (
-                <Text style={styles.metaSmall}>
-                  {tw('market.rateUpdated', {
-                    date: formatDate(locale, new Date(displayUpdatedAt), {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    }),
-                  })}
-                </Text>
+              {ratesMeta ? (
+                <Text style={styles.metaSmall}>{ratesMeta}</Text>
               ) : null}
               {displaySource ? (
                 <Text style={styles.metaSmall}>{tw('market.source', { source: displaySource })}</Text>
               ) : null}
-              {displayStale ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
+              {displayStale && !ratesMeta ? <Text style={styles.stale}>{t('market.staleRates')}</Text> : null}
             </View>
           )}
           <View style={styles.quickRow}>

@@ -10,14 +10,24 @@ import EmptyState from '../components/ui/EmptyState'
 import { colors, spacing, typography } from '../theme'
 import type { SharedGoalSummary } from '../types/api'
 
+interface FamilySpace {
+  id: number
+  name: string
+  invite_code?: string
+  shared_goals?: SharedGoalSummary[]
+}
+
 export default function FamilyFinanceScreen() {
   const { t } = useI18n()
-  const [spaces, setSpaces] = useState<any[]>([])
+  const [spaces, setSpaces] = useState<FamilySpace[]>([])
   const [name, setName] = useState('')
   const [inviteCode, setInviteCode] = useState('')
 
   const load = useCallback(() => {
-    financeSpaceApi.listSpaces().then(setSpaces).catch(() => setSpaces([]))
+    financeSpaceApi.listSpaces().then((data: unknown) => {
+      const list = Array.isArray(data) ? data : []
+      setSpaces(list as FamilySpace[])
+    }).catch(() => setSpaces([]))
   }, [])
 
   useFocusEffect(useCallback(() => { load() }, [load]))
@@ -69,7 +79,7 @@ export default function FamilyFinanceScreen() {
             <ZendaCard key={s.id} variant="elevated">
               <Text style={styles.spaceName}>{s.name}</Text>
               <Text style={styles.code}>{t('family.code')}: {s.invite_code}</Text>
-              {(s.shared_goals || []).map((g: SharedGoalSummary) => (
+              {(s.shared_goals || []).map((g) => (
                 <View key={g.id} style={styles.goalRow}>
                   <Text>{g.title}</Text>
                   <Text style={styles.pct}>{Math.round(g.progress_percentage ?? 0)}%</Text>

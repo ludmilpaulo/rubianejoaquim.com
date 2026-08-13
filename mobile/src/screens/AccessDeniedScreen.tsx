@@ -13,8 +13,8 @@ import {
   PRIVACY_POLICY_URL,
   TERMS_OF_USE_URL,
   SUBSCRIPTION_PRODUCT_ID,
+  type IapListedProduct,
 } from '../services/iap'
-import type { ProductOrSubscription } from 'react-native-iap'
 import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -40,7 +40,7 @@ export default function AccessDeniedScreen() {
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [redeemingSubscription, setRedeemingSubscription] = useState(false)
   const [iapPurchasing, setIapPurchasing] = useState(false)
-  const [iapProduct, setIapProduct] = useState<ProductOrSubscription | null>(null)
+  const [iapProduct, setIapProduct] = useState<IapListedProduct | null>(null)
 
   useEffect(() => {
     if (!isIapSupported()) return

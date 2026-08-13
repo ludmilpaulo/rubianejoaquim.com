@@ -196,12 +196,12 @@ export default function TirarDinheiroOrcamentoScreen() {
 
   const handleDeleteExpense = async (expenseId: number) => {
     Alert.alert(
-      'Confirmar Exclusão',
-      'Tem certeza que deseja excluir esta despesa?',
+      t('personal.deleteExpenseTitle'),
+      t('personal.deleteExpenseConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Excluir',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -211,8 +211,8 @@ export default function TirarDinheiroOrcamentoScreen() {
                 await loadBudgets()
               }
             } catch (error) {
-              console.error('Error deleting expense:', error)
-              Alert.alert('Erro', 'Não foi possível excluir a despesa')
+              logger.error('Error deleting expense:', error)
+              Alert.alert(t('common.error'), t('personal.deleteExpenseFailed'))
             }
           },
         },
@@ -267,7 +267,7 @@ export default function TirarDinheiroOrcamentoScreen() {
           <View style={styles.content}>
             <Card style={styles.card}>
               <Card.Content>
-                <Text variant="titleMedium" style={styles.sectionTitle}>Selecione o orçamento</Text>
+                <Text variant="titleMedium" style={styles.sectionTitle}>{t('personal.selectBudgetTitle')}</Text>
                 <Menu
                   visible={showBudgetMenu}
                   onDismiss={() => setShowBudgetMenu(false)}
@@ -280,8 +280,8 @@ export default function TirarDinheiroOrcamentoScreen() {
                         <MaterialCommunityIcons name="wallet-outline" size={20} color="#3534C9" />
                         <Text variant="bodyLarge" style={styles.budgetSelectorText}>
                           {selectedBudget 
-                            ? `${selectedBudget.category_name || 'Geral'} - ${getBudgetPeriodLabel(selectedBudget)}`
-                            : 'Selecione um orçamento'}
+                            ? `${selectedBudget.category_name || t('personal.general')} - ${getBudgetPeriodLabel(selectedBudget)}`
+                            : t('personal.selectBudget')}
                         </Text>
                       </View>
                       <MaterialCommunityIcons name="chevron-down" size={20} color="#9ca3af" />
@@ -289,7 +289,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                   }
                 >
                   {budgets.length === 0 ? (
-                    <Menu.Item title="Nenhum orçamento disponível" disabled />
+                    <Menu.Item title={t('personal.noBudgetsAvailable')} disabled />
                   ) : (
                     budgets.map((budget) => (
                       <Menu.Item
@@ -298,7 +298,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                           setSelectedBudget(budget)
                           setShowBudgetMenu(false)
                         }}
-                        title={`${budget.category_name || 'Geral'} - ${getBudgetPeriodLabel(budget)}`}
+                        title={`${budget.category_name || t('personal.general')} - ${getBudgetPeriodLabel(budget)}`}
                         titleStyle={selectedBudget?.id === budget.id ? { fontWeight: '600' } : {}}
                       />
                     ))
@@ -314,7 +314,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                   <View style={styles.budgetHeader}>
                     <View>
                       <Text variant="titleLarge" style={styles.budgetTitle}>
-                        {selectedBudget.category_name || 'Geral'}
+                        {selectedBudget.category_name || t('personal.general')}
                       </Text>
                       <Text variant="bodySmall" style={styles.budgetPeriod}>
                         {getBudgetPeriodLabel(selectedBudget)}
@@ -324,7 +324,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                       <Text variant="headlineMedium" style={styles.budgetAmountValue}>
                         {format(parseFloat(selectedBudget.amount))}
                       </Text>
-                      <Text variant="bodySmall" style={styles.budgetAmountLabel}>Orçamento</Text>
+                      <Text variant="bodySmall" style={styles.budgetAmountLabel}>{t('personal.tabBudgets')}</Text>
                     </View>
                   </View>
 
@@ -390,7 +390,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                 {loadingExpenses ? (
                   <Card style={styles.card}>
                     <Card.Content style={styles.emptyContent}>
-                      <Text variant="bodyMedium">Carregando despesas...</Text>
+                      <Text variant="bodyMedium">{t('common.loading')}</Text>
                     </Card.Content>
                   </Card>
                 ) : budgetExpenses.length === 0 ? (
@@ -398,10 +398,10 @@ export default function TirarDinheiroOrcamentoScreen() {
                     <Card.Content style={styles.emptyContent}>
                       <MaterialCommunityIcons name="cash-minus" size={48} color="#ccc" />
                       <Text variant="bodyMedium" style={styles.emptyText}>
-                        Nenhuma despesa registada neste orçamento
+                        {t('personal.emptyBudgetExpenses')}
                       </Text>
                       <Button mode="outlined" onPress={() => setShowExpenseModal(true)}>
-                        Adicionar primeira despesa
+                        {t('personal.addFirstExpense')}
                       </Button>
                     </Card.Content>
                   </Card>
@@ -500,11 +500,11 @@ export default function TirarDinheiroOrcamentoScreen() {
           >
             <ScrollView>
               <Text variant="headlineSmall" style={styles.modalTitle}>
-                Adicionar despesa ao orçamento
+                {t('personal.addExpenseToBudget')}
               </Text>
               {selectedBudget && (
                 <Text variant="bodyMedium" style={styles.modalSubtitle}>
-                  {selectedBudget.category_name || 'Geral'} - {getBudgetPeriodLabel(selectedBudget)}
+                  {selectedBudget.category_name || t('personal.general')} - {getBudgetPeriodLabel(selectedBudget)}
                 </Text>
               )}
 
@@ -522,7 +522,7 @@ export default function TirarDinheiroOrcamentoScreen() {
               />
 
               <TextInput
-                label="Descrição"
+                label={t('personal.description')}
                 value={expenseForm.description}
                 onChangeText={(text) => setExpenseForm({ ...expenseForm, description: text })}
                 multiline
@@ -532,13 +532,13 @@ export default function TirarDinheiroOrcamentoScreen() {
               />
 
               <DatePicker
-                label="Data"
+                label={t('period.date')}
                 value={expenseForm.date}
                 onChange={(date) => setExpenseForm({ ...expenseForm, date: date || new Date() })}
               />
 
               <View style={styles.paymentMethodSection}>
-                <Text variant="bodyMedium" style={styles.label}>Método de pagamento</Text>
+                <Text variant="bodyMedium" style={styles.label}>{t('personal.paymentMethod')}</Text>
                 <View style={styles.paymentMethodGrid}>
                   {['cash', 'card', 'transfer', 'other'].map((method) => (
                     <Button
@@ -547,9 +547,9 @@ export default function TirarDinheiroOrcamentoScreen() {
                       onPress={() => setExpenseForm({ ...expenseForm, payment_method: method })}
                       style={styles.paymentMethodButton}
                     >
-                      {method === 'cash' ? 'Dinheiro' :
-                       method === 'card' ? 'Cartão' :
-                       method === 'transfer' ? 'Transferência' : 'Outro'}
+                      {method === 'cash' ? t('personal.cash') :
+                       method === 'card' ? t('personal.card') :
+                       method === 'transfer' ? t('personal.transfer') : t('personal.other')}
                     </Button>
                   ))}
                 </View>

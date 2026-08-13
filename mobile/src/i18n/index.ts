@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import * as Localization from 'expo-localization'
 import pt from './locales/pt'
 import en from './locales/en'
 import fr from './locales/fr'
@@ -7,7 +8,7 @@ import { commonScreens } from './commonScreens'
 
 export const LOCALES = ['pt', 'en', 'fr', 'es'] as const
 export type Locale = (typeof LOCALES)[number]
-export const DEFAULT_LOCALE: Locale = 'pt'
+export const DEFAULT_LOCALE: Locale = 'en'
 
 /** Sentinel stored when user chooses "Use device language". */
 export const DEVICE_LOCALE_MODE = 'device' as const
@@ -54,10 +55,18 @@ export function isLocalePreference(value: string): value is LocalePreference {
   return value === DEVICE_LOCALE_MODE || isLocale(value)
 }
 
-/** Detect device language via Intl (no extra native module). */
+/** Detect device language (Portuguese / English / French / Spanish). Unsupported → English. */
 export function getDeviceLocale(): Locale {
   try {
-    const tag = Intl.DateTimeFormat().resolvedOptions().locale || 'pt-PT'
+    for (const loc of Localization.getLocales()) {
+      const code = (loc.languageCode || '').toLowerCase()
+      if (isLocale(code)) return code
+    }
+  } catch {
+    // ignore native lookup failures
+  }
+  try {
+    const tag = Intl.DateTimeFormat().resolvedOptions().locale || ''
     const code = tag.split('-')[0].toLowerCase()
     if (isLocale(code)) return code
   } catch {
@@ -98,7 +107,7 @@ export async function setUseDeviceLocale(): Promise<Locale> {
 }
 
 export function getMessages(locale: Locale): Messages {
-  return catalogs[locale] ?? catalogs.pt
+  return catalogs[locale] ?? catalogs.en
 }
 
 export function t(messages: Messages, key: string): string {

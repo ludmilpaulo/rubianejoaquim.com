@@ -737,7 +737,7 @@ export default function BusinessFinanceScreen() {
                         <>
                           <MaterialCommunityIcons name="tag" size={20} color="#999" style={styles.dropdownIcon} />
                           <Text variant="bodyLarge" style={[styles.dropdownText, styles.placeholderText]}>
-                            Selecione uma categoria
+                            {t('personal.selectCategory')}
                           </Text>
                         </>
                       )}
@@ -751,7 +751,7 @@ export default function BusinessFinanceScreen() {
                     setExpenseForm({ ...expenseForm, category: '' })
                     setShowCategoryMenu(false)
                   }}
-                  title="Sem categoria"
+                  title={t('business.noCategory')}
                 />
                 {categories.map(category => (
                   <Menu.Item

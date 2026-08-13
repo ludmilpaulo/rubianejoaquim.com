@@ -450,19 +450,33 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generic'): string {
+  const looksTechnical = (msg: string) =>
+    /network error|timeout|econnrefused|enotfound|status code|axios|request failed|<html|traceback|django|json parse|unexpected token/i.test(
+      msg,
+    )
+
   if (!isApiError(error)) {
-    if (error instanceof Error && error.message) return error.message
+    if (error instanceof Error && error.message) {
+      if (error.message.startsWith('api.')) return error.message
+      if (looksTechnical(error.message)) return fallback
+      if (error.message.length > 280) return fallback
+      return error.message
+    }
     return fallback
   }
-  const data = error.response?.data
-  if (!data) return error.message || fallback
-  if (typeof data.detail === 'string') return data.detail
-  if (typeof data.error === 'string') return data.error
-  if (typeof data.message === 'string') return data.message
-  if (data.non_field_errors?.[0]) return String(data.non_field_errors[0])
-  if (data.email?.[0]) return String(Array.isArray(data.email) ? data.email[0] : data.email)
-  if (data.password?.[0]) return String(Array.isArray(data.password) ? data.password[0] : data.password)
-  return fallback
+  if (!error.response) return 'api.errors.network'
+  const data = error.response.data
+  if (!data) return fallback
+  const pick =
+    (typeof data.detail === 'string' && data.detail) ||
+    (typeof data.error === 'string' && data.error) ||
+    (typeof data.message === 'string' && data.message) ||
+    (data.non_field_errors?.[0] && String(data.non_field_errors[0])) ||
+    (data.email && String(Array.isArray(data.email) ? data.email[0] : data.email)) ||
+    (data.password && String(Array.isArray(data.password) ? data.password[0] : data.password)) ||
+    ''
+  if (!pick || looksTechnical(pick) || pick.length > 280) return fallback
+  return pick
 }
 
 export function unwrapList<T>(data: T[] | PaginatedResponse<T>): T[] {
