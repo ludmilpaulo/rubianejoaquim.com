@@ -172,7 +172,7 @@ export default function NewLessonPage() {
         <div className="mb-8">
           <Link
             href="/admin/lessons"
-            className="text-primary-600 hover:text-primary-700 mb-4 inline-block"
+            className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block"
           >
             ← Voltar para Aulas
           </Link>
@@ -196,7 +196,7 @@ export default function NewLessonPage() {
                 required
                 value={formData.course}
                 onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               >
                 <option value="">Selecione um curso</option>
                 {courses.map((course) => (
@@ -216,7 +216,7 @@ export default function NewLessonPage() {
                 required
                 value={formData.title}
                 onChange={handleTitleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="Ex: Introdução às Finanças Pessoais"
               />
             </div>
@@ -230,7 +230,7 @@ export default function NewLessonPage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent bg-gray-50"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent bg-gray-50"
                 placeholder="introducao-financas-pessoais"
                 readOnly
               />
@@ -247,7 +247,7 @@ export default function NewLessonPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="Breve descrição da aula..."
               />
             </div>
@@ -260,7 +260,7 @@ export default function NewLessonPage() {
                 type="url"
                 value={formData.video_url}
                 onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="mt-1 text-sm text-gray-500">
@@ -276,7 +276,7 @@ export default function NewLessonPage() {
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 rows={10}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent font-mono text-sm"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent font-mono text-sm"
                 placeholder="Conteúdo da aula em HTML ou texto simples..."
               />
               <p className="mt-1 text-sm text-gray-500">
@@ -294,7 +294,7 @@ export default function NewLessonPage() {
                   min="0"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -307,7 +307,7 @@ export default function NewLessonPage() {
                   min="0"
                   value={formData.order}
                   onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -318,7 +318,7 @@ export default function NewLessonPage() {
                 <select
                   value={formData.is_free ? 'true' : 'false'}
                   onChange={(e) => setFormData({ ...formData, is_free: e.target.value === 'true' })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 >
                   <option value="false">Não</option>
                   <option value="true">Sim</option>
@@ -333,7 +333,7 @@ export default function NewLessonPage() {
                 <button
                   type="button"
                   onClick={addAttachment}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-zenda-primary hover:text-zenda-dark font-medium"
                 >
                   + Adicionar Anexo
                 </button>
@@ -431,7 +431,7 @@ export default function NewLessonPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 font-semibold"
+                className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition disabled:opacity-50 font-semibold"
               >
                 {loading ? 'A criar...' : 'Criar Aula'}
               </button>

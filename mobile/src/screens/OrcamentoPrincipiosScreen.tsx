@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { StackNavigationProp } from '@react-navigation/stack'
 import type { PersonalStackParamList } from '../navigation/types'
 import { useI18n } from '../contexts/I18nContext'
+import { colors } from '../theme'
 
 const SECTIONS = [
   {
@@ -46,7 +47,7 @@ const SECTIONS = [
   {
     id: '3',
     icon: 'cash-refund' as const,
-    color: '#f59e0b',
+    color: '#E67E22',
     titleKey: 'budgetSection3Title',
     subtitleKey: 'budgetSection3Subtitle',
     points: [
@@ -60,7 +61,7 @@ const SECTIONS = [
   {
     id: '4',
     icon: 'shield-alert' as const,
-    color: '#ef4444',
+    color: colors.danger,
     titleKey: 'budgetSection4Title',
     subtitleKey: 'budgetSection4Subtitle',
     points: [

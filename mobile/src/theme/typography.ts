@@ -70,4 +70,18 @@ export const typography = {
     textTransform: 'uppercase' as const,
     lineHeight: 14,
   },
+  button: {
+    fontFamily: fontFamily.bold,
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: 0.2,
+    lineHeight: 20,
+  },
+  figure: {
+    fontFamily: fontFamily.bold,
+    fontSize: 22,
+    fontWeight: '700' as const,
+    letterSpacing: -0.4,
+    lineHeight: 28,
+  },
 } as const

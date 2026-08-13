@@ -41,8 +41,13 @@ const config: Config = {
           navy: '#05050B',
           navyMid: '#11145A',
           bg: '#F7F7FA',
+          surface: '#FFFFFF',
           expense: '#E53935',
           debt: '#E67E22',
+          warning: '#E67E22',
+          text: '#05050B',
+          textSecondary: '#5B6178',
+          border: '#E2E4EF',
         },
         primary: {
           50: '#E8E8FA',

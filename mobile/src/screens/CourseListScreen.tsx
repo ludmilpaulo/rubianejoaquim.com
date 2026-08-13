@@ -23,6 +23,7 @@ import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 interface Course {
   id: number
@@ -255,7 +256,7 @@ export default function CourseListScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {loadError ? (
           <View style={styles.centered}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
             <Text variant="bodyLarge" style={styles.loadingText}>{loadError}</Text>
             <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
           </View>
@@ -280,7 +281,7 @@ export default function CourseListScreen() {
           <Card style={styles.pointsCard}>
             <Card.Content>
               <View style={styles.pointsRow}>
-                <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
+                <MaterialCommunityIcons name="star-circle" size={24} color="#E67E22" />
                 <View style={styles.pointsInfo}>
                   <Text variant="bodyMedium" style={styles.pointsLabel}>
                     {t('education.pointsAvailable')}
@@ -451,7 +452,7 @@ const styles = StyleSheet.create({
   price: { color: '#3534C9', fontWeight: '600', marginTop: 4 },
   btn: { marginTop: 4 },
   buttonGroup: { gap: 8, marginTop: 4 },
-  redeemBtn: { backgroundColor: '#f59e0b' },
+  redeemBtn: { backgroundColor: '#E67E22' },
   iapBtn: { backgroundColor: '#000' },
   pointsCard: {
     marginBottom: 16,

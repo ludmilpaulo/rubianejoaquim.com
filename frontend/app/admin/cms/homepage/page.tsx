@@ -40,7 +40,7 @@ export default function AdminHomepageSectionsPage() {
   if (!ready) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md" />
       </div>
     )
   }

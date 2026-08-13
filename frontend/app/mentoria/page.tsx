@@ -72,7 +72,7 @@ export default function MentoriaPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="inline-block w-12 h-12 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -90,7 +90,7 @@ export default function MentoriaPage() {
             <h2 className="text-2xl font-semibold mb-6">Pedir Vaga</h2>
             
             {selectedPackage && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="bg-zenda-container border border-zenda-border rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">Informações de Pagamento</h3>
                 <div className="space-y-2 text-sm">
                   <div>
@@ -123,7 +123,7 @@ export default function MentoriaPage() {
                   required
                   value={formData.objective}
                   onChange={(e) => setFormData({ ...formData, objective: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   rows={4}
                   placeholder="Descreva o que pretende alcançar com a mentoria..."
                 />
@@ -136,7 +136,7 @@ export default function MentoriaPage() {
                   required
                   value={formData.availability}
                   onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   rows={3}
                   placeholder="Ex: Segundas e quartas, 18h-20h..."
                 />
@@ -150,7 +150,7 @@ export default function MentoriaPage() {
                   required
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="+351 912 345 678"
                 />
               </div>
@@ -165,7 +165,7 @@ export default function MentoriaPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                  className="flex-1 bg-zenda-primary text-white py-2 rounded-lg hover:bg-zenda-dark disabled:opacity-50"
                 >
                   {submitting ? 'A enviar...' : 'Enviar Pedido'}
                 </button>
@@ -184,7 +184,7 @@ export default function MentoriaPage() {
                   <div>Duração: {pkg.duration_minutes} minutos</div>
                   <div>Sessões: {pkg.sessions}</div>
                 </div>
-                <div className="text-2xl font-bold text-primary-600 mb-4">
+                <div className="text-2xl font-bold text-zenda-primary mb-4">
                   {formatCurrency(pkg.price)}
                 </div>
                 <button
@@ -192,7 +192,7 @@ export default function MentoriaPage() {
                     setSelectedPackage(pkg.id)
                     setShowForm(true)
                   }}
-                  className="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 transition"
+                  className="w-full bg-zenda-primary text-white py-2 rounded-lg hover:bg-zenda-dark transition"
                 >
                   Pedir Vaga
                 </button>

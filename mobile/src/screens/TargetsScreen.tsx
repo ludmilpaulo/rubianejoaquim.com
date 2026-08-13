@@ -14,6 +14,7 @@ import { useActionFeedback } from '../hooks/useActionFeedback'
 import { getApiErrorMessage, type TargetPayload, type TargetStats, unwrapList } from '../types/api'
 import { materialIcon, type MaterialIconName } from '../utils/icons'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 type TargetFilter = 'all' | 'active' | 'completed' | 'paused'
 
@@ -250,8 +251,8 @@ export default function TargetsScreen() {
     switch (type) {
       case 'financial': return '#4DB83D'
       case 'career': return '#3534C9'
-      case 'health': return '#ef4444'
-      case 'education': return '#f59e0b'
+      case 'health': return colors.danger
+      case 'education': return '#E67E22'
       case 'business': return '#3C3BD4'
       case 'personal': return '#5B5AD6'
       default: return '#6b7280'
@@ -262,8 +263,8 @@ export default function TargetsScreen() {
     switch (status) {
       case 'active': return '#4DB83D'
       case 'completed': return '#3534C9'
-      case 'paused': return '#f59e0b'
-      case 'cancelled': return '#ef4444'
+      case 'paused': return '#E67E22'
+      case 'cancelled': return colors.danger
       default: return '#6b7280'
     }
   }
@@ -486,7 +487,7 @@ export default function TargetsScreen() {
                             onPress={() => handleDeleteTarget(target.id)}
                             activeOpacity={0.7}
                           >
-                            <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
+                            <MaterialCommunityIcons name="delete-outline" size={18} color={colors.danger} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -596,7 +597,7 @@ export default function TargetsScreen() {
                   }}
                   title={t('goals.typeHealth')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="heart" size={20} color="#ef4444" />
+                    <MaterialCommunityIcons name="heart" size={20} color={colors.danger} />
                   )}
                 />
                 <Menu.Item
@@ -606,7 +607,7 @@ export default function TargetsScreen() {
                   }}
                   title={t('goals.typeEducation')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="school" size={20} color="#f59e0b" />
+                    <MaterialCommunityIcons name="school" size={20} color="#E67E22" />
                   )}
                 />
                 <Menu.Item
@@ -980,7 +981,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   deleteButton: {
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   modalUpdateButton: {
     flexDirection: 'row',
@@ -1024,18 +1025,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   modalDeleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 14,
     marginTop: 12,
     gap: 8,
-    shadowColor: '#ef4444',
+    shadowColor: colors.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

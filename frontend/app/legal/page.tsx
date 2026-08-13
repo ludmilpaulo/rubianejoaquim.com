@@ -39,13 +39,13 @@ export default function LegalPage() {
             {/* Bloco: Identificação */}
             <div className="p-8 md:p-10 border-b border-slate-100">
               <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center font-semibold text-sm">1</span>
+                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-zenda-primary flex items-center justify-center font-semibold text-sm">1</span>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-3">Identificação</h2>
                   <p className="text-slate-600 leading-relaxed">
                     Este sítio é operado por <strong className="text-slate-800">Rubiane Joaquim Educação Financeira</strong>.
                     Pode contactar-nos por e-mail em{' '}
-                    <a href="mailto:contacto@rubianejoaquim.com" className="text-primary-600 hover:text-primary-700 font-medium underline underline-offset-2">
+                    <a href="mailto:contacto@rubianejoaquim.com" className="text-zenda-primary hover:text-zenda-dark font-medium underline underline-offset-2">
                       contacto@rubianejoaquim.com
                     </a>
                     {' '}ou por telemóvel/WhatsApp: <strong className="text-slate-800">+244 944 905246</strong>.
@@ -57,7 +57,7 @@ export default function LegalPage() {
             {/* Bloco: Direitos de Autor */}
             <div className="p-8 md:p-10 border-b border-slate-100 bg-slate-50/40">
               <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center font-semibold text-sm">2</span>
+                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-zenda-primary flex items-center justify-center font-semibold text-sm">2</span>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-3">Direitos de Autor e Propriedade Intelectual</h2>
                   <p className="text-slate-600 leading-relaxed mb-4">
@@ -73,7 +73,7 @@ export default function LegalPage() {
             {/* Bloco: Uso do site */}
             <div className="p-8 md:p-10 border-b border-slate-100">
               <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center font-semibold text-sm">3</span>
+                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-zenda-primary flex items-center justify-center font-semibold text-sm">3</span>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-3">Uso do Sítio</h2>
                   <p className="text-slate-600 leading-relaxed">
@@ -86,7 +86,7 @@ export default function LegalPage() {
             {/* Bloco: Contacto */}
             <div className="p-8 md:p-10 bg-gradient-to-br from-slate-50 to-primary-50/30">
               <div className="flex items-start gap-4">
-                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-primary-600 flex items-center justify-center font-semibold text-sm">4</span>
+                <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary-100 text-zenda-primary flex items-center justify-center font-semibold text-sm">4</span>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-3">Contacto</h2>
                   <p className="text-slate-600 leading-relaxed mb-4">
@@ -123,7 +123,7 @@ export default function LegalPage() {
           <div className="mt-10 text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold transition-colors group"
+              className="inline-flex items-center gap-2 text-zenda-primary hover:text-zenda-dark font-semibold transition-colors group"
             >
               <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />

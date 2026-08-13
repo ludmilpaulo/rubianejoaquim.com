@@ -42,7 +42,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  trial: 'bg-indigo-100 text-indigo-800',
+  trial: 'bg-zenda-container text-zenda-dark',
   active: 'bg-emerald-100 text-emerald-800',
   expired: 'bg-amber-100 text-amber-800',
   cancelled: 'bg-gray-100 text-gray-700',
@@ -169,7 +169,7 @@ export default function AdminSubscriptionsPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-10 h-10 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-zenda-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -239,7 +239,7 @@ export default function AdminSubscriptionsPage() {
             <div className="overflow-x-auto">
               {loadingProofs ? (
                 <div className="flex justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 zenda-spinner zenda-spinner-md" />
                 </div>
               ) : proofs.length === 0 ? (
                 <div className="px-6 py-16 text-center">
@@ -282,7 +282,7 @@ export default function AdminSubscriptionsPage() {
                             href={getFullUrl(proof.file)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:text-indigo-800 font-medium text-sm mr-4"
+                            className="text-zenda-primary hover:text-zenda-dark font-medium text-sm mr-4"
                           >
                             Ver ficheiro
                           </a>
@@ -317,11 +317,11 @@ export default function AdminSubscriptionsPage() {
         {/* Subscriptions list */}
         <section>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-white">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-zenda-container to-white">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="w-8 h-8 rounded-lg bg-zenda-container flex items-center justify-center">
+                    <svg className="w-4 h-4 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                   </span>
@@ -333,7 +333,7 @@ export default function AdminSubscriptionsPage() {
                       key={s || 'all'}
                       onClick={() => setSubStatusFilter(s)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        subStatusFilter === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        subStatusFilter === s ? 'bg-zenda-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       {s === '' ? 'Todas' : s === 'trial' ? 'Trial' : s === 'active' ? 'Ativas' : s === 'expired' ? 'Expiradas' : 'Canceladas'}
@@ -345,7 +345,7 @@ export default function AdminSubscriptionsPage() {
             <div className="overflow-x-auto">
               {loadingSubs ? (
                 <div className="flex justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-2 border-zenda-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : subscriptions.length === 0 ? (
                 <div className="px-6 py-16 text-center">
@@ -405,7 +405,7 @@ export default function AdminSubscriptionsPage() {
                             <button
                               onClick={() => handleExtend30(sub.id)}
                               disabled={actingId === sub.id}
-                              className="text-indigo-600 hover:text-indigo-800 font-medium text-sm disabled:opacity-50"
+                              className="text-zenda-primary hover:text-zenda-dark font-medium text-sm disabled:opacity-50"
                             >
                               +30 dias
                             </button>

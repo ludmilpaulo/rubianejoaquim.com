@@ -80,7 +80,7 @@ export default function NewCoursePage() {
         <div className="mb-8">
           <Link
             href="/admin/courses"
-            className="text-primary-600 hover:text-primary-700 mb-4 inline-block"
+            className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block"
           >
             ← Voltar para Cursos
           </Link>
@@ -105,7 +105,7 @@ export default function NewCoursePage() {
                 required
                 value={formData.title}
                 onChange={handleTitleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="Ex: Curso Básico de Finanças Pessoais"
               />
             </div>
@@ -119,7 +119,7 @@ export default function NewCoursePage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="curso-basico-financas"
               />
               <p className="mt-1 text-sm text-gray-500">URL amigável (gerado automaticamente se deixar vazio)</p>
@@ -133,7 +133,7 @@ export default function NewCoursePage() {
                 type="text"
                 value={formData.short_description}
                 onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="Breve descrição do curso"
                 maxLength={300}
               />
@@ -148,7 +148,7 @@ export default function NewCoursePage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={6}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="Descrição detalhada do curso..."
               />
             </div>
@@ -165,7 +165,7 @@ export default function NewCoursePage() {
                   min="0"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="99.00"
                 />
               </div>
@@ -177,7 +177,7 @@ export default function NewCoursePage() {
                 <select
                   value={formData.is_active ? 'true' : 'false'}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 >
                   <option value="true">Ativo</option>
                   <option value="false">Inativo</option>
@@ -195,7 +195,7 @@ export default function NewCoursePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 font-semibold"
+                className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition disabled:opacity-50 font-semibold"
               >
                 {loading ? 'A criar...' : 'Criar Curso'}
               </button>

@@ -98,9 +98,9 @@ export default function CourseProgressPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-zenda-bg via-white to-zenda-container flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <div className="inline-block w-16 h-16 zenda-spinner zenda-spinner-lg mb-4"></div>
           <p className="text-gray-600">Carregando progresso...</p>
         </div>
       </div>
@@ -109,10 +109,10 @@ export default function CourseProgressPage() {
 
   if (!progress) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-zenda-bg via-white to-zenda-container flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">Progresso não encontrado.</p>
-          <Link href="/area-do-aluno" className="text-primary-600 hover:text-primary-700 font-medium">
+          <Link href="/area-do-aluno" className="text-zenda-primary hover:text-zenda-dark font-medium">
             Voltar para Área do Aluno
           </Link>
         </div>
@@ -125,13 +125,13 @@ export default function CourseProgressPage() {
     : 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-blue-50 py-6 sm:py-12 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
+    <div className="min-h-screen bg-gradient-to-br from-zenda-bg via-white to-zenda-container py-6 sm:py-12 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <Link 
             href="/area-do-aluno" 
-            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4 transition min-h-[44px]"
+            className="inline-flex items-center text-zenda-primary hover:text-zenda-dark mb-4 transition min-h-[44px]"
           >
             <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -150,7 +150,7 @@ export default function CourseProgressPage() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 bg-primary-100 rounded-xl">
-                  <MdScore className="w-8 h-8 text-primary-600" />
+                  <MdScore className="w-8 h-8 text-zenda-primary" />
                 </div>
                 <span className={`text-2xl font-bold ${progress.average_score >= progress.passing_average ? 'text-green-600' : 'text-red-600'}`}>
                   {progress.average_score.toFixed(1)}%
@@ -167,9 +167,9 @@ export default function CourseProgressPage() {
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 bg-blue-100 rounded-xl">
-                  <FaBookOpen className="w-8 h-8 text-blue-600" />
+                  <FaBookOpen className="w-8 h-8 text-zenda-primary" />
                 </div>
-                <span className="text-2xl font-bold text-blue-600">
+                <span className="text-2xl font-bold text-zenda-primary">
                   {progress.completed_quizzes}/{progress.total_quizzes}
                 </span>
               </div>
@@ -239,7 +239,7 @@ export default function CourseProgressPage() {
               <div className="text-center py-12">
                 <FaBookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">Nenhum quiz encontrado neste curso.</p>
-                <Link href={`/cursos/${params.id}`} className="text-primary-600 hover:text-primary-700 font-medium">
+                <Link href={`/cursos/${params.id}`} className="text-zenda-primary hover:text-zenda-dark font-medium">
                   Ver Curso
                 </Link>
               </div>
@@ -259,7 +259,7 @@ export default function CourseProgressPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 font-bold text-sm">
+                          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-zenda-dark font-bold text-sm">
                             {index + 1}
                           </span>
                           <h3 className="text-lg font-semibold text-gray-900">{result.lesson_title}</h3>
@@ -318,7 +318,7 @@ export default function CourseProgressPage() {
                             <p className="text-sm text-gray-500 italic">Quiz ainda não realizado</p>
                             <Link
                               href={`/aulas/${result.lesson_id}`}
-                              className="inline-block mt-2 text-primary-600 hover:text-primary-700 font-medium text-sm"
+                              className="inline-block mt-2 text-zenda-primary hover:text-zenda-dark font-medium text-sm"
                             >
                               Ir para aula →
                             </Link>
@@ -337,7 +337,7 @@ export default function CourseProgressPage() {
         <div className="mt-8 flex gap-4">
           <Link
             href={`/cursos/${params.id}`}
-            className="flex-1 px-6 py-3 bg-white border-2 border-primary-600 text-primary-600 rounded-xl font-semibold hover:bg-primary-50 transition text-center"
+            className="flex-1 px-6 py-3 bg-white border-2 border-primary-600 text-zenda-primary rounded-xl font-semibold hover:bg-primary-50 transition text-center"
           >
             Ver Curso
           </Link>

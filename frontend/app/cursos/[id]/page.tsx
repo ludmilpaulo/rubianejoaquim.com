@@ -72,7 +72,7 @@ export default function CursoDetailPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="inline-block w-12 h-12 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -122,7 +122,7 @@ export default function CursoDetailPage() {
                     {hasAccess || lesson.is_free ? (
                       <a
                         href={`/aulas/${lesson.id}`}
-                        className="inline-block text-primary-600 hover:text-primary-700 font-medium text-sm sm:text-base whitespace-nowrap"
+                        className="inline-block text-zenda-primary hover:text-zenda-dark font-medium text-sm sm:text-base whitespace-nowrap"
                       >
                         Ver Aula →
                       </a>
@@ -139,7 +139,7 @@ export default function CursoDetailPage() {
         <div className="lg:col-span-1 order-1 lg:order-2">
           <div className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 lg:sticky lg:top-20">
             <div className="mb-4 sm:mb-6">
-              <div className="text-2xl sm:text-3xl font-bold text-primary-600 mb-1 sm:mb-2">
+              <div className="text-2xl sm:text-3xl font-bold text-zenda-primary mb-1 sm:mb-2">
                 {formatCurrency(course.price)}
               </div>
               <p className="text-sm sm:text-base text-gray-600">{course.lessons.length} aulas</p>
@@ -154,7 +154,7 @@ export default function CursoDetailPage() {
                 </div>
                 <a
                   href="/area-do-aluno"
-                  className="block w-full bg-primary-600 text-white text-center py-2 sm:py-2.5 rounded-lg hover:bg-primary-700 transition text-sm sm:text-base font-semibold"
+                  className="block w-full bg-zenda-primary text-white text-center py-2 sm:py-2.5 rounded-lg hover:bg-zenda-dark transition text-sm sm:text-base font-semibold"
                 >
                   Ver Minha Inscrição
                 </a>
@@ -168,20 +168,20 @@ export default function CursoDetailPage() {
                 </div>
                 <a
                   href={`/cursos/${params.id}/progresso`}
-                  className="block w-full bg-primary-600 text-white text-center py-2.5 sm:py-3 rounded-lg hover:bg-primary-700 transition text-sm sm:text-base font-semibold min-h-[44px] flex items-center justify-center"
+                  className="block w-full bg-zenda-primary text-white text-center py-2.5 sm:py-3 rounded-lg hover:bg-zenda-dark transition text-sm sm:text-base font-semibold min-h-[44px] flex items-center justify-center"
                 >
                   Ver progresso e quizzes
                 </a>
                 <a
                   href="/area-do-aluno"
-                  className="block w-full border-2 border-primary-600 text-primary-600 text-center py-2 sm:py-2.5 rounded-lg hover:bg-primary-50 transition text-sm sm:text-base font-semibold"
+                  className="block w-full border-2 border-primary-600 text-zenda-primary text-center py-2 sm:py-2.5 rounded-lg hover:bg-primary-50 transition text-sm sm:text-base font-semibold"
                 >
                   Área do Aluno
                 </a>
               </div>
             ) : (
               <div className="space-y-3 sm:space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                <div className="bg-zenda-container border border-zenda-border rounded-lg p-3 sm:p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Informações de Pagamento</h3>
                   <div className="space-y-2 text-xs sm:text-sm">
                     <div>
@@ -204,7 +204,7 @@ export default function CursoDetailPage() {
                 <button
                   onClick={handleEnroll}
                   disabled={enrolling}
-                  className="w-full bg-primary-600 text-white py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50 text-sm sm:text-base"
+                  className="w-full bg-zenda-primary text-white py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-zenda-dark transition disabled:opacity-50 text-sm sm:text-base"
                 >
                   {enrolling ? 'A processar...' : 'Comprar Curso'}
                 </button>

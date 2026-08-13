@@ -46,10 +46,10 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-2xl font-bold text-slate-900 mb-4">1. Identificação</h2>
               <div className="space-y-3 text-slate-700">
                 <p className="leading-relaxed">
-                  <strong className="text-slate-900">Nome do Aplicativo:</strong> <span className="font-semibold text-primary-700">Zenda</span>
+                  <strong className="text-slate-900">Nome do Aplicativo:</strong> <span className="font-semibold text-zenda-dark">Zenda</span>
                 </p>
                 <p className="leading-relaxed">
-                  <strong className="text-slate-900">Desenvolvedor:</strong> <span className="font-semibold text-primary-700">Rubiane Joaquim Educação Financeira</span>
+                  <strong className="text-slate-900">Desenvolvedor:</strong> <span className="font-semibold text-zenda-dark">Rubiane Joaquim Educação Financeira</span>
                 </p>
                 <p className="leading-relaxed">
                   <strong className="text-slate-900">Entidade Legal:</strong> Rubiane Joaquim Educação Financeira
@@ -58,7 +58,7 @@ export default function PrivacyPolicyPage() {
                   <strong className="text-slate-900">Contacto:</strong>
                 </p>
                 <ul className="list-disc list-inside ml-4 space-y-1">
-                  <li><strong>E-mail:</strong> <a href="mailto:contacto@rubianejoaquim.com" className="text-primary-600 hover:text-primary-700 underline">contacto@rubianejoaquim.com</a></li>
+                  <li><strong>E-mail:</strong> <a href="mailto:contacto@rubianejoaquim.com" className="text-zenda-primary hover:text-zenda-dark underline">contacto@rubianejoaquim.com</a></li>
                   <li><strong>Telefone/WhatsApp:</strong> +244 944 905246</li>
                 </ul>
                 <p className="leading-relaxed mt-4">
@@ -217,7 +217,7 @@ export default function PrivacyPolicyPage() {
                 </ul>
                 <p className="leading-relaxed mt-4">
                   Para exercer esses direitos, entre em contato conosco através dos canais indicados na seção de Contacto abaixo ou visite{' '}
-                  <Link href="/delete-account" className="text-primary-600 hover:text-primary-700 underline font-medium">
+                  <Link href="/delete-account" className="text-zenda-primary hover:text-zenda-dark underline font-medium">
                     nossa página de exclusão de conta
                   </Link>.
                 </p>
@@ -291,19 +291,19 @@ export default function PrivacyPolicyPage() {
                   <ul className="space-y-2">
                     <li>
                       <strong>E-mail:</strong>{' '}
-                      <a href="mailto:contacto@rubianejoaquim.com" className="text-primary-600 hover:text-primary-700 underline">
+                      <a href="mailto:contacto@rubianejoaquim.com" className="text-zenda-primary hover:text-zenda-dark underline">
                         contacto@rubianejoaquim.com
                       </a>
                     </li>
                     <li>
                       <strong>Telefone/WhatsApp:</strong>{' '}
-                      <a href="https://wa.me/244944905246" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 underline">
+                      <a href="https://wa.me/244944905246" target="_blank" rel="noopener noreferrer" className="text-zenda-primary hover:text-zenda-dark underline">
                         +244 944 905246
                       </a>
                     </li>
                     <li>
                       <strong>Website:</strong>{' '}
-                      <a href="https://www.rubianejoaquim.com" target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 underline">
+                      <a href="https://www.rubianejoaquim.com" target="_blank" rel="noopener noreferrer" className="text-zenda-primary hover:text-zenda-dark underline">
                         www.rubianejoaquim.com
                       </a>
                     </li>
@@ -311,7 +311,7 @@ export default function PrivacyPolicyPage() {
                 </div>
                 <p className="leading-relaxed mt-4">
                   Para solicitar a exclusão da sua conta e dados associados, visite nossa{' '}
-                  <Link href="/delete-account" className="text-primary-600 hover:text-primary-700 underline font-medium">
+                  <Link href="/delete-account" className="text-zenda-primary hover:text-zenda-dark underline font-medium">
                     página de exclusão de conta
                   </Link>.
                 </p>

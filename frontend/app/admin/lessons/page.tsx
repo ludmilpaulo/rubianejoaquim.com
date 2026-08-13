@@ -72,7 +72,7 @@ export default function AdminLessonsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -87,7 +87,7 @@ export default function AdminLessonsPage() {
           </div>
           <Link
             href="/admin/lessons/new"
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="bg-zenda-primary text-white px-6 py-3 rounded-lg hover:bg-zenda-dark transition font-semibold"
           >
             + Nova Aula
           </Link>
@@ -101,7 +101,7 @@ export default function AdminLessonsPage() {
           <select
             value={courseFilter || ''}
             onChange={(e) => setCourseFilter(e.target.value ? parseInt(e.target.value) : null)}
-            className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+            className="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
           >
             <option value="">Todos os cursos</option>
             {courses.map((course) => (
@@ -165,7 +165,7 @@ export default function AdminLessonsPage() {
                         className={`px-2 py-1 text-xs font-semibold rounded-full ${
                           lesson.is_free
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : 'bg-blue-100 text-zenda-dark'
                         }`}
                       >
                         {lesson.is_free ? 'Gratuita' : 'Paga'}
@@ -174,7 +174,7 @@ export default function AdminLessonsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
                         href={`/admin/lessons/${lesson.id}`}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
+                        className="text-zenda-primary hover:text-primary-900 mr-4"
                       >
                         Editar
                       </Link>

@@ -94,7 +94,7 @@ export default function FeaturedPortfolioSection({
                   href={`/portfolio/${project.slug}`}
                   className="group block h-full rounded-2xl overflow-hidden premium-card hover:border-amber-400/30 transition-all duration-500 hover-lift"
                 >
-                  <div className="aspect-video bg-gradient-to-br from-slate-800 to-indigo-950/80 relative overflow-hidden">
+                  <div className="aspect-video bg-gradient-to-br from-zenda-navyMid to-zenda-deep/80 relative overflow-hidden">
                     {project.thumbnail_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -104,7 +104,7 @@ export default function FeaturedPortfolioSection({
                         loading="lazy"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-900/20 to-indigo-900/40">
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zenda-primary/20 to-zenda-dark/40">
                         <span className="w-14 h-14 rounded-full bg-amber-400/90 flex items-center justify-center text-slate-950 text-xl">
                           ▶
                         </span>

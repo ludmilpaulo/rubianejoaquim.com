@@ -70,7 +70,7 @@ export default function AdminCoursesPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -89,7 +89,7 @@ export default function AdminCoursesPage() {
           </div>
           <Link
             href="/admin/courses/new"
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="bg-zenda-primary text-white px-6 py-3 rounded-lg hover:bg-zenda-dark transition font-semibold"
           >
             + Novo Curso
           </Link>
@@ -103,14 +103,14 @@ export default function AdminCoursesPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
           </div>
         ) : courses.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
             <p className="text-gray-500 mb-4">Nenhum curso encontrado</p>
             <Link
               href="/admin/courses/new"
-              className="text-primary-600 hover:text-primary-700 font-semibold"
+              className="text-zenda-primary hover:text-zenda-dark font-semibold"
             >
               Criar primeiro curso
             </Link>
@@ -162,7 +162,7 @@ export default function AdminCoursesPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link
                         href={`/admin/courses/${course.id}`}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
+                        className="text-zenda-primary hover:text-primary-900 mr-4"
                       >
                         Editar
                       </Link>

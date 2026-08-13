@@ -9,6 +9,7 @@ import { useI18n } from '../contexts/I18nContext'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage, unwrapList } from '../types/api'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 interface EnrollmentRow {
   id: number
@@ -116,7 +117,7 @@ export default function CourseLessonsScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {loadError ? (
           <View style={styles.centered}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
             <Text variant="bodyLarge" style={styles.errorText}>{loadError}</Text>
             <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
           </View>

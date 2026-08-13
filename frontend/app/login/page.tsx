@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
 import SocialLoginButtons from '@/components/SocialLoginButtons'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
+import ZendaLoader from '@/components/zenda/ZendaLoader'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
 
@@ -186,7 +187,7 @@ function LoginPageInner() {
         paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
       }}
     >
-      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full">
+      <div className="zenda-card p-4 sm:p-6 lg:p-8 w-full">
         <div className="flex justify-center mb-4">
           <ZendaLogo size="md" priority />
         </div>
@@ -229,11 +230,11 @@ function LoginPageInner() {
         )}
 
         {linkState && (
-          <form onSubmit={handleLinkConfirm} className="mb-6 space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <p className="text-sm text-amber-900">
+          <form onSubmit={handleLinkConfirm} className="mb-6 space-y-3 rounded-xl border border-zenda-border bg-zenda-container p-4">
+            <p className="text-sm text-zenda-navy">
               {linkState.message || 'Já existe uma conta com este email.'}
             </p>
-            <p className="text-sm text-amber-800">
+            <p className="text-sm text-zenda-textSecondary">
               Email: <strong>{linkState.email}</strong> · Provedor: <strong>{linkState.provider}</strong>
             </p>
             <input
@@ -242,20 +243,20 @@ function LoginPageInner() {
               value={linkPassword}
               onChange={(e) => setLinkPassword(e.target.value)}
               placeholder="Palavra-passe da conta existente"
-              className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm"
+              className="zenda-input text-sm"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-amber-700 text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
+                className="flex-1 btn-zenda !py-2 text-sm disabled:opacity-50"
               >
                 Associar e entrar
               </button>
               <button
                 type="button"
                 onClick={() => setLinkState(null)}
-                className="px-3 py-2 text-sm text-amber-900"
+                className="px-3 py-2 text-sm text-zenda-navy"
               >
                 Cancelar
               </button>
@@ -299,7 +300,7 @@ function LoginPageInner() {
                   required={!isLogin}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -311,7 +312,7 @@ function LoginPageInner() {
                     type="text"
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -322,7 +323,7 @@ function LoginPageInner() {
                     type="text"
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
               </div>
@@ -339,7 +340,7 @@ function LoginPageInner() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="email@exemplo.com ou username"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
             />
           </div>
 
@@ -352,7 +353,7 @@ function LoginPageInner() {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
             </div>
           )}
@@ -363,7 +364,7 @@ function LoginPageInner() {
                 Palavra-passe
               </label>
               {isLogin && (
-                <Link href="/login/forgot-password" className="text-sm text-primary-600 hover:text-primary-700">
+                <Link href="/login/forgot-password" className="text-sm text-zenda-primary hover:text-zenda-dark">
                   Esqueceu a palavra-passe?
                 </Link>
               )}
@@ -374,7 +375,7 @@ function LoginPageInner() {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
               <button
                 type="button"
@@ -407,7 +408,7 @@ function LoginPageInner() {
                   required={!isLogin}
                   value={formData.password_confirm}
                   onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
                 <button
                   type="button"
@@ -433,7 +434,7 @@ function LoginPageInner() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+            className="w-full btn-zenda disabled:opacity-50"
           >
             {loading ? 'A processar...' : isLogin ? 'Entrar' : 'Registar'}
           </button>
@@ -446,7 +447,7 @@ function LoginPageInner() {
               setIsLogin(!isLogin)
               setError('')
             }}
-            className="text-primary-600 hover:text-primary-700"
+            className="text-zenda-primary hover:text-zenda-dark font-semibold"
           >
             {isLogin ? 'Não tem conta? Registar' : 'Já tem conta? Entrar'}
           </button>
@@ -467,8 +468,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex justify-center py-20 bg-zenda-bg min-h-[50vh]">
+          <ZendaLoader message="A carregar…" />
         </div>
       }
     >

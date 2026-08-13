@@ -16,6 +16,7 @@ import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoader } from '../components/ui/ZendaLoader'
+import { colors } from '../theme'
 
 export default function ProfileScreen() {
   const { t, tw, locale } = useI18n()
@@ -282,7 +283,7 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.pointsHeader}>
               <View style={styles.pointsIconContainer}>
-                <MaterialCommunityIcons name="star-circle" size={32} color="#f59e0b" />
+                <MaterialCommunityIcons name="star-circle" size={32} color="#E67E22" />
               </View>
               <View style={styles.pointsInfo}>
                 <Text variant="titleLarge" style={styles.pointsTitle}>
@@ -309,7 +310,7 @@ export default function ProfileScreen() {
                     onPress={() => handleRedeemSubscription(false)}
                     {...buttonProps('redeem')}
                     style={styles.redeemButton}
-                    buttonColor="#f59e0b"
+                    buttonColor="#E67E22"
                     icon="star"
                   >
                     {isPending('redeem')
@@ -322,7 +323,7 @@ export default function ProfileScreen() {
                     onPress={() => handleRedeemSubscription(true)}
                     {...buttonProps('redeem')}
                     style={styles.redeemButton}
-                    buttonColor="#f59e0b"
+                    buttonColor="#E67E22"
                     icon="star"
                   >
                     {isPending('redeem')
@@ -572,7 +573,7 @@ export default function ProfileScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIconContainer, { backgroundColor: '#fffbeb' }]}>
-                    <MaterialCommunityIcons name="help-circle" size={24} color="#f59e0b" />
+                    <MaterialCommunityIcons name="help-circle" size={24} color="#E67E22" />
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={styles.menuItemTitle}>
@@ -594,7 +595,7 @@ export default function ProfileScreen() {
               <View style={styles.menuItem}>
                 <View style={styles.menuItemLeft}>
                   <View style={[styles.menuIconContainer, { backgroundColor: '#fee2e2' }]}>
-                    <MaterialCommunityIcons name="delete-forever" size={24} color="#ef4444" />
+                    <MaterialCommunityIcons name="delete-forever" size={24} color={colors.danger} />
                   </View>
                   <View style={styles.menuItemText}>
                     <Text variant="titleMedium" style={[styles.menuItemTitle, styles.deleteTitle]}>
@@ -616,7 +617,7 @@ export default function ProfileScreen() {
           <Button
             mode="contained"
             onPress={handleLogout}
-            buttonColor="#ef4444"
+            buttonColor={colors.danger}
             style={styles.logoutButton}
             contentStyle={styles.logoutButtonContent}
             labelStyle={styles.logoutButtonLabel}
@@ -747,7 +748,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deleteTitle: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   subscriptionCard: {
     margin: 16,

@@ -11,7 +11,7 @@ export default function RubianeImage() {
       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
         <div className="text-center p-8">
           <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-primary-300 flex items-center justify-center">
-            <svg className="w-16 h-16 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-16 h-16 text-zenda-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </div>
@@ -38,7 +38,7 @@ export default function RubianeImage() {
         <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
           <div className="text-center p-8">
             <div className="w-32 h-32 mx-auto mb-4 rounded-full bg-primary-300 flex items-center justify-center">
-              <svg className="w-16 h-16 text-primary-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-16 h-16 text-zenda-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             </div>

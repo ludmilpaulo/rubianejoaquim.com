@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { coursesApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils/currency'
+import ZendaLoader from '@/components/zenda/ZendaLoader'
 
 interface Course {
   id: number
@@ -40,8 +41,8 @@ export default function CursosPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <ZendaLoader message="A carregar cursos…" size="lg" />
       </div>
     )
   }
@@ -49,7 +50,7 @@ export default function CursosPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 md:py-16 lg:py-24">
       <div className="text-center mb-8 sm:mb-12 md:mb-16 animate-fade-in">
-        <span className="text-primary-600 font-semibold text-xs sm:text-sm uppercase tracking-wide">Cursos Disponíveis</span>
+        <span className="text-zenda-primary font-semibold text-xs sm:text-sm uppercase tracking-wide">Cursos Disponíveis</span>
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 mt-3 sm:mt-4 mb-4 sm:mb-6 px-2">
           Transforme o seu futuro{' '}
           <span className="gradient-text">financeiro</span>
@@ -60,12 +61,7 @@ export default function CursosPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-12 sm:py-20">
-          <div className="relative">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
-            <div className="absolute inset-0 border-4 border-transparent border-r-primary-400 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }}></div>
-          </div>
-        </div>
+        <ZendaLoader message="A carregar cursos…" />
       ) : loadError ? (
         <div className="text-center py-12 sm:py-20">
           <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Erro ao carregar cursos</h3>
@@ -84,7 +80,7 @@ export default function CursosPage() {
                 .catch(() => setLoadError(true))
                 .finally(() => setLoading(false))
             }}
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
+            className="bg-zenda-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-zenda-dark transition"
           >
             Tentar novamente
           </button>
@@ -124,11 +120,11 @@ export default function CursosPage() {
                 </div>
               )}
               <div className="p-4 sm:p-6">
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 group-hover:text-primary-600 transition-colors">{course.title}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3 group-hover:text-zenda-primary transition-colors">{course.title}</h3>
                 <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 line-clamp-3 leading-relaxed">{course.short_description}</p>
                 <div className="flex justify-between items-center mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-100">
                   <div>
-                    <span className="text-2xl sm:text-3xl font-bold text-primary-600">
+                    <span className="text-2xl sm:text-3xl font-bold text-zenda-primary">
                       {formatCurrency(course.price)}
                     </span>
                   </div>
@@ -139,7 +135,7 @@ export default function CursosPage() {
                 </div>
                 <Link
                   href={`/cursos/${course.id}`}
-                  className="group/btn block w-full bg-primary-600 text-white text-center py-2.5 sm:py-3.5 rounded-xl hover:bg-primary-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden text-sm sm:text-base"
+                  className="group/btn block w-full bg-zenda-primary text-white text-center py-2.5 sm:py-3.5 rounded-xl hover:bg-zenda-dark transition-all duration-300 font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden text-sm sm:text-base"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-2">
                     Ver Detalhes

@@ -86,7 +86,7 @@ export default function AdminPaymentsPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -107,7 +107,7 @@ export default function AdminPaymentsPage() {
           <button
             onClick={() => setStatusFilter('pending')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'pending' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'pending' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Pendentes
@@ -115,7 +115,7 @@ export default function AdminPaymentsPage() {
           <button
             onClick={() => setStatusFilter('approved')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'approved' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'approved' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Aprovados
@@ -123,7 +123,7 @@ export default function AdminPaymentsPage() {
           <button
             onClick={() => setStatusFilter('rejected')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'rejected' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'rejected' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Rejeitados
@@ -132,7 +132,7 @@ export default function AdminPaymentsPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
           </div>
         ) : payments.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -184,7 +184,7 @@ export default function AdminPaymentsPage() {
                           }
                         }
                       }}
-                      className="text-primary-600 hover:text-primary-700 font-medium underline cursor-pointer"
+                      className="text-zenda-primary hover:text-zenda-dark font-medium underline cursor-pointer"
                     >
                       Ver Comprovante
                     </button>

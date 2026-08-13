@@ -74,7 +74,7 @@ export default function AdminDashboard() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
                 <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.totalCourses}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
@@ -141,7 +141,7 @@ export default function AdminDashboard() {
                 <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.totalMentorshipRequests}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
@@ -170,8 +170,8 @@ export default function AdminDashboard() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >
             <div className="flex items-center mb-4">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-zenda-container rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
@@ -238,11 +238,11 @@ export default function AdminDashboard() {
 
           <Link
             href="/admin/subscriptions"
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-indigo-500"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-zenda-primary"
           >
             <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-zenda-container rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -283,10 +283,10 @@ export default function AdminDashboard() {
           </Link>
 
           {/* Notify all users about app update */}
-          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-indigo-500">
+          <div className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow border-l-4 border-zenda-primary">
             <div className="flex items-center mb-2">
-              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-zenda-container rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
               </div>
@@ -296,7 +296,7 @@ export default function AdminDashboard() {
             <button
               type="button"
               onClick={() => { setShowUpdateModal(true); setUpdateResult(null); setAppVersion(''); }}
-              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-zenda-primary text-white text-sm font-semibold rounded-lg hover:bg-zenda-dark transition"
             >
               Enviar email a todos
             </button>
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
                     value={appVersion}
                     onChange={(e) => setAppVersion(e.target.value)}
                     placeholder="ex: 1.2.0"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                   <div className="flex gap-3 justify-end">
                     <button
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
                         }
                       }}
                       disabled={sendingUpdateEmail}
-                      className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-zenda-primary text-white font-semibold rounded-lg hover:bg-zenda-dark disabled:opacity-50"
                     >
                       {sendingUpdateEmail ? 'A enviar...' : 'Enviar a todos'}
                     </button>
@@ -368,7 +368,7 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setShowUpdateModal(false)}
-                    className="w-full py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700"
+                    className="w-full py-2 bg-zenda-primary text-white font-semibold rounded-lg hover:bg-zenda-dark"
                   >
                     Fechar
                   </button>

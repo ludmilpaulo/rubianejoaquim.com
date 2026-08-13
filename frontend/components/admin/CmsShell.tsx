@@ -29,7 +29,7 @@ export default function CmsShell({ children }: { children: React.ReactNode }) {
           <Link href="/admin" className="text-xs text-slate-400 hover:text-white uppercase tracking-wider">
             ← Admin hub
           </Link>
-          <p className="font-display text-lg font-semibold mt-3 text-amber-200">Site CMS</p>
+          <p className="font-display text-lg font-semibold mt-3 text-zenda-growthLight">Site CMS</p>
           <p className="text-xs text-slate-500 mt-1">Public website content</p>
         </div>
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -39,7 +39,7 @@ export default function CmsShell({ children }: { children: React.ReactNode }) {
               href={link.href}
               className={`block px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 pathname === link.href
-                  ? 'bg-amber-500/15 text-amber-200 font-medium'
+                  ? 'bg-zenda-primary/20 text-white font-medium'
                   : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -52,7 +52,7 @@ export default function CmsShell({ children }: { children: React.ReactNode }) {
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-xs text-amber-400 hover:underline"
+            className="block text-xs text-zenda-growth hover:underline"
           >
             Preview homepage ↗
           </a>
@@ -60,7 +60,7 @@ export default function CmsShell({ children }: { children: React.ReactNode }) {
             href="/zenda"
             target="_blank"
             rel="noopener noreferrer"
-            className="block text-xs text-indigo-300 hover:underline"
+            className="block text-xs text-zenda-light hover:underline"
           >
             Preview Zenda ↗
           </a>

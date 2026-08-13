@@ -199,7 +199,7 @@ export default function AdminUserPointsPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md" />
       </div>
     )
   }
@@ -254,7 +254,7 @@ export default function AdminUserPointsPage() {
                   type="button"
                   onClick={handleGetBalance}
                   disabled={balanceLoading}
-                  className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-zenda-dark focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60"
                 >
                   {balanceLoading ? (
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -272,7 +272,7 @@ export default function AdminUserPointsPage() {
                 <div className="mt-4 p-4 rounded-lg bg-primary-50 border border-primary-100">
                   <p className="text-xs font-medium text-primary-800 mb-1">{balanceResult.user_email}</p>
                   <p className="text-2xl font-bold text-primary-900">{Number(balanceResult.balance).toFixed(2)} pts</p>
-                  <p className="text-sm text-primary-700 mt-1">
+                  <p className="text-sm text-zenda-dark mt-1">
                     ≈ {Number(balanceResult.balance_kz).toLocaleString('pt-PT')} KZ
                   </p>
                 </div>
@@ -353,7 +353,7 @@ export default function AdminUserPointsPage() {
               <button
                 type="submit"
                 disabled={adjustLoading}
-                className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zenda-dark focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-60"
               >
                 {adjustLoading ? (
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -411,7 +411,7 @@ export default function AdminUserPointsPage() {
 
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+              <div className="w-8 h-8 zenda-spinner zenda-spinner-md" />
             </div>
           ) : transactions.length === 0 ? (
             <div className="px-5 py-12 text-center text-gray-500 text-sm">

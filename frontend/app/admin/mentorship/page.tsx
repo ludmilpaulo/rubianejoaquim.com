@@ -97,7 +97,7 @@ export default function AdminMentorshipPage() {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800'
       case 'scheduled':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-blue-100 text-zenda-dark'
       case 'completed':
         return 'bg-gray-100 text-gray-800'
       case 'cancelled':
@@ -121,7 +121,7 @@ export default function AdminMentorshipPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -142,7 +142,7 @@ export default function AdminMentorshipPage() {
           <button
             onClick={() => setStatusFilter('')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === '' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === '' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Todos
@@ -150,7 +150,7 @@ export default function AdminMentorshipPage() {
           <button
             onClick={() => setStatusFilter('pending')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'pending' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'pending' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Pendentes
@@ -158,7 +158,7 @@ export default function AdminMentorshipPage() {
           <button
             onClick={() => setStatusFilter('approved')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'approved' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'approved' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Aprovados
@@ -166,7 +166,7 @@ export default function AdminMentorshipPage() {
           <button
             onClick={() => setStatusFilter('scheduled')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'scheduled' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'scheduled' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Agendados
@@ -174,7 +174,7 @@ export default function AdminMentorshipPage() {
           <button
             onClick={() => setStatusFilter('completed')}
             className={`px-4 py-2 rounded-lg font-medium ${
-              statusFilter === 'completed' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700'
+              statusFilter === 'completed' ? 'bg-zenda-primary text-white' : 'bg-white text-gray-700'
             }`}
           >
             Concluídos
@@ -183,7 +183,7 @@ export default function AdminMentorshipPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
           </div>
         ) : requests.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -247,7 +247,7 @@ export default function AdminMentorshipPage() {
                             }
                           }
                         }}
-                        className="text-primary-600 hover:text-primary-700 font-medium underline cursor-pointer"
+                        className="text-zenda-primary hover:text-zenda-dark font-medium underline cursor-pointer"
                       >
                         Ver Comprovante
                       </button>

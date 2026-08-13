@@ -694,7 +694,7 @@ export default function PersonalFinanceScreen() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.headerIconContainer}>
-              <MaterialCommunityIcons name="wallet" size={28} color="#3534C9" />
+              <MaterialCommunityIcons name="wallet" size={28} color={colors.brand.primary} />
             </View>
             <View style={styles.headerText}>
               <Text variant="headlineMedium" style={styles.title}>{t('personal.title')}</Text>
@@ -788,7 +788,7 @@ export default function PersonalFinanceScreen() {
               <Card.Content>
                 <View style={styles.ruleHeader}>
                   <View style={styles.ruleIconContainer}>
-                    <MaterialCommunityIcons name="chart-pie" size={32} color="#3534C9" />
+                    <MaterialCommunityIcons name="chart-pie" size={32} color={colors.brand.primary} />
                   </View>
                   <View style={styles.ruleHeaderText}>
                     <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.rules100Title')}</Text>
@@ -824,7 +824,7 @@ export default function PersonalFinanceScreen() {
                     <View style={styles.resultsGrid}>
                       <View style={[styles.resultCard, styles.resultCard50]}>
                         <View style={styles.resultIconContainer}>
-                          <MaterialCommunityIcons name="home" size={32} color="#3b82f6" />
+                          <MaterialCommunityIcons name="home" size={32} color={colors.brand.primary} />
                         </View>
                         <Text variant="labelLarge" style={styles.resultPercentage}>50%</Text>
                         <Text variant="bodyMedium" style={styles.resultLabel}>{t('personal.fixed')}</Text>
@@ -844,7 +844,7 @@ export default function PersonalFinanceScreen() {
                       </View>
                       <View style={[styles.resultCard, styles.resultCard20]}>
                         <View style={styles.resultIconContainer}>
-                          <MaterialCommunityIcons name="piggy-bank" size={32} color="#4DB83D" />
+                          <MaterialCommunityIcons name="piggy-bank" size={32} color={colors.brand.growth} />
                         </View>
                         <Text variant="labelLarge" style={styles.resultPercentage}>20%</Text>
                         <Text variant="bodyMedium" style={styles.resultLabel}>{t('personal.savings')}</Text>
@@ -863,7 +863,7 @@ export default function PersonalFinanceScreen() {
               <Card.Content>
                 <View style={styles.ruleHeader}>
                   <View style={[styles.ruleIconContainer, styles.ruleIcon3x]}>
-                    <MaterialCommunityIcons name="shield-check" size={32} color="#4DB83D" />
+                    <MaterialCommunityIcons name="shield-check" size={32} color={colors.brand.growth} />
                   </View>
                   <View style={styles.ruleHeaderText}>
                     <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.rule3xTitle')}</Text>
@@ -904,7 +904,7 @@ export default function PersonalFinanceScreen() {
                           <MaterialCommunityIcons 
                             name={pode ? 'check-circle' : 'alert-circle'} 
                             size={40} 
-                            color={pode ? '#4DB83D' : '#f59e0b'} 
+                            color={pode ? '#4DB83D' : '#E67E22'} 
                           />
                           <View style={styles.verificationContent}>
                             <Text variant="titleLarge" style={[styles.verificationTitle, { color: pode ? '#4DB83D' : '#b45309' }]}>
@@ -938,7 +938,7 @@ export default function PersonalFinanceScreen() {
                 <Card.Content>
                   <View style={styles.ruleHeader}>
                     <View style={[styles.ruleIconContainer, { backgroundColor: '#eef2ff' }]}>
-                      <MaterialCommunityIcons name="wallet-outline" size={32} color="#3534C9" />
+                      <MaterialCommunityIcons name="wallet-outline" size={32} color={colors.brand.primary} />
                     </View>
                     <View style={styles.ruleHeaderText}>
                       <Text variant="titleLarge" style={styles.ruleTitle}>{t('personal.budgetWithdrawTitle')}</Text>
@@ -946,7 +946,7 @@ export default function PersonalFinanceScreen() {
                         {t('personal.budgetWithdrawSubtitle')}
                       </Text>
                     </View>
-                    <MaterialCommunityIcons name="chevron-right" size={28} color="#3534C9" />
+                    <MaterialCommunityIcons name="chevron-right" size={28} color={colors.brand.primary} />
                   </View>
                   <Text variant="bodySmall" style={styles.orcamentoCta}>
                     {t('personal.budgetWithdrawCta')}
@@ -983,21 +983,21 @@ export default function PersonalFinanceScreen() {
             <View style={styles.statsGrid}>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="wallet" size={24} color="#3534C9" />
+                  <MaterialCommunityIcons name="wallet" size={24} color={colors.brand.primary} />
                   <Text variant="headlineSmall" style={styles.statValue}>{budgets.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statBudgets')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="target" size={24} color="#4DB83D" />
+                  <MaterialCommunityIcons name="target" size={24} color={colors.brand.growth} />
                   <Text variant="headlineSmall" style={styles.statValue}>{activeGoals.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statGoals')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
+                  <MaterialCommunityIcons name="alert-circle" size={24} color={colors.danger} />
                   <Text variant="headlineSmall" style={styles.statValue}>{activeDebts.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('personal.statDebts')}</Text>
                 </Card.Content>
@@ -1063,7 +1063,7 @@ export default function PersonalFinanceScreen() {
                         activeOpacity={0.7}
                       >
                         <View style={styles.actionButtonContent}>
-                          <MaterialCommunityIcons name="pencil" size={18} color="#3534C9" />
+                          <MaterialCommunityIcons name="pencil" size={18} color={colors.brand.primary} />
                           <RNText style={styles.editActionText}>{t('common.edit')}</RNText>
                         </View>
                       </TouchableOpacity>
@@ -1073,7 +1073,7 @@ export default function PersonalFinanceScreen() {
                         activeOpacity={0.7}
                       >
                         <View style={styles.actionButtonContent}>
-                          <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
+                          <MaterialCommunityIcons name="delete-outline" size={18} color={colors.danger} />
                           <Text style={styles.deleteActionText}>{t('common.delete')}</Text>
                         </View>
                       </TouchableOpacity>
@@ -1119,7 +1119,7 @@ export default function PersonalFinanceScreen() {
                             styles.progressFill,
                             {
                               width: `${Math.min(parseFloat(budget.percentage_used), 100)}%`,
-                              backgroundColor: parseFloat(budget.percentage_used) > 100 ? '#ef4444' : '#3534C9',
+                              backgroundColor: parseFloat(budget.percentage_used) > 100 ? colors.danger : '#3534C9',
                             },
                           ]}
                         />
@@ -1145,7 +1145,7 @@ export default function PersonalFinanceScreen() {
                         onPress={() => navigation.navigate('TirarDinheiroOrcamento', { budgetId: budget.id })}
                         icon="plus"
                         style={styles.budgetActionButton}
-                        buttonColor="#3534C9"
+                        buttonColor={colors.brand.primary}
                       >
                         {t('personal.addSpend')}
                       </Button>
@@ -1270,7 +1270,7 @@ export default function PersonalFinanceScreen() {
                           styles.progressFill,
                           {
                             width: `${Math.min(parseFloat(debt.progress_percentage), 100)}%`,
-                            backgroundColor: '#ef4444',
+                            backgroundColor: colors.danger,
                           },
                         ]}
                       />
@@ -1614,7 +1614,7 @@ export default function PersonalFinanceScreen() {
                           'calendar-range'
                         }
                         size={20}
-                        color="#3534C9"
+                        color={colors.brand.primary}
                         style={styles.dropdownIcon}
                       />
                       <Text variant="bodyLarge" style={styles.dropdownText}>
@@ -1635,7 +1635,7 @@ export default function PersonalFinanceScreen() {
                   }}
                   title={t('personal.periodDaily')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="calendar-today" size={20} color="#3534C9" />
+                    <MaterialCommunityIcons name="calendar-today" size={20} color={colors.brand.primary} />
                   )}
                 />
                 <Menu.Item
@@ -1645,7 +1645,7 @@ export default function PersonalFinanceScreen() {
                   }}
                   title={t('personal.periodMonthly')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="calendar-month" size={20} color="#3534C9" />
+                    <MaterialCommunityIcons name="calendar-month" size={20} color={colors.brand.primary} />
                   )}
                 />
                 <Menu.Item
@@ -1655,7 +1655,7 @@ export default function PersonalFinanceScreen() {
                   }}
                   title={t('personal.periodYearly')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="calendar" size={20} color="#3534C9" />
+                    <MaterialCommunityIcons name="calendar" size={20} color={colors.brand.primary} />
                   )}
                 />
                 <Menu.Item
@@ -1665,7 +1665,7 @@ export default function PersonalFinanceScreen() {
                   }}
                   title={t('personal.periodCustom')}
                   leadingIcon={() => (
-                    <MaterialCommunityIcons name="calendar-range" size={20} color="#3534C9" />
+                    <MaterialCommunityIcons name="calendar-range" size={20} color={colors.brand.primary} />
                   )}
                 />
               </Menu>
@@ -1856,7 +1856,7 @@ export default function PersonalFinanceScreen() {
                             styles.progressFill,
                             {
                               width: `${Math.min(parseFloat(selectedDebt.progress_percentage), 100)}%`,
-                              backgroundColor: '#ef4444',
+                              backgroundColor: colors.danger,
                             },
                           ]}
                         />
@@ -2043,7 +2043,7 @@ export default function PersonalFinanceScreen() {
                           styles.progressFill,
                           {
                             width: `${Math.min(parseFloat(selectedBudget.percentage_used), 100)}%`,
-                            backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? '#ef4444' : '#3534C9',
+                            backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? colors.danger : '#3534C9',
                           },
                         ]}
                       />
@@ -2073,7 +2073,7 @@ export default function PersonalFinanceScreen() {
                       openAddExpenseFromBudget(selectedBudget)
                     }}
                     icon="plus"
-                    buttonColor="#3534C9"
+                    buttonColor={colors.brand.primary}
                     style={{ marginBottom: 16 }}
                   >
                     {t('personal.addSpend')}
@@ -2315,7 +2315,7 @@ const styles = StyleSheet.create({
   resultCard50: {
     backgroundColor: '#eff6ff',
     borderWidth: 2.5,
-    borderColor: '#3b82f6',
+    borderColor: colors.brand.primary,
   },
   resultCard30: {
     backgroundColor: '#fdf2f8',
@@ -2365,7 +2365,7 @@ const styles = StyleSheet.create({
   },
   verificationWarning: {
     backgroundColor: '#fffbeb',
-    borderColor: '#f59e0b',
+    borderColor: '#E67E22',
   },
   verificationContent: {
     flex: 1,
@@ -2525,7 +2525,7 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontWeight: 'bold',
-    color: '#ef4444',
+    color: colors.danger,
   },
   amountCol: {
     alignItems: 'flex-end',
@@ -2595,7 +2595,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 12,
     backgroundColor: '#eff6ff',
-    borderColor: '#3b82f6',
+    borderColor: colors.brand.primary,
     borderWidth: 1,
   },
   previewLabel: {
@@ -2607,19 +2607,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   previewPercentage: {
-    color: '#3b82f6',
+    color: colors.brand.primary,
     marginTop: 4,
   },
   modalDeleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 14,
     marginTop: 12,
     gap: 8,
-    shadowColor: '#ef4444',
+    shadowColor: colors.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -2670,7 +2670,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   remainingAmount: {
-    color: '#ef4444',
+    color: colors.danger,
     fontWeight: '700',
   },
   payDebtButton: {
@@ -2883,10 +2883,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fef2f2',
     borderWidth: 1,
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   deleteActionText: {
-    color: '#ef4444',
+    color: colors.danger,
     fontWeight: '600',
   },
   categoryHeader: {

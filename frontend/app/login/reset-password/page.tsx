@@ -52,8 +52,8 @@ function ResetPasswordForm() {
         }}
       >
         <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full text-center">
-          <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-14 h-14 rounded-full bg-zenda-container flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-zenda-debt" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
@@ -63,12 +63,12 @@ function ResetPasswordForm() {
           </p>
           <Link
             href="/login/forgot-password"
-            className="inline-block w-full sm:w-auto bg-primary-600 text-white text-center py-2.5 sm:py-3 px-6 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="inline-block w-full sm:w-auto bg-zenda-primary text-white text-center py-2.5 sm:py-3 px-6 rounded-lg hover:bg-zenda-dark transition font-semibold"
           >
             Pedir novo link
           </Link>
           <p className="mt-4">
-            <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+            <Link href="/login" className="text-zenda-primary hover:text-zenda-dark font-medium">
               ← Voltar ao login
             </Link>
           </p>
@@ -87,7 +87,7 @@ function ResetPasswordForm() {
         }}
       >
         <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full text-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-14 h-14 rounded-full bg-zenda-growthContainer flex items-center justify-center mx-auto mb-4">
             <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -98,7 +98,7 @@ function ResetPasswordForm() {
           </p>
           <Link
             href="/login"
-            className="inline-block w-full sm:w-auto bg-primary-600 text-white text-center py-2.5 sm:py-3 px-6 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="inline-block w-full sm:w-auto bg-zenda-primary text-white text-center py-2.5 sm:py-3 px-6 rounded-lg hover:bg-zenda-dark transition font-semibold"
           >
             Entrar
           </Link>
@@ -139,7 +139,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
               <button
                 type="button"
@@ -169,7 +169,7 @@ function ResetPasswordForm() {
                 minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
               <button
                 type="button"
@@ -193,14 +193,14 @@ function ResetPasswordForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+            className="w-full bg-zenda-primary text-white py-3 rounded-lg font-semibold hover:bg-zenda-dark transition disabled:opacity-50"
           >
             {loading ? 'A guardar...' : 'Alterar palavra-passe'}
           </button>
         </form>
 
         <p className="mt-6 text-center">
-          <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+          <Link href="/login" className="text-zenda-primary hover:text-zenda-dark font-medium">
             ← Voltar ao login
           </Link>
         </p>

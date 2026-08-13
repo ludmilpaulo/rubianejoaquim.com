@@ -424,7 +424,7 @@ export default function AulaPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="inline-block w-12 h-12 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -467,7 +467,7 @@ export default function AulaPage() {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-sm text-gray-600">Preço do Curso</p>
-                  <p className="text-2xl font-bold text-primary-600">{formatCurrency(course.price)}</p>
+                  <p className="text-2xl font-bold text-zenda-primary">{formatCurrency(course.price)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Acesso Completo</p>
@@ -484,7 +484,7 @@ export default function AulaPage() {
             <div className="flex gap-3">
               <Link
                 href={`/cursos/${course.id}`}
-                className="flex-1 px-4 py-3 border-2 border-primary-600 text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition text-center"
+                className="flex-1 px-4 py-3 border-2 border-primary-600 text-zenda-primary rounded-lg font-semibold hover:bg-primary-50 transition text-center"
                 onClick={() => setShowPurchasePopup(false)}
               >
                 Ver Curso
@@ -492,7 +492,7 @@ export default function AulaPage() {
               <button
                 onClick={handleEnroll}
                 disabled={enrolling}
-                className="flex-1 px-4 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-3 bg-zenda-primary text-white rounded-lg font-semibold hover:bg-zenda-dark transition disabled:opacity-50"
               >
                 {enrolling ? 'A processar...' : 'Comprar Agora'}
               </button>
@@ -540,7 +540,7 @@ export default function AulaPage() {
                     href={attachment.file}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-2 text-primary-600 hover:text-primary-700"
+                    className="flex items-center space-x-2 text-zenda-primary hover:text-zenda-dark"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -577,7 +577,7 @@ export default function AulaPage() {
                   <button
                     onClick={handleMarkCompleted}
                     disabled={marking || loadingQuiz}
-                    className="w-full bg-primary-600 text-white py-2 rounded-lg font-medium hover:bg-primary-700 transition disabled:opacity-50"
+                    className="w-full bg-zenda-primary text-white py-2 rounded-lg font-medium hover:bg-zenda-dark transition disabled:opacity-50"
                   >
                     {loadingQuiz ? 'A verificar quiz...' : marking ? 'A processar...' : 'Marcar como Concluída'}
                   </button>
@@ -592,10 +592,10 @@ export default function AulaPage() {
       {showRetakeConfirmation && previousQuizResult && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-8 animate-slide-up relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full -mr-20 -mt-20 opacity-20"></div>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-zenda-light to-zenda-primary rounded-full -mr-20 -mt-20 opacity-20"></div>
             <div className="relative z-10">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white mb-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-zenda-light to-zenda-primary text-white mb-4">
                   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -692,7 +692,7 @@ export default function AulaPage() {
                     setQuizAnswers({})
                     setQuizResult(null)
                   }}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-primary-600 to-purple-600 text-white rounded-xl font-semibold hover:from-primary-700 hover:to-purple-700 transition shadow-lg hover:shadow-xl"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-zenda-primary to-zenda-dark text-white rounded-xl font-semibold hover:from-zenda-dark hover:to-zenda-navyMid transition shadow-lg hover:shadow-xl"
                 >
                   Refazer Quiz
                 </button>
@@ -707,7 +707,7 @@ export default function AulaPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] min-h-0 overflow-hidden flex flex-col animate-slide-up my-auto">
             {/* Header with Gradient */}
-            <div className="bg-gradient-to-r from-primary-600 via-primary-700 to-purple-600 px-4 sm:px-8 py-4 sm:py-6 text-white relative overflow-hidden flex-shrink-0">
+            <div className="bg-gradient-to-r from-zenda-primary via-zenda-dark to-zenda-navyMid px-4 sm:px-8 py-4 sm:py-6 text-white relative overflow-hidden flex-shrink-0">
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC00LjQxOC0zLjU4Mi04LTgtOHMtOCAzLjU4Mi04IDggMy41ODIgOCA4IDggOC0zLjU4MiA4LTh6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-20"></div>
               <div className="relative z-10 flex justify-between items-start">
                 <div className="flex-1">
@@ -805,16 +805,16 @@ export default function AulaPage() {
                   </div>
 
                   {quizResult.score < quiz.passing_score && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                    <div className="bg-zenda-container border border-zenda-border rounded-xl p-6">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <h5 className="font-semibold text-blue-900 mb-1">Não desista!</h5>
-                          <p className="text-sm text-blue-800">
+                          <h5 className="font-semibold text-zenda-navy mb-1">Não desista!</h5>
+                          <p className="text-sm text-zenda-dark">
                             Você pode tentar novamente. Revise o conteúdo da aula e tente fazer o quiz mais uma vez.
                           </p>
                         </div>
@@ -863,13 +863,13 @@ export default function AulaPage() {
                       <span className="text-sm font-medium text-gray-700">
                         Progresso: {Object.keys(quizAnswers).length} de {quiz.questions?.length || 0} respondidas
                       </span>
-                      <span className="text-sm font-semibold text-primary-600">
+                      <span className="text-sm font-semibold text-zenda-primary">
                         {Math.round((Object.keys(quizAnswers).length / (quiz.questions?.length || 1)) * 100)}%
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-primary-600 to-purple-600 h-full rounded-full transition-all duration-300 ease-out"
+                        className="bg-gradient-to-r from-zenda-primary to-zenda-dark h-full rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${(Object.keys(quizAnswers).length / (quiz.questions?.length || 1)) * 100}%` }}
                       ></div>
                     </div>
@@ -911,7 +911,7 @@ export default function AulaPage() {
                             <div className="flex items-start gap-4 mb-4">
                               <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg ${
                                 isAnswered 
-                                  ? 'bg-primary-100 text-primary-700' 
+                                  ? 'bg-primary-100 text-zenda-dark' 
                                   : 'bg-gray-100 text-gray-600'
                               }`}>
                                 {qIndex + 1}
@@ -921,7 +921,7 @@ export default function AulaPage() {
                                   {question.question_text || qq.question_text || 'Pergunta sem texto'}
                                 </h4>
                                 {isAnswered && (
-                                  <span className="inline-flex items-center gap-1 text-xs text-primary-600 font-medium mt-1">
+                                  <span className="inline-flex items-center gap-1 text-xs text-zenda-primary font-medium mt-1">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
@@ -995,7 +995,7 @@ export default function AulaPage() {
                             console.log('Quiz data:', quiz)
                             console.log('Questions:', quiz.questions)
                           }}
-                          className="mt-4 text-xs text-primary-600 hover:text-primary-700"
+                          className="mt-4 text-xs text-zenda-primary hover:text-zenda-dark"
                         >
                           (Debug: Ver dados no console)
                         </button>
@@ -1027,7 +1027,7 @@ export default function AulaPage() {
                     disabled={submittingQuiz || Object.keys(quizAnswers).length !== quiz.questions?.length}
                     className={`flex-1 min-h-[48px] px-6 sm:px-8 py-4 rounded-xl font-bold text-base sm:text-lg transition-all shadow-lg ${
                       Object.keys(quizAnswers).length === quiz.questions?.length && !submittingQuiz
-                        ? 'bg-gradient-to-r from-primary-600 to-purple-600 text-white hover:from-primary-700 hover:to-purple-700 hover:shadow-xl transform hover:scale-105'
+                        ? 'bg-gradient-to-r from-zenda-primary to-zenda-dark text-white hover:from-zenda-dark hover:to-zenda-navyMid hover:shadow-xl transform hover:scale-105'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                   >
@@ -1083,7 +1083,7 @@ export default function AulaPage() {
                   : 'Parabéns! Você completou todas as aulas deste curso!'}
               </p>
               {nextLessonId ? (
-                <div className="flex items-center justify-center gap-2 text-primary-600">
+                <div className="flex items-center justify-center gap-2 text-zenda-primary">
                   <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1098,7 +1098,7 @@ export default function AulaPage() {
                       router.push(`/cursos/${courseId}`)
                     }
                   }}
-                  className="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-primary-700 hover:to-purple-700 transition shadow-lg"
+                  className="w-full bg-gradient-to-r from-zenda-primary to-zenda-dark text-white py-3 rounded-xl font-semibold hover:from-zenda-dark hover:to-zenda-navyMid transition shadow-lg"
                 >
                   Ver Curso
                 </button>

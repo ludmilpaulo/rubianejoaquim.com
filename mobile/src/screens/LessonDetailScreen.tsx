@@ -12,6 +12,7 @@ import { getApiErrorMessage } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
+import { colors } from '../theme'
 
 const { width } = Dimensions.get('window')
 const VIDEO_HEIGHT = (width - 32) * 9 / 16 // 16:9 aspect ratio
@@ -178,7 +179,7 @@ export default function LessonDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.loadingContainer}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
           <Text variant="bodyLarge" style={styles.errorText}>{loadError}</Text>
           <Button mode="contained" onPress={loadLesson}>{t('common.retry')}</Button>
         </View>
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
     color: '#4DB83D',
   },
   resultFailed: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   passedChip: {
     backgroundColor: '#d1fae5',
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   failedChipText: {
-    color: '#ef4444',
+    color: colors.danger,
     fontSize: 12,
   },
   startQuizButton: {

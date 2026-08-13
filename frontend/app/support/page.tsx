@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function SupportPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-zenda-bg via-white to-zenda-container">
       {/* Header */}
       <section className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-12 md:py-16">
@@ -64,7 +64,7 @@ export default function SupportPage() {
                 Como solicito uma sessão de mentoria?
               </h3>
               <p className="text-gray-600">
-                Na página de <Link href="/mentoria" className="text-primary-600 hover:text-primary-700 underline">Mentoria</Link>, 
+                Na página de <Link href="/mentoria" className="text-zenda-primary hover:text-zenda-dark underline">Mentoria</Link>, 
                 escolha o pacote que melhor se adequa às suas necessidades e preencha o formulário com os seus dados. 
                 Entraremos em contacto para combinar os detalhes da sessão.
               </p>
@@ -86,7 +86,7 @@ export default function SupportPage() {
                 Como posso recuperar a minha palavra-passe?
               </h3>
               <p className="text-gray-600">
-                Na página de <Link href="/login" className="text-primary-600 hover:text-primary-700 underline">Login</Link>, 
+                Na página de <Link href="/login" className="text-zenda-primary hover:text-zenda-dark underline">Login</Link>, 
                 clique em "Esqueceu a palavra-passe?" e siga as instruções para recuperar o acesso à sua conta.
               </p>
             </div>
@@ -115,7 +115,7 @@ export default function SupportPage() {
               <h3 className="font-semibold text-gray-900 mb-2">Email</h3>
               <a 
                 href="mailto:suporte@rubianejoaquim.com" 
-                className="text-primary-600 hover:text-primary-700 underline"
+                className="text-zenda-primary hover:text-zenda-dark underline"
               >
                 suporte@rubianejoaquim.com
               </a>

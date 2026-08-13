@@ -42,7 +42,7 @@ export default function Navbar() {
         href={link.url}
         target={link.open_in_new_tab ? '_blank' : undefined}
         rel={link.open_in_new_tab ? 'noopener noreferrer' : undefined}
-        className="text-slate-300 hover:text-amber-300 text-sm font-medium transition-colors"
+        className="text-slate-300 hover:text-zenda-growth text-sm font-medium transition-colors"
         onClick={() => setMobileMenuOpen(false)}
       >
         {link.label}
@@ -56,7 +56,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-14 sm:h-16 gap-2 min-w-0">
-          <Link href="/" className="text-sm sm:text-lg font-display font-bold text-white hover:text-amber-300 truncate">
+          <Link href="/" className="text-sm sm:text-lg font-display font-bold text-white hover:text-zenda-growth truncate">
             {brandName.split('|')[0]?.trim() || brandName}
           </Link>
 
@@ -64,26 +64,26 @@ export default function Navbar() {
             {renderLinks()}
             <LanguageSwitcher />
             {showLoading ? (
-              <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              <div className="zenda-spinner zenda-spinner-sm" />
             ) : showUser && user ? (
               <>
                 {user.is_admin && (
-                  <Link href="/admin" className="text-slate-300 hover:text-amber-300 text-sm">
+                  <Link href="/admin" className="text-slate-300 hover:text-zenda-growth text-sm">
                     {t('nav.admin')}
                   </Link>
                 )}
                 {!user.is_admin && (
-                  <Link href="/area-do-aluno" className="text-slate-300 hover:text-amber-300 text-sm">
+                  <Link href="/area-do-aluno" className="text-slate-300 hover:text-zenda-growth text-sm">
                     {t('nav.studentArea')}
                   </Link>
                 )}
-                <button type="button" onClick={handleLogout} className="text-slate-300 hover:text-amber-300 text-sm">
+                <button type="button" onClick={handleLogout} className="text-slate-300 hover:text-zenda-growth text-sm">
                   {t('nav.logout')}
                 </button>
               </>
             ) : (
               <>
-                <Link href="/login" className="text-slate-300 hover:text-amber-300 text-sm">
+                <Link href="/login" className="text-slate-300 hover:text-zenda-growth text-sm">
                   {t('nav.login')}
                 </Link>
                 <Link href="/contact" className="btn-primary !py-2 !px-4 text-sm">

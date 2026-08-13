@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { Suspense } from 'react'
+import ZendaLoader from '@/components/zenda/ZendaLoader'
 
 function SocialCallbackInner() {
   const router = useRouter()
@@ -62,7 +63,7 @@ function SocialCallbackInner() {
       <div className="max-w-md mx-auto px-4 py-16 text-center">
         <h1 className="text-xl font-bold text-gray-900 mb-3">Login social</h1>
         <p className="text-gray-600 mb-6">{error}</p>
-        <Link href="/login" className="text-primary-600 font-semibold hover:underline">
+        <Link href="/login" className="text-zenda-primary font-semibold hover:underline">
           Voltar ao login
         </Link>
       </div>
@@ -71,8 +72,7 @@ function SocialCallbackInner() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-16 text-center">
-      <div className="w-8 h-8 mx-auto border-2 border-primary-600 border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-gray-600">A concluir autenticação…</p>
+      <ZendaLoader message="A concluir autenticação…" />
     </div>
   )
 }
@@ -82,7 +82,7 @@ export default function SocialCallbackPage() {
     <Suspense
       fallback={
         <div className="max-w-md mx-auto px-4 py-16 text-center">
-          <div className="w-8 h-8 mx-auto border-2 border-primary-600 border-t-transparent rounded-full animate-spin" />
+          <ZendaLoader />
         </div>
       }
     >

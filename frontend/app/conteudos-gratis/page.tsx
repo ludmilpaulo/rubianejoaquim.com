@@ -38,7 +38,7 @@ export default function ConteudosGratisPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="inline-block w-12 h-12 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -69,7 +69,7 @@ export default function ConteudosGratisPage() {
                 <span className="text-sm text-gray-500">{lesson.duration} min</span>
                 <Link
                   href={`/aulas/${lesson.id}`}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-zenda-primary hover:text-zenda-dark font-medium"
                 >
                   Ver Aula →
                 </Link>

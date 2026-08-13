@@ -141,7 +141,7 @@ export default function EditCoursePage() {
   if (!mounted || isLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -156,7 +156,7 @@ export default function EditCoursePage() {
         <div className="mb-8">
           <Link
             href="/admin/courses"
-            className="text-primary-600 hover:text-primary-700 mb-4 inline-block"
+            className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block"
           >
             ← Voltar para Cursos
           </Link>
@@ -181,7 +181,7 @@ export default function EditCoursePage() {
                 required
                 value={formData.title}
                 onChange={handleTitleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
             </div>
 
@@ -194,7 +194,7 @@ export default function EditCoursePage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
               <p className="mt-1 text-sm text-gray-500">URL amigável</p>
             </div>
@@ -207,7 +207,7 @@ export default function EditCoursePage() {
                 type="text"
                 value={formData.short_description}
                 onChange={(e) => setFormData({ ...formData, short_description: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 maxLength={300}
               />
             </div>
@@ -221,7 +221,7 @@ export default function EditCoursePage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={6}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
             </div>
 
@@ -237,7 +237,7 @@ export default function EditCoursePage() {
                   min="0"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -248,7 +248,7 @@ export default function EditCoursePage() {
                 <select
                   value={formData.is_active ? 'true' : 'false'}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 >
                   <option value="true">Ativo</option>
                   <option value="false">Inativo</option>
@@ -270,7 +270,7 @@ export default function EditCoursePage() {
                       </div>
                       <Link
                         href={`/admin/lessons/${lesson.id}`}
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                        className="text-zenda-primary hover:text-zenda-dark text-sm font-medium"
                       >
                         Editar
                       </Link>
@@ -279,7 +279,7 @@ export default function EditCoursePage() {
                 </div>
                 <Link
                   href={`/admin/lessons/new?course=${course.id}`}
-                  className="mt-4 inline-block text-primary-600 hover:text-primary-700 font-medium"
+                  className="mt-4 inline-block text-zenda-primary hover:text-zenda-dark font-medium"
                 >
                   + Adicionar Aula
                 </Link>
@@ -296,7 +296,7 @@ export default function EditCoursePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 font-semibold"
+                className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition disabled:opacity-50 font-semibold"
               >
                 {saving ? 'A guardar...' : 'Guardar Alterações'}
               </button>
@@ -312,7 +312,7 @@ export default function EditCoursePage() {
               </div>
               <Link
                 href={`/admin/courses/${courseId}/exam`}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+                className="px-4 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition font-medium"
               >
                 {course?.final_exam ? 'Editar Exame' : 'Criar Exame Final'}
               </Link>

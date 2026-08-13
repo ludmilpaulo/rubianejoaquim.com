@@ -67,7 +67,7 @@ export async function setupNotifications(): Promise<boolean> {
       vibrationPattern: [0, 400, 200, 400],
       enableVibrate: true,
       enableLights: true,
-      lightColor: '#f59e0b',
+      lightColor: '#E67E22',
       sound: 'default',
     })
   }

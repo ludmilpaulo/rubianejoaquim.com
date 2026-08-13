@@ -10,6 +10,7 @@ import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
 import { materialIcon } from '../utils/icons'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 interface Notification {
   id: number
@@ -132,8 +133,8 @@ export default function NotificationsScreen() {
     switch (type) {
       case 'task_reminder': return '#3534C9'
       case 'target_milestone': return '#4DB83D'
-      case 'goal_achievement': return '#f59e0b'
-      case 'payment_due': return '#ef4444'
+      case 'goal_achievement': return '#E67E22'
+      case 'payment_due': return colors.danger
       case 'achievement': return '#3C3BD4'
       case 'reminder': return '#5B5AD6'
       default: return '#6b7280'
@@ -229,7 +230,7 @@ export default function NotificationsScreen() {
       {loading && notifications.length === 0 ? (
         loadError ? (
           <View style={styles.centered}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
             <Text variant="bodyLarge" style={styles.emptyText}>{loadError}</Text>
             <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
           </View>

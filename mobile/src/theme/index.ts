@@ -6,7 +6,7 @@ import { colors as colorTokens, brandPalette, legacyColors } from './colors'
 
 export { spacing, typography, shadows, motion, radius, components, brandPalette, legacyColors }
 
-/** Central Zenda palette — use these tokens in all screens */
+/** Central Zenda palette — keep hex values in sync with `frontend/lib/zenda-brand.ts`. */
 export const colors = {
   primary: colorTokens.primary,
   secondary: colorTokens.secondary,

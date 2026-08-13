@@ -33,7 +33,7 @@ export default function HeroSection({ section, showreel, settings, statistics }:
     <section className="relative min-h-[100svh] flex items-center overflow-hidden cinematic-hero hero-mesh">
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.04] pointer-events-none invert" />
       <div className="absolute top-1/4 -left-32 w-96 h-96 bg-amber-500/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-zenda-primary/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute inset-0 film-grain opacity-20 pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 w-full">

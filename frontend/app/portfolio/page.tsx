@@ -72,7 +72,7 @@ export default function PortfolioPage() {
         </div>
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-10 h-10 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 zenda-spinner zenda-spinner-sm" />
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-center text-slate-500 py-16">{intro?.cta_label || '—'}</p>

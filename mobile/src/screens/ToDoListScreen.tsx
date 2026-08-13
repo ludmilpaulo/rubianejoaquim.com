@@ -11,6 +11,7 @@ import PeriodSelector, { getDefaultPeriod, getPeriodParams, type PeriodState } f
 import { materialIcon, type MaterialIconName } from '../utils/icons'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage, unwrapList } from '../types/api'
+import { colors } from '../theme'
 
 type TaskFilter = 'all' | 'today' | 'upcoming' | 'overdue' | 'completed'
 
@@ -217,8 +218,8 @@ export default function ToDoListScreen() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'urgent': return '#ef4444'
-      case 'high': return '#f59e0b'
+      case 'urgent': return colors.danger
+      case 'high': return '#E67E22'
       case 'medium': return '#3534C9'
       case 'low': return '#4DB83D'
       default: return '#6b7280'
@@ -300,7 +301,7 @@ export default function ToDoListScreen() {
             </Card>
             <Card style={styles.statCard}>
               <Card.Content style={styles.statContent}>
-                <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
+                <MaterialCommunityIcons name="alert-circle" size={24} color={colors.danger} />
                 <Text variant="headlineSmall" style={styles.statValue}>{stats.overdue}</Text>
                 <Text variant="bodySmall" style={styles.statLabel}>{t('tasks.overdue')}</Text>
               </Card.Content>
@@ -389,7 +390,7 @@ export default function ToDoListScreen() {
                         onPress={() => handleDeleteTask(task.id)}
                         activeOpacity={0.7}
                       >
-                        <MaterialCommunityIcons name="delete-outline" size={18} color="#ef4444" />
+                        <MaterialCommunityIcons name="delete-outline" size={18} color={colors.danger} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -626,7 +627,7 @@ const styles = StyleSheet.create({
   },
   taskCardOverdue: {
     borderLeftWidth: 4,
-    borderLeftColor: '#ef4444',
+    borderLeftColor: colors.danger,
   },
   taskHeader: {
     flexDirection: 'row',
@@ -723,24 +724,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   modalButton: {
     marginTop: 8,
   },
   deleteButton: {
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   modalDeleteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.danger,
     borderRadius: 10,
     paddingVertical: 14,
     marginTop: 12,
     gap: 8,
-    shadowColor: '#ef4444',
+    shadowColor: colors.danger,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

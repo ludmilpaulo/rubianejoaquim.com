@@ -39,7 +39,7 @@ export default function DeleteAccountPage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/area-do-aluno" className="text-primary-600 hover:text-primary-700 mb-4 inline-block">
+          <Link href="/area-do-aluno" className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block">
             ← Voltar para Área do Aluno
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -63,31 +63,31 @@ export default function DeleteAccountPage() {
               </p>
             </div>
 
-            <div className="bg-blue-50 border-2 border-blue-500 rounded-lg p-6 mb-8">
-              <h2 className="text-2xl font-bold text-blue-900 mt-0 mb-4">
+            <div className="bg-zenda-container border-2 border-zenda-primary rounded-lg p-6 mb-8">
+              <h2 className="text-2xl font-bold text-zenda-navy mt-0 mb-4">
                 📋 Como Solicitar a Exclusão da Sua Conta no Zenda
               </h2>
-              <p className="text-blue-800 mb-4 font-semibold">
+              <p className="text-zenda-dark mb-4 font-semibold">
                 Siga estes passos para solicitar a exclusão da sua conta e dados associados:
               </p>
-              <ol className="list-decimal list-inside space-y-4 text-blue-900 font-medium">
-                <li className="bg-white p-3 rounded border border-blue-200">
+              <ol className="list-decimal list-inside space-y-4 text-zenda-navy font-medium">
+                <li className="bg-white p-3 rounded border border-zenda-border">
                   <strong>Leia atentamente</strong> todas as informações abaixo sobre quais dados serão excluídos e quais podem ser mantidos.
                 </li>
-                <li className="bg-white p-3 rounded border border-blue-200">
+                <li className="bg-white p-3 rounded border border-zenda-border">
                   <strong>Revise o período de retenção</strong> de 30 dias e as exceções legais mencionadas abaixo.
                 </li>
-                <li className="bg-white p-3 rounded border border-blue-200">
+                <li className="bg-white p-3 rounded border border-zenda-border">
                   <strong>Confirme</strong> que você leu e entendeu todas as informações marcando a caixa de confirmação no final desta página.
                 </li>
-                <li className="bg-white p-3 rounded border border-blue-200">
+                <li className="bg-white p-3 rounded border border-zenda-border">
                   <strong>Clique no botão</strong> "Solicitar Exclusão de Conta" para enviar sua solicitação.
                 </li>
-                <li className="bg-white p-3 rounded border border-blue-200">
+                <li className="bg-white p-3 rounded border border-zenda-border">
                   Você será <strong>desconectado automaticamente</strong> após a solicitação ser enviada com sucesso.
                 </li>
               </ol>
-              <p className="text-blue-800 mt-4 text-sm">
+              <p className="text-zenda-dark mt-4 text-sm">
                 <strong>Nota:</strong> Se você não tiver uma conta ou não estiver logado, entre em contato conosco através dos canais de suporte abaixo.
               </p>
             </div>
@@ -135,8 +135,8 @@ export default function DeleteAccountPage() {
             <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">
               Período de Retenção
             </h2>
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8">
-              <p className="text-blue-900">
+            <div className="bg-zenda-container border-l-4 border-zenda-primary p-4 mb-8">
+              <p className="text-zenda-navy">
                 <strong>Período de Processamento:</strong> Sua conta será desativada imediatamente após a solicitação. 
                 A exclusão completa dos dados ocorrerá dentro de <strong>30 dias</strong> após a solicitação, 
                 exceto para dados que devem ser mantidos por motivos legais conforme mencionado acima.
@@ -165,7 +165,7 @@ export default function DeleteAccountPage() {
                   type="checkbox"
                   checked={confirmed}
                   onChange={(e) => setConfirmed(e.target.checked)}
-                  className="mt-1 mr-3 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                  className="mt-1 mr-3 w-5 h-5 text-zenda-primary border-gray-300 rounded focus:ring-primary-500"
                 />
                 <span className="text-gray-700">
                   <strong>Confirmo que li e entendi</strong> todas as informações acima sobre a exclusão da minha conta. 
@@ -208,7 +208,7 @@ export default function DeleteAccountPage() {
                   <div className="flex flex-col sm:flex-row gap-4 mt-4">
                     <Link
                       href="/login"
-                      className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-center font-semibold transition"
+                      className="flex-1 px-6 py-3 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark text-center font-semibold transition"
                     >
                       Fazer Login
                     </Link>
@@ -238,12 +238,12 @@ export default function DeleteAccountPage() {
                 </li>
                 <li>
                   <strong>WhatsApp:</strong>{' '}
-                  <a href="https://wa.me/244944905246" className="text-primary-600 hover:text-primary-700">
+                  <a href="https://wa.me/244944905246" className="text-zenda-primary hover:text-zenda-dark">
                     +244 944 905246
                   </a>
                 </li>
                 <li>
-                  <Link href="/area-do-aluno" className="text-primary-600 hover:text-primary-700">
+                  <Link href="/area-do-aluno" className="text-zenda-primary hover:text-zenda-dark">
                     Voltar para Área do Aluno
                   </Link>
                 </li>

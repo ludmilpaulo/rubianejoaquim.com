@@ -93,7 +93,11 @@ export default function BusinessFinanceScreen() {
   const [editingItem, setEditingItem] = useState<Sale | BusinessExpense | null>(null)
   
   // Category form
-  const [categoryForm, setCategoryForm] = useState({ name: '', icon: 'tag', color: '#ef4444' })
+  const [categoryForm, setCategoryForm] = useState<{ name: string; icon: string; color: string }>({
+    name: '',
+    icon: 'tag',
+    color: colors.danger,
+  })
   
   // Form states
   const [saleForm, setSaleForm] = useState({
@@ -233,7 +237,7 @@ export default function BusinessFinanceScreen() {
           is_business: true,
         })
         setShowCategoryModal(false)
-        setCategoryForm({ name: '', icon: 'tag', color: '#ef4444' })
+        setCategoryForm({ name: '', icon: 'tag', color: colors.danger })
         await loadData()
       },
       {
@@ -337,7 +341,7 @@ export default function BusinessFinanceScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {loadError ? (
           <View style={styles.centered}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
             <Text variant="bodyLarge" style={styles.loadErrorText}>{loadError}</Text>
             <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
           </View>
@@ -371,7 +375,7 @@ export default function BusinessFinanceScreen() {
           <Card.Content>
             <View style={styles.metricRow}>
               <View style={styles.metric}>
-                <MaterialCommunityIcons name="trending-up" size={24} color="#3534C9" />
+                <MaterialCommunityIcons name="trending-up" size={24} color={colors.brand.primary} />
                 <Text variant="bodySmall" style={styles.metricLabel}>{t('business.sales')}</Text>
                 <Text variant="headlineSmall" style={styles.metricValue}>
                   {format(totalSales)}
@@ -379,7 +383,7 @@ export default function BusinessFinanceScreen() {
                 <Text variant="bodySmall" style={styles.metricCount}>{tw('business.salesCount', { count: sales.length })}</Text>
               </View>
               <View style={styles.metric}>
-                <MaterialCommunityIcons name="trending-down" size={24} color="#ef4444" />
+                <MaterialCommunityIcons name="trending-down" size={24} color={colors.danger} />
                 <Text variant="bodySmall" style={styles.metricLabel}>{t('business.expenses')}</Text>
                 <Text variant="headlineSmall" style={[styles.metricValue, styles.expenseValue]}>
                   {format(totalExpenses)}
@@ -391,7 +395,7 @@ export default function BusinessFinanceScreen() {
               <MaterialCommunityIcons
                 name={profit >= 0 ? "check-circle" : "alert-circle"}
                 size={32}
-                color={profit >= 0 ? "#4DB83D" : "#ef4444"}
+                color={profit >= 0 ? "#4DB83D" : colors.danger}
               />
               <Text variant="bodySmall" style={styles.profitLabel}>{t('business.netProfit')}</Text>
               <Text variant="headlineMedium" style={[styles.profitValue, profit < 0 && styles.profitNegative]}>
@@ -484,21 +488,21 @@ export default function BusinessFinanceScreen() {
             <View style={styles.statsGrid}>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="receipt" size={24} color="#4DB83D" />
+                  <MaterialCommunityIcons name="receipt" size={24} color={colors.brand.growth} />
                   <Text variant="headlineSmall" style={styles.statValue}>{sales.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('business.sales')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="file-document" size={24} color="#ef4444" />
+                  <MaterialCommunityIcons name="file-document" size={24} color={colors.danger} />
                   <Text variant="headlineSmall" style={styles.statValue}>{expenses.length}</Text>
                   <Text variant="bodySmall" style={styles.statLabel}>{t('business.expenses')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content>
-                  <MaterialCommunityIcons name="percent" size={24} color="#3534C9" />
+                  <MaterialCommunityIcons name="percent" size={24} color={colors.brand.primary} />
                   <Text variant="headlineSmall" style={styles.statValue}>
                     {totalSales > 0 ? ((profit / totalSales) * 100).toFixed(0) : 0}%
                   </Text>
@@ -530,7 +534,7 @@ export default function BusinessFinanceScreen() {
                     <View style={styles.saleHeader}>
                       <View style={styles.saleLeft}>
                         <View style={styles.saleIcon}>
-                          <MaterialCommunityIcons name="cash-plus" size={24} color="#4DB83D" />
+                          <MaterialCommunityIcons name="cash-plus" size={24} color={colors.brand.growth} />
                         </View>
                         <View>
                           <Text variant="titleMedium">{sale.customer_name || t('business.unspecifiedCustomer')}</Text>
@@ -587,7 +591,7 @@ export default function BusinessFinanceScreen() {
                   <Card.Content>
                     <View style={styles.expenseHeader}>
                       <View style={styles.expenseLeft}>
-                        <View style={[styles.categoryIcon, { backgroundColor: expense.category_color || '#ef4444' }]}>
+                        <View style={[styles.categoryIcon, { backgroundColor: expense.category_color || colors.danger }]}>
                           <MaterialCommunityIcons name={materialIcon(expense.category_icon)} size={20} color="#fff" />
                         </View>
                         <View>
@@ -723,7 +727,7 @@ export default function BusinessFinanceScreen() {
                                 <MaterialCommunityIcons
                                   name={materialIcon(selectedCat.icon)}
                                   size={20}
-                                  color={selectedCat.color || '#ef4444'}
+                                  color={selectedCat.color || colors.danger}
                                   style={styles.dropdownIcon}
                                 />
                                 <Text variant="bodyLarge" style={styles.dropdownText}>
@@ -765,7 +769,7 @@ export default function BusinessFinanceScreen() {
                       <MaterialCommunityIcons
                         name={materialIcon(category.icon)}
                         size={20}
-                        color={category.color || '#ef4444'}
+                        color={category.color || colors.danger}
                       />
                     )}
                   />
@@ -815,7 +819,7 @@ export default function BusinessFinanceScreen() {
           visible={showCategoryModal} 
           onDismiss={() => { 
             setShowCategoryModal(false)
-            setCategoryForm({ name: '', icon: 'tag', color: '#ef4444' })
+            setCategoryForm({ name: '', icon: 'tag', color: colors.danger })
           }} 
           contentContainerStyle={styles.modal}
         >
@@ -946,7 +950,7 @@ const styles = StyleSheet.create({
     color: '#3534C9',
   },
   expenseValue: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   metricCount: {
     color: '#999',
@@ -969,7 +973,7 @@ const styles = StyleSheet.create({
     color: '#4DB83D',
   },
   profitNegative: {
-    color: '#ef4444',
+    color: colors.danger,
   },
   profitPercentage: {
     color: '#999',
@@ -1101,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontWeight: 'bold',
-    color: '#ef4444',
+    color: colors.danger,
   },
   expenseFooter: {
     flexDirection: 'row',
@@ -1219,7 +1223,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   iconOptionSelected: {
-    borderColor: '#ef4444',
+    borderColor: colors.danger,
   },
   colorGrid: {
     flexDirection: 'row',

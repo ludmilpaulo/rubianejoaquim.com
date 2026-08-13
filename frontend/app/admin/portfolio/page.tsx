@@ -59,7 +59,7 @@ export default function AdminPortfolioPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Portfolio CMS</h1>
-          <Link href="/admin" className="text-primary-600 hover:underline text-sm">
+          <Link href="/admin" className="text-zenda-primary hover:underline text-sm">
             ← Admin
           </Link>
         </div>

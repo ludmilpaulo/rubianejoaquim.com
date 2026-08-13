@@ -3,22 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 15, 23, 42;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
-  /* Zenda brand (official logo SVG) — use on /zenda, /download, auth */
+  --foreground-rgb: 5, 5, 11;
+  --background-start-rgb: 247, 247, 250;
+  --background-end-rgb: 247, 247, 250;
+  /* Zenda brand (official logo SVG) — web + mobile share these values */
   --zenda-primary: #3534C9;
   --zenda-primary-dark: #1E2070;
   --zenda-primary-deep: #030412;
   --zenda-primary-light: #5B5AD6;
+  --zenda-primary-muted: #3C3BD4;
   --zenda-growth: #4DB83D;
   --zenda-growth-dark: #2D9B3A;
+  --zenda-growth-light: #6BC962;
   --zenda-navy: #05050B;
   --zenda-navy-mid: #11145A;
   --zenda-bg: #F7F7FA;
+  --zenda-surface: #FFFFFF;
   --zenda-expense: #E53935;
   --zenda-debt: #E67E22;
   --zenda-container: #E8E8FA;
+  --zenda-text: #05050B;
+  --zenda-text-secondary: #5B6178;
+  --zenda-border: #E2E4EF;
+  --zenda-radius: 12px;
+  --zenda-radius-lg: 16px;
   /* Safe area for notched devices (phones, tablets) */
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
@@ -58,7 +66,7 @@ img {
   }
   
   .gradient-text {
-    @apply bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-zenda-primary to-zenda-dark bg-clip-text text-transparent;
   }
   
   .glass-effect {
@@ -142,7 +150,7 @@ img {
   }
 
   .cinematic-hero {
-    background: linear-gradient(165deg, #020617 0%, #0f172a 45%, #1e1b4b 100%);
+    background: linear-gradient(165deg, #030412 0%, #05050B 45%, #11145A 100%);
   }
 
   .text-gradient-gold {
@@ -236,6 +244,109 @@ img {
   }
 
   .btn-whatsapp {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white bg-emerald-600 hover:bg-emerald-500 transition-all duration-300 shadow-lg shadow-emerald-900/30 hover:-translate-y-0.5;
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-white bg-zenda-growth hover:bg-zenda-growthDark transition-all duration-300 shadow-lg shadow-zenda-dark/20 hover:-translate-y-0.5;
   }
+
+  .zenda-page {
+    @apply min-h-screen bg-zenda-bg text-zenda-navy;
+  }
+
+  .zenda-card {
+    @apply bg-white border border-zenda-border rounded-2xl shadow-sm;
+  }
+
+  .zenda-input {
+    @apply w-full border border-zenda-border rounded-xl px-4 py-2.5 text-zenda-navy placeholder:text-zenda-textSecondary focus:outline-none focus:ring-2 focus:ring-zenda-primary/40 focus:border-zenda-primary transition-colors;
+  }
+
+  .zenda-alert-error {
+    @apply bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3;
+  }
+
+  .zenda-alert-warning {
+    @apply bg-orange-50 border border-orange-200 text-orange-800 rounded-xl px-4 py-3;
+  }
+
+  .zenda-alert-success {
+    @apply bg-zenda-growthContainer border border-zenda-growth/30 text-zenda-growthDark rounded-xl px-4 py-3;
+  }
+
+  .zenda-spinner {
+    display: inline-block;
+    border-style: solid;
+    border-color: var(--zenda-container);
+    border-top-color: var(--zenda-growth);
+    border-right-color: var(--zenda-primary);
+    border-radius: 9999px;
+    animation: zenda-spin 0.9s linear infinite;
+  }
+
+  .zenda-spinner-sm {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-width: 2px;
+  }
+
+  .zenda-spinner-md {
+    width: 2rem;
+    height: 2rem;
+    border-width: 2px;
+  }
+
+  .zenda-spinner-lg {
+    width: 3rem;
+    height: 3rem;
+    border-width: 4px;
+  }
+
+  @keyframes zenda-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes zenda-pulse-ring {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 1; }
+  }
+
+  .zenda-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  .zenda-loader-mark {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zenda-loader-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 2.5px solid transparent;
+    border-top-color: var(--zenda-growth);
+    border-right-color: color-mix(in srgb, var(--zenda-primary) 40%, transparent);
+    animation: zenda-spin 1.4s linear infinite, zenda-pulse-ring 1.6s ease-in-out infinite;
+  }
+
+  .zenda-figure {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--zenda-navy);
+  }
+}
+
+.zenda-theme-dark {
+  --zenda-bg: #030412;
+  --zenda-surface: #0B0C24;
+  --zenda-text: #F7F7FA;
+  --zenda-text-secondary: #A8ADC4;
+  --zenda-border: #2A2D4A;
+  --zenda-container: #11145A;
 }

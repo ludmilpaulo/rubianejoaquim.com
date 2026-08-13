@@ -7,6 +7,7 @@ import { coursesApi, mentorshipApi, authApi } from '@/lib/api'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils/currency'
 import LoginMethodsPanel from '@/components/LoginMethodsPanel'
+import ZendaLoader from '@/components/zenda/ZendaLoader'
 
 interface Enrollment {
   id: number
@@ -236,8 +237,8 @@ export default function AreaDoAlunoPage() {
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
-        <div className="w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-zenda-bg">
+        <ZendaLoader message="A carregar a sua área…" size="lg" />
       </div>
     )
   }
@@ -249,9 +250,9 @@ export default function AreaDoAlunoPage() {
   const activeEnrollments = enrollments.filter(e => e.status === 'active')
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50 min-w-0">
+    <div className="min-h-screen bg-zenda-bg min-w-0">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white">
+      <div className="bg-gradient-to-r from-zenda-primary to-zenda-dark text-white">
         <div
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12"
           style={{
@@ -313,7 +314,7 @@ export default function AreaDoAlunoPage() {
                 <p className="text-3xl font-bold text-gray-900">{activeEnrollments.length}</p>
               </div>
               <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
@@ -340,8 +341,8 @@ export default function AreaDoAlunoPage() {
                 <p className="text-gray-600 text-sm mb-1">Código de Referência</p>
                 <p className="text-xl font-bold text-gray-900 font-mono">{user.referral_code || 'N/A'}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 bg-zenda-container rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
               </div>
@@ -357,7 +358,7 @@ export default function AreaDoAlunoPage() {
                 onClick={() => setActiveTab('courses')}
                 className={`flex-1 sm:flex-none touch-target px-4 sm:px-6 py-3 sm:py-4 font-semibold text-xs sm:text-sm border-b-2 transition whitespace-nowrap ${
                   activeTab === 'courses'
-                    ? 'border-primary-600 text-primary-600'
+                    ? 'border-primary-600 text-zenda-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -367,7 +368,7 @@ export default function AreaDoAlunoPage() {
                 onClick={() => setActiveTab('mentorship')}
                 className={`flex-1 sm:flex-none touch-target px-4 sm:px-6 py-3 sm:py-4 font-semibold text-xs sm:text-sm border-b-2 transition whitespace-nowrap ${
                   activeTab === 'mentorship'
-                    ? 'border-primary-600 text-primary-600'
+                    ? 'border-primary-600 text-zenda-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -377,7 +378,7 @@ export default function AreaDoAlunoPage() {
                 onClick={() => setActiveTab('profile')}
                 className={`flex-1 sm:flex-none touch-target px-4 sm:px-6 py-3 sm:py-4 font-semibold text-xs sm:text-sm border-b-2 transition whitespace-nowrap ${
                   activeTab === 'profile'
-                    ? 'border-primary-600 text-primary-600'
+                    ? 'border-primary-600 text-zenda-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -399,7 +400,7 @@ export default function AreaDoAlunoPage() {
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum curso encontrado</h3>
                     <p className="text-gray-600 mb-6">Comece sua jornada de aprendizado hoje!</p>
-                    <Link href="/cursos" className="inline-block bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition">
+                    <Link href="/cursos" className="inline-block bg-zenda-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-zenda-dark transition">
                       Explorar Cursos →
                     </Link>
                   </div>
@@ -434,7 +435,7 @@ export default function AreaDoAlunoPage() {
                               <div className="mb-4">
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="text-sm font-medium text-gray-700">Progresso do Curso</span>
-                                  <span className="text-sm font-bold text-primary-600">
+                                  <span className="text-sm font-bold text-zenda-primary">
                                     {enrollment.progress.percentage}%
                                   </span>
                                 </div>
@@ -456,13 +457,13 @@ export default function AreaDoAlunoPage() {
                                 <>
                                   <Link
                                     href={`/cursos/${enrollment.course.id}`}
-                                    className="bg-primary-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:bg-primary-700 transition shadow-md hover:shadow-lg text-sm sm:text-base text-center"
+                                    className="bg-zenda-primary text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:bg-zenda-dark transition shadow-md hover:shadow-lg text-sm sm:text-base text-center"
                                   >
                                     Continuar Aprendendo →
                                   </Link>
                                   <Link
                                     href={`/cursos/${enrollment.course.id}/progresso`}
-                                    className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:from-purple-700 hover:to-purple-800 transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    className="bg-gradient-to-r from-zenda-primary to-zenda-dark text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:from-zenda-dark hover:to-zenda-navyMid transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm sm:text-base"
                                   >
                                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -471,7 +472,7 @@ export default function AreaDoAlunoPage() {
                                   </Link>
                                   <Link
                                     href={`/certificado/${enrollment.id}`}
-                                    className="border-2 border-primary-600 text-primary-600 px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:bg-primary-50 transition flex items-center justify-center gap-2 text-sm sm:text-base"
+                                    className="border-2 border-primary-600 text-zenda-primary px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl font-semibold hover:bg-primary-50 transition flex items-center justify-center gap-2 text-sm sm:text-base"
                                   >
                                     <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
@@ -517,7 +518,7 @@ export default function AreaDoAlunoPage() {
                                     </button>
                                     <button
                                       onClick={() => shareToSocialMedia('instagram', enrollment.course.id, enrollment.course.title)}
-                                      className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl hover:opacity-90 transition flex items-center justify-center"
+                                      className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-r from-zenda-primary via-zenda-muted to-zenda-growth text-white rounded-xl hover:opacity-90 transition flex items-center justify-center"
                                       title="Compartilhar no Instagram"
                                     >
                                       <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -590,7 +591,7 @@ export default function AreaDoAlunoPage() {
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhuma mentoria solicitada</h3>
                     <p className="text-gray-600 mb-6">Descubra nossos pacotes de mentoria personalizados!</p>
-                    <Link href="/mentoria" className="inline-block bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition">
+                    <Link href="/mentoria" className="inline-block bg-zenda-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-zenda-dark transition">
                       Ver Pacotes →
                     </Link>
                   </div>
@@ -671,7 +672,7 @@ export default function AreaDoAlunoPage() {
                       setShowProfileModal(true)
                       fetchUserProfile()
                     }}
-                    className="mt-4 bg-primary-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-primary-700 transition"
+                    className="mt-4 bg-zenda-primary text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-zenda-dark transition"
                   >
                     Editar Perfil
                   </button>
@@ -680,7 +681,7 @@ export default function AreaDoAlunoPage() {
                 <LoginMethodsPanel />
 
                 {/* Referral Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 mb-6">
+                <div className="bg-gradient-to-r from-zenda-container to-zenda-bg rounded-xl p-6 mb-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-4">Compartilhe e Ganhe! 🎁</h3>
                   <p className="text-gray-700 mb-4">
                     Compartilhe seus cursos favoritos e ganhe benefícios quando seus amigos se inscreverem!
@@ -688,12 +689,12 @@ export default function AreaDoAlunoPage() {
                   <div className="bg-white rounded-lg p-4 mb-4">
                     <p className="text-sm text-gray-600 mb-2">Seu código de referência:</p>
                     <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3">
-                      <code className="text-xl sm:text-2xl font-bold text-primary-600 font-mono bg-gray-50 px-4 py-2 rounded-lg break-all text-center xs:text-left">
+                      <code className="text-xl sm:text-2xl font-bold text-zenda-primary font-mono bg-gray-50 px-4 py-2 rounded-lg break-all text-center xs:text-left">
                         {user.referral_code}
                       </code>
                       <button
                         onClick={copyReferralLink}
-                        className="touch-target bg-primary-600 text-white px-4 py-2.5 rounded-lg hover:bg-primary-700 transition font-semibold shrink-0"
+                        className="touch-target bg-zenda-primary text-white px-4 py-2.5 rounded-lg hover:bg-zenda-dark transition font-semibold shrink-0"
                       >
                         Copiar Link
                       </button>
@@ -770,7 +771,7 @@ export default function AreaDoAlunoPage() {
                     required
                     value={profileForm.first_name}
                     onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -782,7 +783,7 @@ export default function AreaDoAlunoPage() {
                     required
                     value={profileForm.last_name}
                     onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
               </div>
@@ -796,7 +797,7 @@ export default function AreaDoAlunoPage() {
                   required
                   value={profileForm.email}
                   onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -808,7 +809,7 @@ export default function AreaDoAlunoPage() {
                   type="tel"
                   value={profileForm.phone}
                   onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="+244 900 000 000"
                 />
               </div>
@@ -821,7 +822,7 @@ export default function AreaDoAlunoPage() {
                   value={profileForm.address}
                   onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="Rua, número, cidade, país..."
                 />
               </div>
@@ -837,7 +838,7 @@ export default function AreaDoAlunoPage() {
                 <button
                   type="submit"
                   disabled={savingProfile}
-                  className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition font-semibold disabled:opacity-50"
+                  className="px-6 py-3 bg-zenda-primary text-white rounded-xl hover:bg-zenda-dark transition font-semibold disabled:opacity-50"
                 >
                   {savingProfile ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
@@ -892,7 +893,7 @@ function PaymentUploadForm({ enrollmentId, onUpload, uploading }: { enrollmentId
             required
             accept="image/*,.pdf"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+            className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-zenda-dark hover:file:bg-primary-100"
           />
         </div>
         <div>
@@ -910,7 +911,7 @@ function PaymentUploadForm({ enrollmentId, onUpload, uploading }: { enrollmentId
         <button
           type="submit"
           disabled={uploading || !file}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+          className="bg-zenda-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zenda-dark disabled:opacity-50"
         >
           {uploading ? 'A enviar...' : 'Enviar Comprovativo'}
         </button>
@@ -957,7 +958,7 @@ function MentorshipPaymentUploadForm({ requestId, onUpload, uploading }: { reque
             required
             accept="image/*,.pdf"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+            className="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-zenda-dark hover:file:bg-primary-100"
           />
         </div>
         <div>
@@ -974,7 +975,7 @@ function MentorshipPaymentUploadForm({ requestId, onUpload, uploading }: { reque
         <button
           type="submit"
           disabled={uploading || !file}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
+          className="bg-zenda-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zenda-dark disabled:opacity-50"
         >
           {uploading ? 'A enviar...' : 'Enviar Comprovativo'}
         </button>

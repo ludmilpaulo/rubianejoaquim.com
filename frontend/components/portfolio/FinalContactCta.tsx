@@ -26,7 +26,7 @@ export default function FinalContactCta({
 
   return (
     <section className="py-24 md:py-32 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-600/25 via-slate-950 to-indigo-900/40" />
+      <div className="absolute inset-0 bg-gradient-to-br from-zenda-primary/25 via-zenda-deep to-zenda-dark/40" />
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <Reveal>
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight text-balance">

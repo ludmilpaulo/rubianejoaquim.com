@@ -15,6 +15,7 @@ import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 const { width } = Dimensions.get('window')
 
@@ -283,7 +284,7 @@ export default function EducationScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {loadError ? (
           <View style={styles.loadingContainer}>
-            <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
             <Text variant="bodyLarge" style={styles.loadingText}>{loadError}</Text>
             <Button mode="contained" onPress={loadData}>{t('common.retry')}</Button>
           </View>
@@ -317,7 +318,7 @@ export default function EducationScreen() {
           <Card.Content>
             <View style={styles.progressHeader}>
               <View style={styles.progressIconContainer}>
-                <MaterialCommunityIcons name="trophy" size={32} color="#f59e0b" />
+                <MaterialCommunityIcons name="trophy" size={32} color="#E67E22" />
               </View>
               <View style={styles.progressInfo}>
                 <Text variant="titleLarge" style={styles.progressTitle}>
@@ -330,7 +331,7 @@ export default function EducationScreen() {
             </View>
             <ProgressBar 
               progress={overallProgress / 100} 
-              color="#f59e0b" 
+              color="#E67E22" 
               style={styles.progressBar} 
             />
             <Text variant="bodySmall" style={styles.progressPercentage}>
@@ -361,7 +362,7 @@ export default function EducationScreen() {
             {/* Points Balance */}
             <View style={styles.pointsSection}>
               <View style={styles.pointsCard}>
-                <MaterialCommunityIcons name="star-circle" size={24} color="#f59e0b" />
+                <MaterialCommunityIcons name="star-circle" size={24} color="#E67E22" />
                 <View style={styles.pointsInfo}>
                   <Text variant="bodyMedium" style={styles.pointsLabel}>{t('education.pointsAvailable')}</Text>
                   <Text variant="titleLarge" style={styles.pointsValue}>
@@ -432,7 +433,7 @@ export default function EducationScreen() {
                           <MaterialCommunityIcons 
                             name={isCompleted ? "trophy" : "book-open"} 
                             size={28} 
-                            color={isCompleted ? "#f59e0b" : "#3534C9"} 
+                            color={isCompleted ? "#E67E22" : "#3534C9"} 
                           />
                         </View>
                         <View style={styles.courseInfo}>
@@ -598,7 +599,7 @@ export default function EducationScreen() {
                 <Card key={enrollment.id} style={styles.pendingCard}>
                   <Card.Content>
                     <View style={styles.pendingHeader}>
-                      <MaterialCommunityIcons name="book-open" size={24} color="#f59e0b" />
+                      <MaterialCommunityIcons name="book-open" size={24} color="#E67E22" />
                       <View style={styles.pendingInfo}>
                         <Text variant="titleMedium" style={styles.pendingTitle}>
                           {enrollment.course.title}
@@ -648,7 +649,7 @@ export default function EducationScreen() {
                       </View>
                     ) : proofStatus === 'pending' ? (
                       <View style={styles.pendingStatus}>
-                        <MaterialCommunityIcons name="clock-outline" size={24} color="#f59e0b" />
+                        <MaterialCommunityIcons name="clock-outline" size={24} color="#E67E22" />
                         <Text variant="bodyMedium" style={styles.pendingStatusText}>
                           {t('education.proofAwaiting')}
                         </Text>
@@ -656,7 +657,7 @@ export default function EducationScreen() {
                     ) : proofStatus === 'rejected' ? (
                       <View style={styles.paymentInfo}>
                         <View style={styles.rejectedStatus}>
-                          <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
+                          <MaterialCommunityIcons name="alert-circle" size={24} color={colors.danger} />
                           <Text variant="bodyMedium" style={styles.rejectedText}>
                             {t('education.proofRejectedMsg')}
                           </Text>
@@ -1069,7 +1070,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     elevation: 2,
     borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
+    borderLeftColor: '#E67E22',
   },
   pendingHeader: {
     flexDirection: 'row',

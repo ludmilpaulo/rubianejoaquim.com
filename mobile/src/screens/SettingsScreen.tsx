@@ -415,7 +415,7 @@ export default function SettingsScreen() {
             <List.Item
               title={t('settings.clearCache')}
               description={t('settings.clearCacheDesc')}
-              left={(props) => <List.Icon {...props} icon="delete-sweep" color="#f59e0b" />}
+              left={(props) => <List.Icon {...props} icon="delete-sweep" color="#E67E22" />}
               onPress={handleClearCache}
             />
           </Card.Content>

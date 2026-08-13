@@ -8,6 +8,7 @@ import { coursesApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { unwrapEnvelope } from '../types/api'
 import { logger } from '../utils/logger'
+import { colors } from '../theme'
 
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL || 'https://rubianejoaquim.com'
 
@@ -137,7 +138,7 @@ export default function CourseProgressScreen() {
               <MaterialCommunityIcons
                 name={progress.course_passed ? 'trophy' : 'close-circle'}
                 size={28}
-                color={progress.course_passed ? '#4DB83D' : '#ef4444'}
+                color={progress.course_passed ? '#4DB83D' : colors.danger}
               />
               <Text variant="titleSmall" style={styles.statLabel}>
                 {progress.course_passed ? t('education.coursePassed') : t('education.courseInProgress')}
@@ -207,7 +208,7 @@ export default function CourseProgressScreen() {
                           {r.passed ? (
                             <MaterialCommunityIcons name="check-circle" size={18} color="#4DB83D" />
                           ) : (
-                            <MaterialCommunityIcons name="close-circle" size={18} color="#ef4444" />
+                            <MaterialCommunityIcons name="close-circle" size={18} color={colors.danger} />
                           )}
                         </View>
                       ) : (
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   passedCard: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#4DB83D' },
-  failedCard: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#ef4444' },
+  failedCard: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: colors.danger },
   statValue: { fontWeight: '700', color: '#1f2937', marginTop: 4 },
   statLabel: { color: '#666', marginTop: 2 },
   progressBarContainer: { marginBottom: 20 },
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
   resultMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 8 },
   scoreBadge: { fontWeight: '700' },
   scorePassed: { color: '#4DB83D' },
-  scoreFailed: { color: '#ef4444' },
+  scoreFailed: { color: colors.danger },
   metaText: { color: '#666' },
   notDone: { color: '#9ca3af', fontStyle: 'italic', marginTop: 4 },
   certificateButton: { marginTop: 8 },

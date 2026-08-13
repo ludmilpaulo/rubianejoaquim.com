@@ -27,7 +27,7 @@ export default function ServiceCard({
       }`}
     >
       <div
-        className={`rounded-xl bg-gradient-to-br from-amber-400/20 to-indigo-600/10 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform ${
+        className={`rounded-xl bg-gradient-to-br from-zenda-growth/20 to-zenda-primary/10 flex items-center justify-center mb-5 group-hover:scale-105 transition-transform ${
           featured ? 'w-14 h-14' : 'w-12 h-12'
         }`}
       >

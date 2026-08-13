@@ -43,9 +43,9 @@ export default function ForgotPasswordPage() {
           paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
         }}
       >
-        <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full text-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="zenda-card p-4 sm:p-6 lg:p-8 w-full text-center">
+          <div className="w-14 h-14 rounded-full bg-zenda-growthContainer flex items-center justify-center mx-auto mb-4">
+            <svg className="w-7 h-7 text-zenda-growthDark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           </p>
           <Link
             href="/login"
-            className="inline-block w-full sm:w-auto bg-primary-600 text-white text-center py-2.5 sm:py-3 px-6 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="inline-block w-full sm:w-auto btn-zenda"
           >
             Voltar ao login
           </Link>
@@ -72,8 +72,8 @@ export default function ForgotPasswordPage() {
         paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
       }}
     >
-      <div className="bg-white border border-gray-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm w-full">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2 text-center">
+      <div className="zenda-card p-4 sm:p-6 lg:p-8 w-full">
+        <h1 className="text-2xl sm:text-3xl font-bold text-zenda-navy mb-2 text-center">
           Esqueceu a palavra-passe?
         </h1>
         <p className="text-gray-600 mb-6 text-center text-sm sm:text-base">
@@ -95,20 +95,20 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@exemplo.com"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50"
+            className="w-full btn-zenda disabled:opacity-50"
           >
             {loading ? 'A enviar...' : 'Enviar link'}
           </button>
         </form>
 
         <p className="mt-6 text-center">
-          <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+          <Link href="/login" className="text-zenda-primary hover:text-zenda-dark font-medium">
             ← Voltar ao login
           </Link>
         </p>

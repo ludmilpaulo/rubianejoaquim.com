@@ -27,7 +27,7 @@ export default function EducationBanner({ section }: { section?: HomeSection }) 
               <Reveal key={card.href} delay={80 * i}>
                 <Link
                   href={card.href}
-                  className="block h-full p-8 rounded-2xl bg-gradient-to-br from-sky-500/20 to-indigo-600/10 border border-sky-500/20 premium-card hover-lift group"
+                  className="block h-full p-8 rounded-2xl bg-gradient-to-br from-zenda-growth/20 to-zenda-primary/10 border border-zenda-growth/20 premium-card hover-lift group"
                 >
                   <h3 className="text-xl font-semibold text-white group-hover:text-amber-200 transition-colors">
                     {card.title}

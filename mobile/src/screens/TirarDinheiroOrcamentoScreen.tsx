@@ -20,6 +20,7 @@ import { materialIcon } from '../utils/icons'
 import { logger } from '../utils/logger'
 import { getApiErrorMessage } from '../types/api'
 import { useActionFeedback } from '../hooks/useActionFeedback'
+import { colors } from '../theme'
 
 interface Budget {
   id: number
@@ -334,7 +335,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                         styles.progressFill,
                         {
                           width: `${Math.min(parseFloat(selectedBudget.percentage_used), 100)}%`,
-                          backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? '#ef4444' : '#3534C9',
+                          backgroundColor: parseFloat(selectedBudget.percentage_used) > 100 ? colors.danger : '#3534C9',
                         },
                       ]}
                     />
@@ -449,7 +450,7 @@ export default function TirarDinheiroOrcamentoScreen() {
                               onPress={() => handleDeleteExpense(expense.id)}
                               style={styles.deleteButton}
                             >
-                              <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
+                              <MaterialCommunityIcons name="delete-outline" size={20} color={colors.danger} />
                             </TouchableOpacity>
                           </View>
                         </View>
@@ -791,7 +792,7 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     fontWeight: '700',
-    color: '#ef4444',
+    color: colors.danger,
   },
   dualSecondary: {
     color: '#94a3b8',

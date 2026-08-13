@@ -168,7 +168,7 @@ export default function LessonQuizPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -179,7 +179,7 @@ export default function LessonQuizPage() {
         <div className="mb-8">
           <Link
             href={`/admin/lessons/${lessonId}`}
-            className="text-primary-600 hover:text-primary-700 mb-4 inline-block"
+            className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block"
           >
             ← Voltar para Aula
           </Link>
@@ -207,7 +207,7 @@ export default function LessonQuizPage() {
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -220,7 +220,7 @@ export default function LessonQuizPage() {
                     max="100"
                     value={formData.passing_score}
                     onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) || 70 })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -232,7 +232,7 @@ export default function LessonQuizPage() {
                     min="1"
                     value={formData.time_limit_minutes || ''}
                     onChange={(e) => setFormData({ ...formData, time_limit_minutes: e.target.value ? parseInt(e.target.value) : null })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                     placeholder="Sem limite"
                   />
                 </div>
@@ -241,7 +241,7 @@ export default function LessonQuizPage() {
                   <select
                     value={formData.is_active ? 'true' : 'false'}
                     onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'true' })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   >
                     <option value="true">Ativo</option>
                     <option value="false">Inativo</option>
@@ -254,7 +254,7 @@ export default function LessonQuizPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function LessonQuizPage() {
                 </div>
                 <Link
                   href="/admin/questions"
-                  className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                  className="text-zenda-primary hover:text-zenda-dark font-medium text-sm"
                 >
                   + Criar Nova Pergunta
                 </Link>
@@ -281,7 +281,7 @@ export default function LessonQuizPage() {
                   <p className="text-gray-600 mb-4">Nenhuma pergunta disponível</p>
                   <Link
                     href="/admin/questions"
-                    className="text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-zenda-primary hover:text-zenda-dark font-medium"
                   >
                     Criar primeira pergunta
                   </Link>
@@ -328,7 +328,7 @@ export default function LessonQuizPage() {
               <button
                 onClick={handleSaveQuiz}
                 disabled={saving || selectedQuestions.length === 0}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 font-semibold"
+                className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition disabled:opacity-50 font-semibold"
               >
                 {saving ? 'A guardar...' : 'Guardar Quiz'}
               </button>

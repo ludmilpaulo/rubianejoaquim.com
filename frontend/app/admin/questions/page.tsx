@@ -275,7 +275,7 @@ export default function AdminQuestionsPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -301,7 +301,7 @@ export default function AdminQuestionsPage() {
                 { choice_text: '', is_correct: false, order: 3 },
               ])
             }}
-            className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-semibold"
+            className="bg-zenda-primary text-white px-6 py-3 rounded-lg hover:bg-zenda-dark transition font-semibold"
           >
             + Nova Pergunta
           </button>
@@ -322,7 +322,7 @@ export default function AdminQuestionsPage() {
                     required
                     value={formData.course}
                     onChange={(e) => setFormData({ ...formData, course: e.target.value, lesson: '' })}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   >
                     <option value="">Selecione um curso</option>
                     {courses.map((course) => (
@@ -342,7 +342,7 @@ export default function AdminQuestionsPage() {
                     value={formData.lesson}
                     onChange={(e) => setFormData({ ...formData, lesson: e.target.value })}
                     disabled={!formData.course}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
                     <option value="">{formData.course ? 'Selecione uma lição' : 'Selecione um curso primeiro'}</option>
                     {lessons.map((lesson) => (
@@ -363,7 +363,7 @@ export default function AdminQuestionsPage() {
                   value={formData.question_text}
                   onChange={(e) => setFormData({ ...formData, question_text: e.target.value })}
                   rows={3}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="Digite a pergunta..."
                 />
               </div>
@@ -376,7 +376,7 @@ export default function AdminQuestionsPage() {
                   value={formData.explanation}
                   onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
                   rows={2}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                   placeholder="Explicação da resposta correta..."
                 />
               </div>
@@ -393,13 +393,13 @@ export default function AdminQuestionsPage() {
                         name="correct"
                         checked={choice.is_correct}
                         onChange={() => handleChoiceChange(index, 'is_correct', true)}
-                        className="w-4 h-4 text-primary-600"
+                        className="w-4 h-4 text-zenda-primary"
                       />
                       <input
                         type="text"
                         value={choice.choice_text}
                         onChange={(e) => handleChoiceChange(index, 'choice_text', e.target.value)}
-                        className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                        className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                         placeholder={`Opção ${index + 1}`}
                       />
                       {choices.length > 2 && (
@@ -416,7 +416,7 @@ export default function AdminQuestionsPage() {
                   <button
                     type="button"
                     onClick={handleAddChoice}
-                    className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                    className="text-zenda-primary hover:text-zenda-dark font-medium text-sm"
                   >
                     + Adicionar Opção
                   </button>
@@ -439,7 +439,7 @@ export default function AdminQuestionsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-semibold"
+                  className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition font-semibold"
                 >
                   {editingQuestion ? 'Atualizar' : 'Criar'} Pergunta
                 </button>
@@ -454,7 +454,7 @@ export default function AdminQuestionsPage() {
               <p className="text-gray-500 mb-4">Nenhuma pergunta criada</p>
               <button
                 onClick={() => setShowForm(true)}
-                className="text-primary-600 hover:text-primary-700 font-medium"
+                className="text-zenda-primary hover:text-zenda-dark font-medium"
               >
                 Criar primeira pergunta
               </button>
@@ -467,7 +467,7 @@ export default function AdminQuestionsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         {question.course_title && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          <span className="text-xs bg-blue-100 text-zenda-dark px-2 py-1 rounded">
                             {question.course_title}
                           </span>
                         )}
@@ -502,7 +502,7 @@ export default function AdminQuestionsPage() {
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => handleEdit(question)}
-                        className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+                        className="text-zenda-primary hover:text-zenda-dark font-medium text-sm"
                       >
                         Editar
                       </button>

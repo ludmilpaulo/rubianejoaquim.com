@@ -64,7 +64,7 @@ export default function AdminAnalyticsPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -76,7 +76,7 @@ export default function AdminAnalyticsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -88,7 +88,7 @@ export default function AdminAnalyticsPage() {
         <button
           type="button"
           onClick={fetchStats}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
+          className="bg-zenda-primary text-white px-4 py-2 rounded-lg hover:bg-zenda-dark transition"
         >
           Tentar novamente
         </button>
@@ -114,7 +114,7 @@ export default function AdminAnalyticsPage() {
                 <p className="text-xs text-gray-500 mt-1">{stats.active_courses} ativos</p>
               </div>
               <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
@@ -143,7 +143,7 @@ export default function AdminAnalyticsPage() {
                 <p className="text-xs text-gray-500 mt-1">{stats.pending_enrollments} pendentes</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
@@ -156,8 +156,8 @@ export default function AdminAnalyticsPage() {
                 <p className="text-sm font-medium text-gray-600">Aulas Concluídas</p>
                 <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_progress}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 bg-zenda-container rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-zenda-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -184,7 +184,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Aulas Grátis</span>
-                <span className="font-semibold text-blue-600">{stats.free_lessons}</span>
+                <span className="font-semibold text-zenda-primary">{stats.free_lessons}</span>
               </div>
             </div>
           </div>

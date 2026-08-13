@@ -37,7 +37,7 @@ export const colors = {
   background: brandPalette.background,
   surface: '#FFFFFF',
   text: brandPalette.navy,
-  muted: '#64748B',
+  muted: '#5B6178',
   border: '#E2E4EF',
   brand: {
     primary: brandPalette.primary,

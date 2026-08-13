@@ -376,7 +376,7 @@ export default function AICopilotScreen() {
                 </Card>
                 {message.role === 'user' && (
                   <View style={styles.userIcon}>
-                    <MaterialCommunityIcons name="account" size={20} color="#3534C9" />
+                    <MaterialCommunityIcons name="account" size={20} color={colors.brand.primary} />
                   </View>
                 )}
               </View>

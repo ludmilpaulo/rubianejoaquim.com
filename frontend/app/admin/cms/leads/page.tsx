@@ -8,9 +8,9 @@ import LeadDetailPanel, { type LeadRow } from '@/components/admin/LeadDetailPane
 const STATUSES = ['all', 'new', 'contacted', 'in_progress', 'converted', 'lost', 'spam'] as const
 
 const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
+  new: 'bg-blue-100 text-zenda-dark',
   contacted: 'bg-amber-100 text-amber-800',
-  in_progress: 'bg-indigo-100 text-indigo-800',
+  in_progress: 'bg-zenda-container text-zenda-dark',
   converted: 'bg-emerald-100 text-emerald-800',
   lost: 'bg-slate-100 text-slate-600',
   spam: 'bg-red-100 text-red-800',

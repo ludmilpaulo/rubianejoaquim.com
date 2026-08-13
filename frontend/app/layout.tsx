@@ -24,7 +24,7 @@ const dmSans = DM_Sans({
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.rubianejoaquim.com'
 
 export const viewport: Viewport = {
-  themeColor: '#020617',
+    themeColor: '#3534C9',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,

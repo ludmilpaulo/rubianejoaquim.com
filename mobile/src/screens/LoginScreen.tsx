@@ -392,7 +392,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <MaterialCommunityIcons
                       name={biometricType === 'Face ID' ? 'face-recognition' : 'fingerprint'}
                       size={24}
-                      color="#3534C9"
+                      color={colors.brand.primary}
                     />
                   )}
                 >
@@ -418,7 +418,7 @@ export default function LoginScreen({ navigation }: Props) {
                 onPress={handleLogin}
                 {...feedback.buttonProps('login')}
                 style={styles.button}
-                buttonColor="#3534C9"
+                buttonColor={colors.brand.primary}
                 contentStyle={styles.buttonContent}
                 labelStyle={styles.buttonLabel}
               >
@@ -434,7 +434,7 @@ export default function LoginScreen({ navigation }: Props) {
                   <Checkbox
                     status={enableBiometricOption ? 'checked' : 'unchecked'}
                     onPress={() => setEnableBiometricOption(!enableBiometricOption)}
-                    color="#3534C9"
+                    color={colors.brand.primary}
                   />
                   <Text style={styles.biometricOptionText}>
                     {tw('auth.login.enableBiometric', { type: biometricType })}

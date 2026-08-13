@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
   subtitle: { ...typography.body, color: colors.text.secondary, marginBottom: spacing.sm },
   meta: { ...typography.caption, color: colors.text.muted, marginBottom: spacing.xs },
   metaSmall: { ...typography.caption, color: colors.text.muted, marginTop: spacing.xs, textAlign: 'center' },
-  stale: { ...typography.caption, color: '#f59e0b', marginBottom: spacing.sm, textAlign: 'center' },
+  stale: { ...typography.caption, color: '#E67E22', marginBottom: spacing.sm, textAlign: 'center' },
   disclaimer: { ...typography.caption, color: colors.text.muted, marginBottom: spacing.md },
   sectionLabel: { ...typography.label, color: colors.text.secondary, marginBottom: spacing.sm, marginTop: spacing.md },
   input: {

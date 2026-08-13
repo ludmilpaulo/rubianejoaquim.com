@@ -68,7 +68,7 @@ export default function AdminUsersPage() {
   if (!mounted || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
       </div>
     )
   }
@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 zenda-spinner zenda-spinner-md"></div>
           </div>
         ) : users.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -136,12 +136,12 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-2">
                         {u.is_superuser && (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-zenda-container text-zenda-dark">
                             Super Admin
                           </span>
                         )}
                         {u.is_staff && !u.is_superuser && (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-zenda-dark">
                             Admin
                           </span>
                         )}

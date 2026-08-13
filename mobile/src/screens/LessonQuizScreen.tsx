@@ -14,6 +14,7 @@ import { useRoute, useNavigation } from '@react-navigation/native'
 import { lessonQuizApi, lessonsApi } from '../services/api'
 import { getApiErrorMessage, unwrapEnvelope } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
+import { colors } from '../theme'
 
 interface RouteParams {
   lessonId: number
@@ -180,7 +181,7 @@ export default function LessonQuizScreen() {
                 <MaterialCommunityIcons
                   name={result.passed ? 'check-circle' : 'close-circle'}
                   size={72}
-                  color={result.passed ? '#4DB83D' : '#ef4444'}
+                  color={result.passed ? '#4DB83D' : colors.danger}
                 />
               </View>
               <Text variant="headlineSmall" style={styles.resultTitle}>
@@ -288,12 +289,12 @@ const styles = StyleSheet.create({
   resultContainer: { padding: 16, flexGrow: 1 },
   resultCard: { borderRadius: 16, elevation: 4, overflow: 'hidden' },
   resultPassedCard: { borderWidth: 2, borderColor: '#4DB83D', backgroundColor: '#f0fdf4' },
-  resultFailedCard: { borderWidth: 2, borderColor: '#ef4444', backgroundColor: '#fef2f2' },
+  resultFailedCard: { borderWidth: 2, borderColor: colors.danger, backgroundColor: '#fef2f2' },
   resultIconWrap: { alignItems: 'center', marginBottom: 16 },
   resultTitle: { textAlign: 'center', fontWeight: '700', color: '#1f2937', marginBottom: 8 },
   resultScore: { textAlign: 'center', fontWeight: '800', marginBottom: 8 },
   scorePassed: { color: '#4DB83D' },
-  scoreFailed: { color: '#ef4444' },
+  scoreFailed: { color: colors.danger },
   resultDetail: { textAlign: 'center', color: '#4b5563', marginBottom: 4 },
   passingText: { textAlign: 'center', color: '#6b7280', marginBottom: 16 },
 })

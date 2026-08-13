@@ -49,7 +49,7 @@ export default function CertificadoPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="inline-block w-12 h-12 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mb-4" />
+          <div className="inline-block w-12 h-12 zenda-spinner zenda-spinner-lg mb-4" />
           <p className="text-gray-600">A carregar...</p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function CertificadoPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <p className="text-gray-600 mb-4">Não foi possível carregar o certificado.</p>
-          <Link href="/area-do-aluno" className="text-primary-600 hover:text-primary-700 font-medium">
+          <Link href="/area-do-aluno" className="text-zenda-primary hover:text-zenda-dark font-medium">
             Voltar à Área do Aluno
           </Link>
         </div>
@@ -82,7 +82,7 @@ export default function CertificadoPage() {
           <p className="text-gray-600 mb-6">{info.message || 'Conclua todas as aulas e quizzes com aprovação para obter o certificado.'}</p>
           <Link
             href="/area-do-aluno"
-            className="inline-block w-full py-3 px-4 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition"
+            className="inline-block w-full py-3 px-4 bg-zenda-primary text-white rounded-xl font-semibold hover:bg-zenda-dark transition"
           >
             Voltar à Área do Aluno
           </Link>
@@ -100,7 +100,7 @@ export default function CertificadoPage() {
         <div className="flex flex-col sm:flex-row gap-4 mb-6 print:hidden">
           <button
             onClick={handlePrint}
-            className="flex-1 sm:flex-none py-3 px-6 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none py-3 px-6 bg-zenda-primary text-white rounded-xl font-semibold hover:bg-zenda-dark transition flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5M9 17H3m10 0v-2a2 2 0 00-2-2H9M9 17v-4a2 2 0 012-2h2" />
@@ -109,7 +109,7 @@ export default function CertificadoPage() {
           </button>
           <Link
             href="/area-do-aluno"
-            className="flex-1 sm:flex-none py-3 px-6 border-2 border-primary-600 text-primary-600 rounded-xl font-semibold hover:bg-primary-50 transition text-center"
+            className="flex-1 sm:flex-none py-3 px-6 border-2 border-primary-600 text-zenda-primary rounded-xl font-semibold hover:bg-primary-50 transition text-center"
           >
             Voltar à Área do Aluno
           </Link>
@@ -119,14 +119,14 @@ export default function CertificadoPage() {
         <div className="bg-white rounded-2xl shadow-xl border-2 border-primary-200 overflow-hidden print:rounded-none print:shadow-none print:border-0">
           <div className="p-8 sm:p-12 print:p-12">
             <div className="text-center border-b-2 border-primary-200 pb-8 mb-8">
-              <p className="text-sm uppercase tracking-widest text-primary-600 font-semibold mb-2">Certificado de Conclusão</p>
+              <p className="text-sm uppercase tracking-widest text-zenda-primary font-semibold mb-2">Certificado de Conclusão</p>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Rubiane Joaquim</h1>
               <p className="text-gray-600">Educação Financeira</p>
             </div>
             <p className="text-center text-gray-600 mb-4">Certificamos que</p>
             <p className="text-center text-2xl sm:text-3xl font-bold text-gray-900 mb-6">{info.user_name}</p>
             <p className="text-center text-gray-600 mb-2">concluiu com sucesso o curso</p>
-            <p className="text-center text-xl sm:text-2xl font-semibold text-primary-700 mb-8">{info.course_title}</p>
+            <p className="text-center text-xl sm:text-2xl font-semibold text-zenda-dark mb-8">{info.course_title}</p>
             {completedDate && (
               <p className="text-center text-sm text-gray-500">Concluído em {completedDate}</p>
             )}

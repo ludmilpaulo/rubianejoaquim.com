@@ -269,7 +269,7 @@ export default function EditLessonPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-lg"></div>
       </div>
     )
   }
@@ -279,7 +279,7 @@ export default function EditLessonPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">Aula não encontrada</p>
-          <Link href="/admin/lessons" className="text-primary-600 hover:text-primary-700">
+          <Link href="/admin/lessons" className="text-zenda-primary hover:text-zenda-dark">
             Voltar para Aulas
           </Link>
         </div>
@@ -293,7 +293,7 @@ export default function EditLessonPage() {
         <div className="mb-8">
           <Link
             href="/admin/lessons"
-            className="text-primary-600 hover:text-primary-700 mb-4 inline-block"
+            className="text-zenda-primary hover:text-zenda-dark mb-4 inline-block"
           >
             ← Voltar para Aulas
           </Link>
@@ -317,7 +317,7 @@ export default function EditLessonPage() {
                 required
                 value={formData.course}
                 onChange={(e) => setFormData({ ...formData, course: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               >
                 <option value="">Selecione um curso</option>
                 {courses.map((course) => (
@@ -337,7 +337,7 @@ export default function EditLessonPage() {
                 required
                 value={formData.title}
                 onChange={handleTitleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
             </div>
 
@@ -350,7 +350,7 @@ export default function EditLessonPage() {
                 required
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent bg-gray-50"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent bg-gray-50"
                 readOnly
               />
               <p className="mt-1 text-sm text-gray-500">
@@ -366,7 +366,7 @@ export default function EditLessonPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
               />
             </div>
 
@@ -378,7 +378,7 @@ export default function EditLessonPage() {
                 type="url"
                 value={formData.video_url}
                 onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 placeholder="https://www.youtube.com/watch?v=..."
               />
             </div>
@@ -391,7 +391,7 @@ export default function EditLessonPage() {
                 value={formData.content}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 rows={10}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent font-mono text-sm"
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent font-mono text-sm"
               />
             </div>
 
@@ -405,7 +405,7 @@ export default function EditLessonPage() {
                   min="0"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -418,7 +418,7 @@ export default function EditLessonPage() {
                   min="0"
                   value={formData.order}
                   onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 />
               </div>
 
@@ -429,7 +429,7 @@ export default function EditLessonPage() {
                 <select
                   value={formData.is_free ? 'true' : 'false'}
                   onChange={(e) => setFormData({ ...formData, is_free: e.target.value === 'true' })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary-600 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                 >
                   <option value="false">Não</option>
                   <option value="true">Sim</option>
@@ -444,7 +444,7 @@ export default function EditLessonPage() {
                 <button
                   type="button"
                   onClick={addAttachment}
-                  className="text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-zenda-primary hover:text-zenda-dark font-medium"
                 >
                   + Adicionar Anexo
                 </button>
@@ -472,7 +472,7 @@ export default function EditLessonPage() {
                         href={attachment.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700 text-sm"
+                        className="text-zenda-primary hover:text-zenda-dark text-sm"
                       >
                         {attachment.title} (Abrir)
                       </a>
@@ -556,7 +556,7 @@ export default function EditLessonPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 font-semibold"
+                className="px-6 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition disabled:opacity-50 font-semibold"
               >
                 {saving ? 'A guardar...' : 'Guardar Alterações'}
               </button>
@@ -572,7 +572,7 @@ export default function EditLessonPage() {
               </div>
               <Link
                 href={`/admin/lessons/${lessonId}/quiz`}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition font-medium"
+                className="px-4 py-2 bg-zenda-primary text-white rounded-lg hover:bg-zenda-dark transition font-medium"
               >
                 {lesson?.quiz ? 'Editar Quiz' : 'Criar Quiz'}
               </Link>

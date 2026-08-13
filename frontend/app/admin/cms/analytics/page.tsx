@@ -81,7 +81,7 @@ export default function CmsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 zenda-spinner zenda-spinner-md" />
       </div>
     )
   }
@@ -93,7 +93,7 @@ export default function CmsAnalyticsPage() {
   const cards = [
     { label: 'New leads', value: stats.newLeads, href: '/admin/cms/leads', accent: 'text-blue-700' },
     { label: 'Total leads', value: stats.leads, href: '/admin/cms/leads', accent: 'text-slate-900' },
-    { label: 'Newsletter', value: stats.newsletter, href: '/admin/cms', accent: 'text-indigo-700' },
+    { label: 'Newsletter', value: stats.newsletter, href: '/admin/cms', accent: 'text-zenda-dark' },
     { label: 'Active homepage sections', value: stats.activeSections, sub: `/ ${stats.homeSections}`, href: '/admin/cms/homepage', accent: 'text-amber-700' },
     { label: 'Services', value: stats.services, href: '/admin/cms/services', accent: 'text-slate-900' },
     { label: 'Portfolio projects', value: stats.portfolio, href: '/admin/cms/portfolio', accent: 'text-slate-900' },

@@ -373,7 +373,7 @@ export default function AccessDeniedScreen() {
                   loading={redeemingSubscription || feedback.isPending('redeemSub')}
                   disabled={redeemingSubscription || feedback.isPending('redeemSub')}
                   style={styles.pointsButton}
-                  buttonColor="#f59e0b"
+                  buttonColor="#E67E22"
                   contentStyle={styles.buttonContent}
                   labelStyle={styles.buttonLabel}
                   icon={() => <MaterialCommunityIcons name="star" size={22} color="#fff" />}
