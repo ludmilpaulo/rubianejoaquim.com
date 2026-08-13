@@ -349,10 +349,11 @@ export async function convertAmount(
       marketClosed: res.market_closed === true,
       offline: false,
     }
-  } catch {
+  } catch (err) {
+    logger.warn('convertAmount: API failed, trying local cache', err)
     const cache = await loadExchangeRates()
     const local = convertLocally(amount, fromCur, toCur, cache.rates)
-    if (!local) return null
+    if (!local) throw err
     return {
       ...local,
       source: cache.source ?? null,

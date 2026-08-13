@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput as RNTextInput, Animated, TouchableOpacity, Share, Modal } from 'react-native'
 import { Text, TextInput, Button, Card } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -12,13 +12,23 @@ import { ZendaLoader, ZendaLoading } from '../components/ui/ZendaLoader'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { colors, spacing, typography } from '../theme'
 import { logger } from '../utils/logger'
-import { ChatMessageDto, getApiErrorMessage, isApiError } from '../types/api'
+import {
+  ChatMessageDto,
+  getApiErrorMessage,
+  isApiError,
+  unwrapList,
+  type CopilotFacts,
+  type CopilotProposedAction,
+} from '../types/api'
 
 interface Message {
   id?: number
   role: 'user' | 'assistant' | 'system'
   content: string
   created_at?: string
+  facts?: CopilotFacts | null
+  proposed_action?: CopilotProposedAction | null
+  failed?: boolean
 }
 
 interface RouteParams {
@@ -51,10 +61,14 @@ export default function AICopilotScreen() {
     monthly_report?: string
     suggested_prompts?: string[]
   } | null>(null)
+  const [lastPrompt, setLastPrompt] = useState<string | null>(null)
+  const [stillAnalyzing, setStillAnalyzing] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [history, setHistory] = useState<{ id: number; title: string; last_message_preview?: string }[]>([])
 
   useEffect(() => {
-    aiCopilotApi.getInsights().then(setInsights).catch(() => setInsights(null))
-  }, [])
+    aiCopilotApi.getInsights(locale).then(setInsights).catch(() => setInsights(null))
+  }, [locale])
 
   const suggestionList =
     insights?.suggested_prompts?.length
@@ -119,6 +133,8 @@ export default function AICopilotScreen() {
           role: msg.role || 'assistant',
           content: msg.content || msg.message || '',
           created_at: msg.created_at,
+          facts: msg.facts,
+          proposed_action: msg.proposed_action,
         }))
         setMessages(formattedMessages)
       }
@@ -167,74 +183,70 @@ export default function AICopilotScreen() {
     )
   }
 
-  const handleSend = () => {
-    if (!inputText.trim() || sending) return
-
-    const trimmed = inputText.trim()
+  const sendPrompt = (trimmed: string) => {
+    if (!trimmed || sending) return
+    setLastPrompt(trimmed)
     const userMessage: Message = {
       role: 'user',
       content: trimmed,
+      created_at: new Date().toISOString(),
     }
-
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev) => [...prev, userMessage])
     setInputText('')
-
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true })
-    }, 100)
+    setStillAnalyzing(false)
+    const slow = setTimeout(() => setStillAnalyzing(true), 8000)
 
     void feedback.run(
       async () => {
-        logger.info('Sending message to AI Copilot:', trimmed)
-        const response = await aiCopilotApi.chat(trimmed, conversationId)
-        const responseData = response
-
-        if (responseData.conversation_id) {
-          if (!conversationId || conversationId !== responseData.conversation_id) {
-            setConversationId(responseData.conversation_id)
+        const response = await aiCopilotApi.chat(trimmed, conversationId, locale)
+        if (response.conversation_id) {
+          if (!conversationId || conversationId !== response.conversation_id) {
+            setConversationId(response.conversation_id)
           }
         }
-
-        if (responseData.assistant_message) {
-          const assistantMsg = responseData.assistant_message
-          const message: Message = {
-            id: assistantMsg.id,
-            role: assistantMsg.role || 'assistant',
-            content: assistantMsg.content || '',
-            created_at: assistantMsg.created_at,
-          }
-          setMessages(prev => [...prev, message])
+        if (response.assistant_message) {
+          const assistantMsg = response.assistant_message
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: assistantMsg.id,
+              role: assistantMsg.role || 'assistant',
+              content: assistantMsg.content || '',
+              created_at: assistantMsg.created_at,
+              facts: assistantMsg.facts || response.facts,
+              proposed_action: assistantMsg.proposed_action || response.proposed_action,
+            },
+          ])
         } else {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: t('aiErrors.unexpectedFormat'),
-            created_at: new Date().toISOString(),
-          }])
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: t('aiErrors.unexpectedFormat'), failed: true },
+          ])
         }
-
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true })
-        }, 100)
       },
       {
         pendingKey: 'chat',
-        pendingMessage: 'loading.aiThinking',
+        pendingMessage: stillAnalyzing ? 'ai.stillAnalyzing' : 'ai.analyzing',
         silentError: true,
         onError: (error: unknown) => {
-          logger.error('Error sending message:', error)
-          let errorMessage = getApiErrorMessage(error, 'aiErrors.processFailed')
-          if (isApiError(error)) {
-            if (error.response?.status === 401) errorMessage = t('aiErrors.sessionExpired')
-            else if (error.response?.status === 403) errorMessage = t('aiErrors.noPermission')
-            else if (error.response?.status === 500) errorMessage = t('aiErrors.serverUnavailable')
-          }
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: errorMessage
-          }])
+          let errorMessage = t('ai.analysisFailed')
+          if (!isApiError(error) || !error.response) {
+            errorMessage = t('ai.offline')
+          } else if (error.response.status === 401) errorMessage = t('aiErrors.sessionExpired')
+          else if (error.response.status === 403) errorMessage = t('aiErrors.noPermission')
+          else errorMessage = getApiErrorMessage(error, t('ai.analysisFailed'))
+          setMessages((prev) => [...prev, { role: 'assistant', content: errorMessage, failed: true }])
         },
       },
-    )
+    ).finally(() => {
+      clearTimeout(slow)
+      setStillAnalyzing(false)
+    })
+  }
+
+  const handleSend = () => {
+    if (!inputText.trim() || sending) return
+    sendPrompt(inputText.trim())
   }
 
   const formatMessageTime = (dateString?: string) => {
@@ -265,6 +277,29 @@ export default function AICopilotScreen() {
                   {t('ai.headerSubtitle')}
                 </Text>
               </View>
+            </View>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  aiCopilotApi.getConversations().then((data) => {
+                    setHistory(unwrapList(data) as { id: number; title: string; last_message_preview?: string }[])
+                    setHistoryOpen(true)
+                  }).catch(() => setHistoryOpen(true))
+                }}
+                accessibilityLabel={t('ai.history')}
+              >
+                <MaterialCommunityIcons name="history" size={22} color={colors.brand.ai} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setConversationId(null)
+                  setMessages([])
+                  setLastPrompt(null)
+                }}
+                accessibilityLabel={t('ai.newChat')}
+              >
+                <MaterialCommunityIcons name="plus" size={24} color={colors.brand.ai} />
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -328,7 +363,7 @@ export default function AICopilotScreen() {
                     <TouchableOpacity
                       key={prompt}
                       style={styles.suggestionChip}
-                      onPress={() => setInputText(prompt)}
+                      onPress={() => sendPrompt(prompt)}
                     >
                       <MaterialCommunityIcons name="chat-outline" size={18} color={colors.brand.ai} />
                       <Text style={styles.suggestionText} numberOfLines={2}>{prompt}</Text>
@@ -372,6 +407,124 @@ export default function AICopilotScreen() {
                         {formatMessageTime(message.created_at)}
                       </Text>
                     )}
+                    {message.role === 'assistant' && message.facts?.fx && !message.facts.fx.error ? (
+                      <View style={styles.fxCard}>
+                        <Text style={styles.fxLine}>
+                          {message.facts.fx.original_amount} {message.facts.fx.original_currency}
+                          {' → '}
+                          {message.facts.fx.converted_amount} {message.facts.fx.target_currency}
+                        </Text>
+                        <Text style={styles.fxMeta}>
+                          {t('ai.fxRate')}: 1 {message.facts.fx.original_currency} = {message.facts.fx.exchange_rate} {message.facts.fx.target_currency}
+                        </Text>
+                        <Text style={styles.fxMeta}>{t('ai.fxSource')}: {message.facts.fx.source}</Text>
+                        <Text style={styles.fxMeta}>{t('ai.fxTime')}: {message.facts.fx.provider_updated_at || '—'}</Text>
+                        <Text style={styles.fxMeta}>
+                          {message.facts.fx.stale ? t('ai.fxLatest') : t('ai.fxLive')}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {message.role === 'assistant' && message.facts && !message.facts.fx ? (
+                      <View style={styles.fxCard}>
+                        {message.facts.income != null ? (
+                          <Text style={styles.fxMeta}>
+                            {message.facts.income} {message.facts.currency || ''}
+                            {message.facts.expenses != null
+                              ? ` → ${message.facts.expenses} ${message.facts.currency || ''}`
+                              : ''}
+                          </Text>
+                        ) : null}
+                        {message.facts.health?.score != null ? (
+                          <Text style={styles.fxMeta}>
+                            {t('ai.healthLabel')}: {message.facts.health.score}/100
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
+                    {message.role === 'assistant' && message.proposed_action?.status === 'pending' && conversationId ? (
+                      <View style={styles.actionBox}>
+                        <Text style={styles.actionSummary}>{message.proposed_action.summary || t('ai.actionPending')}</Text>
+                        <View style={styles.actionRow}>
+                          <Button
+                            compact
+                            mode="contained"
+                            buttonColor={colors.brand.ai}
+                            onPress={() => {
+                              const actionId = message.proposed_action!.id
+                              aiCopilotApi
+                                .confirmAction(conversationId, actionId, true, locale)
+                                .then((res) => {
+                                  setMessages((prev) => {
+                                    const updated = prev.map((item) =>
+                                      item.proposed_action?.id === actionId
+                                        ? {
+                                            ...item,
+                                            proposed_action: {
+                                              ...item.proposed_action!,
+                                              status: 'confirmed' as const,
+                                            },
+                                          }
+                                        : item,
+                                    )
+                                    if (res.assistant_message) {
+                                      return [...updated, res.assistant_message as Message]
+                                    }
+                                    return updated
+                                  })
+                                })
+                                .catch((err) => logger.error(getApiErrorMessage(err)))
+                            }}
+                          >
+                            {t('ai.confirmAction')}
+                          </Button>
+                          <Button
+                            compact
+                            onPress={() => {
+                              const actionId = message.proposed_action!.id
+                              aiCopilotApi.confirmAction(conversationId, actionId, false, locale).catch(() => {})
+                              setMessages((prev) =>
+                                prev.map((item) =>
+                                  item.proposed_action?.id === actionId
+                                    ? {
+                                        ...item,
+                                        proposed_action: {
+                                          ...item.proposed_action!,
+                                          status: 'cancelled' as const,
+                                        },
+                                      }
+                                    : item,
+                                ),
+                              )
+                            }}
+                          >
+                            {t('ai.cancelAction')}
+                          </Button>
+                        </View>
+                      </View>
+                    ) : null}
+                    {message.role === 'assistant' ? (
+                      <View style={styles.msgActions}>
+                        <TouchableOpacity
+                          onPress={() => {
+                            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                              void navigator.clipboard.writeText(message.content)
+                              return
+                            }
+                            void Share.share({ message: message.content })
+                          }}
+                        >
+                          <Text style={styles.msgAction}>{t('ai.copy')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => Share.share({ message: message.content })}>
+                          <Text style={styles.msgAction}>{t('ai.share')}</Text>
+                        </TouchableOpacity>
+                        {message.failed && lastPrompt ? (
+                          <TouchableOpacity onPress={() => sendPrompt(lastPrompt)}>
+                            <Text style={styles.msgAction}>{t('ai.retryLast')}</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    ) : null}
                   </Card.Content>
                 </Card>
                 {message.role === 'user' && (
@@ -392,7 +545,7 @@ export default function AICopilotScreen() {
                   <ZendaLoader
                     inline
                     size="sm"
-                    message={reportPending ? t('loading.report') : t('loading.aiThinking')}
+                    message={stillAnalyzing ? t('ai.stillAnalyzing') : t('ai.analyzing')}
                   />
                   <View style={styles.typingDots}>
                     <Animated.View style={[styles.dot, { opacity: dot1Anim }]} />
@@ -433,13 +586,42 @@ export default function AICopilotScreen() {
               buttonColor={colors.brand.ai}
               icon={chatPending ? undefined : 'send'}
             >
-              {chatPending ? t('loading.aiThinking') : t('common.send')}
+              {chatPending ? t('ai.analyzing') : t('common.send')}
             </Button>
           </View>
           <Text variant="bodySmall" style={styles.inputHint}>
             {t('ai.inputHint')}
           </Text>
         </View>
+        <Modal visible={historyOpen} animationType="slide" onRequestClose={() => setHistoryOpen(false)}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>{t('ai.history')}</Text>
+              <Button onPress={() => setHistoryOpen(false)}>{t('common.cancel')}</Button>
+            </View>
+            <ScrollView contentContainerStyle={styles.messagesContent}>
+              {history.length === 0 ? (
+                <Text style={styles.welcomeText}>{t('ai.emptyHistory')}</Text>
+              ) : (
+                history.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.historyRow}
+                    onPress={() => {
+                      setConversationId(item.id)
+                      setHistoryOpen(false)
+                    }}
+                  >
+                    <Text style={styles.insightReport}>{item.title}</Text>
+                    {item.last_message_preview ? (
+                      <Text style={styles.fxMeta}>{item.last_message_preview}</Text>
+                    ) : null}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   )
@@ -470,10 +652,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  headerActions: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  fxCard: {
+    marginTop: 10,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#F5F3FF',
+  },
+  fxLine: { fontWeight: '700', color: '#1f2937', marginBottom: 4 },
+  fxMeta: { fontSize: 11, color: '#6b7280', marginTop: 2 },
+  actionBox: { marginTop: 10 },
+  actionSummary: { fontSize: 13, color: '#374151', marginBottom: 8 },
+  actionRow: { flexDirection: 'row', gap: 8 },
+  msgActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  msgAction: { fontSize: 12, fontWeight: '600', color: colors.brand.ai },
+  historyRow: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
   iconContainer: {
     width: 56,

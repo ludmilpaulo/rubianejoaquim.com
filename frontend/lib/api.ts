@@ -479,8 +479,151 @@ export const financeApi = {
     return data
   },
   convertCurrency: async (amount: number, from: string, to: string, refresh = false) => {
-    const { data } = await api.get<FxConvertResponse>('/finance/exchange-rates/convert/', {
-      params: { amount, from, to, ...(refresh ? { refresh: '1' } : {}) },
+    const params = { amount, from, to, ...(refresh ? { refresh: '1' } : {}) }
+    console.log('[Zenda FX] convert request', { url: '/finance/exchange-rates/convert/', params })
+    try {
+      const { data } = await api.get<FxConvertResponse>('/finance/exchange-rates/convert/', {
+        params,
+      })
+      console.log('[Zenda FX] convert response', data)
+      return data
+    } catch (err) {
+      console.warn('[Zenda FX] convert error', err)
+      throw err
+    }
+  },
+}
+
+export const financeSpaceApi = {
+  previewSpace: async (inviteCode: string) => {
+    const { data } = await api.get<{
+      id: number
+      name: string
+      currency: string
+      member_count: number
+      require_approval: boolean
+    }>('/finance-space/spaces/preview/', { params: { invite_code: inviteCode } })
+    return data
+  },
+  joinSpace: async (inviteCode: string) => {
+    const { data } = await api.post('/finance-space/spaces/join/', { invite_code: inviteCode })
+    return data
+  },
+}
+
+export type CopilotLocale = 'pt' | 'en' | 'fr' | 'es'
+
+export interface CopilotFxFact {
+  original_amount?: string
+  original_currency?: string
+  converted_amount?: string
+  target_currency?: string
+  exchange_rate?: string
+  source?: string
+  provider_updated_at?: string | null
+  stale?: boolean
+  freshness?: string
+  error?: string
+}
+
+export interface CopilotProposedAction {
+  id: string
+  type: string
+  status: 'pending' | 'confirmed' | 'cancelled'
+  summary?: string
+  payload?: Record<string, string | number>
+}
+
+export interface CopilotFacts {
+  intent?: string
+  currency?: string
+  income?: string
+  expenses?: string
+  balance?: string
+  budget_remaining?: string | null
+  debt_total?: string
+  fx?: CopilotFxFact | null
+  missing?: string[]
+  health?: { score?: number; grade?: string }
+}
+
+export interface CopilotMessage {
+  id?: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  created_at?: string
+  facts?: CopilotFacts | null
+  proposed_action?: CopilotProposedAction | null
+}
+
+export interface CopilotChatResponse {
+  conversation_id: number
+  conversation_title?: string
+  user_message?: CopilotMessage
+  assistant_message?: CopilotMessage
+  facts?: CopilotFacts
+  proposed_action?: CopilotProposedAction | null
+}
+
+export interface CopilotConversationListItem {
+  id: number
+  title: string
+  last_message_preview?: string | null
+}
+
+export interface CopilotInsights {
+  health_score?: number
+  grade?: string
+  monthly_report?: string
+  suggested_prompts?: string[]
+}
+
+function unwrapResults<T>(data: T[] | { results?: T[] }): T[] {
+  if (Array.isArray(data)) return data
+  return data.results ?? []
+}
+
+/** AI Copilot — keys stay on the Django backend; the browser never talks to the AI provider. */
+export const aiCopilotApi = {
+  listConversations: async () => {
+    const { data } = await api.get<CopilotConversationListItem[] | { results?: CopilotConversationListItem[] }>(
+      '/ai-copilot/conversations/',
+    )
+    return unwrapResults(data)
+  },
+  getConversation: async (id: number) => {
+    const { data } = await api.get<{ messages?: CopilotMessage[] }>(`/ai-copilot/conversations/${id}/`)
+    return data
+  },
+  chat: async (message: string, conversationId?: number | null, locale?: CopilotLocale) => {
+    const { data } = await api.post<CopilotChatResponse>(
+      '/ai-copilot/conversations/chat/',
+      { message, conversation_id: conversationId || null, locale },
+      { timeout: 45000 },
+    )
+    return data
+  },
+  confirmAction: async (
+    conversationId: number,
+    actionId: string,
+    confirm: boolean,
+    locale?: CopilotLocale,
+  ) => {
+    const { data } = await api.post<{
+      status: string
+      result?: { ok?: boolean; type?: string; id?: number }
+      assistant_message?: CopilotMessage
+      proposed_action?: CopilotProposedAction
+    }>(
+      '/ai-copilot/conversations/confirm-action/',
+      { conversation_id: conversationId, action_id: actionId, confirm, locale },
+      { timeout: 20000 },
+    )
+    return data
+  },
+  getInsights: async (locale?: CopilotLocale) => {
+    const { data } = await api.get<CopilotInsights>('/ai-copilot/conversations/insights/', {
+      params: locale ? { locale } : undefined,
     })
     return data
   },

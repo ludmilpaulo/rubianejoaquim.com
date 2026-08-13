@@ -9,7 +9,7 @@ export type HomeStackParamList = {
   Market: undefined
   HealthHistory: undefined
   Analytics: undefined
-  FamilyFinance: undefined
+  FamilyFinance: { inviteCode?: string; spaceId?: number } | undefined
   ReceiptScanner: undefined
 }
 

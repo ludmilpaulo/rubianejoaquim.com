@@ -1,17 +1,26 @@
+import logging
+
+from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Q
+from subscriptions.models import MobileAppSubscription
+from subscriptions.tiers import effective_tier, has_feature
+
+from .actions import execute_action
+from .facts import run_calculations, system_prompt, template_reply
 from .models import Conversation, Message
 from .serializers import (
-    ConversationSerializer, ConversationListSerializer,
-    MessageSerializer, ChatRequestSerializer
+    ConversationSerializer,
+    ConversationListSerializer,
+    MessageSerializer,
+    ChatRequestSerializer,
+    ConfirmActionSerializer,
 )
-from django.conf import settings
-import json
 
-# Try to import OpenAI - if not available, will use fallback responses
+logger = logging.getLogger(__name__)
+
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
@@ -19,9 +28,42 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 
+class HasAICopilot(IsAuthenticated):
+    def has_permission(self, request, view):
+        if not super().has_permission(request, view):
+            return False
+        user = request.user
+        if user.is_staff or user.is_superuser:
+            return True
+        try:
+            sub = user.mobile_app_subscription
+        except MobileAppSubscription.DoesNotExist:
+            return True
+        if not sub.has_access:
+            return False
+        return has_feature(effective_tier(sub), 'ai_copilot') or sub.has_access
+
+
+def _public_facts(bundle: dict) -> dict:
+    snap = bundle.get('snapshot') or {}
+    return {
+        'intent': bundle.get('intent'),
+        'currency': snap.get('currency'),
+        'income': snap.get('income'),
+        'expenses': snap.get('expenses'),
+        'balance': snap.get('balance'),
+        'budget_remaining': snap.get('budget_remaining'),
+        'debt_total': snap.get('debt_total'),
+        'categories': (snap.get('categories') or [])[:5],
+        'fx': bundle.get('fx'),
+        'missing': snap.get('missing') or [],
+        'health': snap.get('health'),
+    }
+
+
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [HasAICopilot]
 
     def get_queryset(self):
         return Conversation.objects.filter(user=self.request.user)
@@ -36,82 +78,112 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='chat')
     def chat(self, request):
-        """Enviar mensagem e receber resposta do AI"""
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         user_message = serializer.validated_data['message']
         conversation_id = serializer.validated_data.get('conversation_id')
+        locale = serializer.validated_data.get('locale')
 
-        # Obter ou criar conversa
         if conversation_id:
             try:
-                conversation = Conversation.objects.get(
-                    id=conversation_id,
-                    user=request.user
-                )
+                conversation = Conversation.objects.get(id=conversation_id, user=request.user)
             except Conversation.DoesNotExist:
-                return Response(
-                    {'error': 'Conversa não encontrada.'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            # Criar nova conversa
             conversation = Conversation.objects.create(
                 user=request.user,
-                title=user_message[:50] if len(user_message) > 50 else user_message
+                title=user_message[:50],
             )
 
-        # Salvar mensagem do usuário
         user_msg = Message.objects.create(
             conversation=conversation,
             role='user',
-            content=user_message
+            content=user_message,
         )
 
-        # Obter contexto financeiro do usuário (se disponível)
-        financial_context = self._get_financial_context(request.user)
-
-        # Preparar mensagens para o AI
-        messages = self._prepare_messages(conversation, financial_context)
+        bundle = run_calculations(request.user, user_message, locale=locale)
+        facts_out = _public_facts(bundle)
+        proposed = bundle.get('proposed_action')
+        fallback = template_reply(bundle)
 
         try:
-            # Chamar OpenAI API
-            ai_response = self._call_openai(messages)
-            
-            # Salvar resposta do AI
-            assistant_msg = Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=ai_response
-            )
+            ai_response = self._call_openai(conversation, bundle, fallback)
+        except Exception:
+            logger.exception('OpenAI call failed; using calculated template')
+            ai_response = fallback
 
-            return Response({
-                'conversation_id': conversation.id,
-                'conversation_title': conversation.title,
-                'user_message': MessageSerializer(user_msg).data,
-                'assistant_message': MessageSerializer(assistant_msg).data,
-            }, status=status.HTTP_200_OK)
+        assistant_msg = Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=ai_response,
+            facts=facts_out,
+            proposed_action=proposed,
+        )
+        conversation.save(update_fields=['updated_at'])
 
-        except Exception as e:
-            # Se OpenAI falhar, retornar resposta padrão
-            error_message = f"Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente."
-            if settings.DEBUG:
-                error_message += f" Erro: {str(e)}"
-            
-            assistant_msg = Message.objects.create(
-                conversation=conversation,
-                role='assistant',
-                content=error_message
-            )
+        return Response({
+            'conversation_id': conversation.id,
+            'conversation_title': conversation.title,
+            'user_message': MessageSerializer(user_msg).data,
+            'assistant_message': MessageSerializer(assistant_msg).data,
+            'facts': facts_out,
+            'proposed_action': proposed,
+        }, status=status.HTTP_200_OK)
 
-            return Response({
-                'conversation_id': conversation.id,
-                'conversation_title': conversation.title,
-                'user_message': MessageSerializer(user_msg).data,
-                'assistant_message': MessageSerializer(assistant_msg).data,
-                'error': str(e) if settings.DEBUG else None,
-            }, status=status.HTTP_200_OK)
+    @action(detail=False, methods=['post'], url_path='confirm-action')
+    def confirm_action(self, request):
+        serializer = ConfirmActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        conversation = Conversation.objects.filter(
+            id=serializer.validated_data['conversation_id'],
+            user=request.user,
+        ).first()
+        if not conversation:
+            return Response({'error': 'Conversation not found.'}, status=status.HTTP_404_NOT_FOUND)
+        action_id = serializer.validated_data['action_id']
+        msg = (
+            conversation.messages.filter(role='assistant', proposed_action__isnull=False)
+            .order_by('-created_at')
+            .first()
+        )
+        if not msg or not msg.proposed_action or msg.proposed_action.get('id') != action_id:
+            return Response({'error': 'Action not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if msg.proposed_action.get('status') != 'pending':
+            return Response({'error': 'Action already resolved.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        locale = (serializer.validated_data.get('locale') or getattr(request.user, 'preferred_locale', None) or 'en').lower()[:2]
+        done = {
+            'en': 'Done. The change is saved in Zenda.',
+            'pt': 'Feito. A alteração está gravada no Zenda.',
+            'fr': 'C’est fait. La modification est enregistrée dans Zenda.',
+            'es': 'Listo. El cambio está guardado en Zenda.',
+        }.get(locale, 'Done. The change is saved in Zenda.')
+
+        if not serializer.validated_data['confirm']:
+            msg.proposed_action = {**msg.proposed_action, 'status': 'cancelled'}
+            msg.save(update_fields=['proposed_action'])
+            return Response({'status': 'cancelled', 'proposed_action': msg.proposed_action})
+
+        try:
+            result = execute_action(request.user, msg.proposed_action)
+        except Exception:
+            logger.exception('Copilot action failed')
+            return Response({'error': 'Could not complete that action.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        msg.proposed_action = {**msg.proposed_action, 'status': 'confirmed', 'result': result}
+        msg.save(update_fields=['proposed_action'])
+        confirmation = Message.objects.create(
+            conversation=conversation,
+            role='assistant',
+            content=done,
+            proposed_action=msg.proposed_action,
+        )
+        return Response({
+            'status': 'confirmed',
+            'result': result,
+            'assistant_message': MessageSerializer(confirmation).data,
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path='monthly-report')
     def monthly_report(self, request):
@@ -122,18 +194,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
         h = dash['health']
         summary = dash['summary']
         lines = [
-            f"Relatório mensal Zenda — {h['month']}/{h['year']}",
-            f"Saúde financeira: {h['score']}/100 ({h['grade']})",
-            f"Receitas: {summary['income']} | Despesas: {summary['expenses']} | Saldo: {summary['balance']}",
+            f"Zenda monthly report — {h['month']}/{h['year']}",
+            f"Financial health: {h['score']}/100 ({h['grade']})",
+            f"Income: {summary['income']} | Expenses: {summary['expenses']} | Balance: {summary['balance']}",
         ]
         if h.get('tips'):
-            lines.append('Prioridades: ' + ', '.join(h['tips']))
+            lines.append('Priorities: ' + ', '.join(h['tips']))
         if analytics['debt_payoff']:
-            lines.append(f"Dívidas activas: {len(analytics['debt_payoff'])} — use o plano de pagamento no app.")
+            lines.append(f"Active debts: {len(analytics['debt_payoff'])}.")
         if analytics['savings_projection']:
-            lines.append(f"Metas de poupança: {len(analytics['savings_projection'])} com contribuição sugerida.")
-        report = '\n'.join(lines)
-        return Response({'report': report, 'health': h, 'summary': summary, 'analytics': analytics})
+            lines.append(f"Savings goals: {len(analytics['savings_projection'])}.")
+        return Response({'report': '\n'.join(lines), 'health': h, 'summary': summary, 'analytics': analytics})
 
     @action(detail=False, methods=['get'], url_path='savings-plan')
     def savings_plan(self, request):
@@ -146,10 +217,10 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'goal': g['title'],
                 'remaining': g['remaining'],
                 'suggested_monthly': g['suggested_monthly'],
-                'message': f"Poupe {g['suggested_monthly']} por mês durante ~{g['projected_completion_months']} meses para atingir «{g['title']}».",
+                'message': f"Save {g['suggested_monthly']} per month for ~{g['projected_completion_months']} months to reach «{g['title']}».",
             })
         if not plans:
-            plans.append({'message': 'Defina metas na aba Pessoal para receber um plano de poupança personalizado.'})
+            plans.append({'message': 'Add a savings goal in Personal finance to get a plan.'})
         return Response({'plans': plans})
 
     @action(detail=False, methods=['get'], url_path='debt-strategy')
@@ -163,315 +234,102 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 'creditor': d['creditor'],
                 'remaining': d['remaining'],
                 'months_to_payoff': d['months_to_payoff'],
-                'message': f"Com ~10% do saldo em pagamento mensal, «{d['creditor']}» pode ser liquidada em cerca de {d['months_to_payoff']} meses.",
+                'message': f"Paying about 10% of remaining each month, «{d['creditor']}» could clear in about {d['months_to_payoff']} months (illustrative, not a contractual instalment).",
             })
         if not strategies:
-            strategies.append({'message': 'Sem dívidas activas — mantenha o fundo de emergência.'})
+            strategies.append({'message': 'No active debts recorded.'})
         return Response({'strategies': strategies})
 
     @action(detail=False, methods=['get'], url_path='insights')
     def insights(self, request):
-        """Monthly AI-ready snapshot from dashboard + health score."""
         from finance.services import build_dashboard
 
+        locale = (request.query_params.get('locale') or getattr(request.user, 'preferred_locale', None) or 'en').lower()[:2]
         data = build_dashboard(request.user)
         health = data.get('health') or {}
         summary = data.get('summary') or {}
         tips = health.get('tips') or []
-        score = health.get('score', 0)
-        grade = health.get('grade', 'fair')
-
-        suggested_prompts = [
-            'Como está a minha saúde financeira?',
-            'Sugira um plano para poupar mais este mês',
-            'Como reduzir despesas sem sacrificar o essencial?',
+        prompts = {
+            'en': [
+                'Analyze my spending',
+                'Check my budget',
+                'Help me reduce debt',
+                'How much can I save?',
+                'Analyze my finances',
+                'Convert my money',
+                'Create a financial plan',
+            ],
+            'pt': [
+                'Analisa os meus gastos',
+                'Verifica o meu orçamento',
+                'Ajuda-me a reduzir dívidas',
+                'Quanto posso poupar?',
+                'Analisa as minhas finanças',
+                'Converte o meu dinheiro',
+                'Cria um plano financeiro',
+            ],
+            'fr': [
+                'Analyser mes dépenses',
+                'Vérifier mon budget',
+                'Réduire mes dettes',
+                'Combien puis-je épargner ?',
+                'Analyser mes finances',
+                'Convertir mon argent',
+                'Créer un plan financier',
+            ],
+            'es': [
+                'Analiza mis gastos',
+                'Revisa mi presupuesto',
+                'Ayúdame a reducir deudas',
+                '¿Cuánto puedo ahorrar?',
+                'Analiza mis finanzas',
+                'Convierte mi dinero',
+                'Crea un plan financiero',
+            ],
+        }
+        suggested = list(prompts.get(locale, prompts['en']))
+        labels = {
+            'en': ('Income', 'Expenses', 'Balance', 'Health'),
+            'pt': ('Receitas', 'Despesas', 'Saldo', 'Saúde'),
+            'fr': ('Revenus', 'Dépenses', 'Solde', 'Santé'),
+            'es': ('Ingresos', 'Gastos', 'Saldo', 'Salud'),
+        }
+        inc, exp, bal, hth = labels.get(locale, labels['en'])
+        report_lines = [
+            f"{inc}: {summary.get('income', 0)} | {exp}: {summary.get('expenses', 0)} | {bal}: {summary.get('balance', 0)}",
+            f"{hth}: {health.get('score', 0)}/100 ({health.get('grade', 'fair')})",
         ]
-        if tips:
-            if 'expenses_exceed_income' in tips:
-                suggested_prompts.insert(0, 'As minhas despesas ultrapassam as receitas — o que fazer?')
-            if 'active_debt' in tips:
-                suggested_prompts.insert(0, 'Estratégia para pagar as minhas dívidas')
-        if (summary.get('balance') or 0) < 0:
-            suggested_prompts.append('Plano de recuperação para saldo negativo')
-
-        report_lines = []
-        if summary:
-            report_lines.append(
-                f"Receitas: {summary.get('income', 0)} | Despesas: {summary.get('expenses', 0)} | "
-                f"Saldo: {summary.get('balance', 0)}"
-            )
-        report_lines.append(f"Saúde financeira: {score}/100 ({grade})")
-
         return Response({
-            'health_score': score,
-            'grade': grade,
+            'health_score': health.get('score', 0),
+            'grade': health.get('grade', 'fair'),
             'tips': tips,
             'summary': summary,
             'monthly_report': ' '.join(report_lines),
-            'suggested_prompts': suggested_prompts[:6],
+            'suggested_prompts': suggested[:7],
             'goals_count': len(data.get('goals') or []),
             'debts_count': len(data.get('debts') or []),
         })
 
-    def _get_financial_context(self, user):
-        """Obter contexto financeiro do usuário para o AI"""
-        currency = getattr(user, 'preferred_currency', None) or 'AOA'
-        locale = getattr(user, 'preferred_locale', None) or 'pt'
-        context = {
-            'user_name': user.get_full_name() or user.first_name or user.email.split('@')[0],
-            'currency': currency,
-            'locale': locale if locale else 'pt',
-        }
-
-        try:
-            from finance.models import PersonalExpense, Budget, Goal, Debt
-            from django.db.models import Sum
-            from django.utils import timezone
-
-            current_month = timezone.now().month
-            current_year = timezone.now().year
-
-            expenses = PersonalExpense.objects.filter(
-                user=user,
-                date__month=current_month,
-                date__year=current_year
-            ).aggregate(total=Sum('amount'))['total'] or 0
-
-            budgets = Budget.objects.filter(
-                user=user,
-                month=current_month,
-                year=current_year
-            ).aggregate(total=Sum('amount'))['total'] or 0
-
-            goals = Goal.objects.filter(user=user, status='active').count()
-            debts_queryset = Debt.objects.filter(user=user, status__in=['active', 'overdue'])
-            debts = 0
-            for debt in debts_queryset:
-                remaining = float(debt.total_amount) - float(debt.paid_amount)
-                debts += max(remaining, 0)
-
-            context.update({
-                'monthly_expenses': float(expenses),
-                'monthly_budgets': float(budgets),
-                'active_goals': goals,
-                'active_debts': float(debts),
-            })
-        except Exception:
-            pass
-
-        return context
-
-    def _prepare_messages(self, conversation, financial_context):
-        """Preparar mensagens para o AI incluindo contexto financeiro, idioma e moeda."""
-        locale = (financial_context.get('locale') or 'pt').lower()
-        currency = financial_context.get('currency') or 'AOA'
-        language_name = {
-            'pt': 'Portuguese (Angola/Portugal — Português)',
-            'en': 'English',
-            'fr': 'French (Français)',
-            'es': 'Spanish (Español)',
-        }.get(locale, 'Portuguese')
-
-        messages = [
-            {
-                'role': 'system',
-                'content': f"""You are AI Financial Copilot — a precise financial education assistant in the Zenda app.
-You help users with financial education, planning, budgeting and money management.
-
-CRITICAL — LANGUAGE:
-- ALWAYS reply in {language_name}.
-- The user's preferred app language code is: {locale}.
-- Do not switch languages unless the user explicitly asks.
-
-CRITICAL — CURRENCY:
-- The user's preferred display currency is: {currency}.
-- Context totals below are already converted into {currency} for display; individual entries may have been recorded in other currencies.
-- When the user mentions a specific transaction, acknowledge the original amount+currency may differ from the preferred display total.
-- Never invent exchange rates. Point to Market / backend live rates for conversions.
-- Never tell the user to permanently convert or overwrite original transaction currencies.
-
-ACCURACY:
-- Provide accurate, evidence-based financial education guidance.
-- If unsure, say so and suggest consulting a licensed professional.
-- Avoid specific market predictions.
-- Focus on proven education and strategies (e.g. 50/30/20 rule).
-
-USER CONTEXT:
-- Name: {financial_context.get('user_name', 'User')}
-- Preferred currency: {currency}
-- Preferred language: {locale}
-- Current month expenses (summed as stored): {financial_context.get('monthly_expenses', 0):.2f} {currency}
-- Current month budgets (summed as stored): {financial_context.get('monthly_budgets', 0):.2f} {currency}
-- Active goals: {financial_context.get('active_goals', 0)}
-- Active debts remaining (summed as stored): {financial_context.get('active_debts', 0):.2f} {currency}
-
-RESPONSE GUIDELINES:
-1. Practical, personalized, evidence-based advice
-2. Budget planning with recognized methods
-3. Clear explanations of financial concepts
-4. Savings strategies suited to the user context
-5. Realistic goals
-6. Always state amounts in {currency} when using the context figures
-7. Be specific and actionable
-8. Mention relevant Zenda app tools when helpful (Personal Finance, Debts, Goals, Education, Market FX)
-
-STYLE:
-- Positive, encouraging, practical
-- Clear structure with bullet points when useful
-- Keep answers focused on the user's question"""
-            }
-        ]
-
-        previous_messages = conversation.messages.all()[:10]
-        for msg in previous_messages:
-            messages.append({
-                'role': msg.role,
-                'content': msg.content
-            })
-
-        return messages
-
-    def _call_openai(self, messages):
-        """Chamar OpenAI API - sempre tenta usar OpenAI primeiro se disponível"""
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        # Verificar se API key está configurada e OpenAI está disponível
+    def _call_openai(self, conversation, bundle: dict, fallback: str) -> str:
         api_key = getattr(settings, 'OPENAI_API_KEY', None)
-        
-        # Se não houver API key ou OpenAI não disponível, usar fallback
-        if not api_key:
-            logger.warning("OPENAI_API_KEY not configured - using fallback responses")
-            user_message = messages[-1]['content'].lower() if messages else ""
-            return self._get_fallback_response(user_message)
-        
-        if not OPENAI_AVAILABLE:
-            logger.warning("OpenAI package not installed - using fallback responses")
-            user_message = messages[-1]['content'].lower() if messages else ""
-            return self._get_fallback_response(user_message)
-        
-        # Tentar usar OpenAI
-        try:
-            logger.info("Calling OpenAI API for AI Copilot response")
-            client = OpenAI(api_key=api_key)
-            response = client.chat.completions.create(
-                model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
-                messages=messages,
-                max_tokens=800,
-                temperature=0.5,  # Lower temperature for more accurate, consistent responses
-                top_p=0.9,  # Nucleus sampling for better quality
-            )
-            ai_content = response.choices[0].message.content.strip()
-            if not ai_content:
-                raise ValueError("Empty response from OpenAI")
-            
-            logger.info(f"OpenAI API response received successfully ({len(ai_content)} characters)")
-            return ai_content
-            
-        except Exception as e:
-            # Log error for debugging
-            logger.error(f"OpenAI API error: {str(e)}", exc_info=True)
-            
-            # Se houver erro, retornar resposta padrão contextual
-            user_message = messages[-1]['content'].lower() if messages else ""
-            logger.warning("Falling back to contextual response due to OpenAI error")
-            return self._get_fallback_response(user_message, include_error_note=True)
-    
-    def _get_fallback_response(self, user_message, include_error_note=False):
-        """Gerar resposta fallback baseada na mensagem do usuário"""
-        error_note = "\n\nNota: O serviço de IA avançada pode estar temporariamente indisponível. Tente novamente em alguns instantes." if include_error_note else ""
+        if not api_key or not OPENAI_AVAILABLE:
+            return fallback
 
-        # Respostas contextuais básicas (baseadas em melhores práticas financeiras reconhecidas)
-        if any(word in user_message for word in ['orçamento', 'budget', 'gastos', 'despesas']):
-            return f"""Ótima pergunta sobre orçamento! Aqui estão dicas práticas baseadas em métodos comprovados:
+        history = list(conversation.messages.order_by('-created_at')[:12])
+        history.reverse()
+        messages = [{'role': 'system', 'content': system_prompt(bundle)}]
+        for msg in history:
+            if msg.role in ('user', 'assistant') and msg.content:
+                messages.append({'role': msg.role, 'content': msg.content[:4000]})
 
-1. **Regra 50/30/20** (método amplamente reconhecido):
-   - 50% da renda para necessidades essenciais (aluguel, comida, transporte, contas básicas)
-   - 30% para desejos e estilo de vida (entretenimento, hobbies, compras não essenciais)
-   - 20% para poupança e investimentos (fundo de emergência, metas financeiras)
-
-2. **Rastreamento de gastos**: Use a seção de Finanças Pessoais do app Zenda para registrar todas as despesas em AOA. Isso ajuda a identificar padrões de gasto.
-
-3. **Revisão mensal**: Analise seus gastos mensalmente para identificar onde pode economizar e ajustar seu orçamento conforme necessário.
-
-4. **Priorização**: Comece sempre pelas necessidades essenciais antes de alocar dinheiro para desejos.
-
-Dica: Comece pequeno e ajuste gradualmente. Um orçamento perfeito leva tempo para desenvolver.
-{error_note}"""
-
-        elif any(word in user_message for word in ['poupança', 'economizar', 'guardar', 'investir']):
-            return f"""Excelente foco em poupança! Aqui estão estratégias comprovadas e eficazes:
-
-1. **Poupança Automática** (método "pagar-se primeiro"):
-   - Configure transferências automáticas assim que receber seu salário
-   - Trate a poupança como uma despesa obrigatória, não como algo opcional
-   - Comece com 10-20% da sua renda se possível
-
-2. **Metas de Poupança Específicas**:
-   - Use a seção de Metas no app Zenda para definir objetivos claros e mensuráveis
-   - Estabeleça prazos realistas para cada meta
-   - Acompanhe o progresso regularmente
-
-3. **Fundo de Emergência** (recomendação padrão da indústria financeira):
-   - Procure ter pelo menos 3-6 meses de despesas essenciais guardadas em AOA
-   - Mantenha este fundo em conta de fácil acesso, não investido
-   - Use apenas para emergências reais (desemprego, despesas médicas inesperadas, etc.)
-
-4. **Comece Pequeno e Seja Consistente**:
-   - Mesmo pequenas quantias (ex: 5.000-10.000 AOA/mês) fazem diferença ao longo do tempo
-   - A consistência é mais importante que o valor inicial
-   - Aumente gradualmente conforme sua situação financeira melhora
-
-5. **Reduza Gastos Desnecessários**:
-   - Revise assinaturas e serviços que não usa regularmente
-   - Compare preços antes de compras grandes
-   - Evite compras por impulso
-{error_note}"""
-
-        elif any(word in user_message for word in ['dívida', 'débito', 'emprestimo', 'cartão']):
-            return f"""Gestão de dívidas é crucial para a saúde financeira! Aqui estão estratégias comprovadas:
-
-1. **Método da Bola de Neve** (recomendado para motivação):
-   - Liste todas as suas dívidas do menor para o maior valor
-   - Pague o mínimo em todas, exceto a menor
-   - Pague o máximo possível na menor dívida até quitá-la
-   - Repita o processo com a próxima menor dívida
-   - Vantagem: ganhos psicológicos rápidos mantêm a motivação
-
-2. **Método da Avalanche** (recomendado para economia):
-   - Priorize dívidas com maiores taxas de juros primeiro
-   - Pague o mínimo em todas, exceto a de maior juro
-   - Foque recursos extras na dívida de maior taxa
-   - Vantagem: economiza mais em juros ao longo do tempo
-
-3. **Negociação com Credores**:
-   - Entre em contato com credores para renegociar condições
-   - Explique sua situação financeira honestamente
-   - Peça redução de taxas, extensão de prazo ou plano de pagamento
-   - Muitos credores preferem receber algo a nada
-
-4. **Registre e Acompanhe**:
-   - Use a seção de Finanças Pessoais do app Zenda para registrar todas as dívidas em AOA
-   - Acompanhe o progresso regularmente
-   - Celebre cada dívida quitada
-
-5. **Evite Novas Dívidas**:
-   - Evite usar cartões de crédito enquanto paga dívidas existentes
-   - Crie um orçamento realista que inclua pagamentos de dívidas
-   - Construa um fundo de emergência pequeno para evitar novas dívidas
-
-Importante: Se a situação estiver fora de controle, considere consultar um profissional financeiro ou serviço de aconselhamento de dívidas.
-{error_note}"""
-
-        else:
-            return f"""Olá! Sou o AI Financial Copilot. Estou aqui para ajudá-lo com suas finanças.
-
-Posso ajudá-lo com:
-- Planejamento de orçamento
-- Estratégias de poupança
-- Gestão de dívidas
-- Definição de metas financeiras
-- Educação financeira
-
-Como posso ajudá-lo hoje?
-{error_note}"""
+        client = OpenAI(api_key=api_key, timeout=25.0)
+        response = client.chat.completions.create(
+            model=getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini'),
+            messages=messages,
+            max_tokens=900,
+            temperature=0.3,
+        )
+        content = (response.choices[0].message.content or '').strip()
+        if not content:
+            return fallback
+        return content

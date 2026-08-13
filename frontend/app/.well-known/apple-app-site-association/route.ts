@@ -10,10 +10,11 @@ const association = {
       {
         appID: APP_ID,
         appIDs: [APP_ID],
-        paths: ['/download*', '/invite/*', '/zenda*', '/course/*', '/cursos/*', '/personal/*', '/goal/*'],
+        paths: ['/download*', '/invite/*', '/family/join*', '/zenda*', '/course/*', '/cursos/*', '/personal/*', '/goal/*'],
         components: [
           { '/': '/download*' },
           { '/': '/invite/*' },
+          { '/': '/family/join*' },
           { '/': '/zenda*' },
           { '/': '/course/*' },
           { '/': '/cursos/*' },

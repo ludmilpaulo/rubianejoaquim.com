@@ -11,10 +11,28 @@ import ZendaButton from '@/components/zenda/ZendaButton'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
 
+function safeAuthNext(raw: string | null): string | null {
+  if (!raw) return null
+  if (!raw.startsWith('/')) return null
+  if (raw.includes('://') || raw.includes('\\') || raw.includes('//')) return null
+  if (raw.startsWith('/family/join/')) return raw
+  if (raw === '/zenda/copilot' || raw.startsWith('/zenda/copilot?')) return raw
+  return null
+}
+
 function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login, register, applySession } = useAuthStore()
+  const nextPath = safeAuthNext(searchParams.get('next'))
+
+  const goAfterAuth = (isAdmin?: boolean) => {
+    if (nextPath) {
+      router.push(nextPath)
+      return
+    }
+    router.push(isAdmin ? '/admin' : '/area-do-aluno')
+  }
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -69,8 +87,7 @@ function LoginPageInner() {
       if (res.data.token && res.data.user) {
         applySession(res.data.user, res.data.token)
         setLinkState(null)
-        if (res.data.user.is_admin) router.push('/admin')
-        else router.push('/area-do-aluno')
+        goAfterAuth(res.data.user.is_admin)
       }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Não foi possível associar a conta. Verifique a palavra-passe.'))
@@ -94,11 +111,7 @@ function LoginPageInner() {
         await login(formData.email, formData.password)
         // Get updated user after login
         const updatedUser = useAuthStore.getState().user
-        if (updatedUser?.is_admin) {
-          router.push('/admin')
-        } else {
-          router.push('/area-do-aluno')
-        }
+        goAfterAuth(updatedUser?.is_admin)
       } else {
         // Validation for registration
         if (!formData.email || !formData.username || !formData.password || !formData.password_confirm) {
@@ -151,8 +164,7 @@ function LoginPageInner() {
           last_name: formData.last_name?.trim() || undefined,
           phone: formData.phone?.trim() || undefined,
         })
-        // Students always go to student area
-        router.push('/area-do-aluno')
+        goAfterAuth(false)
       }
     } catch (err: any) {
       const errorMessage = err.message || 'Erro ao fazer login/registro'

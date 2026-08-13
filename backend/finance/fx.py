@@ -46,7 +46,7 @@ CACHE_PROVIDER_TS_KEY = 'zenda_fx_provider_updated_at'
 CACHE_REFRESHED_KEY = 'zenda_fx_refreshed_at'
 
 
-def _http_get_json(url: str, timeout: int = 12) -> dict[str, Any]:
+def _http_get_json(url: str, timeout: int = 8) -> dict[str, Any]:
     req = Request(url, headers={'User-Agent': 'ZendaFX/1.0', 'Accept': 'application/json'})
     with urlopen(req, timeout=timeout) as resp:
         raw = resp.read().decode('utf-8')

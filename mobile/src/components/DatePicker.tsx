@@ -101,9 +101,7 @@ export default function DatePicker({
               <Button
                 mode="contained"
                 onPress={() => {
-                  if (value) {
-                    onChange(value)
-                  }
+                  onChange(value ?? new Date())
                   setShow(false)
                 }}
               >

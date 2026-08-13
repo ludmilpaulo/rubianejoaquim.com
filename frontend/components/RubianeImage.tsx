@@ -24,14 +24,14 @@ export default function RubianeImage() {
   return (
     <>
       <Image
-        src="/images/Rubiane.jpeg"
-        alt="Rubiane Joaquim — Especialista em Educação Financeira. Cursos e mentoria para todos os países e pessoas de língua portuguesa."
+        src="/zenda_logo.svg"
+        alt="Zenda — app de finanças e educação de Rubiane Joaquim"
         fill
-        className="object-cover object-center"
+        className="object-contain object-center bg-[#030412]"
         priority
         sizes="(max-width: 768px) 100vw, 50vw"
         onError={() => setImageError(true)}
-        unoptimized={false}
+        unoptimized
       />
       {/* Fallback placeholder que aparece enquanto carrega ou se houver erro */}
       {imageError && (

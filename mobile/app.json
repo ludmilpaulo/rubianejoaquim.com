@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -40,7 +40,7 @@
           }
         ]
       },
-      "buildNumber": "35"
+      "buildNumber": "37"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,7 +50,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 33,
+      "versionCode": 35,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -84,6 +84,11 @@
             {
               "scheme": "https",
               "host": "www.rubianejoaquim.com",
+              "pathPrefix": "/family/join"
+            },
+            {
+              "scheme": "https",
+              "host": "www.rubianejoaquim.com",
               "pathPrefix": "/course"
             },
             {
@@ -100,6 +105,11 @@
               "scheme": "https",
               "host": "rubianejoaquim.com",
               "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "rubianejoaquim.com",
+              "pathPrefix": "/family/join"
             },
             {
               "scheme": "https",

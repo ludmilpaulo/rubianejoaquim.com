@@ -247,11 +247,13 @@ export default function MarketScreen() {
         setConvertResult(null)
         setUnitRate(null)
         setConvertMeta({ freshness: 'unavailable' })
-      } catch {
+        setRefreshError('Rate not found')
+      } catch (err) {
         if (seq !== convertSeq.current) return
         setConvertResult(null)
         setUnitRate(null)
         setConvertMeta({ freshness: 'unavailable', offline: true })
+        setRefreshError(err instanceof Error ? err.message : 'Rate not found')
       }
     },
     [convert, format, listSource, listUpdatedAt, ratesSource, ratesUpdatedAt],
@@ -335,7 +337,11 @@ export default function MarketScreen() {
           <Text style={styles.meta}>{tw('market.source', { source: displaySource })}</Text>
         ) : null}
         {refreshError && displayFreshness !== 'live' ? (
-          <Text style={styles.warn}>{tw('market.refreshFailed', { relative: relative || t('market.lastUpdatedUnknown') })}</Text>
+          <Text style={styles.warn}>
+            {refreshError === 'network'
+              ? tw('market.refreshFailed', { relative: relative || t('market.lastUpdatedUnknown') })
+              : refreshError}
+          </Text>
         ) : null}
         <Text style={styles.disclaimer}>{t('market.disclaimer')}</Text>
 

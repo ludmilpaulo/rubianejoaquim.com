@@ -37,6 +37,20 @@ import { getApiErrorMessage, isApiError, unwrapList } from '../types/api'
 const API_BASE_URL = getApiBaseUrl()
 logger.info('API Base URL configured')
 
+function firstDrfMessage(body: ApiErrorBody): string | undefined {
+  const named =
+    (Array.isArray(body.email) ? body.email[0] : undefined) ||
+    (Array.isArray(body.password) ? body.password[0] : undefined) ||
+    (Array.isArray(body.non_field_errors) ? body.non_field_errors[0] : undefined)
+  if (named) return String(named)
+  for (const [key, value] of Object.entries(body)) {
+    if (key === 'refresh_error' || key === 'code') continue
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (Array.isArray(value) && value[0]) return String(value[0])
+  }
+  return undefined
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -69,17 +83,20 @@ api.interceptors.response.use(
   (response) => {
     if (response.status >= 400) {
       const body = (response.data || {}) as ApiErrorBody
-      const fieldError =
-        (Array.isArray(body.email) ? body.email[0] : undefined) ||
-        (Array.isArray(body.password) ? body.password[0] : undefined) ||
-        (Array.isArray(body.non_field_errors) ? body.non_field_errors[0] : undefined)
+      const fieldError = firstDrfMessage(body)
+      const refreshError =
+        typeof body.refresh_error === 'string' && body.refresh_error.trim()
+          ? body.refresh_error.trim()
+          : ''
       const message =
         (typeof body.detail === 'string' ? body.detail : undefined) ||
         (typeof body.error === 'string' ? body.error : undefined) ||
         (typeof body.message === 'string' ? body.message : undefined) ||
         fieldError ||
         `Request failed (${response.status})`
-      return Promise.reject(new Error(message))
+      const fullMessage =
+        refreshError && !message.includes(refreshError) ? `${message} — ${refreshError}` : message
+      return Promise.reject(new Error(fullMessage))
     }
     return response
   },
@@ -965,12 +982,17 @@ export const aiCopilotApi = {
     return response.data
   },
   
-  chat: async (message: string, conversationId?: number | null) => {
+  chat: async (message: string, conversationId?: number | null, locale?: string) => {
     try {
-      const response = await api.post('/ai-copilot/conversations/chat/', {
-        message,
-        conversation_id: conversationId || null,
-      })
+      const response = await api.post(
+        '/ai-copilot/conversations/chat/',
+        {
+          message,
+          conversation_id: conversationId || null,
+          locale: locale || undefined,
+        },
+        { timeout: 45000 },
+      )
       if (__DEV__) {
         logger.info('📤 AI Copilot chat request:', { message: message.substring(0, 50), conversationId })
         logger.info('✅ AI Copilot chat response:', response.data)
@@ -984,8 +1006,19 @@ export const aiCopilotApi = {
     }
   },
 
-  getInsights: async () => {
-    const response = await api.get('/ai-copilot/conversations/insights/')
+  confirmAction: async (conversationId: number, actionId: string, confirm: boolean, locale?: string) => {
+    const response = await api.post(
+      '/ai-copilot/conversations/confirm-action/',
+      { conversation_id: conversationId, action_id: actionId, confirm, locale: locale || undefined },
+      { timeout: 20000 },
+    )
+    return response.data
+  },
+
+  getInsights: async (locale?: string) => {
+    const response = await api.get('/ai-copilot/conversations/insights/', {
+      params: locale ? { locale } : undefined,
+    })
     return response.data
   },
 
@@ -1010,19 +1043,103 @@ export const financeSpaceApi = {
     const response = await api.get('/finance-space/spaces/')
     return response.data.results || response.data
   },
-  createSpace: async (name: string) => {
-    const response = await api.post('/finance-space/spaces/', { name })
+  createSpace: async (payload: {
+    name: string
+    currency: string
+    description?: string
+    require_approval?: boolean
+  }) => {
+    const response = await api.post('/finance-space/spaces/', payload)
+    return response.data
+  },
+  previewSpace: async (inviteCode: string) => {
+    const response = await api.get('/finance-space/spaces/preview/', {
+      params: { invite_code: inviteCode },
+    })
     return response.data
   },
   joinSpace: async (inviteCode: string) => {
     const response = await api.post('/finance-space/spaces/join/', { invite_code: inviteCode })
     return response.data
   },
-  addContribution: async (goalId: number, amount: number, note?: string) => {
+  getDashboard: async (spaceId: number) => {
+    const response = await api.get(`/finance-space/spaces/${spaceId}/dashboard/`)
+    return response.data
+  },
+  approveMember: async (spaceId: number, userId: number, decision: 'approve' | 'decline') => {
+    const response = await api.post(`/finance-space/spaces/${spaceId}/approve/`, {
+      user_id: userId,
+      decision,
+    })
+    return response.data
+  },
+  regenerateCode: async (spaceId: number) => {
+    const response = await api.post(`/finance-space/spaces/${spaceId}/regenerate-code/`)
+    return response.data
+  },
+  revokeInvite: async (spaceId: number) => {
+    const response = await api.post(`/finance-space/spaces/${spaceId}/revoke-invite/`)
+    return response.data
+  },
+  setRole: async (spaceId: number, memberId: number, role: string) => {
+    const response = await api.post(`/finance-space/spaces/${spaceId}/set-role/`, {
+      member_id: memberId,
+      role,
+    })
+    return response.data
+  },
+  removeMember: async (spaceId: number, userId: number) => {
+    await api.post(`/finance-space/spaces/${spaceId}/remove-member/`, { user_id: userId })
+  },
+  leaveSpace: async (spaceId: number) => {
+    await api.post(`/finance-space/spaces/${spaceId}/leave/`)
+  },
+  listEntries: async (spaceId: number) => {
+    const response = await api.get('/finance-space/entries/', { params: { space: spaceId } })
+    return response.data.results || response.data
+  },
+  createEntry: async (payload: Record<string, unknown>) => {
+    const response = await api.post('/finance-space/entries/', payload)
+    return response.data
+  },
+  getSettle: async (spaceId: number) => {
+    const response = await api.get(`/finance-space/spaces/${spaceId}/settle/`)
+    return response.data
+  },
+  recordSettlement: async (
+    spaceId: number,
+    payload: { from_user: number; to_user: number; amount: string; currency: string; status?: string },
+  ) => {
+    const response = await api.post(`/finance-space/spaces/${spaceId}/settle/`, payload)
+    return response.data
+  },
+  createBudget: async (payload: {
+    space: number
+    name: string
+    amount: string
+    currency: string
+    month: number
+    year: number
+  }) => {
+    const response = await api.post('/finance-space/shared-budgets/', payload)
+    return response.data
+  },
+  createGoal: async (payload: {
+    space: number
+    title: string
+    target_amount: string
+    currency: string
+    target_date?: string
+  }) => {
+    const response = await api.post('/finance-space/shared-goals/', payload)
+    return response.data
+  },
+  addContribution: async (goalId: number, amount: number, note?: string, currency?: string) => {
     const response = await api.post('/finance-space/contributions/', {
       goal: goalId,
       amount,
       note: note || '',
+      ...(currency ? { currency } : {}),
     })
     return response.data
   },

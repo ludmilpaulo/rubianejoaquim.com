@@ -20,6 +20,7 @@ TIER_FEATURES: dict[str, set[str]] = {
         'advanced_analytics',
         'education_full',
         'offline_mode',
+        'shared_finance',
     },
     'business': {
         'dashboard',
@@ -35,6 +36,7 @@ TIER_FEATURES: dict[str, set[str]] = {
         'business_finance',
         'receipt_scanner',
         'pdf_export',
+        'shared_finance',
     },
     'family': {
         'dashboard',

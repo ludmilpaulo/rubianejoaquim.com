@@ -72,11 +72,11 @@ export const metadata: Metadata = {
       'Professional video production, interviews, scripts, social content, and Zenda — portfolio for global brands.',
     images: [
       {
-        url: '/images/Rubiane.jpeg',
-        width: 1200,
-        height: 630,
-        alt: 'Rubiane Joaquim — Creative Video Content Producer',
-        type: 'image/jpeg',
+        url: '/zenda_logo.svg',
+        width: 1024,
+        height: 1024,
+        alt: 'Zenda — app de finanças e educação de Rubiane Joaquim',
+        type: 'image/svg+xml',
       },
     ],
   },
@@ -84,12 +84,12 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Rubiane Joaquim | Creative Video Producer',
     description: 'Campaign videos, interviews, reels, scripts & Zenda.',
-    images: ['/images/Rubiane.jpeg'],
+    images: ['/zenda_logo.svg'],
   },
   robots: { index: true, follow: true },
   icons: {
-    icon: '/images/Rubiane.jpeg',
-    apple: '/images/Rubiane.jpeg',
+    icon: '/zenda_logo.svg',
+    apple: '/zenda_logo.svg',
   },
 }
 
@@ -122,7 +122,7 @@ export default async function RootLayout({
                   '@id': `${SITE_URL}/#person`,
                   name: 'Rubiane Joaquim',
                   jobTitle: 'Creative Video Content Producer',
-                  image: `${SITE_URL}/images/Rubiane.jpeg`,
+                  image: `${SITE_URL}/zenda_logo.svg`,
                   url: SITE_URL,
                   sameAs: [],
                 },

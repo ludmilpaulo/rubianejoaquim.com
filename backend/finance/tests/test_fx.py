@@ -253,6 +253,18 @@ class ConvertApiTests(TestCase):
         response = self.client.get(url, {'amount': 'abc', 'from': 'USD', 'to': 'ZAR'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_convert_empty_cache_includes_refresh_error(self):
+        ExchangeRate.objects.all().delete()
+        with patch(
+            'finance.fx.refresh_exchange_rates',
+            return_value={'refreshed': False, 'error': 'All FX providers failed'},
+        ):
+            url = reverse('exchange-rate-convert')
+            response = self.client.get(url, {'amount': '100', 'from': 'AOA', 'to': 'USD'})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn('Rate not found', response.data['error'])
+        self.assertIn('All FX providers failed', response.data['error'])
+
     def test_list_includes_freshness_meta(self):
         url = reverse('exchange-rate-list')
         response = self.client.get(url)

@@ -171,9 +171,13 @@ class GoalContributionSerializer(serializers.ModelSerializer):
         model = GoalContribution
         fields = [
             'id', 'amount', 'currency', 'exchange_rate', 'converted_amount',
+            'exchange_rate_source', 'exchange_rate_timestamp',
             'note', 'created_at',
         ]
-        read_only_fields = ['created_at', 'exchange_rate', 'converted_amount']
+        read_only_fields = [
+            'created_at', 'exchange_rate', 'converted_amount',
+            'exchange_rate_source', 'exchange_rate_timestamp',
+        ]
 
 
 class GoalSerializer(serializers.ModelSerializer):
@@ -196,9 +200,13 @@ class DebtPaymentSerializer(serializers.ModelSerializer):
         model = DebtPayment
         fields = [
             'id', 'amount', 'currency', 'exchange_rate', 'converted_amount',
+            'exchange_rate_source', 'exchange_rate_timestamp', 'status',
             'payment_date', 'note', 'created_at',
         ]
-        read_only_fields = ['created_at', 'exchange_rate', 'converted_amount']
+        read_only_fields = [
+            'created_at', 'exchange_rate', 'converted_amount',
+            'exchange_rate_source', 'exchange_rate_timestamp', 'status',
+        ]
 
 
 class DebtSerializer(serializers.ModelSerializer):

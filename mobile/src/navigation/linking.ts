@@ -5,6 +5,7 @@ import { Platform } from 'react-native'
 import { authApi } from '../services/api'
 
 export const ZENDA_PENDING_REF_KEY = 'ZENDA_PENDING_REF'
+export const ZENDA_PENDING_FAMILY_INVITE_KEY = 'pending_family_invite'
 
 export type RootLinkingParamList = {
   Home: undefined
@@ -41,6 +42,25 @@ function extractReferralCode(url: string): string | null {
   return null
 }
 
+/** Family join codes are separate from app-growth referral codes. */
+export function extractFamilyInviteCode(url: string): string | null {
+  try {
+    const parsed = Linking.parse(url)
+    const familyParam = parsed.queryParams?.family
+    if (typeof familyParam === 'string' && familyParam.trim()) {
+      return familyParam.trim().toUpperCase()
+    }
+    const path = (parsed.path || '').replace(/^\/+/, '')
+    if (path.startsWith('family/join/')) {
+      const code = path.slice('family/join/'.length).split('/')[0].split('?')[0]
+      if (code) return decodeURIComponent(code).trim().toUpperCase()
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+  return null
+}
+
 export async function persistPendingReferral(url: string): Promise<string | null> {
   const code = extractReferralCode(url)
   if (!code) return null
@@ -55,8 +75,16 @@ export async function persistPendingReferral(url: string): Promise<string | null
   return code
 }
 
+export async function persistPendingFamilyInvite(url: string): Promise<string | null> {
+  const code = extractFamilyInviteCode(url)
+  if (!code) return null
+  await AsyncStorage.setItem(ZENDA_PENDING_FAMILY_INVITE_KEY, code)
+  return code
+}
+
 async function handleIncomingUrl(url: string | null): Promise<void> {
   if (!url) return
+  await persistPendingFamilyInvite(url)
   await persistPendingReferral(url)
 }
 
@@ -134,6 +162,19 @@ export const linking: LinkingOptions<RootLinkingParamList> = {
         ],
       }
     }
+    if (normalized.startsWith('family/join/')) {
+      const code = decodeURIComponent(normalized.slice('family/join/'.length).split('/')[0].split('?')[0]).toUpperCase()
+      return {
+        routes: [
+          {
+            name: 'Home',
+            state: {
+              routes: [{ name: 'FamilyFinance', params: { inviteCode: code } }],
+            },
+          },
+        ],
+      }
+    }
     if (normalized === 'download' || normalized.startsWith('download') || normalized.startsWith('invite/') || normalized === 'zenda' || normalized.startsWith('zenda')) {
       return {
         routes: [
@@ -155,6 +196,21 @@ export async function consumePendingReferral(clear = true): Promise<string | nul
   const code = await AsyncStorage.getItem(ZENDA_PENDING_REF_KEY)
   if (code && clear) {
     await AsyncStorage.removeItem(ZENDA_PENDING_REF_KEY)
+  }
+  return code
+}
+
+/**
+ * Deep-link matrix (handlers above):
+ * Installed × iOS/Android/Web × logged-in/out × valid/invalid/expired.
+ * Not installed: web /family/join/{CODE} persists cookie then store links.
+ * Logged-out in app: pending_family_invite survives login.
+ * Invalid/expired: FamilyFinanceScreen shows family.invalidCode.
+ */
+export async function consumePendingFamilyInvite(clear = true): Promise<string | null> {
+  const code = await AsyncStorage.getItem(ZENDA_PENDING_FAMILY_INVITE_KEY)
+  if (code && clear) {
+    await AsyncStorage.removeItem(ZENDA_PENDING_FAMILY_INVITE_KEY)
   }
   return code
 }

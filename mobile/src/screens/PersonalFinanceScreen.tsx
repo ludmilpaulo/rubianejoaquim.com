@@ -5,6 +5,7 @@ import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButto
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
+import { convertAmount, type ConvertResult } from '../services/exchangeRates'
 import { personalFinanceApi } from '../services/api'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { formatDate } from '../i18n/format'
@@ -14,7 +15,7 @@ import PersonalIncomeTab from '../components/finance/PersonalIncomeTab'
 import CurrencyPicker from '../components/CurrencyPicker'
 import { colors } from '../theme'
 import type { CurrencyCode } from '../utils/currency'
-import { getApiErrorMessage, unwrapList, type BudgetPayload, type ExpenseCreateResponse, type ExpensePayload, type ExpenseSummary } from '../types/api'
+import { getApiErrorMessage, unwrapList, type BudgetPayload, type DebtPayload, type ExpenseCreateResponse, type ExpensePayload, type ExpenseSummary } from '../types/api'
 import { handleBudgetAlerts } from '../utils/budgetAlerts'
 import { logger } from '../utils/logger'
 import { useI18n } from '../contexts/I18nContext'
@@ -78,6 +79,12 @@ interface Goal {
 interface DebtPaymentRecord {
   id: number
   amount: string
+  currency?: string
+  exchange_rate?: string | null
+  converted_amount?: string | null
+  exchange_rate_source?: string
+  exchange_rate_timestamp?: string | null
+  status?: 'partial' | 'paid' | 'cancelled'
   payment_date: string
   note?: string
   created_at?: string
@@ -148,6 +155,9 @@ export default function PersonalFinanceScreen() {
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentCurrency, setPaymentCurrency] = useState<CurrencyCode>(preferredCurrency)
+  const [payQuote, setPayQuote] = useState<ConvertResult | null>(null)
+  const [payQuoteLoading, setPayQuoteLoading] = useState(false)
+  const [payQuoteError, setPayQuoteError] = useState<string | null>(null)
   const [contributeCurrency, setContributeCurrency] = useState<CurrencyCode>(preferredCurrency)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showAddMoneyModal, setShowAddMoneyModal] = useState(false)
@@ -189,6 +199,36 @@ export default function PersonalFinanceScreen() {
   useEffect(() => {
     loadData()
   }, [periodState.period, periodState.month, periodState.year, periodState.dateFrom, periodState.dateTo])
+
+  useEffect(() => {
+    const amount = parseFloat(paymentAmount.replace(',', '.'))
+    const debtCcy = (selectedDebt?.currency || preferredCurrency).toUpperCase()
+    if (!showPayDebtModal || !selectedDebt || !Number.isFinite(amount) || amount <= 0) {
+      setPayQuote(null)
+      setPayQuoteError(null)
+      setPayQuoteLoading(false)
+      return
+    }
+    let cancelled = false
+    setPayQuoteLoading(true)
+    setPayQuoteError(null)
+    convertAmount(amount, paymentCurrency, debtCcy)
+      .then((res) => {
+        if (cancelled) return
+        setPayQuote(res)
+        setPayQuoteLoading(false)
+        if (!res) setPayQuoteError(t('personal.quoteFailed'))
+      })
+      .catch(() => {
+        if (cancelled) return
+        setPayQuote(null)
+        setPayQuoteLoading(false)
+        setPayQuoteError(t('personal.quoteFailed'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [showPayDebtModal, selectedDebt, paymentAmount, paymentCurrency, preferredCurrency, t])
 
   const loadData = async () => {
     try {
@@ -455,13 +495,35 @@ export default function PersonalFinanceScreen() {
   }
 
   const handleSaveDebt = async () => {
+    if (!debtForm.creditor.trim()) {
+      alert.error(t('personal.creditorRequired'))
+      return
+    }
+    const total = parseFloat(String(debtForm.total_amount).replace(',', '.'))
+    if (!Number.isFinite(total) || total <= 0) {
+      alert.error(t('personal.invalidAmount'))
+      return
+    }
+    if (!debtForm.due_date) {
+      alert.error(t('personal.dueDateRequired'))
+      return
+    }
+
+    const due = debtForm.due_date
+    const dueDate = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
+    const paid = parseFloat(String(debtForm.paid_amount).replace(',', '.')) || 0
+    const interest = parseFloat(String(debtForm.interest_rate).replace(',', '.')) || 0
+
     await feedback.run(
       async () => {
-        const debtData = {
-          ...debtForm,
-          due_date: debtForm.due_date
-            ? `${debtForm.due_date.getFullYear()}-${String(debtForm.due_date.getMonth() + 1).padStart(2, '0')}-${String(debtForm.due_date.getDate()).padStart(2, '0')}`
-            : '',
+        const debtData: DebtPayload = {
+          creditor: debtForm.creditor.trim(),
+          total_amount: total,
+          paid_amount: paid,
+          interest_rate: interest,
+          due_date: dueDate,
+          description: debtForm.description.trim(),
+          currency: debtForm.currency,
         }
         if (editingItem) {
           await personalFinanceApi.updateDebt(editingItem.id, debtData)
@@ -1330,11 +1392,33 @@ export default function PersonalFinanceScreen() {
                         <Text variant="labelMedium" style={styles.paymentHistoryTitle}>
                           {t('personal.paymentHistory')}
                         </Text>
-                        {debt.payments.slice(0, 3).map((p) => (
-                          <Text key={p.id} variant="bodySmall" style={styles.mutedText}>
-                            {fmtDate(p.payment_date)} — {formatDual(p.amount, debt.currency || preferredCurrency).primary}
-                          </Text>
-                        ))}
+                        {debt.payments.slice(0, 5).map((p) => {
+                          const payCcy = p.currency || debt.currency || preferredCurrency
+                          const converted = p.converted_amount
+                          const rate = p.exchange_rate
+                          const debtCcy = debt.currency || preferredCurrency
+                          return (
+                            <View key={p.id} style={styles.paymentHistoryItem}>
+                              <Text variant="bodySmall" style={styles.mutedText}>
+                                {fmtDate(p.payment_date)} · {format(parseFloat(p.amount), payCcy)}
+                              </Text>
+                              {converted && payCcy.toUpperCase() !== debtCcy.toUpperCase() ? (
+                                <Text variant="bodySmall" style={styles.mutedText}>
+                                  {t('personal.equivalent')} {format(parseFloat(converted), debtCcy)}
+                                  {rate ? ` · 1 ${payCcy} = ${rate} ${debtCcy}` : ''}
+                                </Text>
+                              ) : null}
+                              {p.exchange_rate_source ? (
+                                <Text variant="bodySmall" style={styles.mutedText}>
+                                  {t('personal.rateSource')} {p.exchange_rate_source}
+                                </Text>
+                              ) : null}
+                              <Text variant="labelSmall" style={styles.mutedText}>
+                                {p.status === 'paid' ? t('personal.statusPaidInFull') : t('personal.statusPartial')}
+                              </Text>
+                            </View>
+                          )
+                        })}
                       </View>
                     )}
                   </Card.Content>
@@ -1877,23 +1961,62 @@ export default function PersonalFinanceScreen() {
                   onChange={setPaymentCurrency}
                   label={t('market.selectCurrency')}
                 />
-                {paymentAmount && parseFloat(paymentAmount) > 0 && paymentCurrency === (selectedDebt.currency || preferredCurrency) && (
+                {payQuoteLoading ? (
+                  <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.quoteLoading')}</Text>
+                ) : null}
+                {payQuoteError ? (
+                  <Text variant="bodySmall" style={styles.remainingAmount}>{payQuoteError}</Text>
+                ) : null}
+                {paymentAmount && parseFloat(paymentAmount) > 0 && payQuote && selectedDebt && (
                   <Card style={styles.previewCard}>
                     <Card.Content>
                       <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.afterPayment')}</Text>
                       <View style={styles.previewRow}>
+                        <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.paidIn')}</Text>
+                        <Text variant="titleMedium" style={styles.previewValue}>
+                          {format(parseFloat(paymentAmount.replace(',', '.')), paymentCurrency)}
+                        </Text>
+                      </View>
+                      {paymentCurrency.toUpperCase() !== (selectedDebt.currency || preferredCurrency).toUpperCase() ? (
+                        <>
+                          <View style={styles.previewRow}>
+                            <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.equivalent')}</Text>
+                            <Text variant="titleMedium" style={styles.previewValue}>
+                              {format(payQuote.amount, selectedDebt.currency || preferredCurrency)}
+                            </Text>
+                          </View>
+                          <Text variant="bodySmall" style={styles.previewLabel}>
+                            {tw('market.rateLine', {
+                              from: paymentCurrency,
+                              rate: String(payQuote.rate),
+                              to: selectedDebt.currency || preferredCurrency,
+                            })}
+                          </Text>
+                          {payQuote.source ? (
+                            <Text variant="bodySmall" style={styles.previewLabel}>
+                              {t('personal.rateSource')} {payQuote.source}
+                            </Text>
+                          ) : null}
+                          {payQuote.updatedAt ? (
+                            <Text variant="bodySmall" style={styles.previewLabel}>
+                              {tw('personal.rateAt', { date: fmtDate(payQuote.updatedAt) })}
+                            </Text>
+                          ) : null}
+                        </>
+                      ) : null}
+                      <View style={styles.previewRow}>
                         <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.totalPaid')}</Text>
                         <Text variant="titleMedium" style={styles.previewValue}>
-                          {format(parseFloat(selectedDebt.paid_amount) + parseFloat(paymentAmount), selectedDebt.currency || preferredCurrency)}
+                          {format(parseFloat(selectedDebt.paid_amount) + payQuote.amount, selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
                       <View style={styles.previewRow}>
                         <Text variant="bodySmall" style={styles.previewLabel}>{t('personal.remainingLabel')}</Text>
-                        <Text variant="titleMedium" style={[styles.previewValue, parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 ? styles.paidAmount : null]}>
-                          {format(Math.max(parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount), 0), selectedDebt.currency || preferredCurrency)}
+                        <Text variant="titleMedium" style={[styles.previewValue, parseFloat(selectedDebt.remaining_amount) - payQuote.amount <= 0 ? styles.paidAmount : null]}>
+                          {format(Math.max(parseFloat(selectedDebt.remaining_amount) - payQuote.amount, 0), selectedDebt.currency || preferredCurrency)}
                         </Text>
                       </View>
-                      {parseFloat(selectedDebt.remaining_amount) - parseFloat(paymentAmount) <= 0 && (
+                      {parseFloat(selectedDebt.remaining_amount) - payQuote.amount <= 0 && (
                         <Chip icon="check-circle" style={styles.willBePaidChip} textStyle={styles.willBePaidChipText}>
                           {t('personal.debtFullyPaid')}
                         </Chip>
@@ -2685,6 +2808,9 @@ const styles = StyleSheet.create({
   paymentHistoryTitle: {
     marginBottom: 6,
     color: colors.text.secondary,
+  },
+  paymentHistoryItem: {
+    marginBottom: 10,
   },
   mutedText: {
     color: colors.text.muted,

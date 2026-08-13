@@ -52,7 +52,7 @@ function hasHeadline(value: ZendaContent | Record<string, never> | null): value 
 }
 
 export default function ZendaLanding() {
-  const { locale } = useLocale()
+  const { locale, t } = useLocale()
   const [zenda, setZenda] = useState<ZendaContent | null>(null)
   const [settings, setSettings] = useState<SiteSettings | Record<string, never>>({})
   const [faqs, setFaqs] = useState<FAQ[]>([])
@@ -69,7 +69,7 @@ export default function ZendaLanding() {
       .then(([z, f, s]) => {
         if (!cancelled) {
           setZenda(hasHeadline(z) ? z : null)
-          setFaqs(f)
+          setFaqs(Array.isArray(f) ? f : [])
           setSettings(s)
         }
       })
@@ -77,6 +77,7 @@ export default function ZendaLanding() {
         if (!cancelled) {
           setZenda(null)
           setFaqs([])
+          setSettings({})
         }
       })
       .finally(() => {
@@ -94,7 +95,9 @@ export default function ZendaLanding() {
   const who = zenda?.who_it_helps || copy.who
   const benefits = zenda?.benefits?.length ? zenda.benefits : copy.benefits
   const features = zenda?.features ?? []
-  const screenshots = zenda?.screenshots?.map((s) => s.image_url).filter(Boolean) as string[]
+  const screenshots = (zenda?.screenshots ?? [])
+    .map((s) => s.image_url)
+    .filter((url): url is string => Boolean(url))
   const playUrl = zenda?.play_store_url || ZENDA_PLAY_STORE_URL
   const appUrl = zenda?.app_store_url || ZENDA_APP_STORE_URL
   const playLabel = settings.play_store_label || 'Download for Android'
@@ -131,6 +134,9 @@ export default function ZendaLanding() {
               <a href={playUrl} className="btn-zenda-growth" rel="noopener noreferrer">
                 {playLabel}
               </a>
+              <Link href="/zenda/copilot" className="btn-secondary">
+                {t('copilot.openCta')}
+              </Link>
               <Link href="/" className="btn-secondary">
                 Open Zenda Web
               </Link>

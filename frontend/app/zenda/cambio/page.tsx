@@ -143,7 +143,17 @@ export default function ZendaCambioPage() {
     setConverting(true)
     try {
       const res = await financeApi.convertCurrency(num, fromCur, toCur)
-      const value = Number(res.converted_amount ?? res.converted ?? res.amount)
+      const raw = res.converted_amount ?? res.converted ?? res.amount
+      const value = Number(raw)
+      console.log('[Zenda FX] cambio parse', {
+        amount: num,
+        from: fromCur,
+        to: toCur,
+        raw,
+        value,
+        finite: Number.isFinite(value),
+        res,
+      })
       if (!Number.isFinite(value)) {
         setConverted(null)
         return
@@ -158,6 +168,7 @@ export default function ZendaCambioPage() {
       setMarketClosed(res.market_closed === true)
       setOffline(false)
     } catch (err) {
+      console.warn('[Zenda FX] cambio convert failed', err)
       setConverted(null)
       setError(getApiErrorMessage(err, 'Não foi possível converter com as taxas actuais.'))
     } finally {

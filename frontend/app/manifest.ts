@@ -16,15 +16,15 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     icons: [
       {
-        src: '/images/Rubiane.jpeg',
+        src: '/zenda_logo.svg',
         sizes: '192x192',
-        type: 'image/jpeg',
+        type: 'image/svg+xml',
         purpose: 'any',
       },
       {
-        src: '/images/Rubiane.jpeg',
+        src: '/zenda_logo.svg',
         sizes: '512x512',
-        type: 'image/jpeg',
+        type: 'image/svg+xml',
         purpose: 'any',
       },
     ],

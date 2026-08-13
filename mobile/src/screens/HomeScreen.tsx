@@ -9,6 +9,7 @@ import {
 import { Text, Badge } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation, useFocusEffect } from '@react-navigation/native'
+import { consumePendingFamilyInvite } from '../navigation/linking'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
 import { personalFinanceApi } from '../services/api'
@@ -30,7 +31,7 @@ import { useActionFeedback } from '../hooks/useActionFeedback'
 export default function HomeScreen() {
   const { user } = useAppSelector((state) => state.auth)
   const navigation = useNavigation<{
-    navigate: (name: string) => void
+    navigate: (name: string, params?: { inviteCode?: string }) => void
     getParent: () =>
       | { navigate: (tab: string, params?: { screen: string }) => void }
       | undefined
@@ -102,6 +103,17 @@ export default function HomeScreen() {
       setLoading(true)
       loadDashboard()
     }, [loadDashboard]),
+  )
+
+  useFocusEffect(
+    useCallback(() => {
+      consumePendingFamilyInvite(false).then((code) => {
+        if (!code) return
+        consumePendingFamilyInvite(true).then(() => {
+          navigation.navigate('FamilyFinance', { inviteCode: code })
+        })
+      })
+    }, [navigation]),
   )
 
   const onRefresh = () => {

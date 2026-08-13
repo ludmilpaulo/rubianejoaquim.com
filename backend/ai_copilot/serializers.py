@@ -5,7 +5,7 @@ from .models import Conversation, Message
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
-        fields = ['id', 'role', 'content', 'created_at']
+        fields = ['id', 'role', 'content', 'facts', 'proposed_action', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
@@ -23,7 +23,6 @@ class ConversationSerializer(serializers.ModelSerializer):
 
 
 class ConversationListSerializer(serializers.ModelSerializer):
-    """Serializer simplificado para listagem"""
     message_count = serializers.SerializerMethodField()
     last_message_preview = serializers.SerializerMethodField()
 
@@ -36,13 +35,20 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return obj.messages.count()
 
     def get_last_message_preview(self, obj):
-        last_message = obj.messages.last()
+        last_message = obj.messages.order_by('created_at').last()
         if last_message:
             return last_message.content[:100] + '...' if len(last_message.content) > 100 else last_message.content
         return None
 
 
 class ChatRequestSerializer(serializers.Serializer):
-    """Serializer para requisição de chat"""
-    message = serializers.CharField(required=True, allow_blank=False)
+    message = serializers.CharField(required=True, allow_blank=False, max_length=2000)
     conversation_id = serializers.IntegerField(required=False, allow_null=True)
+    locale = serializers.ChoiceField(choices=['pt', 'en', 'fr', 'es'], required=False, allow_null=True)
+
+
+class ConfirmActionSerializer(serializers.Serializer):
+    conversation_id = serializers.IntegerField()
+    action_id = serializers.CharField()
+    confirm = serializers.BooleanField()
+    locale = serializers.ChoiceField(choices=['pt', 'en', 'fr', 'es'], required=False, allow_null=True)

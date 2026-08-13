@@ -325,6 +325,8 @@ class GoalContribution(models.Model):
         help_text='Amount converted into the goal currency at payment time',
     )
     note = models.CharField(max_length=255, blank=True)
+    exchange_rate_source = models.CharField(max_length=64, blank=True, default='')
+    exchange_rate_timestamp = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -390,6 +392,17 @@ class DebtPayment(models.Model):
     )
     payment_date = models.DateField()
     note = models.TextField(blank=True)
+    exchange_rate_source = models.CharField(max_length=64, blank=True, default='')
+    exchange_rate_timestamp = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('partial', 'Partial'),
+            ('paid', 'Paid'),
+            ('cancelled', 'Cancelled'),
+        ],
+        default='partial',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

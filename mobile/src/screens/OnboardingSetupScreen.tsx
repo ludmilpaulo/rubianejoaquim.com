@@ -44,10 +44,17 @@ export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScr
     setGoals((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]))
   }
 
+  const pickLocale = (code: Locale) => {
+    setSelectedLocale(code)
+    void setLocale(code)
+  }
+
   const finish = async () => {
     setSaving(true)
     try {
-      await setLocale(selectedLocale)
+      if (selectedLocale !== locale) {
+        await setLocale(selectedLocale)
+      }
       await authApi.updateProfile({
         preferred_locale: selectedLocale,
         preferred_currency: currency,
@@ -75,7 +82,7 @@ export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScr
             <TouchableOpacity
               key={code}
               style={[styles.chip, selectedLocale === code && styles.chipActive]}
-              onPress={() => setSelectedLocale(code)}
+              onPress={() => pickLocale(code)}
             >
               <Text style={[styles.chipText, selectedLocale === code && styles.chipTextActive]}>
                 {t(`localeNames.${code}`)}

@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "main": "index.ts",
   "scripts": {
     "version:bump": "node scripts/bump-version.js",
@@ -21,6 +21,7 @@
     "ios:network": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "i18n:check": "python ../scripts/check_i18n_keys.py",
     "test:api": "node scripts/smoke-test-api.mjs",
     "e2e:prep": "node scripts/e2e-prep.mjs",
     "test:web": "playwright test",

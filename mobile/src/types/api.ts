@@ -8,7 +8,7 @@ export interface ApiErrorBody {
   non_field_errors?: string[]
   email?: string | string[]
   password?: string | string[]
-  username?: string | string[]
+  refresh_error?: string
   [key: string]: string | string[] | undefined
 }
 
@@ -187,7 +187,9 @@ export interface DebtPayload {
   creditor: string
   total_amount: string | number
   paid_amount?: string | number
+  interest_rate?: string | number
   due_date: string
+  description?: string
   status?: 'active' | 'paid' | 'overdue' | 'cancelled'
   notes?: string
   currency?: string
@@ -234,11 +236,48 @@ export interface SubscriptionPaymentProofPayload {
   notes?: string
 }
 
+export interface CopilotFxFact {
+  original_amount?: string
+  original_currency?: string
+  converted_amount?: string
+  target_currency?: string
+  exchange_rate?: string
+  source?: string
+  provider_updated_at?: string | null
+  stale?: boolean
+  freshness?: string
+  error?: string
+}
+
+export interface CopilotProposedAction {
+  id: string
+  type: string
+  status: 'pending' | 'confirmed' | 'cancelled'
+  summary?: string
+  payload?: Record<string, string | number>
+}
+
+export interface CopilotFacts {
+  intent?: string
+  currency?: string
+  income?: string
+  expenses?: string
+  balance?: string
+  budget_remaining?: string | null
+  debt_total?: string
+  categories?: { name: string; amount: string; currency?: string }[]
+  fx?: CopilotFxFact | null
+  missing?: string[]
+  health?: { score?: number; grade?: string }
+}
+
 export interface ChatMessageDto {
   id?: number
   role: 'user' | 'assistant' | 'system'
   content: string
   created_at?: string
+  facts?: CopilotFacts | null
+  proposed_action?: CopilotProposedAction | null
 }
 
 export interface AIConversationResponse {
@@ -246,6 +285,8 @@ export interface AIConversationResponse {
   conversation_title?: string
   user_message?: ChatMessageDto
   assistant_message?: ChatMessageDto
+  facts?: CopilotFacts
+  proposed_action?: CopilotProposedAction | null
   error?: string
 }
 
@@ -382,7 +423,130 @@ export interface SharedGoalSummary {
   title: string
   target_amount?: string
   current_amount?: string
+  currency?: string
   progress_percentage?: number
+  target_date?: string | null
+}
+
+export type FamilyRole = 'owner' | 'adult' | 'child' | 'viewer'
+export type FamilyMemberStatus = 'active' | 'pending' | 'declined'
+export type FamilyVisibility = 'private' | 'family' | 'selected'
+export type FamilyEntryKind =
+  | 'income'
+  | 'expense'
+  | 'debt'
+  | 'payment'
+  | 'contribution'
+  | 'settlement'
+  | 'bill'
+
+export interface FamilyMember {
+  id: number
+  user: number
+  user_email?: string
+  display_name?: string
+  role: FamilyRole
+  status: FamilyMemberStatus
+  joined_at?: string
+}
+
+export interface FamilyEntryShare {
+  id: number
+  user: number
+  share_amount: string
+  settled: boolean
+}
+
+export interface FamilyEntry {
+  id: number
+  space: number
+  user: number
+  kind: FamilyEntryKind
+  title: string
+  category?: string
+  amount: string
+  currency: string
+  converted_amount?: string | null
+  exchange_rate?: string | null
+  exchange_rate_source?: string
+  exchange_rate_timestamp?: string | null
+  visibility: FamilyVisibility
+  paid_by?: number | null
+  due_date?: string | null
+  date: string
+  notes?: string
+  shares?: FamilyEntryShare[]
+  created_at?: string
+}
+
+export interface FamilyActivity {
+  id: number
+  user?: number | null
+  message: string
+  created_at: string
+}
+
+export interface FamilySpace {
+  id: number
+  name: string
+  owner: number
+  invite_code: string
+  invite_url: string
+  currency: string
+  description?: string
+  require_approval: boolean
+  invite_expires_at?: string | null
+  members?: FamilyMember[]
+  member_count?: number
+  shared_goals?: SharedGoalSummary[]
+  shared_budgets?: FamilyBudget[]
+  created_at?: string
+}
+
+export interface FamilyBudget {
+  id: number
+  space: number
+  name: string
+  amount: string
+  spent: string
+  currency: string
+  month: number
+  year: number
+  visibility?: FamilyVisibility
+}
+
+export interface FamilyPreview {
+  id: number
+  name: string
+  currency: string
+  member_count: number
+  require_approval: boolean
+}
+
+export interface FamilyDashboard {
+  currency: string
+  income: string
+  expenses: string
+  balance: string
+  savings: string
+  debts: string
+  budget_amount: string
+  budget_spent: string
+  budget_pct: number
+  goals_active: number
+  upcoming: FamilyEntry[]
+  activity: FamilyActivity[]
+  members: FamilyMember[]
+  pending: FamilyMember[]
+}
+
+export interface FamilySettleSuggestion {
+  from_user: number
+  from_name?: string
+  to_user: number
+  to_name?: string
+  amount: string
+  currency: string
 }
 
 export interface PaidAccessResult {
@@ -465,9 +629,10 @@ export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generi
     return fallback
   }
   if (!error.response) return 'api.errors.network'
+  if (error.response.status >= 500) return 'api.errors.server'
   const data = error.response.data
   if (!data) return fallback
-  const pick =
+  let pick =
     (typeof data.detail === 'string' && data.detail) ||
     (typeof data.error === 'string' && data.error) ||
     (typeof data.message === 'string' && data.message) ||
@@ -475,6 +640,19 @@ export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generi
     (data.email && String(Array.isArray(data.email) ? data.email[0] : data.email)) ||
     (data.password && String(Array.isArray(data.password) ? data.password[0] : data.password)) ||
     ''
+  if (!pick) {
+    for (const [key, value] of Object.entries(data)) {
+      if (key === 'refresh_error' || key === 'code') continue
+      if (typeof value === 'string' && value.trim()) {
+        pick = value.trim()
+        break
+      }
+      if (Array.isArray(value) && value[0]) {
+        pick = String(value[0])
+        break
+      }
+    }
+  }
   if (!pick || looksTechnical(pick) || pick.length > 280) return fallback
   return pick
 }
