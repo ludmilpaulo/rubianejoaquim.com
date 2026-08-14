@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -40,7 +40,7 @@
           }
         ]
       },
-      "buildNumber": "39"
+      "buildNumber": "40"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,7 +50,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 38,
+      "versionCode": 39,
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
       ],
@@ -169,7 +169,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.7",
+    "runtimeVersion": "1.0.8",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {
