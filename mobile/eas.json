@@ -28,7 +28,12 @@
     "production": {
       "autoIncrement": false,
       "channel": "production",
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease"
+      },
       "env": {
+        "ORG_GRADLE_OPTS": "-Xmx4096m -XX:MaxMetaspaceSize=1024m",
         "EXPO_PUBLIC_USE_DEV_API": "false",
         "EXPO_PUBLIC_API_URL": "https://ludmilpaulo.pythonanywhere.com/api",
         "EXPO_PUBLIC_GOOGLE_CLIENT_ID": "112065604009-sc5vf5kgoak181brsategi76po9mv6fq.apps.googleusercontent.com",
