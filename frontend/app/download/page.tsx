@@ -1,4 +1,4 @@
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -72,7 +72,7 @@ async function trackClick(ref: string | null, platform: string) {
   }
 }
 
-type SearchParams = Promise<{ ref?: string; platform?: string }>
+type SearchParams = Promise<{ ref?: string; platform?: string; family?: string }>
 
 export default async function DownloadPage({
   searchParams,
@@ -81,6 +81,18 @@ export default async function DownloadPage({
 }) {
   const params = await searchParams
   const ref = typeof params.ref === 'string' ? params.ref : null
+  const family =
+    typeof params.family === 'string' && params.family.trim()
+      ? params.family.trim().toUpperCase()
+      : null
+  if (family) {
+    const jar = await cookies()
+    jar.set('pending_family_invite', family, {
+      expires: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      sameSite: 'lax',
+      path: '/',
+    })
+  }
   const forced =
     params.platform === 'ios' || params.platform === 'android' ? params.platform : null
   const headerList = await headers()

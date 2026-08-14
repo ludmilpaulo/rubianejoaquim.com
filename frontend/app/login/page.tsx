@@ -4,25 +4,20 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuthStore } from '@/lib/store'
+import { useLocale } from '@/contexts/LocaleContext'
 import SocialLoginButtons from '@/components/SocialLoginButtons'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
 import ZendaButton from '@/components/zenda/ZendaButton'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
-
-function safeAuthNext(raw: string | null): string | null {
-  if (!raw) return null
-  if (!raw.startsWith('/')) return null
-  if (raw.includes('://') || raw.includes('\\') || raw.includes('//')) return null
-  if (raw.startsWith('/family/join/')) return raw
-  if (raw === '/zenda/copilot' || raw.startsWith('/zenda/copilot?')) return raw
-  return null
-}
+import { safeAuthNext } from '@/lib/auth-next'
 
 function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t } = useLocale()
   const { login, register, applySession } = useAuthStore()
   const nextPath = safeAuthNext(searchParams.get('next'))
 
@@ -33,7 +28,7 @@ function LoginPageInner() {
     }
     router.push(isAdmin ? '/admin' : '/area-do-aluno')
   }
-  const [isLogin, setIsLogin] = useState(true)
+  const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'register')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -68,14 +63,14 @@ function LoginPageInner() {
         link_token: searchParams.get('link_token') || '',
         email: searchParams.get('email') || '',
         provider: searchParams.get('provider') || social,
-        message: 'Já existe uma conta com este email. Introduza a palavra-passe para associar.',
+        message: t('auth.linkExists'),
       })
       return
     }
     if (status === 'error') {
-      setError(searchParams.get('message') || 'Não foi possível concluir o login social. Tente novamente.')
+      setError(searchParams.get('message') || t('auth.socialCallbackError'))
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   const handleLinkConfirm = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -90,7 +85,7 @@ function LoginPageInner() {
         goAfterAuth(res.data.user.is_admin)
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Não foi possível associar a conta. Verifique a palavra-passe.'))
+      setError(getApiErrorMessage(err, t('auth.linkFailed')))
     } finally {
       setLoading(false)
     }
@@ -104,7 +99,7 @@ function LoginPageInner() {
     try {
       if (isLogin) {
         if (!formData.email || !formData.password) {
-          setError('Por favor, preencha todos os campos obrigatórios.')
+          setError(t('auth.fillRequired'))
           setLoading(false)
           return
         }
@@ -115,7 +110,7 @@ function LoginPageInner() {
       } else {
         // Validation for registration
         if (!formData.email || !formData.username || !formData.password || !formData.password_confirm) {
-          setError('Por favor, preencha todos os campos obrigatórios (Email, Username, Palavra-passe e Confirmação).')
+          setError(t('auth.fillRegisterRequired'))
           setLoading(false)
           return
         }
@@ -123,7 +118,7 @@ function LoginPageInner() {
         // Email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(formData.email)) {
-          setError('Por favor, introduza um email válido.')
+          setError(t('auth.invalidEmail'))
           setLoading(false)
           return
         }
@@ -131,26 +126,26 @@ function LoginPageInner() {
         // Username validation (alphanumeric, underscore, dot, hyphen, max 150 chars)
         const usernameRegex = /^[a-zA-Z0-9._-]+$/
         if (!usernameRegex.test(formData.username)) {
-          setError('Username inválido. Use apenas letras, números, pontos, hífens e underscores.')
+          setError(t('auth.invalidUsername'))
           setLoading(false)
           return
         }
         
         if (formData.username.length > 150) {
-          setError('Username muito longo. Máximo 150 caracteres.')
+          setError(t('auth.usernameTooLong'))
           setLoading(false)
           return
         }
         
         // Password validation
         if (formData.password.length < 8) {
-          setError('A palavra-passe deve ter pelo menos 8 caracteres.')
+          setError(t('auth.passwordMin'))
           setLoading(false)
           return
         }
         
         if (formData.password !== formData.password_confirm) {
-          setError('As palavras-passe não coincidem.')
+          setError(t('auth.passwordMismatch'))
           setLoading(false)
           return
         }
@@ -166,27 +161,9 @@ function LoginPageInner() {
         })
         goAfterAuth(false)
       }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao fazer login/registro'
+    } catch (err: unknown) {
+      const errorMessage = getApiErrorMessage(err, isLogin ? t('auth.loginFailed') : t('auth.registerFailed'))
       setError(errorMessage)
-      
-      // Show alert for specific login errors
-      if (isLogin) {
-        if (errorMessage.includes('não encontrado') || errorMessage.includes('Utilizador não encontrado')) {
-          alert('❌ Utilizador não encontrado\n\nO utilizador que introduziu não existe. Verifique o email ou username e tente novamente.')
-        } else if (errorMessage.includes('incorreta') || errorMessage.includes('Palavra-passe incorreta')) {
-          alert('⚠️ Palavra-passe incorreta\n\nO utilizador existe, mas a palavra-passe está incorreta. Tente novamente.')
-        } else if (errorMessage.includes('não foi possível conectar') || errorMessage.includes('Network Error')) {
-          alert('🔌 Erro de Conexão\n\n' + errorMessage)
-        }
-      } else {
-        // Show alert for registration errors
-        const errorLines = errorMessage.split('\n')
-        const title = errorLines[0] || 'Erro ao registar'
-        const details = errorLines.slice(1).join('\n') || errorMessage
-        
-        alert(`❌ Erro ao Registar\n\n${details}\n\nPor favor, corrija os erros e tente novamente.`)
-      }
     } finally {
       setLoading(false)
     }
@@ -202,42 +179,49 @@ function LoginPageInner() {
       }}
     >
       <div className="zenda-card p-4 sm:p-6 lg:p-8 w-full">
-        <div className="flex justify-center mb-4">
+      <div className="flex justify-between items-center mb-4">
           <ZendaLogo size="md" priority />
+          <LanguageSwitcher variant="product" />
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-zenda-navy mb-4 sm:mb-6 text-center">
-          {isLogin ? 'Entrar' : 'Registar'}
+          {isLogin ? t('auth.signIn') : t('auth.register')}
         </h1>
 
         {error && (
-          <div className={`px-4 py-3 rounded-lg mb-6 ${
-            error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-              ? 'bg-orange-50 border border-orange-200 text-orange-800'
-              : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-              ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
+          <div className="px-4 py-3 rounded-lg mb-6 bg-red-50 border border-red-200 text-red-800">
             <div className="flex items-start gap-2">
-              <span className="text-lg">
-                {error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                  ? '❌'
-                  : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                  ? '⚠️'
-                  : isLogin ? '🔴' : '❌'}
-              </span>
               <div className="flex-1">
                 <p className="font-semibold">
-                  {error.includes('não encontrado') || error.includes('Utilizador não encontrado')
-                    ? 'Utilizador não encontrado'
-                    : error.includes('incorreta') || error.includes('Palavra-passe incorreta')
-                    ? 'Palavra-passe incorreta'
-                    : isLogin ? 'Erro ao fazer login' : 'Erro ao registar'}
+                  {/google|facebook|tiktok|social/i.test(error)
+                    ? t('auth.socialFailed')
+                    : isLogin ? t('auth.loginFailed') : t('auth.registerFailed')}
                 </p>
                 <div className="text-sm mt-1 whitespace-pre-line">
                   {error.split('\n').map((line, idx) => (
                     <p key={idx} className={idx > 0 ? 'mt-1' : ''}>{line}</p>
                   ))}
                 </div>
+                {/google|facebook|tiktok|social/i.test(error) ? (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setError('')}
+                      className="text-sm font-semibold underline"
+                    >
+                      {t('auth.tryAgain')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setError('')
+                        document.getElementById('login-email')?.focus()
+                      }}
+                      className="text-sm font-semibold underline"
+                    >
+                      {t('auth.useEmail')}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -246,17 +230,17 @@ function LoginPageInner() {
         {linkState && (
           <form onSubmit={handleLinkConfirm} className="mb-6 space-y-3 rounded-xl border border-zenda-border bg-zenda-container p-4">
             <p className="text-sm text-zenda-navy">
-              {linkState.message || 'Já existe uma conta com este email.'}
+              {linkState.message || t('auth.linkExists')}
             </p>
             <p className="text-sm text-zenda-textSecondary">
-              Email: <strong>{linkState.email}</strong> · Provedor: <strong>{linkState.provider}</strong>
+              {t('auth.linkEmail')}: <strong>{linkState.email}</strong> · {t('auth.linkProvider')}: <strong>{linkState.provider}</strong>
             </p>
             <input
               type="password"
               required
               value={linkPassword}
               onChange={(e) => setLinkPassword(e.target.value)}
-              placeholder="Palavra-passe da conta existente"
+              placeholder={t('auth.linkPassword')}
               className="zenda-input text-sm"
             />
             <div className="flex gap-2">
@@ -265,14 +249,14 @@ function LoginPageInner() {
                 disabled={loading}
                 className="flex-1 btn-zenda !py-2 text-sm disabled:opacity-50"
               >
-                Associar e entrar
+                {t('auth.linkAndEnter')}
               </button>
               <button
                 type="button"
                 onClick={() => setLinkState(null)}
                 className="px-3 py-2 text-sm text-zenda-navy"
               >
-                Cancelar
+                {t('auth.cancel')}
               </button>
             </div>
           </form>
@@ -280,6 +264,7 @@ function LoginPageInner() {
 
         <div className="mb-6">
           <SocialLoginButtons
+            nextPath={nextPath}
             onError={setError}
             onLinkRequired={(payload) => {
               setLinkState({
@@ -296,10 +281,10 @@ function LoginPageInner() {
               <div className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-3 text-gray-500">ou</span>
+              <span className="bg-white px-3 text-gray-500">{t('auth.or')}</span>
             </div>
           </div>
-          <p className="text-center text-sm text-gray-600 mb-1">Continuar com email</p>
+          <p className="text-center text-sm text-gray-600 mb-1">{t('auth.continueEmail')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -307,7 +292,7 @@ function LoginPageInner() {
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome de utilizador
+                  {t('auth.username')}
                 </label>
                 <input
                   type="text"
@@ -320,7 +305,7 @@ function LoginPageInner() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Primeiro Nome
+                    {t('auth.firstName')}
                   </label>
                   <input
                     type="text"
@@ -331,7 +316,7 @@ function LoginPageInner() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Último Nome
+                    {t('auth.lastName')}
                   </label>
                   <input
                     type="text"
@@ -346,14 +331,15 @@ function LoginPageInner() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email ou Username
+              {t('auth.emailOrUsername')}
             </label>
             <input
+              id="login-email"
               type="text"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="email@exemplo.com ou username"
+              placeholder={t('auth.emailPlaceholder')}
               className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
             />
           </div>
@@ -361,7 +347,7 @@ function LoginPageInner() {
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Telefone (opcional)
+                {t('auth.phone')}
               </label>
               <input
                 type="tel"
@@ -375,11 +361,11 @@ function LoginPageInner() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700">
-                Palavra-passe
+                {t('auth.password')}
               </label>
               {isLogin && (
                 <Link href="/login/forgot-password" className="text-sm text-zenda-primary hover:text-zenda-dark">
-                  Esqueceu a palavra-passe?
+                  {t('auth.forgotPassword')}
                 </Link>
               )}
             </div>
@@ -395,7 +381,7 @@ function LoginPageInner() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none touch-target min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label={showPassword ? 'Ocultar palavra-passe' : 'Mostrar palavra-passe'}
+                aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
               >
                 {showPassword ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,7 +400,7 @@ function LoginPageInner() {
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmar Palavra-passe
+                {t('auth.passwordConfirm')}
               </label>
               <div className="relative">
                 <input
@@ -428,7 +414,7 @@ function LoginPageInner() {
                   type="button"
                   onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none touch-target min-w-[44px] min-h-[44px] flex items-center justify-center"
-                  aria-label={showPasswordConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+                  aria-label={showPasswordConfirm ? t('auth.hideConfirm') : t('auth.showConfirm')}
                 >
                   {showPasswordConfirm ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -450,7 +436,7 @@ function LoginPageInner() {
             disabled={loading}
             className="w-full"
           >
-            {loading ? 'A processar...' : isLogin ? 'Entrar' : 'Registar'}
+            {loading ? t('auth.processing') : isLogin ? t('auth.signIn') : t('auth.register')}
           </ZendaButton>
         </form>
 
@@ -463,12 +449,12 @@ function LoginPageInner() {
             }}
             className="text-zenda-primary hover:text-zenda-dark font-semibold"
           >
-            {isLogin ? 'Não tem conta? Registar' : 'Já tem conta? Entrar'}
+            {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
           </button>
           <p className="text-xs text-gray-500">
-            Ao continuar, aceita a nossa{' '}
+            {t('auth.privacy')}{' '}
             <Link href="/privacy-policy" className="underline hover:text-gray-700">
-              Política de Privacidade
+              {t('auth.privacyPolicy')}
             </Link>
             .
           </p>
@@ -479,15 +465,18 @@ function LoginPageInner() {
   )
 }
 
+function LoginFallback() {
+  const { t } = useLocale()
+  return (
+    <div className="flex justify-center py-20 bg-zenda-bg min-h-[50vh]">
+      <ZendaLoader message={t('auth.loading')} />
+    </div>
+  )
+}
+
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center py-20 bg-zenda-bg min-h-[50vh]">
-          <ZendaLoader message="A carregar…" />
-        </div>
-      }
-    >
+    <Suspense fallback={<LoginFallback />}>
       <LoginPageInner />
     </Suspense>
   )

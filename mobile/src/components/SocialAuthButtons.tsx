@@ -3,8 +3,6 @@ import { View, StyleSheet, Alert, Platform } from 'react-native'
 import { Button, Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as WebBrowser from 'expo-web-browser'
-import * as AuthSession from 'expo-auth-session'
-import * as Google from 'expo-auth-session/providers/google'
 import * as Linking from 'expo-linking'
 import * as AppleAuthentication from 'expo-apple-authentication'
 import { authApi } from '../services/api'
@@ -15,35 +13,17 @@ import { logger } from '../utils/logger'
 import type { User } from '../types'
 import { useI18n } from '../contexts/I18nContext'
 import { ZendaLoader } from './ui/ZendaLoader'
+import {
+  hasFacebookNative,
+  hasGoogleSignInNative,
+  isSocialCancelError,
+  loadFacebookSdk,
+  loadGoogleSignIn,
+} from '../services/nativeSocialAuth'
 
 WebBrowser.maybeCompleteAuthSession()
 
-/**
- * expo-auth-session throws if clientId is undefined (hooks run on every render).
- * Use placeholders so Login/Register never crash when a provider is not configured yet.
- */
-const GOOGLE_PLACEHOLDER = '000000000000-placeholder.apps.googleusercontent.com'
-const FACEBOOK_PLACEHOLDER = '000000000000000'
 const TIKTOK_RETURN_URL = 'zenda://social-callback'
-const NATIVE_GOOGLE_REDIRECT = 'com.rubianejoaquim.zenda:/oauthredirect'
-
-const FACEBOOK_DISCOVERY: AuthSession.DiscoveryDocument = {
-  authorizationEndpoint: 'https://www.facebook.com/v21.0/dialog/oauth',
-  tokenEndpoint: 'https://graph.facebook.com/v21.0/oauth/access_token',
-}
-
-function googleNativeRedirectUri(iosClientId: string): string {
-  if (
-    Platform.OS === 'ios' &&
-    iosClientId &&
-    iosClientId !== GOOGLE_PLACEHOLDER &&
-    iosClientId.endsWith('.apps.googleusercontent.com')
-  ) {
-    const clientKey = iosClientId.replace(/\.apps\.googleusercontent\.com$/, '')
-    return `com.googleusercontent.apps.${clientKey}:/oauthredirect`
-  }
-  return NATIVE_GOOGLE_REDIRECT
-}
 
 function paramFromUrl(url: string, key: string): string {
   const hash = url.split('#')[1] || ''
@@ -52,6 +32,13 @@ function paramFromUrl(url: string, key: string): string {
   const match = source.match(new RegExp(`(?:^|[&])${key}=([^&]*)`))
   return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : ''
 }
+
+function isNativeModuleMissing(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /native module|RNGoogleSignin|FBSDK|TurboModuleRegistry|not found/i.test(msg)
+}
+
+type SocialProvider = 'google' | 'facebook' | 'tiktok' | 'apple'
 
 type Props = {
   onSuccess: (payload: { user: User; token: string }) => void
@@ -70,6 +57,9 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
   const [busy, setBusy] = useState<string | null>(null)
   const [appleAvailable, setAppleAvailable] = useState(false)
   const tiktokHandledRef = useRef('')
+  const googleConfiguredRef = useRef('')
+  const facebookInitRef = useRef(false)
+  const startTikTokRef = useRef<() => void>(() => undefined)
 
   const googleWebClientId =
     process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || config?.google_client_id || ''
@@ -77,38 +67,8 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
     config?.google_client_id_ios ||
     googleWebClientId
-  const googleAndroidClientId =
-    config?.google_client_id_android ||
-    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
-    googleWebClientId
   const facebookAppId =
     process.env.EXPO_PUBLIC_FACEBOOK_APP_ID || config?.facebook_app_id || ''
-
-  const facebookRedirectUri = `fb${facebookAppId || FACEBOOK_PLACEHOLDER}://authorize`
-
-  const googleAuthClientId = googleWebClientId || GOOGLE_PLACEHOLDER
-  const [googleRequest, googleResponse, googlePrompt] = Google.useIdTokenAuthRequest(
-    {
-      clientId: googleAuthClientId,
-      webClientId: googleAuthClientId,
-      iosClientId: googleIosClientId || googleAuthClientId,
-      androidClientId: googleAndroidClientId || googleAuthClientId,
-      selectAccount: true,
-    },
-    { native: googleNativeRedirectUri(googleIosClientId || googleAuthClientId) }
-  )
-
-  const [fbRequest, fbResponse, fbPrompt] = AuthSession.useAuthRequest(
-    {
-      clientId: facebookAppId || FACEBOOK_PLACEHOLDER,
-      redirectUri: facebookRedirectUri,
-      scopes: ['public_profile', 'email'],
-      responseType: AuthSession.ResponseType.Token,
-      usePKCE: false,
-      extraParams: { display: 'popup' },
-    },
-    FACEBOOK_DISCOVERY
-  )
 
   useEffect(() => {
     void WebBrowser.warmUpAsync().catch(() => undefined)
@@ -139,6 +99,25 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     }
   }, [])
 
+  const showFailure = useCallback(
+    (provider: SocialProvider, retry: () => void, override?: string) => {
+      const detail =
+        override ||
+        (provider === 'google'
+          ? t('auth.social.googleDetail')
+          : provider === 'facebook'
+            ? t('auth.social.facebookDetail')
+            : provider === 'tiktok'
+              ? t('auth.social.tiktokDetail')
+              : t('auth.social.appleDetail'))
+      Alert.alert(t('auth.social.unableTitle'), detail, [
+        { text: t('auth.social.useEmail'), style: 'cancel' },
+        { text: t('auth.social.tryAgain'), onPress: retry },
+      ])
+    },
+    [t]
+  )
+
   const handleSocialResult = useCallback(
     async (data: SocialAuthResult) => {
       if (data.status === 'link_required' && data.link_token) {
@@ -155,10 +134,141 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
         onSuccess({ user: data.user, token: data.token })
         return
       }
-      Alert.alert(t('auth.login.signIn'), data.message || t('auth.social.loginFailed'))
+      Alert.alert(t('auth.social.unableTitle'), data.message || t('auth.social.loginFailed'))
     },
     [onLinkRequired, onSuccess, t]
   )
+
+  const ensureGoogleConfigured = useCallback((): boolean => {
+    const google = loadGoogleSignIn()
+    if (!google || !googleWebClientId) return false
+    const key = `${googleWebClientId}|${googleIosClientId}`
+    if (googleConfiguredRef.current === key) return true
+    google.GoogleSignin.configure({
+      webClientId: googleWebClientId,
+      offlineAccess: false,
+      ...(googleIosClientId ? { iosClientId: googleIosClientId } : {}),
+    })
+    googleConfiguredRef.current = key
+    return true
+  }, [googleIosClientId, googleWebClientId])
+
+  const handleGoogle = useCallback(async () => {
+    if (busy || disabled) return
+    setBusy('google')
+    const google = loadGoogleSignIn()
+    try {
+      if (!google || !hasGoogleSignInNative()) {
+        showFailure(
+          'google',
+          () => {
+            void handleGoogle()
+          },
+          t('auth.social.needsNativeBuild')
+        )
+        return
+      }
+      if (!ensureGoogleConfigured()) {
+        showFailure(
+          'google',
+          () => {
+            void handleGoogle()
+          },
+          t('auth.social.needsNativeBuild')
+        )
+        return
+      }
+      if (Platform.OS === 'android') {
+        await google.GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true })
+      }
+      const response = await google.GoogleSignin.signIn()
+      if (!google.isSuccessResponse(response)) {
+        return
+      }
+      let idToken = response.data.idToken
+      if (!idToken) {
+        const tokens = await google.GoogleSignin.getTokens()
+        idToken = tokens.idToken
+      }
+      if (!idToken) {
+        logger.error('Google auth succeeded without id_token')
+        showFailure('google', () => {
+          void handleGoogle()
+        })
+        return
+      }
+      const data = await authApi.socialGoogle(idToken, Platform.OS)
+      await handleSocialResult(data)
+    } catch (err) {
+      if (isSocialCancelError(err, google)) return
+      logger.error('Google native sign-in failed', err)
+      showFailure(
+        'google',
+        () => {
+          void handleGoogle()
+        },
+        isNativeModuleMissing(err)
+          ? t('auth.social.needsNativeBuild')
+          : getApiErrorMessage(err, t('auth.social.googleDetail'))
+      )
+    } finally {
+      setBusy(null)
+    }
+  }, [busy, disabled, ensureGoogleConfigured, handleSocialResult, showFailure, t])
+
+  const handleFacebook = useCallback(async () => {
+    if (busy || disabled || !facebookAppId) return
+    setBusy('facebook')
+    const facebook = loadFacebookSdk()
+    try {
+      if (!facebook || !hasFacebookNative()) {
+        showFailure(
+          'facebook',
+          () => {
+            void handleFacebook()
+          },
+          t('auth.social.needsNativeBuild')
+        )
+        return
+      }
+      if (!facebookInitRef.current) {
+        facebook.Settings.setAppID(facebookAppId)
+        const facebookClientToken = process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN || ''
+        if (facebookClientToken) {
+          facebook.Settings.setClientToken(facebookClientToken)
+        }
+        facebook.Settings.initializeSDK()
+        facebookInitRef.current = true
+      }
+      const result = await facebook.LoginManager.logInWithPermissions(['public_profile', 'email'])
+      if (result.isCancelled) return
+      const tokenData = await facebook.AccessToken.getCurrentAccessToken()
+      const accessToken = tokenData?.accessToken
+      if (!accessToken) {
+        logger.error('Facebook auth succeeded without access_token')
+        showFailure('facebook', () => {
+          void handleFacebook()
+        })
+        return
+      }
+      const data = await authApi.socialFacebook(accessToken, Platform.OS)
+      await handleSocialResult(data)
+    } catch (err) {
+      if (isSocialCancelError(err)) return
+      logger.error('Facebook native sign-in failed', err)
+      showFailure(
+        'facebook',
+        () => {
+          void handleFacebook()
+        },
+        isNativeModuleMissing(err)
+          ? t('auth.social.needsNativeBuild')
+          : getApiErrorMessage(err, t('auth.social.facebookDetail'))
+      )
+    } finally {
+      setBusy(null)
+    }
+  }, [busy, disabled, facebookAppId, handleSocialResult, showFailure, t])
 
   const finishTikTokFromUrl = useCallback(
     async (url: string) => {
@@ -183,148 +293,32 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           const data = await authApi.socialExchange(exchangeCode, 'tiktok')
           await handleSocialResult(data)
         } catch (err) {
-          Alert.alert('TikTok', getApiErrorMessage(err, t('auth.social.tiktokFailed')))
+          showFailure(
+            'tiktok',
+            () => {
+              startTikTokRef.current()
+            },
+            getApiErrorMessage(err, t('auth.social.tiktokDetail'))
+          )
         } finally {
           setBusy(null)
         }
         return
       }
-      const token = paramFromUrl(url, 'token')
-      if (token) {
-        await authApi.setSessionToken(token)
-        const user = await authApi.me()
-        onSuccess({ user, token })
-        return
-      }
-      Alert.alert('TikTok', paramFromUrl(url, 'message') || t('auth.social.tiktokFailed'))
+      showFailure('tiktok', () => {
+        startTikTokRef.current()
+      }, paramFromUrl(url, 'message') || t('auth.social.tiktokDetail'))
     },
-    [handleSocialResult, onLinkRequired, onSuccess, t]
+    [handleSocialResult, onLinkRequired, showFailure, t]
   )
 
-  useEffect(() => {
-    const sub = Linking.addEventListener('url', (event) => {
-      void finishTikTokFromUrl(event.url)
-    })
-    return () => sub.remove()
-  }, [finishTikTokFromUrl])
-
-  useEffect(() => {
-    const run = async () => {
-      if (googleResponse?.type === 'dismiss' || googleResponse?.type === 'cancel') {
-        return
-      }
-      if (googleResponse?.type === 'error') {
-        Alert.alert(
-          'Google',
-          googleResponse.error?.message || t('auth.social.googleFailed')
-        )
-        return
-      }
-      if (googleResponse?.type !== 'success') return
-      const idToken =
-        googleResponse.params.id_token ||
-        googleResponse.authentication?.idToken ||
-        paramFromUrl(googleResponse.url || '', 'id_token')
-      if (!idToken) {
-        logger.error('Google auth succeeded without id_token')
-        Alert.alert('Google', t('auth.social.googleFailed'))
-        return
-      }
-      setBusy('google')
-      try {
-        const data = await authApi.socialGoogle(idToken)
-        await handleSocialResult(data)
-      } catch (err) {
-        Alert.alert('Google', getApiErrorMessage(err, t('auth.social.googleFailed')))
-      } finally {
-        setBusy(null)
-      }
-    }
-    void run()
-  }, [googleResponse, handleSocialResult, t])
-
-  useEffect(() => {
-    const run = async () => {
-      if (fbResponse?.type === 'dismiss' || fbResponse?.type === 'cancel') {
-        return
-      }
-      if (fbResponse?.type === 'error') {
-        Alert.alert(
-          'Facebook',
-          fbResponse.error?.message || t('auth.social.facebookFailed')
-        )
-        return
-      }
-      if (fbResponse?.type !== 'success') return
-      const accessToken =
-        fbResponse.authentication?.accessToken ||
-        fbResponse.params.access_token ||
-        paramFromUrl(fbResponse.url || '', 'access_token')
-      if (!accessToken) {
-        logger.error('Facebook auth succeeded without access_token')
-        Alert.alert('Facebook', t('auth.social.facebookFailed'))
-        return
-      }
-      setBusy('facebook')
-      try {
-        const data = await authApi.socialFacebook(accessToken)
-        await handleSocialResult(data)
-      } catch (err) {
-        Alert.alert(
-          'Facebook',
-          getApiErrorMessage(err, t('auth.social.facebookFailed'))
-        )
-      } finally {
-        setBusy(null)
-      }
-    }
-    void run()
-  }, [fbResponse, handleSocialResult, t])
-
-  const handleApple = async () => {
-    if (busy || disabled) return
-    setBusy('apple')
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      })
-      if (!credential.identityToken) {
-        Alert.alert('Apple', t('auth.social.appleFailed'))
-        return
-      }
-      const fullName = credential.fullName
-        ? {
-            givenName: credential.fullName.givenName ?? undefined,
-            familyName: credential.fullName.familyName ?? undefined,
-          }
-        : undefined
-      const data = await authApi.socialApple(credential.identityToken, fullName)
-      await handleSocialResult(data)
-    } catch (err) {
-      if (
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        (err as { code?: string }).code === 'ERR_REQUEST_CANCELED'
-      ) {
-        return
-      }
-      Alert.alert('Apple', getApiErrorMessage(err, t('auth.social.appleFailed')))
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  const handleTikTok = async () => {
+  const handleTikTok = useCallback(async () => {
     if (busy || disabled) return
     tiktokHandledRef.current = ''
     setBusy('tiktok')
     try {
       const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
-      const startUrl = `${apiRoot}/api/auth/social/tiktok/?client=mobile&purpose=login&redirect=${encodeURIComponent('/')}`
+      const startUrl = `${apiRoot}/api/auth/social/tiktok/?client=mobile&purpose=login&redirect=${encodeURIComponent('/')}&platform=${encodeURIComponent(Platform.OS)}`
       const result = await WebBrowser.openAuthSessionAsync(startUrl, TIKTOK_RETURN_URL, {
         preferEphemeralSession: true,
         showInRecents: true,
@@ -338,15 +332,67 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
         if (tiktokHandledRef.current) return
       }
     } catch (err) {
-      Alert.alert('TikTok', getApiErrorMessage(err, t('auth.social.tiktokFailed')))
+      showFailure(
+        'tiktok',
+        () => {
+          void handleTikTok()
+        },
+        getApiErrorMessage(err, t('auth.social.tiktokDetail'))
+      )
     } finally {
       if (!tiktokHandledRef.current) setBusy(null)
     }
+  }, [busy, disabled, finishTikTokFromUrl, showFailure, t])
+
+  startTikTokRef.current = () => {
+    void handleTikTok()
   }
 
-  // Prefer API flags; fall back to baked EXPO_PUBLIC IDs so production builds
-  // still show Google if /social/config is briefly unreachable.
-  // Facebook requires backend enablement (app id + secret) — do not show on env alone.
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', (event) => {
+      void finishTikTokFromUrl(event.url)
+    })
+    return () => sub.remove()
+  }, [finishTikTokFromUrl])
+
+  const handleApple = async () => {
+    if (busy || disabled) return
+    setBusy('apple')
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      })
+      if (!credential.identityToken) {
+        showFailure('apple', () => {
+          void handleApple()
+        })
+        return
+      }
+      const fullName = credential.fullName
+        ? {
+            givenName: credential.fullName.givenName ?? undefined,
+            familyName: credential.fullName.familyName ?? undefined,
+          }
+        : undefined
+      const data = await authApi.socialApple(credential.identityToken, fullName)
+      await handleSocialResult(data)
+    } catch (err) {
+      if (isSocialCancelError(err)) return
+      showFailure(
+        'apple',
+        () => {
+          void handleApple()
+        },
+        getApiErrorMessage(err, t('auth.social.appleDetail'))
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const googleOn =
     !!googleWebClientId &&
     (config?.google_enabled ?? !!process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID)
@@ -366,8 +412,6 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     return null
   }
 
-  const promptOptions = { showInRecents: true, preferEphemeralSession: true }
-
   return (
     <View style={styles.wrap}>
       {appleOn && (
@@ -385,13 +429,10 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       {googleOn && (
         <Button
           mode="outlined"
-          disabled={disabled || !!busy || !googleRequest}
+          disabled={disabled || !!busy}
           loading={busy === 'google'}
           onPress={() => {
-            if (!googleRequest) return
-            void googlePrompt(promptOptions).catch((err: unknown) => {
-              Alert.alert('Google', getApiErrorMessage(err, t('auth.social.googleFailed')))
-            })
+            void handleGoogle()
           }}
           style={styles.btn}
           icon={() => <MaterialCommunityIcons name="google" size={20} color="#4285F4" />}
@@ -402,16 +443,10 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
       {facebookEnabled && (
         <Button
           mode="contained"
-          disabled={disabled || !!busy || !fbRequest}
+          disabled={disabled || !!busy}
           loading={busy === 'facebook'}
           onPress={() => {
-            if (!fbRequest || !facebookAppId) return
-            void fbPrompt(promptOptions).catch((err: unknown) => {
-              Alert.alert(
-                'Facebook',
-                getApiErrorMessage(err, t('auth.social.facebookFailed'))
-              )
-            })
+            void handleFacebook()
           }}
           style={styles.btn}
           buttonColor="#1877F2"

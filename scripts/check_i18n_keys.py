@@ -65,8 +65,9 @@ def flatten_ts_object(text: str, start: int = 0) -> set[str]:
             i = _skip_string(text, i)
             continue
         if ch == '}':
-            if stack:
-                stack.pop()
+            if not stack:
+                break
+            stack.pop()
             i += 1
             continue
         if ch == '{':

@@ -28,6 +28,7 @@ from .social_providers import (
     ProviderVerificationError,
     build_tiktok_authorize_url,
     exchange_tiktok_code,
+    log_oauth_failure,
     verify_apple_identity_token,
     verify_facebook_access_token,
     verify_google_id_token,
@@ -135,6 +136,54 @@ def _pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
+def _client_platform(request) -> str:
+    raw = ''
+    try:
+        data = getattr(request, 'data', None)
+        if data is not None:
+            raw = str(data.get('platform') or data.get('client') or '')
+    except Exception:
+        raw = ''
+    if not raw:
+        raw = str(request.query_params.get('platform') or request.query_params.get('client') or '')
+    raw = raw.strip().lower()
+    if raw in ('android', 'ios', 'web', 'mobile'):
+        return raw
+    return 'unknown'
+
+
+def _tiktok_redirect_uri() -> str:
+    redirect_uri = getattr(settings, 'TIKTOK_REDIRECT_URI', '') or ''
+    if redirect_uri:
+        return redirect_uri
+    api_base = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
+    if not api_base:
+        return ''
+    return f'{api_base}/api/auth/social/tiktok/callback/'
+
+
+def _create_tiktok_authorize(*, purpose: str, redirect_path: str, linking_user=None) -> str:
+    redirect_uri = _tiktok_redirect_uri()
+    if not redirect_uri:
+        raise ProviderVerificationError('Login com TikTok não está configurado.')
+    state = secrets.token_urlsafe(32)
+    code_verifier, code_challenge = _pkce_pair()
+    OAuthState.objects.create(
+        state=state,
+        provider=SocialAccount.PROVIDER_TIKTOK,
+        purpose=purpose,
+        user=linking_user,
+        redirect_path=redirect_path,
+        code_verifier=code_verifier,
+        expires_at=timezone.now() + timedelta(minutes=10),
+    )
+    return build_tiktok_authorize_url(
+        state=state,
+        code_challenge=code_challenge,
+        redirect_uri=redirect_uri,
+    )
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([AuthBurstThrottle])
@@ -150,6 +199,12 @@ def google_login(request):
         result = authenticate_social_user(verified, linking_user=linking_user)
         return _auth_response(result)
     except (ProviderVerificationError, SocialAuthError) as exc:
+        log_oauth_failure(
+            provider='google',
+            step='login',
+            platform=_client_platform(request),
+            error=getattr(exc, 'code', None) or type(exc).__name__,
+        )
         return _error_response(exc)
     except Exception as exc:
         return _error_response(exc)
@@ -170,6 +225,12 @@ def facebook_login(request):
         result = authenticate_social_user(verified, linking_user=linking_user)
         return _auth_response(result)
     except (ProviderVerificationError, SocialAuthError) as exc:
+        log_oauth_failure(
+            provider='facebook',
+            step='login',
+            platform=_client_platform(request),
+            error=getattr(exc, 'code', None) or type(exc).__name__,
+        )
         return _error_response(exc)
     except Exception as exc:
         return _error_response(exc)
@@ -275,35 +336,18 @@ def tiktok_start(request):
             return Response({'error': 'Autenticação necessária para associar.', 'code': 'auth_required'}, status=401)
         linking_user = request.user
 
-    redirect_uri = getattr(settings, 'TIKTOK_REDIRECT_URI', '') or ''
-    if not redirect_uri:
-        api_base = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
-        if not api_base:
-            return Response(
-                {'error': 'Login com TikTok não está configurado.', 'code': 'misconfigured'},
-                status=503,
-            )
-        redirect_uri = f'{api_base}/api/auth/social/tiktok/callback/'
-
-    state = secrets.token_urlsafe(32)
-    code_verifier, code_challenge = _pkce_pair()
-    OAuthState.objects.create(
-        state=state,
-        provider=SocialAccount.PROVIDER_TIKTOK,
-        purpose=purpose,
-        user=linking_user,
-        redirect_path=redirect_path,
-        code_verifier=code_verifier,
-        expires_at=timezone.now() + timedelta(minutes=10),
-    )
-
     try:
-        url = build_tiktok_authorize_url(
-            state=state,
-            code_challenge=code_challenge,
-            redirect_uri=redirect_uri,
+        url = _create_tiktok_authorize(
+            purpose=purpose,
+            redirect_path=redirect_path,
+            linking_user=linking_user,
         )
     except ProviderVerificationError as exc:
+        log_oauth_failure(
+            provider='tiktok',
+            step='authorize_start',
+            platform=_client_platform(request),
+        )
         return _error_response(exc)
 
     return HttpResponseRedirect(url)
@@ -335,8 +379,15 @@ def tiktok_callback(request):
 
     error = request.query_params.get('error')
     if error:
-        # User cancellation / denial — soft redirect, no account created
         cancelled = error in ('access_denied', 'user_cancelled', 'login_denied')
+        if not cancelled:
+            log_oauth_failure(
+                provider='tiktok',
+                step='authorization_callback',
+                platform=client,
+                error=error,
+                log_id=request.query_params.get('log_id') or '',
+            )
         if oauth_state and oauth_state.is_valid():
             oauth_state.consume()
         return _fail_redirect(
@@ -353,10 +404,7 @@ def tiktok_callback(request):
 
     oauth_state.consume()
 
-    redirect_uri = getattr(settings, 'TIKTOK_REDIRECT_URI', '') or ''
-    if not redirect_uri:
-        api_base = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
-        redirect_uri = f'{api_base}/api/auth/social/tiktok/callback/'
+    redirect_uri = _tiktok_redirect_uri()
 
     try:
         verified = exchange_tiktok_code(
@@ -366,10 +414,17 @@ def tiktok_callback(request):
         )
         linking_user = oauth_state.user if oauth_state.purpose == OAuthState.PURPOSE_LINK else None
         result = authenticate_social_user(verified, linking_user=linking_user)
-    except (ProviderVerificationError, SocialAuthError):
+    except (ProviderVerificationError, SocialAuthError) as exc:
+        log_oauth_failure(
+            provider='tiktok',
+            step='callback_exchange',
+            platform=client,
+            error=type(exc).__name__,
+        )
         return _fail_redirect(message='Não foi possível entrar com TikTok. Tente novamente.')
     except Exception:
         logger.exception('TikTok callback failed')
+        log_oauth_failure(provider='tiktok', step='callback_unexpected', platform=client)
         return _fail_redirect(message='Não foi possível entrar com TikTok. Tente novamente.')
 
     stored_redirect = oauth_state.redirect_path or '/area-do-aluno'
@@ -398,6 +453,35 @@ def tiktok_callback(request):
         'next': dest,
     })
     return HttpResponseRedirect(f"{_post_auth_redirect_base(client=client)}?{params}")
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([AuthUserThrottle])
+@csrf_exempt
+def tiktok_link_start(request):
+    """
+    Start TikTok OAuth for linking from an authenticated web session.
+    Returns JSON { authorize_url } so the browser can navigate with a prior Token auth.
+    GET /tiktok/?purpose=link cannot send the DRF token as a header on a full-page redirect.
+    """
+    redirect_path = _safe_redirect_path(
+        request.data.get('redirect') if isinstance(request.data, dict) else None
+    )
+    try:
+        url = _create_tiktok_authorize(
+            purpose=OAuthState.PURPOSE_LINK,
+            redirect_path=redirect_path,
+            linking_user=request.user,
+        )
+    except ProviderVerificationError as exc:
+        log_oauth_failure(
+            provider='tiktok',
+            step='link_start',
+            platform='web',
+        )
+        return _error_response(exc)
+    return Response({'authorize_url': url})
 
 
 @api_view(['GET'])

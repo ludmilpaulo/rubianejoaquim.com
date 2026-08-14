@@ -32,6 +32,9 @@ playwright-report/
 test-results/
 blob-report/
 
+# Native projects — EAS prebuild generates these; keep ios/ committed after `pod install`
+android/
+
 # Build
 *.apk
 *.aab

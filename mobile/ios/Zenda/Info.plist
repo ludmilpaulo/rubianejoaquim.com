@@ -4,6 +4,8 @@
   <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>CFBundleAllowMixedLocalizations</key>
+    <true/>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
@@ -19,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.6</string>
+    <string>1.0.7</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -29,36 +31,40 @@
         <array>
           <string>zenda</string>
           <string>com.rubianejoaquim.zenda</string>
-        </array>
-      </dict>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
           <string>com.googleusercontent.apps.112065604009-bt1io2ogtdl5focg0r25i2stg1sln4co</string>
-        </array>
-      </dict>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
           <string>fb2691305731001778</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>exp+zenda</string>
+        </array>
+      </dict>
     </array>
+    <key>CFBundleVersion</key>
+    <string>39</string>
+    <key>FacebookAdvertiserIDCollectionEnabled</key>
+    <false/>
     <key>FacebookAppID</key>
     <string>2691305731001778</string>
+    <key>FacebookAutoInitEnabled</key>
+    <true/>
+    <key>FacebookAutoLogAppEventsEnabled</key>
+    <false/>
+    <key>FacebookClientToken</key>
+    <string>ea2135093dfbbefd2f81b36f6d34df2f</string>
     <key>FacebookDisplayName</key>
     <string>Zenda</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>fbapi</string>
-      <string>fb-messenger-share-api</string>
+      <string>fb-messenger-api</string>
       <string>fbauth2</string>
       <string>fbshareextension</string>
     </array>
-    <key>CFBundleVersion</key>
-    <string>38</string>
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
@@ -74,6 +80,17 @@
     <string>Este app usa Face ID para autenticação rápida e segura.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
+    <key>SKAdNetworkItems</key>
+    <array>
+      <dict>
+        <key>SKAdNetworkIdentifier</key>
+        <string>v9wttpbfk9.skadnetwork</string>
+      </dict>
+      <dict>
+        <key>SKAdNetworkIdentifier</key>
+        <string>n38lu8286q.skadnetwork</string>
+      </dict>
+    </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
@@ -97,7 +114,7 @@
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIUserInterfaceStyle</key>
-    <string>Light</string>
+    <string>Automatic</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
   </dict>

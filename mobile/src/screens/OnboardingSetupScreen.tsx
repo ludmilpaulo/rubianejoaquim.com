@@ -46,6 +46,7 @@ export default function OnboardingSetupScreen({ onComplete }: OnboardingSetupScr
 
   const pickLocale = (code: Locale) => {
     setSelectedLocale(code)
+    // setLocale switches the catalog immediately and best-effort PATCHes preferred_locale
     void setLocale(code)
   }
 

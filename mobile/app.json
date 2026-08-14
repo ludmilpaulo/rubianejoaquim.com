@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.6",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -40,7 +40,7 @@
           }
         ]
       },
-      "buildNumber": "38"
+      "buildNumber": "39"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,7 +50,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 36,
+      "versionCode": 38,
       "intentFilters": [
         {
           "action": "VIEW",
@@ -140,7 +140,25 @@
       "expo-localization",
       "react-native-iap",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.112065604009-bt1io2ogtdl5focg0r25i2stg1sln4co"
+        }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "2691305731001778",
+          "clientToken": "ea2135093dfbbefd2f81b36f6d34df2f",
+          "displayName": "Zenda",
+          "scheme": "fb2691305731001778",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/eed2db02-a05b-4292-9a7c-777b198b7b6e",
@@ -148,7 +166,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.6",
+    "runtimeVersion": "1.0.7",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {

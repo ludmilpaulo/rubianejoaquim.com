@@ -276,14 +276,18 @@ export const authApi = {
     return response.data
   },
 
-  socialGoogle: async (idToken: string): Promise<SocialAuthResult> => {
-    const response = await api.post<SocialAuthResult>('/auth/social/google/', { id_token: idToken })
+  socialGoogle: async (idToken: string, platform?: string): Promise<SocialAuthResult> => {
+    const response = await api.post<SocialAuthResult>('/auth/social/google/', {
+      id_token: idToken,
+      ...(platform ? { platform } : {}),
+    })
     return response.data
   },
 
-  socialFacebook: async (accessToken: string): Promise<SocialAuthResult> => {
+  socialFacebook: async (accessToken: string, platform?: string): Promise<SocialAuthResult> => {
     const response = await api.post<SocialAuthResult>('/auth/social/facebook/', {
       access_token: accessToken,
+      ...(platform ? { platform } : {}),
     })
     return response.data
   },

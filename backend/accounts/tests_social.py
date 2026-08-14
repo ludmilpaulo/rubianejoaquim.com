@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from accounts.models import SocialAccount, User
+from accounts.models import OAuthState, SocialAccount, User
 from accounts.social_providers import VerifiedProviderUser
 from accounts.social_service import (
     SocialAuthError,
@@ -141,3 +141,31 @@ class SocialAPITests(TestCase):
         resp = self.client.post('/api/auth/logout/')
         self.assertEqual(resp.status_code, 200)
         self.assertFalse(Token.objects.filter(key=token.key).exists())
+
+    def test_tiktok_link_start_requires_auth(self):
+        resp = self.client.post('/api/auth/social/tiktok/link-start/', {}, format='json')
+        self.assertEqual(resp.status_code, 401)
+
+    @override_settings(
+        TIKTOK_CLIENT_KEY='test_key',
+        TIKTOK_CLIENT_SECRET='test_secret',
+        TIKTOK_REDIRECT_URI='https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/',
+        API_PUBLIC_URL='https://ludmilpaulo.pythonanywhere.com',
+    )
+    def test_tiktok_link_start_returns_authorize_url(self):
+        user = User.objects.create_user(username='linker', email='linker@example.com', password='password123')
+        token = Token.objects.create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        resp = self.client.post(
+            '/api/auth/social/tiktok/link-start/',
+            {'redirect': '/area-do-aluno'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200)
+        url = resp.json().get('authorize_url') or ''
+        self.assertIn('tiktok.com', url)
+        self.assertIn('client_key=test_key', url)
+        self.assertIn('code_challenge', url)
+        self.assertTrue(
+            OAuthState.objects.filter(provider='tiktok', user=user, purpose='link').exists()
+        )

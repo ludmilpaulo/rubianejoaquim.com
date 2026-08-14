@@ -19,6 +19,43 @@ logger = logging.getLogger(__name__)
 SAFE_PROVIDER_ERROR = 'Não foi possível validar a autenticação com o fornecedor. Tente novamente.'
 
 
+def log_oauth_failure(
+    *,
+    provider: str,
+    step: str,
+    platform: str = 'unknown',
+    status_code: Optional[int] = None,
+    error: Optional[str] = None,
+    log_id: Optional[str] = None,
+) -> None:
+    """Log OAuth failures without tokens, secrets, emails, or personal data."""
+    err = (error or '')[:120].replace('\n', ' ')
+    logger.info(
+        'oauth_failure provider=%s platform=%s step=%s status=%s error=%s log_id=%s',
+        provider,
+        platform or 'unknown',
+        step,
+        status_code if status_code is not None else '-',
+        err or '-',
+        (log_id or '-')[:80],
+    )
+
+
+def _tiktok_error_meta(payload: object, resp: Optional[requests.Response] = None) -> tuple[str, str]:
+    """Return (error_code, log_id) from a TikTok JSON body. Never includes tokens."""
+    data = payload if isinstance(payload, dict) else {}
+    nested = data.get('error')
+    if isinstance(nested, dict):
+        code = str(nested.get('code') or nested.get('message') or nested.get('error') or '')[:80]
+        log_id = str(nested.get('log_id') or data.get('log_id') or '')[:80]
+        return code, log_id
+    code = str(nested or data.get('error_description') or '')[:80]
+    log_id = str(data.get('log_id') or '')[:80]
+    if not log_id and resp is not None:
+        log_id = str(resp.headers.get('x-tt-logid') or resp.headers.get('X-Tt-Logid') or '')[:80]
+    return code, log_id
+
+
 class ProviderVerificationError(Exception):
     """Raised when a provider token/code cannot be verified."""
 
@@ -82,12 +119,12 @@ def verify_google_id_token(id_token: str) -> VerifiedProviderUser:
             audience=None,
         )
     except Exception:
-        logger.info('Google ID token verification failed')
+        log_oauth_failure(provider='google', step='id_token_verify')
         raise ProviderVerificationError() from None
 
     aud = idinfo.get('aud')
     if aud not in client_ids:
-        logger.info('Google ID token audience mismatch')
+        log_oauth_failure(provider='google', step='audience_mismatch')
         raise ProviderVerificationError()
 
     iss = idinfo.get('iss')
@@ -130,6 +167,7 @@ def verify_facebook_access_token(access_token: str) -> VerifiedProviderUser:
         logger.error('Facebook social login misconfigured')
         raise ProviderVerificationError('Login com Facebook não está configurado.')
 
+    debug_resp = None
     try:
         debug_resp = requests.get(
             'https://graph.facebook.com/debug_token',
@@ -142,18 +180,25 @@ def verify_facebook_access_token(access_token: str) -> VerifiedProviderUser:
         debug_resp.raise_for_status()
         debug_data = debug_resp.json().get('data') or {}
     except Exception:
-        logger.info('Facebook debug_token failed')
+        log_oauth_failure(
+            provider='facebook',
+            step='debug_token',
+            status_code=getattr(debug_resp, 'status_code', None),
+        )
         raise ProviderVerificationError() from None
 
     if not debug_data.get('is_valid'):
+        log_oauth_failure(provider='facebook', step='debug_token_invalid')
         raise ProviderVerificationError()
     if str(debug_data.get('app_id')) != str(app_id):
+        log_oauth_failure(provider='facebook', step='app_id_mismatch')
         raise ProviderVerificationError()
 
     user_id = debug_data.get('user_id')
     if not user_id:
         raise ProviderVerificationError()
 
+    me_resp = None
     try:
         me_resp = requests.get(
             'https://graph.facebook.com/me',
@@ -166,7 +211,11 @@ def verify_facebook_access_token(access_token: str) -> VerifiedProviderUser:
         me_resp.raise_for_status()
         me = me_resp.json()
     except Exception:
-        logger.info('Facebook /me failed')
+        log_oauth_failure(
+            provider='facebook',
+            step='graph_me',
+            status_code=getattr(me_resp, 'status_code', None),
+        )
         raise ProviderVerificationError() from None
 
     if str(me.get('id')) != str(user_id):
@@ -235,11 +284,18 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         )
         token_payload = token_resp.json()
     except Exception:
-        logger.info('TikTok token exchange request failed')
+        log_oauth_failure(provider='tiktok', step='token_exchange_request')
         raise ProviderVerificationError() from None
 
     if token_resp.status_code >= 400 or token_payload.get('error'):
-        logger.info('TikTok token exchange rejected')
+        err, log_id = _tiktok_error_meta(token_payload, token_resp)
+        log_oauth_failure(
+            provider='tiktok',
+            step='token_exchange',
+            status_code=token_resp.status_code,
+            error=err,
+            log_id=log_id,
+        )
         raise ProviderVerificationError()
 
     access_token = token_payload.get('access_token')
@@ -256,13 +312,21 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         )
         user_payload = user_resp.json()
     except Exception:
-        logger.info('TikTok user info request failed')
+        log_oauth_failure(provider='tiktok', step='user_info_request')
         raise ProviderVerificationError() from None
     finally:
         # Do not retain provider access tokens
         access_token = None
 
     if user_resp.status_code >= 400:
+        err, log_id = _tiktok_error_meta(user_payload, user_resp)
+        log_oauth_failure(
+            provider='tiktok',
+            step='user_info',
+            status_code=user_resp.status_code,
+            error=err,
+            log_id=log_id,
+        )
         raise ProviderVerificationError()
 
     user_obj = ((user_payload.get('data') or {}).get('user') or {})

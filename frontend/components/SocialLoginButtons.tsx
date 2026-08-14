@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { getApiBaseUrl, getApiErrorMessage } from '@/lib/types/api'
+import { useLocale } from '@/contexts/LocaleContext'
+import { safeAuthNext } from '@/lib/auth-next'
 
 type SocialConfig = {
   google_client_id: string
@@ -62,6 +64,7 @@ function loadScript(src: string, id: string): Promise<void> {
 
 type Props = {
   mode?: 'login' | 'link'
+  nextPath?: string | null
   onError?: (message: string) => void
   onLinkRequired?: (payload: LinkRequired) => void
   onSuccess?: () => void
@@ -69,12 +72,15 @@ type Props = {
 
 export default function SocialLoginButtons({
   mode = 'login',
+  nextPath = null,
   onError,
   onLinkRequired,
   onSuccess,
 }: Props) {
   const router = useRouter()
+  const { t } = useLocale()
   const { applySession } = useAuthStore()
+  const afterLogin = safeAuthNext(nextPath)
   const [config, setConfig] = useState<SocialConfig | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [loadError, setLoadError] = useState('')
@@ -108,14 +114,15 @@ export default function SocialLoginButtons({
         applySession(data.user, data.token)
         onSuccess?.()
         if (mode === 'login') {
-          if (data.user.is_admin) router.push('/admin')
+          if (afterLogin) router.push(afterLogin)
+          else if (data.user.is_admin) router.push('/admin')
           else router.push('/area-do-aluno')
         }
         return
       }
-      onError?.(data.message || 'Não foi possível concluir o login. Tente novamente.')
+      onError?.(data.message || t('auth.socialCallbackError'))
     },
-    [applySession, mode, onError, onLinkRequired, onSuccess, router]
+    [afterLogin, applySession, mode, onError, onLinkRequired, onSuccess, router, t]
   )
 
   useEffect(() => {
@@ -126,12 +133,12 @@ export default function SocialLoginButtons({
         if (!cancelled) setConfig(res.data)
       })
       .catch(() => {
-        if (!cancelled) setLoadError('Não foi possível carregar opções de login social.')
+        if (!cancelled) setLoadError(t('auth.socialLoadFailed'))
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     if (!config?.google_enabled || !config.google_client_id || !googleBtnRef.current) return
@@ -145,7 +152,7 @@ export default function SocialLoginButtons({
           client_id: config.google_client_id,
           callback: async (response: { credential?: string }) => {
             if (!response.credential) {
-              onError?.('Não foi possível entrar com Google. Tente novamente.')
+              onError?.(t('auth.googleFailed'))
               return
             }
             setBusy('google')
@@ -153,7 +160,7 @@ export default function SocialLoginButtons({
               const res = await authApi.socialGoogle(response.credential)
               await finishAuth(res.data)
             } catch (err) {
-              onError?.(getApiErrorMessage(err, 'Não foi possível entrar com Google. Tente novamente.'))
+              onError?.(getApiErrorMessage(err, t('auth.googleFailed')))
             } finally {
               setBusy(null)
             }
@@ -172,7 +179,7 @@ export default function SocialLoginButtons({
         })
         googleReady.current = true
       } catch {
-        if (!cancelled) onError?.('Não foi possível carregar o login Google.')
+        if (!cancelled) onError?.(t('auth.googleLoadFailed'))
       }
     }
 
@@ -180,7 +187,7 @@ export default function SocialLoginButtons({
     return () => {
       cancelled = true
     }
-  }, [config, finishAuth, mode, onError])
+  }, [config, finishAuth, mode, onError, t])
 
   const handleFacebook = async () => {
     if (!config?.facebook_enabled || !config.facebook_app_id || busy) return
@@ -204,13 +211,13 @@ export default function SocialLoginButtons({
         async (response) => {
           try {
             if (!response.authResponse?.accessToken) {
-              // User cancelled — silent return
+              setBusy(null)
               return
             }
             const res = await authApi.socialFacebook(response.authResponse.accessToken)
             await finishAuth(res.data)
           } catch (err) {
-            onError?.(getApiErrorMessage(err, 'Não foi possível entrar com Facebook. Tente novamente.'))
+            onError?.(getApiErrorMessage(err, t('auth.facebookFailed')))
           } finally {
             setBusy(null)
           }
@@ -218,19 +225,35 @@ export default function SocialLoginButtons({
         { scope: 'public_profile,email' }
       )
     } catch {
-      onError?.('Não foi possível entrar com Facebook. Tente novamente.')
+      onError?.(t('auth.facebookFailed'))
       setBusy(null)
     }
   }
 
-  const handleTikTok = () => {
+  const handleTikTok = async () => {
     if (!config?.tiktok_enabled || busy) return
     setBusy('tiktok')
-    const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
     const purpose = mode === 'link' ? 'link' : 'login'
-    const redirect = mode === 'link' ? '/area-do-aluno?tab=profile' : '/area-do-aluno'
-    const url = `${apiRoot}/api/auth/social/tiktok/?purpose=${encodeURIComponent(purpose)}&redirect=${encodeURIComponent(redirect)}`
-    window.location.href = url
+    const redirect = mode === 'link' ? '/area-do-aluno?tab=profile' : (afterLogin || '/area-do-aluno')
+    try {
+      if (purpose === 'link') {
+        const res = await authApi.socialTikTokLinkStart(redirect)
+        const authorizeUrl = res.data.authorize_url
+        if (!authorizeUrl) {
+          onError?.(t('auth.tiktokStartFailed'))
+          setBusy(null)
+          return
+        }
+        window.location.href = authorizeUrl
+        return
+      }
+      const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
+      const url = `${apiRoot}/api/auth/social/tiktok/?purpose=${encodeURIComponent(purpose)}&redirect=${encodeURIComponent(redirect)}&client=web`
+      window.location.href = url
+    } catch (err) {
+      onError?.(getApiErrorMessage(err, t('auth.tiktokFailed')))
+      setBusy(null)
+    }
   }
 
   if (loadError) {
@@ -257,7 +280,7 @@ export default function SocialLoginButtons({
           <div ref={googleBtnRef} className="w-full min-h-[44px] flex justify-center [&>div]:w-full" />
           {busy === 'google' && (
             <div className="absolute inset-0 bg-white/70 flex items-center justify-center rounded-lg">
-              <span className="text-sm text-gray-600">A entrar com Google…</span>
+              <span className="text-sm text-gray-600">{t('auth.signingGoogle')}</span>
             </div>
           )}
         </div>
@@ -273,7 +296,7 @@ export default function SocialLoginButtons({
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M22 12.07C22 6.48 17.52 2 11.93 2S1.86 6.48 1.86 12.07c0 5.02 3.66 9.18 8.44 9.93v-7.02H7.9v-2.91h2.4V9.84c0-2.37 1.4-3.68 3.56-3.68 1.03 0 2.11.18 2.11.18v2.32h-1.19c-1.17 0-1.54.73-1.54 1.48v1.78h2.62l-.42 2.91h-2.2V22c4.78-.75 8.44-4.91 8.44-9.93z" />
           </svg>
-          {busy === 'facebook' ? 'A processar…' : mode === 'link' ? 'Associar Facebook' : 'Continuar com Facebook'}
+          {busy === 'facebook' ? t('auth.processing') : mode === 'link' ? t('auth.linkFacebook') : t('auth.continueFacebook')}
         </button>
       )}
 
@@ -287,7 +310,7 @@ export default function SocialLoginButtons({
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M16.6 5.82A4.86 4.86 0 0115.4 3h-3.1v12.4a2.6 2.6 0 01-2.6 2.5 2.6 2.6 0 01-2.6-2.6 2.6 2.6 0 012.6-2.6c.27 0 .53.04.78.11V9.67a5.7 5.7 0 00-.78-.05A5.72 5.72 0 003.98 15.34 5.72 5.72 0 009.7 21.06a5.72 5.72 0 005.72-5.72V9.3a7.9 7.9 0 004.6 1.46V7.66a4.87 4.87 0 01-3.42-1.84z" />
           </svg>
-          {busy === 'tiktok' ? 'A redirecionar…' : mode === 'link' ? 'Associar TikTok' : 'Continuar com TikTok'}
+          {busy === 'tiktok' ? t('auth.redirecting') : mode === 'link' ? t('auth.linkTikTok') : t('auth.continueTikTok')}
         </button>
       )}
     </div>

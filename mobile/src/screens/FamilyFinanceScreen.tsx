@@ -46,7 +46,7 @@ function todayIso() {
 }
 
 export default function FamilyFinanceScreen() {
-  const { t, tw } = useI18n()
+  const { t, tw, resolve } = useI18n()
   const { formatOriginal } = useCurrency()
   const alert = useAlert()
   const user = useAppSelector((state) => state.auth.user)
@@ -459,6 +459,35 @@ export default function FamilyFinanceScreen() {
             ))}
           </ZendaCard>
         ) : null}
+        {(() => {
+          const lines: string[] = []
+          if (dashboard.budget_amount && Number(dashboard.budget_amount) > 0) {
+            const pct = Math.round(dashboard.budget_pct)
+            lines.push(
+              pct >= 100
+                ? tw('family.insightOverBudget', { pct })
+                : tw('family.insightBudgetPct', { pct }),
+            )
+          }
+          if (Number(dashboard.savings) > 0) {
+            lines.push(tw('family.insightSavings', { amount: money(dashboard.savings, ccy), ccy }))
+          }
+          if (Number(dashboard.balance) !== 0) {
+            lines.push(tw('family.insightBalance', { amount: money(dashboard.balance, ccy), ccy }))
+          }
+          if ((dashboard.upcoming || []).length > 0) {
+            lines.push(tw('family.insightUpcoming', { count: dashboard.upcoming.length }))
+          }
+          if (lines.length === 0) return null
+          return (
+            <ZendaCard>
+              <Text style={styles.label}>{t('family.insights')}</Text>
+              {lines.map((line) => (
+                <Text key={line} style={styles.rowText}>{line}</Text>
+              ))}
+            </ZendaCard>
+          )
+        })()}
         <ZendaCard>
           <Text style={styles.label}>{t('family.activity')}</Text>
           {(dashboard.activity || []).length === 0 ? (
@@ -719,7 +748,7 @@ export default function FamilyFinanceScreen() {
         {loading ? (
           <ZendaLoader message={t('family.loadingFinances')} inline />
         ) : error ? (
-          <EmptyState icon="alert-circle" title={t('common.error')} description={error} actionLabel={t('common.retry')} onAction={load} />
+          <EmptyState icon="alert-circle" title={t('common.error')} description={resolve(error)} actionLabel={t('common.retry')} onAction={load} />
         ) : selected ? (
           <>
             <TouchableOpacity onPress={() => setSelected(null)}>

@@ -38,6 +38,9 @@ const newVersion = bumpPatch(currentVersion);
 
 // Update app.json
 app.expo.version = newVersion;
+if (typeof app.expo.runtimeVersion === 'string' && !app.expo.runtimeVersion.includes('{')) {
+  app.expo.runtimeVersion = newVersion;
+}
 if (!app.expo.android) app.expo.android = {};
 const currentVersionCode = app.expo.android.versionCode ?? 1;
 app.expo.android.versionCode = currentVersionCode + 1;

@@ -34,6 +34,7 @@ urlpatterns = [
     path('social/exchange/', social_views.social_exchange, name='social-exchange'),
     path('social/link-confirm/', social_views.social_link_confirm, name='social-link-confirm'),
     path('social/tiktok/', social_views.tiktok_start, name='social-tiktok-start'),
+    path('social/tiktok/link-start/', social_views.tiktok_link_start, name='social-tiktok-link-start'),
     path('social/tiktok/callback/', social_views.tiktok_callback, name='social-tiktok-callback'),
     path('social/methods/', social_views.login_methods, name='social-methods'),
     path('social/<str:provider>/unlink/', social_views.unlink_provider, name='social-unlink'),

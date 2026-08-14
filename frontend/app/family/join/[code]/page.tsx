@@ -101,7 +101,7 @@ export default function FamilyJoinPage() {
       <div className="w-full max-w-lg">
         <div className="flex items-center justify-between mb-8">
           <ZendaLogo />
-          <LanguageSwitcher />
+          <LanguageSwitcher variant="product" />
         </div>
         <h1 className="text-3xl font-bold mb-2">{t('familyJoin.title')}</h1>
         <p className="text-zenda-textSecondary mb-6">{t('familyJoin.subtitle')}</p>
@@ -135,7 +135,7 @@ export default function FamilyJoinPage() {
             <Link href={`/login?next=${encodeURIComponent(next)}`}>
               <ZendaButton className="w-full">{t('familyJoin.login')}</ZendaButton>
             </Link>
-            <Link href={`/login?next=${encodeURIComponent(next)}`}>
+            <Link href={`/login?next=${encodeURIComponent(next)}&mode=register`}>
               <ZendaButton variant="outline" className="w-full">{t('familyJoin.register')}</ZendaButton>
             </Link>
           </div>

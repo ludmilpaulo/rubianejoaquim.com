@@ -100,6 +100,15 @@ export const authApi = {
     api.post('/auth/social/google/', { id_token: idToken }),
   socialFacebook: (accessToken: string) =>
     api.post('/auth/social/facebook/', { access_token: accessToken }),
+  socialExchange: (exchangeCode: string, provider?: string) =>
+    api.post('/auth/social/exchange/', {
+      exchange_code: exchangeCode,
+      ...(provider ? { provider } : {}),
+    }),
+  socialTikTokLinkStart: (redirect?: string) =>
+    api.post<{ authorize_url: string }>('/auth/social/tiktok/link-start/', {
+      redirect: redirect || '/area-do-aluno',
+    }),
   socialLinkConfirm: (linkToken: string, password: string) =>
     api.post('/auth/social/link-confirm/', { link_token: linkToken, password }),
   loginMethods: () => api.get('/auth/social/methods/'),
@@ -509,6 +518,40 @@ export const financeSpaceApi = {
     const { data } = await api.post('/finance-space/spaces/join/', { invite_code: inviteCode })
     return data
   },
+  listSpaces: async () => {
+    const { data } = await api.get<FamilySpaceSummary[] | { results: FamilySpaceSummary[] }>(
+      '/finance-space/spaces/',
+    )
+    return Array.isArray(data) ? data : data.results || []
+  },
+  getDashboard: async (spaceId: number) => {
+    const { data } = await api.get<FamilyDashboard>(`/finance-space/spaces/${spaceId}/dashboard/`)
+    return data
+  },
+}
+
+export type FamilySpaceSummary = {
+  id: number
+  name: string
+  currency: string
+  invite_code: string
+  member_count?: number
+}
+
+export type FamilyDashboard = {
+  currency: string
+  income: string
+  expenses: string
+  balance: string
+  savings: string
+  debts: string
+  budget_amount: string
+  budget_spent: string
+  budget_pct: number
+  goals_active: number
+  upcoming: { id: number; title: string; amount: string; currency: string; due_date?: string | null; date: string }[]
+  activity: { id: number; message: string }[]
+  members: { id: number; display_name?: string; user_email?: string; role: string }[]
 }
 
 export type CopilotLocale = 'pt' | 'en' | 'fr' | 'es'

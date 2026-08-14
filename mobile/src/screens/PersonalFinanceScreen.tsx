@@ -1411,6 +1411,9 @@ export default function PersonalFinanceScreen() {
                               {p.exchange_rate_source ? (
                                 <Text variant="bodySmall" style={styles.mutedText}>
                                   {t('personal.rateSource')} {p.exchange_rate_source}
+                                  {p.exchange_rate_timestamp
+                                    ? ` · ${tw('personal.rateAt', { date: fmtDate(p.exchange_rate_timestamp) })}`
+                                    : ''}
                                 </Text>
                               ) : null}
                               <Text variant="labelSmall" style={styles.mutedText}>

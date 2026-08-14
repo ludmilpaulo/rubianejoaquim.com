@@ -78,6 +78,8 @@ npm run submit:android
 
 3. **When to Build & Submit**:
    - Native code changes
+   - Adding native modules (Google Sign-In, Facebook SDK, IAP, etc.) — bump `runtimeVersion` so OTA cannot crash old binaries with missing TurboModules
+   - App version changes
    - New native dependencies
    - Version number changes
    - Major feature releases
