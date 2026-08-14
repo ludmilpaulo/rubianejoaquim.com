@@ -37,15 +37,28 @@ import { getApiErrorMessage, isApiError, unwrapList } from '../types/api'
 const API_BASE_URL = getApiBaseUrl()
 logger.info('API Base URL configured')
 
-function firstDrfMessage(body: ApiErrorBody): string | undefined {
+function isHtmlOrNoise(value: unknown): boolean {
+  if (typeof value !== 'string') return false
+  const trimmed = value.trim()
+  return !trimmed || trimmed.startsWith('<') || /<!DOCTYPE|<html/i.test(trimmed)
+}
+
+/** DRF field errors — never treat HTML / status pages as a message (that produced "<"). */
+function firstDrfMessage(body: unknown): string | undefined {
+  if (typeof body === 'string') {
+    if (isHtmlOrNoise(body)) return undefined
+    return body.trim().slice(0, 280)
+  }
+  if (!body || typeof body !== 'object') return undefined
+  const record = body as ApiErrorBody
   const named =
-    (Array.isArray(body.email) ? body.email[0] : undefined) ||
-    (Array.isArray(body.password) ? body.password[0] : undefined) ||
-    (Array.isArray(body.non_field_errors) ? body.non_field_errors[0] : undefined)
+    (Array.isArray(record.email) ? record.email[0] : undefined) ||
+    (Array.isArray(record.password) ? record.password[0] : undefined) ||
+    (Array.isArray(record.non_field_errors) ? record.non_field_errors[0] : undefined)
   if (named) return String(named)
-  for (const [key, value] of Object.entries(body)) {
+  for (const [key, value] of Object.entries(record)) {
     if (key === 'refresh_error' || key === 'code') continue
-    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'string' && value.trim() && !isHtmlOrNoise(value)) return value.trim()
     if (Array.isArray(value) && value[0]) return String(value[0])
   }
   return undefined
@@ -82,16 +95,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     if (response.status >= 400) {
-      const body = (response.data || {}) as ApiErrorBody
-      const fieldError = firstDrfMessage(body)
+      const raw = response.data
+      const body = (raw && typeof raw === 'object' ? raw : {}) as ApiErrorBody
+      const fieldError = firstDrfMessage(raw)
       const refreshError =
         typeof body.refresh_error === 'string' && body.refresh_error.trim()
           ? body.refresh_error.trim()
           : ''
       const message =
-        (typeof body.detail === 'string' ? body.detail : undefined) ||
-        (typeof body.error === 'string' ? body.error : undefined) ||
-        (typeof body.message === 'string' ? body.message : undefined) ||
+        (typeof body.detail === 'string' && !isHtmlOrNoise(body.detail) ? body.detail : undefined) ||
+        (typeof body.error === 'string' && !isHtmlOrNoise(body.error) ? body.error : undefined) ||
+        (typeof body.message === 'string' && !isHtmlOrNoise(body.message) ? body.message : undefined) ||
         fieldError ||
         `Request failed (${response.status})`
       const fullMessage =

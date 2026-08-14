@@ -375,6 +375,28 @@ export default {
     insightBalance: 'Saldo familiar en {{ccy}}: {{amount}}.',
     insightUpcoming: '{{count}} facturas o deudas próximas.',
     insightSavings: 'Ahorrado {{amount}} {{ccy}} hacia metas familiares.',
+    notSetUp: 'Las finanzas de la familia aún no están configuradas.',
+    emptySetupHint: 'Añade un ingreso, un gasto, un presupuesto o una meta para empezar.',
+    saving: 'Guardando…',
+    savedExpense: 'Gasto añadido correctamente',
+    savedIncome: 'Ingreso añadido correctamente',
+    savedBudget: 'Presupuesto añadido correctamente',
+    savedGoal: 'Meta creada correctamente',
+    addExpenseFailed: 'No se pudo añadir el gasto. Compruebe los datos e inténtelo de nuevo.',
+    addIncomeFailed: 'No se pudo añadir el ingreso. Compruebe los datos e inténtelo de nuevo.',
+    addBudgetFailed: 'No se pudo añadir el presupuesto. Compruebe los datos e inténtelo de nuevo.',
+    addGoalFailed: 'No se pudo crear la meta. Compruebe los datos e inténtelo de nuevo.',
+    addContribution: 'Aportación',
+    category: 'Categoría',
+    remaining: 'Restante',
+    spent: 'Gastado',
+    originalAmount: 'Original',
+    convertedAmount: 'Convertido',
+    exchangeRate: 'Tipo de cambio',
+    convertedAt: 'Convertido el',
+    availableBudget: 'Presupuesto disponible',
+    inviteSent: 'Invitación lista para compartir',
+    period: 'Periodo',
   },
   receipt: {
     title: 'Escáner de recibos',
@@ -420,7 +442,9 @@ export default {
       tryAgain: 'Reintentar',
       useEmail: 'Usar correo',
       needsNativeBuild:
-        'El acceso con Google, Facebook y TikTok requiere una build de desarrollo o de App Store.',
+        'Esta instalación no incluye el acceso con Google y Facebook. Actualice Zenda desde App Store o Play Store e inténtelo de nuevo.',
+      needsExpoGo:
+        'El acceso con Google y Facebook no está disponible en Expo Go. Abra Zenda en una build de desarrollo o de la tienda.',
       cancelled: 'Acceso cancelado.',
       linkTitle: 'Vincular cuenta',
       linkBody:
@@ -563,7 +587,7 @@ export default {
   },
   api: {
     errors: {
-      generic: 'Ocurrió un error',
+      generic: 'No se pudo completar esta acción. Compruebe los datos e inténtelo de nuevo.',
       network: 'No se pudo conectar al servidor ({{url}}). Comprueba tu conexión.',
       server: 'El servidor no está disponible por el momento. Inténtalo de nuevo en unos instantes.',
       login: {

@@ -8,3 +8,10 @@ export function safeAuthNext(raw: string | null | undefined): string | null {
   if (raw === '/zenda/copilot' || raw.startsWith('/zenda/copilot?')) return raw
   return null
 }
+
+export function familyJoinPathFromCode(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const code = raw.trim().toUpperCase()
+  if (!/^[A-Z0-9]{6,12}$/.test(code)) return null
+  return `/family/join/${encodeURIComponent(code)}`
+}

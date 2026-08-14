@@ -1,10 +1,11 @@
 import secrets
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, PermissionDenied
@@ -67,6 +68,30 @@ def _notify(user, title, message, related_id=None):
     )
 
 
+def _api_error(message, status_code):
+    return Response({'error': message, 'detail': message}, status=status_code)
+
+
+def _require_adult(user, space):
+    membership = active_membership(user, space)
+    if not membership or membership.role not in ('owner', 'adult'):
+        raise PermissionDenied('Only owners and adult members can manage family budgets and goals.')
+    return membership
+
+
+def _budget_limit_in_space(budget, space):
+    result = _apply_fx(budget.amount, budget.currency or space.currency, space.currency)
+    if result is None:
+        return budget.amount
+    return result[0]
+
+
+def _fx_timestamp(ts):
+    if not ts:
+        return None
+    return ts if hasattr(ts, 'year') else parse_datetime(str(ts))
+
+
 class FxUnavailable(APIException):
     status_code = 503
     default_detail = 'Exchange rates are temporarily unavailable.'
@@ -109,22 +134,32 @@ class FinanceSpaceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         code = _new_invite_code()
-        space = serializer.save(owner=self.request.user, invite_code=code)
+        space = serializer.save(
+            owner=self.request.user,
+            invite_code=code,
+            invite_expires_at=timezone.now() + timedelta(days=30),
+        )
         FinanceSpaceMember.objects.create(
             space=space, user=self.request.user, role='owner', status='active'
         )
         _log(space, self.request.user, f'{space.name} created')
 
-    @action(detail=False, methods=['get'], url_path='preview')
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='preview',
+        permission_classes=[AllowAny],
+        authentication_classes=[],
+    )
     def preview(self, request):
         code = (request.query_params.get('invite_code') or '').strip().upper()
         if not code:
-            return Response({'error': 'invite_code required'}, status=status.HTTP_400_BAD_REQUEST)
+            return _api_error('invite_code required', status.HTTP_400_BAD_REQUEST)
         space = FinanceSpace.objects.filter(invite_code__iexact=code).first()
         if not space:
-            return Response({'error': 'Invalid invite code'}, status=status.HTTP_404_NOT_FOUND)
+            return _api_error('Invalid invite code', status.HTTP_404_NOT_FOUND)
         if space.invite_expires_at and space.invite_expires_at < timezone.now():
-            return Response({'error': 'This invitation is invalid or has expired.'}, status=status.HTTP_410_GONE)
+            return _api_error('This invitation is invalid or has expired.', status.HTTP_410_GONE)
         return Response({
             'id': space.id,
             'name': space.name,
@@ -137,12 +172,12 @@ class FinanceSpaceViewSet(viewsets.ModelViewSet):
     def join(self, request):
         code = (request.data.get('invite_code') or '').strip().upper()
         if not code:
-            return Response({'error': 'invite_code required'}, status=status.HTTP_400_BAD_REQUEST)
+            return _api_error('invite_code required', status.HTTP_400_BAD_REQUEST)
         space = FinanceSpace.objects.filter(invite_code__iexact=code).first()
         if not space:
-            return Response({'error': 'Invalid invite code'}, status=status.HTTP_404_NOT_FOUND)
+            return _api_error('Invalid invite code', status.HTTP_404_NOT_FOUND)
         if space.invite_expires_at and space.invite_expires_at < timezone.now():
-            return Response({'error': 'This invitation is invalid or has expired.'}, status=status.HTTP_410_GONE)
+            return _api_error('This invitation is invalid or has expired.', status.HTTP_410_GONE)
 
         existing = FinanceSpaceMember.objects.filter(space=space, user=request.user).first()
         if existing and existing.status == 'active':
@@ -202,7 +237,8 @@ class FinanceSpaceViewSet(viewsets.ModelViewSet):
         if not membership or membership.role != 'owner':
             return Response({'error': 'Only the owner can regenerate the code.'}, status=status.HTTP_403_FORBIDDEN)
         space.invite_code = _new_invite_code()
-        space.save(update_fields=['invite_code'])
+        space.invite_expires_at = timezone.now() + timedelta(days=30)
+        space.save(update_fields=['invite_code', 'invite_expires_at'])
         return Response(FinanceSpaceSerializer(space, context={'request': request}).data)
 
     @action(detail=True, methods=['post'], url_path='set-role')
@@ -282,8 +318,9 @@ class FinanceSpaceViewSet(viewsets.ModelViewSet):
         debts = sum((e.converted_amount or e.amount) for e in entries if e.kind == 'debt')
         paid = sum((e.converted_amount or e.amount) for e in entries if e.kind == 'payment')
         budgets = list(space.shared_budgets.all())
-        budget_amount = sum((b.amount for b in budgets), Decimal('0'))
+        budget_amount = sum((_budget_limit_in_space(b, space) for b in budgets), Decimal('0'))
         budget_spent = sum((b.spent for b in budgets), Decimal('0'))
+        remaining = budget_amount - budget_spent
         goals = list(space.shared_goals.all())
         upcoming = [
             FamilyEntrySerializer(e).data
@@ -299,8 +336,11 @@ class FinanceSpaceViewSet(viewsets.ModelViewSet):
             'debts': str(max(debts - paid, Decimal('0'))),
             'budget_amount': str(budget_amount),
             'budget_spent': str(budget_spent),
+            'budget_remaining': str(remaining),
             'budget_pct': float((budget_spent / budget_amount) * 100) if budget_amount else 0,
             'goals_active': len(goals),
+            'goals': SharedGoalSerializer(goals, many=True).data,
+            'budgets': SharedBudgetSerializer(budgets, many=True).data,
             'upcoming': upcoming,
             'activity': FamilyActivitySerializer(space.activities.all()[:20], many=True).data,
             'members': FinanceSpaceMemberSerializer(space.members.filter(status='active'), many=True).data,
@@ -394,11 +434,19 @@ class SharedGoalViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         space = serializer.validated_data.get('space')
-        if space and not active_membership(self.request.user, space):
-            raise PermissionDenied('Not a member of this family.')
+        if space:
+            _require_adult(self.request.user, space)
         serializer.save(created_by=self.request.user)
         if space:
             _log(space, self.request.user, f'Goal: {serializer.instance.title}')
+
+    def perform_update(self, serializer):
+        _require_adult(self.request.user, serializer.instance.space)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _require_adult(self.request.user, instance.space)
+        instance.delete()
 
 
 class SharedBudgetViewSet(viewsets.ModelViewSet):
@@ -410,9 +458,17 @@ class SharedBudgetViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         space = serializer.validated_data.get('space')
-        if space and not active_membership(self.request.user, space):
-            raise PermissionDenied('Not a member of this family.')
+        if space:
+            _require_adult(self.request.user, space)
         serializer.save()
+
+    def perform_update(self, serializer):
+        _require_adult(self.request.user, serializer.instance.space)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _require_adult(self.request.user, instance.space)
+        instance.delete()
 
 
 class SharedContributionViewSet(viewsets.ModelViewSet):
@@ -464,17 +520,13 @@ class FamilyEntryViewSet(viewsets.ModelViewSet):
         amount = serializer.validated_data['amount']
         currency = serializer.validated_data.get('currency') or space.currency
         converted, rate, source, ts = _require_fx(amount, currency, space.currency)
-        from django.utils.dateparse import parse_datetime
-        ts_dt = None
-        if ts:
-            ts_dt = ts if hasattr(ts, 'year') else parse_datetime(str(ts))
         entry = serializer.save(
             user=self.request.user,
             currency=currency,
             converted_amount=converted,
             exchange_rate=rate,
             exchange_rate_source=source,
-            exchange_rate_timestamp=ts_dt,
+            exchange_rate_timestamp=_fx_timestamp(ts),
             paid_by=serializer.validated_data.get('paid_by') or self.request.user,
         )
         raw_shares = self.request.data.get('shares') or []
@@ -488,6 +540,26 @@ class FamilyEntryViewSet(viewsets.ModelViewSet):
         _log(space, self.request.user, f'{entry.kind}: {entry.title}')
         self._maybe_budget_alerts(space, entry)
 
+    def perform_update(self, serializer):
+        entry = self.get_object()
+        space = entry.space
+        membership = active_membership(self.request.user, space)
+        if not membership or membership.role == 'viewer':
+            raise PermissionDenied('You cannot edit family transactions.')
+        if membership.role != 'owner' and entry.user_id != self.request.user.id:
+            raise PermissionDenied('You can only edit your own entries.')
+        amount = serializer.validated_data.get('amount', entry.amount)
+        currency = serializer.validated_data.get('currency', entry.currency) or space.currency
+        converted, rate, source, ts = _require_fx(amount, currency, space.currency)
+        serializer.save(
+            amount=amount,
+            currency=currency,
+            converted_amount=converted,
+            exchange_rate=rate,
+            exchange_rate_source=source,
+            exchange_rate_timestamp=_fx_timestamp(ts),
+        )
+
     def _maybe_budget_alerts(self, space, entry):
         if entry.kind != 'expense':
             return
@@ -500,20 +572,23 @@ class FamilyEntryViewSet(viewsets.ModelViewSet):
             ).aggregate(s=Sum('converted_amount'))['s'] or Decimal('0')
             budget.spent = spent
             budget.save(update_fields=['spent'])
-            if budget.amount <= 0:
+            limit = _budget_limit_in_space(budget, space)
+            if limit <= 0:
                 continue
-            pct = float(spent / budget.amount) * 100
-            prev_pct = float(prev_spent / budget.amount) * 100
-            owners = space.members.filter(status='active', role='owner')
+            pct = float(spent / limit) * 100
+            prev_pct = float(prev_spent / limit) * 100
+            owners = space.members.filter(status='active', role__in=('owner', 'adult'))
             msg = None
-            if prev_pct < 110 <= pct:
-                msg = f'Family budget exceeded significantly ({pct:.0f}%).'
-            elif prev_pct < 100 <= pct:
-                msg = f'Budget exceeded ({pct:.0f}%).'
+            title = 'Family budget'
+            if prev_pct < 100 <= pct:
+                title = 'Family budget reached'
+                msg = 'Family spending has exceeded the monthly budget.'
             elif prev_pct < 90 <= pct:
-                msg = f'Budget warning: {pct:.0f}% used.'
-            elif prev_pct < 75 <= pct:
-                msg = "You've used 75% of your budget."
+                msg = f'Family budget warning: {pct:.0f}% used.'
+            elif prev_pct < 80 <= pct:
+                msg = f'Family budget warning: {pct:.0f}% used.'
+            elif prev_pct < 70 <= pct:
+                msg = f'Family budget warning: {pct:.0f}% used.'
             if msg:
                 for m in owners:
-                    _notify(m.user, 'Family budget', msg, space.id)
+                    _notify(m.user, title, msg, space.id)

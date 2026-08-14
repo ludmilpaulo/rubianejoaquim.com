@@ -204,6 +204,30 @@ img {
     background: linear-gradient(165deg, #3534C9 0%, #1E2070 55%, #030412 100%);
   }
 
+  /* Full SVG, never cropped like a photograph. viewBox 1200×1600 (3:4). */
+  .zenda-fintech-visual {
+    display: block;
+    width: 100%;
+    max-width: min(100%, 28rem);
+    margin-inline: auto;
+  }
+
+  .zenda-fintech-visual img,
+  .zenda-fintech-visual svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: min(72vh, 40rem);
+    object-fit: contain;
+    object-position: center;
+  }
+
+  @media (min-width: 1024px) {
+    .zenda-fintech-visual {
+      max-width: 34rem;
+    }
+  }
+
   .btn-zenda {
     @apply inline-flex items-center justify-center px-6 py-3.5 rounded-xl font-semibold text-white bg-zenda-primary hover:bg-zenda-light transition-all duration-300 shadow-lg shadow-zenda-dark/30 hover:-translate-y-0.5;
   }

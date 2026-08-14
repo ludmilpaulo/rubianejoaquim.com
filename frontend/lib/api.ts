@@ -54,12 +54,20 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Token inválido ou expirado - limpar autenticação
+      const requestUrl = String(error.config?.url || '')
+      // Public invite preview must not wipe the session or bounce off /family/join.
+      if (requestUrl.includes('/finance-space/spaces/preview/')) {
+        return Promise.reject(error)
+      }
       if (typeof window !== 'undefined') {
         Cookies.remove('token')
-        // Redirecionar para login apenas se estiver no cliente
         if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login'
+          const next = `${window.location.pathname}${window.location.search}`
+          const login =
+            next.startsWith('/family')
+              ? `/login?next=${encodeURIComponent(next)}`
+              : '/login'
+          window.location.href = login
         }
       }
     }
@@ -528,6 +536,42 @@ export const financeSpaceApi = {
     const { data } = await api.get<FamilyDashboard>(`/finance-space/spaces/${spaceId}/dashboard/`)
     return data
   },
+  createSpace: async (payload: { name: string; currency: string; description?: string; require_approval?: boolean }) => {
+    const { data } = await api.post<FamilySpaceSummary>('/finance-space/spaces/', payload)
+    return data
+  },
+  createEntry: async (payload: {
+    space: number
+    kind: string
+    title: string
+    amount: string
+    currency: string
+    date: string
+    category?: string
+  }) => {
+    const { data } = await api.post('/finance-space/entries/', payload)
+    return data
+  },
+  createBudget: async (payload: {
+    space: number
+    name: string
+    amount: string
+    currency: string
+    month?: number
+    year?: number
+  }) => {
+    const { data } = await api.post('/finance-space/shared-budgets/', payload)
+    return data
+  },
+  createGoal: async (payload: {
+    space: number
+    title: string
+    target_amount: string
+    currency: string
+  }) => {
+    const { data } = await api.post('/finance-space/shared-goals/', payload)
+    return data
+  },
 }
 
 export type FamilySpaceSummary = {
@@ -547,8 +591,11 @@ export type FamilyDashboard = {
   debts: string
   budget_amount: string
   budget_spent: string
+  budget_remaining?: string
   budget_pct: number
   goals_active: number
+  goals?: { id: number; title: string; target_amount?: string; current_amount?: string; currency?: string; progress_percentage?: number }[]
+  budgets?: { id: number; name: string; amount: string; spent: string; currency: string }[]
   upcoming: { id: number; title: string; amount: string; currency: string; due_date?: string | null; date: string }[]
   activity: { id: number; message: string }[]
   members: { id: number; display_name?: string; user_email?: string; role: string }[]

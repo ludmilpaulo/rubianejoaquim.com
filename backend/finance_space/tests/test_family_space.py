@@ -333,3 +333,71 @@ class FamilySpaceTests(TestCase):
             format='json',
         )
         self.assertEqual(join.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_budget_defaults_month_year_and_viewer_cannot_create(self):
+        created = self._create_space(require_approval=False)
+        space_id = created.data['id']
+        budget = self.owner_client.post(
+            '/api/finance-space/shared-budgets/',
+            {'space': space_id, 'name': 'Household', 'amount': '100000', 'currency': 'AOA'},
+            format='json',
+        )
+        self.assertEqual(budget.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(budget.data['month'], date.today().month)
+        self.assertEqual(budget.data['year'], date.today().year)
+        self.assertEqual(budget.data['currency'], 'AOA')
+
+        self.guest_client.post(
+            '/api/finance-space/spaces/join/',
+            {'invite_code': created.data['invite_code']},
+            format='json',
+        )
+        member = FinanceSpaceMember.objects.get(space_id=space_id, user=self.guest)
+        self.owner_client.post(
+            f'/api/finance-space/spaces/{space_id}/set-role/',
+            {'member_id': member.id, 'role': 'viewer'},
+            format='json',
+        )
+        denied = self.guest_client.post(
+            '/api/finance-space/shared-budgets/',
+            {'space': space_id, 'name': 'Secret', 'amount': '10', 'currency': 'AOA'},
+            format='json',
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch('finance.fx.refresh_exchange_rates', return_value={'refreshed': False, 'stale': False})
+    def test_entry_keeps_original_currency(self, _refresh):
+        created = self._create_space(require_approval=False)
+        space_id = created.data['id']
+        expense = self.owner_client.post(
+            '/api/finance-space/entries/',
+            {
+                'space': space_id,
+                'kind': 'expense',
+                'title': 'Groceries',
+                'amount': '5000',
+                'currency': 'ZAR',
+                'date': str(date.today()),
+                'visibility': 'family',
+            },
+            format='json',
+        )
+        self.assertEqual(expense.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(expense.data['currency'], 'ZAR')
+        self.assertEqual(Decimal(expense.data['amount']), Decimal('5000.00'))
+        self.assertIsNotNone(expense.data['converted_amount'])
+        self.assertNotEqual(Decimal(expense.data['converted_amount']), Decimal('5000.00'))
+        self.assertIsNotNone(expense.data['exchange_rate'])
+        dash = self.owner_client.get(f'/api/finance-space/spaces/{space_id}/dashboard/')
+        self.assertEqual(dash.status_code, status.HTTP_200_OK)
+        self.assertIn('goals', dash.data)
+        self.assertIn('budgets', dash.data)
+        self.assertIn('budget_remaining', dash.data)
+
+    def test_create_sets_invite_expiry(self):
+        response = self._create_space()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data['invite_expires_at'])
+        space = FinanceSpace.objects.get(pk=response.data['id'])
+        self.assertIsNotNone(space.invite_expires_at)
+        self.assertGreater(space.invite_expires_at, timezone.now())

@@ -72,11 +72,11 @@ export const metadata: Metadata = {
       'Professional video production, interviews, scripts, social content, and Zenda — portfolio for global brands.',
     images: [
       {
-        url: '/zenda_logo.svg',
-        width: 1024,
-        height: 1024,
-        alt: 'Zenda — app de finanças e educação de Rubiane Joaquim',
-        type: 'image/svg+xml',
+        url: '/zenda_fintech_og.png',
+        width: 1200,
+        height: 1600,
+        alt: 'Zenda — financial app for money, budgets, goals and family finance',
+        type: 'image/png',
       },
     ],
   },
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Rubiane Joaquim | Creative Video Producer',
     description: 'Campaign videos, interviews, reels, scripts & Zenda.',
-    images: ['/zenda_logo.svg'],
+    images: ['/zenda_fintech_og.png'],
   },
   robots: { index: true, follow: true },
   icons: {

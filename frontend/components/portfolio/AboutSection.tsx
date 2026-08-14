@@ -1,6 +1,6 @@
 'use client'
 
-import RubianeImage from '@/components/RubianeImage'
+import ZendaFintechVisual from '@/components/ZendaFintechVisual'
 import type { HomeSection, HomepageStatistic } from '@/lib/public-types'
 import SectionIntro from './SectionIntro'
 import Reveal from './Reveal'
@@ -22,9 +22,8 @@ export default function AboutSection({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <Reveal>
-            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden ring-1 ring-white/10 max-w-lg mx-auto lg:mx-0 premium-glow">
-              <RubianeImage />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+            <div className="relative max-w-lg mx-auto lg:mx-0">
+              <ZendaFintechVisual />
             </div>
           </Reveal>
           <Reveal delay={120}>

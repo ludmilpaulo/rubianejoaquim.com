@@ -375,6 +375,28 @@ export default {
     insightBalance: 'Solde familial en {{ccy}} : {{amount}}.',
     insightUpcoming: '{{count}} factures ou dettes à venir.',
     insightSavings: '{{amount}} {{ccy}} épargnés pour les objectifs familiaux.',
+    notSetUp: 'Les finances de la famille ne sont pas encore configurées.',
+    emptySetupHint: 'Ajoutez un revenu, une dépense, un budget ou un objectif pour commencer.',
+    saving: 'Enregistrement…',
+    savedExpense: 'Dépense ajoutée',
+    savedIncome: 'Revenu ajouté',
+    savedBudget: 'Budget ajouté',
+    savedGoal: 'Objectif créé',
+    addExpenseFailed: 'Impossible d’ajouter la dépense. Vérifiez les informations et réessayez.',
+    addIncomeFailed: 'Impossible d’ajouter le revenu. Vérifiez les informations et réessayez.',
+    addBudgetFailed: 'Impossible d’ajouter le budget. Vérifiez les informations et réessayez.',
+    addGoalFailed: 'Impossible de créer l’objectif. Vérifiez les informations et réessayez.',
+    addContribution: 'Contribution',
+    category: 'Catégorie',
+    remaining: 'Restant',
+    spent: 'Dépensé',
+    originalAmount: 'Original',
+    convertedAmount: 'Converti',
+    exchangeRate: 'Taux',
+    convertedAt: 'Converti le',
+    availableBudget: 'Budget disponible',
+    inviteSent: 'Invitation prête à partager',
+    period: 'Période',
   },
   receipt: {
     title: 'Scanner de reçus',
@@ -420,7 +442,9 @@ export default {
       tryAgain: 'Réessayer',
       useEmail: 'Utiliser l’e-mail',
       needsNativeBuild:
-        'La connexion Google, Facebook et TikTok nécessite une build de développement ou App Store.',
+        'Cette installation ne contient pas la connexion Google et Facebook. Mettez Zenda à jour depuis l’App Store ou le Play Store, puis réessayez.',
+      needsExpoGo:
+        'La connexion Google et Facebook n’est pas disponible dans Expo Go. Ouvrez Zenda dans une build de développement ou du store.',
       cancelled: 'Connexion annulée.',
       linkTitle: 'Associer le compte',
       linkBody:
@@ -563,7 +587,7 @@ export default {
   },
   api: {
     errors: {
-      generic: 'Une erreur est survenue',
+      generic: 'Impossible de terminer cette action. Vérifiez les informations et réessayez.',
       network: 'Impossible de se connecter au serveur ({{url}}). Vérifiez votre connexion.',
       server: 'Le serveur est temporairement indisponible. Réessayez dans un instant.',
       login: {

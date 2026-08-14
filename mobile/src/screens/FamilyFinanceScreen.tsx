@@ -82,19 +82,27 @@ export default function FamilyFinanceScreen() {
   const [entryCurrency, setEntryCurrency] = useState<CurrencyCode>(getDefaultCurrency())
   const [entryVisibility, setEntryVisibility] = useState<FamilyVisibility>('family')
   const [entryDue, setEntryDue] = useState('')
+  const [entryDate, setEntryDate] = useState(todayIso())
+  const [entryCategory, setEntryCategory] = useState('')
+  const [entryPaidBy, setEntryPaidBy] = useState<number | null>(null)
   const [savingEntry, setSavingEntry] = useState(false)
 
   const [goalTitle, setGoalTitle] = useState('')
   const [goalAmount, setGoalAmount] = useState('')
+  const [goalCurrency, setGoalCurrency] = useState<CurrencyCode>(getDefaultCurrency())
   const [budgetName, setBudgetName] = useState('')
   const [budgetAmount, setBudgetAmount] = useState('')
+  const [budgetCurrency, setBudgetCurrency] = useState<CurrencyCode>(getDefaultCurrency())
+  const [savingGoal, setSavingGoal] = useState(false)
+  const [savingBudget, setSavingBudget] = useState(false)
 
   const myRole = useMemo(() => {
     if (!selected || !user) return null
     return selected.members?.find((m) => m.user === user.id)?.role ?? null
   }, [selected, user])
   const isOwner = myRole === 'owner'
-  const canWrite = myRole === 'owner' || myRole === 'adult' || myRole === 'child'
+  const canManage = myRole === 'owner' || myRole === 'adult'
+  const canWrite = canManage || myRole === 'child'
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -180,9 +188,12 @@ export default function FamilyFinanceScreen() {
   useEffect(() => {
     if (selected) {
       setEntryCurrency((selected.currency || getDefaultCurrency()).toUpperCase() as CurrencyCode)
+      setGoalCurrency((selected.currency || getDefaultCurrency()).toUpperCase() as CurrencyCode)
+      setBudgetCurrency((selected.currency || getDefaultCurrency()).toUpperCase() as CurrencyCode)
+      if (user?.id) setEntryPaidBy(user.id)
       loadDetail(selected)
     }
-  }, [selected, loadDetail])
+  }, [selected, loadDetail, user?.id])
 
   const createSpace = async () => {
     if (!name.trim()) return
@@ -275,19 +286,77 @@ export default function FamilyFinanceScreen() {
         title: entryTitle.trim(),
         amount: entryAmount,
         currency: entryCurrency,
-        date: todayIso(),
+        date: entryDate.trim() || todayIso(),
         visibility: entryVisibility,
         due_date: entryDue.trim() || undefined,
+        category: entryCategory.trim() || undefined,
+        paid_by: entryPaidBy || user?.id || undefined,
         shares,
       })
       setEntryTitle('')
       setEntryAmount('')
       setEntryDue('')
+      setEntryCategory('')
       await loadDetail(selected)
+      alert.success(
+        entryKind === 'income' ? t('family.savedIncome') : t('family.savedExpense'),
+      )
     } catch (err) {
-      alert.error(getApiErrorMessage(err, 'family.fxUnavailable'))
+      alert.error(
+        getApiErrorMessage(
+          err,
+          entryKind === 'income' ? 'family.addIncomeFailed' : 'family.addExpenseFailed',
+        ),
+      )
     } finally {
       setSavingEntry(false)
+    }
+  }
+
+  const saveGoal = async () => {
+    if (!selected || !goalTitle.trim() || !goalAmount || savingGoal) return
+    setSavingGoal(true)
+    try {
+      await financeSpaceApi.createGoal({
+        space: selected.id,
+        title: goalTitle.trim(),
+        target_amount: goalAmount,
+        currency: goalCurrency,
+      })
+      setGoalTitle('')
+      setGoalAmount('')
+      await loadDetail(selected)
+      await load()
+      alert.success(t('family.savedGoal'))
+    } catch (err) {
+      alert.error(getApiErrorMessage(err, 'family.addGoalFailed'))
+    } finally {
+      setSavingGoal(false)
+    }
+  }
+
+  const saveBudget = async () => {
+    if (!selected || !budgetName.trim() || !budgetAmount || savingBudget) return
+    setSavingBudget(true)
+    try {
+      const now = new Date()
+      await financeSpaceApi.createBudget({
+        space: selected.id,
+        name: budgetName.trim(),
+        amount: budgetAmount,
+        currency: budgetCurrency,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+      })
+      setBudgetName('')
+      setBudgetAmount('')
+      await loadDetail(selected)
+      await load()
+      alert.success(t('family.savedBudget'))
+    } catch (err) {
+      alert.error(getApiErrorMessage(err, 'family.addBudgetFailed'))
+    } finally {
+      setSavingBudget(false)
     }
   }
 
@@ -416,16 +485,42 @@ export default function FamilyFinanceScreen() {
     }
     if (!dashboard || !selected) return null
     const ccy = dashboard.currency
+    const goals = dashboard.goals || selected.shared_goals || []
+    const budgets = dashboard.budgets || selected.shared_budgets || []
+    const hasSetup =
+      Number(dashboard.income) !== 0 ||
+      Number(dashboard.expenses) !== 0 ||
+      budgets.length > 0 ||
+      goals.length > 0 ||
+      (dashboard.activity || []).length > 0
+    const remaining = dashboard.budget_remaining ?? String(Number(dashboard.budget_amount) - Number(dashboard.budget_spent))
     return (
       <>
+        {!hasSetup ? (
+          <ZendaCard variant="glass">
+            <Text style={styles.spaceName}>{t('family.notSetUp')}</Text>
+            <Text style={styles.meta}>{t('family.emptySetupHint')}</Text>
+            <View style={styles.chipRow}>
+              {canWrite ? (
+                <Button mode="contained" onPress={() => setTab('ledger')}>{t('family.addExpense')}</Button>
+              ) : null}
+              {canManage ? (
+                <Button mode="outlined" onPress={() => setTab('settings')}>{t('family.addBudget')}</Button>
+              ) : null}
+              {isOwner ? (
+                <Button mode="outlined" onPress={() => setTab('settings')}>{t('family.inviteMember')}</Button>
+              ) : null}
+            </View>
+          </ZendaCard>
+        ) : null}
         <View style={styles.grid}>
           {[
+            [t('family.balance'), money(dashboard.balance, ccy)],
             [t('family.income'), money(dashboard.income, ccy)],
             [t('family.expenses'), money(dashboard.expenses, ccy)],
-            [t('family.balance'), money(dashboard.balance, ccy)],
+            [t('family.availableBudget'), money(remaining, ccy)],
             [t('family.savings'), money(dashboard.savings, ccy)],
             [t('family.debts'), money(dashboard.debts, ccy)],
-            [t('family.budget'), `${Math.round(dashboard.budget_pct)}%`],
           ].map(([label, value]) => (
             <ZendaCard key={label} style={styles.statCard}>
               <Text style={styles.meta}>{label}</Text>
@@ -433,6 +528,36 @@ export default function FamilyFinanceScreen() {
             </ZendaCard>
           ))}
         </View>
+        {budgets.map((b) => {
+          const pct = Number(b.amount) > 0 ? Math.min(100, Math.round((Number(b.spent) / Number(b.amount)) * 100)) : 0
+          return (
+            <ZendaCard key={`budget-${b.id}`}>
+              <Text style={styles.label}>{b.name}</Text>
+              <Text style={styles.code}>
+                {money(b.spent, b.currency)} / {money(b.amount, b.currency)} · {pct}%
+              </Text>
+              <View style={styles.barTrack}>
+                <View style={[styles.barFill, { width: `${pct}%` }]} />
+              </View>
+              <Text style={styles.meta}>{t('family.spent')} · {t('family.remaining')} {money(Number(b.amount) - Number(b.spent), b.currency)}</Text>
+            </ZendaCard>
+          )
+        })}
+        {goals.map((g) => {
+          const pct = Math.round(g.progress_percentage ?? 0)
+          return (
+            <ZendaCard key={`goal-${g.id}`}>
+              <Text style={styles.label}>{g.title}</Text>
+              <Text style={styles.code}>
+                {money(g.current_amount || '0', g.currency || ccy)} / {money(g.target_amount || '0', g.currency || ccy)}
+              </Text>
+              <View style={styles.barTrack}>
+                <View style={[styles.barFill, { width: `${Math.min(100, pct)}%` }]} />
+              </View>
+              <Text style={styles.meta}>{pct}%</Text>
+            </ZendaCard>
+          )
+        })}
         <ZendaCard>
           <Text style={styles.label}>{t('family.members')}</Text>
           {(dashboard.members || []).map((m) => (
@@ -514,7 +639,15 @@ export default function FamilyFinanceScreen() {
                 style={[styles.chip, entryKind === kind && styles.chipOn]}
               >
                 <Text style={styles.chipText}>
-                  {kind === 'income' ? t('family.addIncome') : kind === 'expense' ? t('family.addExpense') : kind === 'debt' ? t('family.addDebt') : kind === 'bill' ? t('family.addBill') : t('family.addGoal')}
+                  {kind === 'income'
+                    ? t('family.addIncome')
+                    : kind === 'expense'
+                      ? t('family.addExpense')
+                      : kind === 'debt'
+                        ? t('family.addDebt')
+                        : kind === 'bill'
+                          ? t('family.addBill')
+                          : t('family.addContribution')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -522,7 +655,24 @@ export default function FamilyFinanceScreen() {
           <TextInput style={styles.input} value={entryTitle} onChangeText={setEntryTitle} placeholder={t('family.entryTitle')} />
           <TextInput style={styles.input} value={entryAmount} onChangeText={setEntryAmount} placeholder={t('common.amount')} keyboardType="decimal-pad" />
           <CurrencyPicker value={entryCurrency} onChange={setEntryCurrency} label={t('family.baseCurrency')} />
+          <TextInput style={styles.input} value={entryCategory} onChangeText={setEntryCategory} placeholder={t('family.category')} />
+          <TextInput style={styles.input} value={entryDate} onChangeText={setEntryDate} placeholder={t('common.selectDate')} />
           <TextInput style={styles.input} value={entryDue} onChangeText={setEntryDue} placeholder={t('family.calendar')} />
+          {(dashboard?.members || selected?.members || []).length > 0 ? (
+            <View style={styles.chipRow}>
+              {(dashboard?.members || selected?.members || [])
+                .filter((m) => m.status === 'active')
+                .map((m) => (
+                  <TouchableOpacity
+                    key={m.id}
+                    onPress={() => setEntryPaidBy(m.user)}
+                    style={[styles.chip, entryPaidBy === m.user && styles.chipOn]}
+                  >
+                    <Text style={styles.chipText}>{t('family.paidBy')}: {m.display_name || m.user_email}</Text>
+                  </TouchableOpacity>
+                ))}
+            </View>
+          ) : null}
           <View style={styles.chipRow}>
             {(['family', 'private', 'selected'] as FamilyVisibility[]).map((v) => (
               <TouchableOpacity key={v} onPress={() => setEntryVisibility(v)} style={[styles.chip, entryVisibility === v && styles.chipOn]}>
@@ -533,7 +683,7 @@ export default function FamilyFinanceScreen() {
             ))}
           </View>
           <Button mode="contained" onPress={saveEntry} loading={savingEntry} disabled={savingEntry}>
-            {t('common.add')}
+            {savingEntry ? t('family.saving') : t('common.add')}
           </Button>
         </ZendaCard>
       ) : null}
@@ -543,11 +693,28 @@ export default function FamilyFinanceScreen() {
         entries.map((e) => (
           <ZendaCard key={e.id}>
             <Text style={styles.spaceName}>{e.title}</Text>
-            <Text style={styles.code}>{money(e.amount, e.currency)}</Text>
+            <Text style={styles.code}>{t('family.originalAmount')}: {money(e.amount, e.currency)}</Text>
             {e.converted_amount && e.currency !== selected?.currency ? (
-              <Text style={styles.meta}>≈ {money(e.converted_amount, selected?.currency || e.currency)}</Text>
+              <Text style={styles.meta}>
+                {t('family.convertedAmount')}: {money(e.converted_amount, selected?.currency || e.currency)}
+              </Text>
             ) : null}
-            <Text style={styles.meta}>{e.kind} · {e.date} · {e.visibility}</Text>
+            {e.exchange_rate && e.currency !== selected?.currency ? (
+              <Text style={styles.meta}>
+                {t('family.exchangeRate')}: 1 {e.currency} = {e.exchange_rate} {selected?.currency}
+                {e.exchange_rate_timestamp ? ` · ${e.exchange_rate_timestamp.slice(0, 10)}` : ''}
+              </Text>
+            ) : null}
+            <Text style={styles.meta}>
+              {e.kind}
+              {e.category ? ` · ${e.category}` : ''}
+              {e.paid_by_name ? ` · ${t('family.paidBy')} ${e.paid_by_name}` : ''}
+              {' · '}
+              {e.date}
+            </Text>
+            {e.shares && e.shares.length > 0 ? (
+              <Text style={styles.meta}>{t('family.sharedWith')} {e.shares.length}</Text>
+            ) : null}
           </ZendaCard>
         ))
       )}
@@ -682,56 +849,31 @@ export default function FamilyFinanceScreen() {
             {t('family.leave')}
           </Button>
         </ZendaCard>
-        {canWrite ? (
+        {canManage ? (
           <ZendaCard>
             <Text style={styles.label}>{t('family.goals')}</Text>
             <TextInput style={styles.input} value={goalTitle} onChangeText={setGoalTitle} placeholder={t('family.entryTitle')} />
             <TextInput style={styles.input} value={goalAmount} onChangeText={setGoalAmount} placeholder={t('common.amount')} keyboardType="decimal-pad" />
+            <CurrencyPicker value={goalCurrency} onChange={setGoalCurrency} label={t('family.baseCurrency')} />
             <Button
               mode="contained"
-              onPress={() => {
-                if (!goalTitle.trim() || !goalAmount) return
-                financeSpaceApi
-                  .createGoal({
-                    space: selected.id,
-                    title: goalTitle.trim(),
-                    target_amount: goalAmount,
-                    currency: selected.currency,
-                  })
-                  .then(() => {
-                    setGoalTitle('')
-                    setGoalAmount('')
-                    loadDetail(selected)
-                  })
-              }}
+              onPress={saveGoal}
+              loading={savingGoal}
+              disabled={savingGoal || !goalTitle.trim() || !goalAmount}
             >
-              {t('family.addGoal')}
+              {savingGoal ? t('family.saving') : t('family.addGoal')}
             </Button>
             <Text style={[styles.label, styles.mt]}>{t('family.budget')}</Text>
             <TextInput style={styles.input} value={budgetName} onChangeText={setBudgetName} placeholder={t('family.entryTitle')} />
             <TextInput style={styles.input} value={budgetAmount} onChangeText={setBudgetAmount} placeholder={t('common.amount')} keyboardType="decimal-pad" />
+            <CurrencyPicker value={budgetCurrency} onChange={setBudgetCurrency} label={t('family.baseCurrency')} />
             <Button
               mode="contained"
-              onPress={() => {
-                if (!budgetName.trim() || !budgetAmount) return
-                const now = new Date()
-                financeSpaceApi
-                  .createBudget({
-                    space: selected.id,
-                    name: budgetName.trim(),
-                    amount: budgetAmount,
-                    currency: selected.currency,
-                    month: now.getMonth() + 1,
-                    year: now.getFullYear(),
-                  })
-                  .then(() => {
-                    setBudgetName('')
-                    setBudgetAmount('')
-                    loadDetail(selected)
-                  })
-              }}
+              onPress={saveBudget}
+              loading={savingBudget}
+              disabled={savingBudget || !budgetName.trim() || !budgetAmount}
             >
-              {t('family.addBudget')}
+              {savingBudget ? t('family.saving') : t('family.addBudget')}
             </Button>
           </ZendaCard>
         ) : null}
@@ -828,4 +970,16 @@ const styles = StyleSheet.create({
   rowText: { ...typography.body, color: colors.text.primary, marginTop: 4 },
   settleRow: { marginTop: spacing.sm },
   memberRow: { marginTop: spacing.md },
+  barTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.border.light,
+    overflow: 'hidden',
+    marginVertical: spacing.sm,
+  },
+  barFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.brand.primary,
+  },
 })

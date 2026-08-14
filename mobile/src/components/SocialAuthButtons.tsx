@@ -16,6 +16,7 @@ import { ZendaLoader } from './ui/ZendaLoader'
 import {
   hasFacebookNative,
   hasGoogleSignInNative,
+  isExpoGo,
   isSocialCancelError,
   loadFacebookSdk,
   loadGoogleSignIn,
@@ -99,6 +100,10 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     }
   }, [])
 
+  const missingNativeMessage = useCallback(() => {
+    return isExpoGo() ? t('auth.social.needsExpoGo') : t('auth.social.needsNativeBuild')
+  }, [t])
+
   const showFailure = useCallback(
     (provider: SocialProvider, retry: () => void, override?: string) => {
       const detail =
@@ -164,7 +169,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           () => {
             void handleGoogle()
           },
-          t('auth.social.needsNativeBuild')
+          missingNativeMessage()
         )
         return
       }
@@ -174,7 +179,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           () => {
             void handleGoogle()
           },
-          t('auth.social.needsNativeBuild')
+          missingNativeMessage()
         )
         return
       }
@@ -208,13 +213,13 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           void handleGoogle()
         },
         isNativeModuleMissing(err)
-          ? t('auth.social.needsNativeBuild')
+          ? missingNativeMessage()
           : getApiErrorMessage(err, t('auth.social.googleDetail'))
       )
     } finally {
       setBusy(null)
     }
-  }, [busy, disabled, ensureGoogleConfigured, handleSocialResult, showFailure, t])
+  }, [busy, disabled, ensureGoogleConfigured, handleSocialResult, missingNativeMessage, showFailure, t])
 
   const handleFacebook = useCallback(async () => {
     if (busy || disabled || !facebookAppId) return
@@ -227,7 +232,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           () => {
             void handleFacebook()
           },
-          t('auth.social.needsNativeBuild')
+          missingNativeMessage()
         )
         return
       }
@@ -262,13 +267,13 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
           void handleFacebook()
         },
         isNativeModuleMissing(err)
-          ? t('auth.social.needsNativeBuild')
+          ? missingNativeMessage()
           : getApiErrorMessage(err, t('auth.social.facebookDetail'))
       )
     } finally {
       setBusy(null)
     }
-  }, [busy, disabled, facebookAppId, handleSocialResult, showFailure, t])
+  }, [busy, disabled, facebookAppId, handleSocialResult, missingNativeMessage, showFailure, t])
 
   const finishTikTokFromUrl = useCallback(
     async (url: string) => {
@@ -319,9 +324,12 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     try {
       const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
       const startUrl = `${apiRoot}/api/auth/social/tiktok/?client=mobile&purpose=login&redirect=${encodeURIComponent('/')}&platform=${encodeURIComponent(Platform.OS)}`
+      // TikTok's login page 404s in ephemeral Custom Tabs / isolated Safari.
+      // Share the system browser session and keep the activity in recents.
       const result = await WebBrowser.openAuthSessionAsync(startUrl, TIKTOK_RETURN_URL, {
-        preferEphemeralSession: true,
+        preferEphemeralSession: false,
         showInRecents: true,
+        createTask: true,
       })
       if (result.type === 'success' && 'url' in result && result.url) {
         await finishTikTokFromUrl(result.url)

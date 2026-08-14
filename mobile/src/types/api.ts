@@ -472,6 +472,7 @@ export interface FamilyEntry {
   exchange_rate_timestamp?: string | null
   visibility: FamilyVisibility
   paid_by?: number | null
+  paid_by_name?: string
   due_date?: string | null
   date: string
   notes?: string
@@ -532,8 +533,11 @@ export interface FamilyDashboard {
   debts: string
   budget_amount: string
   budget_spent: string
+  budget_remaining?: string
   budget_pct: number
   goals_active: number
+  goals?: SharedGoalSummary[]
+  budgets?: FamilyBudget[]
   upcoming: FamilyEntry[]
   activity: FamilyActivity[]
   members: FamilyMember[]
@@ -614,10 +618,13 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generic'): string {
-  const looksTechnical = (msg: string) =>
-    /network error|timeout|econnrefused|enotfound|status code|axios|request failed|<html|traceback|django|json parse|unexpected token/i.test(
-      msg,
+  const looksTechnical = (msg: string) => {
+    const trimmed = msg.trim()
+    if (!trimmed || trimmed === '<' || trimmed.startsWith('<')) return true
+    return /network error|timeout|econnrefused|enotfound|status code|axios|request failed|<html|<!doctype|traceback|django|json parse|unexpected token/i.test(
+      trimmed,
     )
+  }
 
   if (!isApiError(error)) {
     if (error instanceof Error && error.message) {
@@ -630,18 +637,23 @@ export function getApiErrorMessage(error: unknown, fallback = 'api.errors.generi
   }
   if (!error.response) return 'api.errors.network'
   if (error.response.status >= 500) return 'api.errors.server'
-  const data = error.response.data
+  const data = error.response.data as unknown
   if (!data) return fallback
+  if (typeof data === 'string') {
+    return looksTechnical(data) ? fallback : data.trim().slice(0, 280)
+  }
+  if (typeof data !== 'object') return fallback
+  const record = data as ApiErrorBody
   let pick =
-    (typeof data.detail === 'string' && data.detail) ||
-    (typeof data.error === 'string' && data.error) ||
-    (typeof data.message === 'string' && data.message) ||
-    (data.non_field_errors?.[0] && String(data.non_field_errors[0])) ||
-    (data.email && String(Array.isArray(data.email) ? data.email[0] : data.email)) ||
-    (data.password && String(Array.isArray(data.password) ? data.password[0] : data.password)) ||
+    (typeof record.detail === 'string' && record.detail) ||
+    (typeof record.error === 'string' && record.error) ||
+    (typeof record.message === 'string' && record.message) ||
+    (record.non_field_errors?.[0] && String(record.non_field_errors[0])) ||
+    (record.email && String(Array.isArray(record.email) ? record.email[0] : record.email)) ||
+    (record.password && String(Array.isArray(record.password) ? record.password[0] : record.password)) ||
     ''
   if (!pick) {
-    for (const [key, value] of Object.entries(data)) {
+    for (const [key, value] of Object.entries(record)) {
       if (key === 'refresh_error' || key === 'code') continue
       if (typeof value === 'string' && value.trim()) {
         pick = value.trim()

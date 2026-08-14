@@ -12,7 +12,8 @@ import ZendaButton from '@/components/zenda/ZendaButton'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
-import { safeAuthNext } from '@/lib/auth-next'
+import { familyJoinPathFromCode, safeAuthNext } from '@/lib/auth-next'
+import Cookies from 'js-cookie'
 
 function LoginPageInner() {
   const router = useRouter()
@@ -24,6 +25,11 @@ function LoginPageInner() {
   const goAfterAuth = (isAdmin?: boolean) => {
     if (nextPath) {
       router.push(nextPath)
+      return
+    }
+    const pending = familyJoinPathFromCode(Cookies.get('pending_family_invite'))
+    if (pending) {
+      router.push(pending)
       return
     }
     router.push(isAdmin ? '/admin' : '/area-do-aluno')

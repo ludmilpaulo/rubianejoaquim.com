@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import type { HomeSection, ShowreelVideo, SiteSettings, HomepageStatistic } from '@/lib/public-types'
 import { getYoutubeThumbnail } from '@/lib/youtube'
-import RubianeImage from '@/components/RubianeImage'
+import ZendaFintechVisual from '@/components/ZendaFintechVisual'
 
 interface HeroSectionProps {
   section?: HomeSection
@@ -119,15 +119,14 @@ export default function HeroSection({ section, showreel, settings, statistics }:
           </div>
 
           <div className="lg:col-span-6 space-y-5 animate-slide-up">
-            <div className="relative aspect-[4/5] max-w-sm mx-auto lg:ml-auto rounded-2xl overflow-hidden ring-1 ring-white/15 shadow-2xl premium-glow animate-float">
-              <RubianeImage />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+            <div className="relative max-w-md mx-auto lg:max-w-lg lg:ml-auto">
+              <ZendaFintechVisual priority className="drop-shadow-2xl" />
               {(brandName || tagline) && (
-                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl bg-black/50 backdrop-blur-md border border-white/10">
+                <div className="mt-4 px-1 text-center lg:text-right">
                   {brandName && (
                     <p className="text-amber-300 text-xs font-bold uppercase tracking-wider">{brandName}</p>
                   )}
-                  {tagline && <p className="text-white text-sm font-medium mt-0.5">{tagline}</p>}
+                  {tagline && <p className="text-white/80 text-sm font-medium mt-0.5">{tagline}</p>}
                 </div>
               )}
             </div>

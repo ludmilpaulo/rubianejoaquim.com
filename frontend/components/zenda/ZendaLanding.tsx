@@ -6,6 +6,7 @@ import PhoneSlideshow from '@/components/PhoneSlideshow'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import ZendaLogo from '@/components/zenda/ZendaLogo'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
+import ZendaFintechVisual from '@/components/ZendaFintechVisual'
 import { useLocale } from '@/contexts/LocaleContext'
 import { publicApi } from '@/lib/public-api'
 import type { FAQ, SiteSettings, ZendaContent } from '@/lib/public-types'
@@ -147,11 +148,14 @@ export default function ZendaLanding() {
               ) : null}
             </div>
           </div>
-          {screenshots.length > 0 && (
-            <div className="rounded-2xl bg-gradient-to-br from-zenda-primary/40 to-zenda-deep p-6 ring-1 ring-white/10">
-              <PhoneSlideshow images={screenshots} />
-            </div>
-          )}
+          <div className="min-w-0">
+            <ZendaFintechVisual priority />
+            {screenshots.length > 0 ? (
+              <div className="mt-8 max-w-xs mx-auto">
+                <PhoneSlideshow images={screenshots} />
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 

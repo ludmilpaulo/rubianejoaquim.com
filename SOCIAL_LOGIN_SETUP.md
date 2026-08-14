@@ -100,17 +100,33 @@ Production app identifiers: Android package and iOS bundle `com.rubianejoaquim.z
 
 Native SDK (mobile): `@react-native-google-signin/google-signin`. Browser `expo-auth-session` Google provider is not used (it sent Android client IDs to Google’s web authorize endpoint and produced `invalid_request`).
 
+## Canonical production redirect URIs
+
+Use these exact values everywhere. Do not invent extra callback paths.
+
+| Provider | Web | Android | iOS |
+|---|---|---|---|
+| **Google** | GIS ID-token: JavaScript origins `https://www.rubianejoaquim.com` and `https://rubianejoaquim.com`. No redirect URI is used for GIS. Optional authorized redirects: `https://www.rubianejoaquim.com`, `https://www.rubianejoaquim.com/login`. Client: `Zenda Web` (`…sc5vf5kgoak181brsategi76po9mv6fq`). | Native SDK. Package `com.rubianejoaquim.zenda`. Play signing client `…r84rff44o3acsrcmlmiihmiadvcd23jn` SHA-1 `92:72:39:B9:4D:4C:9D:71:22:E4:32:A8:8D:E6:25:EA:39:5B:B7:46`. Upload-key client `…p4thqgjg9ratblhv0f5tosk2qi1bq3v5` SHA-1 `6A:39:B3:15:C8:9C:20:FE:22:F4:BA:95:1F:39:D7:42:AD:7A:51:06`. `webClientId` is the **Web** client. | Native SDK. Bundle `com.rubianejoaquim.zenda`. iOS client `…bt1io2ogtdl5focg0r25i2stg1sln4co`. URL scheme `com.googleusercontent.apps.112065604009-bt1io2ogtdl5focg0r25i2stg1sln4co`. |
+| **Facebook** | JS SDK. Valid OAuth Redirect URIs: `https://www.rubianejoaquim.com/`, `https://www.rubianejoaquim.com/login`, `https://rubianejoaquim.com/`, `https://rubianejoaquim.com/login`. Allowed JS SDK domains: `www.rubianejoaquim.com`, `rubianejoaquim.com`. App ID `2691305731001778`. | Native SDK. Package `com.rubianejoaquim.zenda`, class `com.rubianejoaquim.zenda.MainActivity`. Key hashes `knI5uU1MnXEi5DKojeYl6jlbt0Y=` (Play) and `ajmzFcicIP4i9LqVHznXQq16UQY=` (upload). Scheme `fb2691305731001778`. | Native SDK. Bundle ID **must** be `com.rubianejoaquim.zenda`. App Store ID `6758412176`. Scheme `fb2691305731001778`. |
+| **TikTok** | Login Kit **Web** on all platforms. Redirect URI (exact): `https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/`. Scope `user.info.basic`. After callback, web goes to `https://www.rubianejoaquim.com/login/social-callback?exchange_code=…`. | Same HTTPS callback, then `zenda://social-callback?exchange_code=…`. | Same as Android. |
+
+Mobile return scheme (all providers after backend session): `zenda://social-callback` (`MOBILE_OAUTH_REDIRECT_URI`).
+
 ## Meta (Facebook) Login
 
-The production error **“Facebook Login is currently unavailable for this app as we are updating additional details”** is returned by Meta, not Zenda. Code cannot clear it until the app is Live with completed checkups.
+The production error **“Facebook Login is currently unavailable for this app…”** is returned by Meta when `email` / `public_profile` are stuck on **Advanced access → Inactive → Verification required**. Zenda cannot clear that from application code. In the existing app (ID `2691305731001778`): complete Meta identity verification, **or** click **Return to standard access** for `email` and `public_profile` (Meta will ask you to re-enter the Facebook password). The Live toggle is already on; Data Use Checkup is complete. Login with the JavaScript SDK must be **Yes**, and the redirect URIs / JS SDK domains above must be saved.
 
 1. Create production app → add **Facebook Login**.
 2. Settings → Basic: App Domains `rubianejoaquim.com`, Privacy Policy URL, Data Deletion instructions (`https://www.rubianejoaquim.com/delete-account`).
 3. Complete **Data Use Checkup** and any “additional details” banner.
-4. App Review → Permissions and features: **Advanced Access** for `public_profile` and `email` (auto-granted after Live in many cases; still required for real users).
-5. Switch app to **Live**. Development mode only allows testers/developers.
+4. App Review → Permissions and features: `public_profile` and `email` must be **Standard access** and **Ready to use** (or Advanced access after Meta identity verification). **Inactive + Verification required** blocks Facebook Login for real users.
+5. Keep the header Live toggle **on**. If the label still says Development, identity verification is unfinished — that is a Meta account action, not an app-code change.
 6. Add platforms:
-   - **Android**: package `com.rubianejoaquim.zenda`, Play Store URL, key hash from Play **App signing** SHA-1 converted to Base64.
+   - **Android**: package `com.rubianejoaquim.zenda`, class `com.rubianejoaquim.zenda.MainActivity`, Play Store URL. Paste **both** key hashes (Settings → Basic → Android → Key Hashes, or Facebook Login → Settings). Missing hashes produce *“This app has no Android key hashes configured”*.
+     | Signing key | SHA-1 | Facebook key hash (paste this) |
+     |---|---|---|
+     | Play **App signing** (store / Play internal installs) | `92:72:39:B9:4D:4C:9D:71:22:E4:32:A8:8D:E6:25:EA:39:5B:B7:46` | `knI5uU1MnXEi5DKojeYl6jlbt0Y=` |
+     | EAS **upload** key (local / sideloaded AAB) | `6A:39:B3:15:C8:9C:20:FE:22:F4:BA:95:1F:39:D7:42:AD:7A:51:06` | `ajmzFcicIP4i9LqVHznXQq16UQY=` |
    - **iOS**: bundle ID `com.rubianejoaquim.zenda`, App Store ID `6758412176`.
 7. Facebook Login → Settings: Valid OAuth Redirect URIs for the **web JS SDK** (`https://www.rubianejoaquim.com/`, `https://rubianejoaquim.com/`).
 8. Copy **Client Token** (Settings → Advanced) into EAS `EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN`. This is public; the App Secret stays on the backend only.
@@ -130,7 +146,8 @@ Zenda uses **Web Login Kit** on all platforms (system browser → backend → Ti
 4. Scopes: `user.info.basic` (email is unavailable — accounts are created by `open_id`).
 5. Submit for TikTok review before public launch if required.
 6. Set `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI` on PythonAnywhere. They must match the portal exactly.
-7. A `400 Bad Request` on TikTok’s authorize page is almost always a portal mismatch (client key, redirect URI, sandbox, or Login Kit not enabled). Backend logs include TikTok `log_id` (no secrets) for support.
+7. A **404 / “something went wrong”** on TikTok’s page is **not** a Zenda API 404. Production `GET /api/auth/social/tiktok/` already 302s to TikTok. If the authorize redirect includes `enter_from=dev_<client_key>` (currently `dev_aws0wuv2weiy18dw`), the TikTok app is still **sandbox**. In [TikTok for Developers](https://developers.tiktok.com/apps): switch Login Kit to **Production**, keep the redirect URI exact, and while still in sandbox add your TikTok account under **Target users**.
+8. A `400 Bad Request` on TikTok’s authorize page is almost always a portal mismatch (client key, redirect URI, sandbox, or Login Kit not enabled). Backend logs include TikTok `log_id` (no secrets) for support.
 
 Web success contract: backend redirects to  
 `https://www.rubianejoaquim.com/login/social-callback?status=authenticated&exchange_code=...&next=/area-do-aluno`  
@@ -181,8 +198,10 @@ The web app redeems `exchange_code` via `POST /api/auth/social/exchange/` (it mu
 - [x] Production credentials created in each console
 - [x] Google Play App Signing SHA-1 on Android OAuth client `Zenda Android Play Signing` (`92:72:39:B9:4D:4C:9D:71:22:E4:32:A8:8D:E6:25:EA:39:5B:B7:46`); upload-key client `Zenda Android` (`6A:39:B3:15:C8:9C:20:FE:22:F4:BA:95:1F:39:D7:42:AD:7A:51:06`)
 - [x] Meta app Live (since 11 Aug 2026) + Data Use Checkup complete; Facebook Client Token in EAS
-- [ ] Meta `email` / `public_profile` still show **Verification required** — complete Meta identity verification so real users are not blocked with “updating additional details”
-- [x] TikTok backend `redirect_uri` is exact `https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/`; authorize `enter_from=dev_aws0wuv2weiy18dw` — switch the TikTok app from sandbox/dev to **Production** Login Kit in the portal (login required)
+- [x] Meta Android **Key Hashes** present: `knI5uU1MnXEi5DKojeYl6jlbt0Y=` (Play) and `ajmzFcicIP4i9LqVHznXQq16UQY=` (upload)
+- [ ] Meta `email` / `public_profile` still **Advanced access → Inactive → Verification required** — complete identity verification (or Return to standard access; Meta will re-prompt the Facebook password)
+- [ ] Meta iOS **Bundle ID** chip `com.rubianejoaquim.zenda` + App Store ID `6758412176` on Settings → Basic → iOS
+- [x] TikTok Login Kit is **Production / Live**; authorize URL has no `enter_from=dev_` and redirect URI matches
 - [ ] Sign in with Apple capability enabled on App ID + EAS iOS rebuild
 - [ ] Production smoke test on real Android + iOS devices (not Expo Go)
 

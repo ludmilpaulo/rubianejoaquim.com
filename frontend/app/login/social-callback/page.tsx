@@ -7,7 +7,7 @@ import { authApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { getApiErrorMessage } from '@/lib/types/api'
 import { useLocale } from '@/contexts/LocaleContext'
-import { safeAuthNext } from '@/lib/auth-next'
+import { familyJoinPathFromCode, safeAuthNext } from '@/lib/auth-next'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
 
 function SocialCallbackInner() {
@@ -21,7 +21,12 @@ function SocialCallbackInner() {
     const status = params.get('status')
     const exchangeCode = params.get('exchange_code')
     const token = params.get('token')
-    const safeNext = safeAuthNext(params.get('next')) || '/area-do-aluno'
+    const pendingInvite = familyJoinPathFromCode(
+      typeof document !== 'undefined'
+        ? document.cookie.split('; ').find((row) => row.startsWith('pending_family_invite='))?.split('=')[1]
+        : null,
+    )
+    const safeNext = safeAuthNext(params.get('next')) || pendingInvite || '/area-do-aluno'
 
     if (status === 'cancelled') {
       router.replace('/login')

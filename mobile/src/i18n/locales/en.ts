@@ -375,6 +375,28 @@ export default {
     insightBalance: 'Family balance in {{ccy}}: {{amount}}.',
     insightUpcoming: '{{count}} upcoming bills or debts.',
     insightSavings: 'Saved {{amount}} {{ccy}} toward family goals.',
+    notSetUp: 'Your family finances haven’t been set up yet.',
+    emptySetupHint: 'Add income, an expense, a budget or a goal to get started.',
+    saving: 'Saving…',
+    savedExpense: 'Expense added successfully',
+    savedIncome: 'Income added successfully',
+    savedBudget: 'Budget added successfully',
+    savedGoal: 'Goal created successfully',
+    addExpenseFailed: 'Unable to add the expense. Please check the information and try again.',
+    addIncomeFailed: 'Unable to add the income. Please check the information and try again.',
+    addBudgetFailed: 'Unable to add the budget. Please check the information and try again.',
+    addGoalFailed: 'Unable to create the goal. Please check the information and try again.',
+    addContribution: 'Contribution',
+    category: 'Category',
+    remaining: 'Remaining',
+    spent: 'Spent',
+    originalAmount: 'Original',
+    convertedAmount: 'Converted',
+    exchangeRate: 'Rate',
+    convertedAt: 'Converted on',
+    availableBudget: 'Available budget',
+    inviteSent: 'Invitation ready to share',
+    period: 'Period',
   },
   receipt: {
     title: 'Receipt scanner',
@@ -420,7 +442,9 @@ export default {
       tryAgain: 'Try Again',
       useEmail: 'Use Email',
       needsNativeBuild:
-        'Google, Facebook, and TikTok sign-in need a development or App Store build.',
+        'This install is missing Google and Facebook sign-in. Update Zenda from the App Store or Play Store, then try again.',
+      needsExpoGo:
+        'Google and Facebook sign-in are not available in Expo Go. Open this app in a development or store build.',
       cancelled: 'Sign-in was cancelled.',
       linkTitle: 'Link account',
       linkBody:
@@ -563,7 +587,7 @@ export default {
   },
   api: {
     errors: {
-      generic: 'Something went wrong',
+      generic: 'Unable to complete this action. Please check the information and try again.',
       network: 'Could not connect to the server ({{url}}). Check your internet connection.',
       server: 'The server is temporarily unavailable. Please try again in a moment.',
       login: {
