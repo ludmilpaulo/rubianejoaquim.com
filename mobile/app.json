@@ -51,6 +51,9 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
       "versionCode": 38,
+      "blockedPermissions": [
+        "com.google.android.gms.permission.AD_ID"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
