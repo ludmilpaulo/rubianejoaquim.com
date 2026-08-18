@@ -9,8 +9,8 @@ class AppVersionApiTests(TestCase):
     @override_settings(
         APP_MINIMUM_VERSION_IOS='1.0.0',
         APP_MINIMUM_VERSION_ANDROID='1.0.0',
-        APP_LATEST_VERSION_IOS='1.0.8',
-        APP_LATEST_VERSION_ANDROID='1.0.8',
+        APP_LATEST_VERSION_IOS='1.0.9',
+        APP_LATEST_VERSION_ANDROID='1.0.9',
         APP_FORCE_UPDATE=False,
         APP_STORE_URL_IOS='https://apps.apple.com/app/id6758412176',
         APP_STORE_URL_ANDROID='https://play.google.com/store/apps/details?id=com.rubianejoaquim.zenda',
@@ -20,7 +20,7 @@ class AppVersionApiTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data['ios']['minimum_version'], '1.0.0')
-        self.assertEqual(data['ios']['latest_version'], '1.0.8')
+        self.assertEqual(data['ios']['latest_version'], '1.0.9')
         self.assertIn('store_url', data['ios'])
         self.assertEqual(data['android']['minimum_version'], '1.0.0')
         self.assertFalse(data['force_update'])

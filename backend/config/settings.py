@@ -211,8 +211,8 @@ SUBSCRIPTION_IBAN = config('SUBSCRIPTION_IBAN', default='0040 0000 4047.9796.101
 SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Patricia Fernando Joaquim')
 
 # Mobile App (Zenda) store update check - bump when you publish a new version
-APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.8')
-APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.8')
+APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.9')
+APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.9')
 APP_MINIMUM_VERSION_IOS = config('APP_MINIMUM_VERSION_IOS', default='1.0.0')
 APP_MINIMUM_VERSION_ANDROID = config('APP_MINIMUM_VERSION_ANDROID', default='1.0.0')
 APP_FORCE_UPDATE = config('APP_FORCE_UPDATE', default=False, cast=bool)
