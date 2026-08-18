@@ -147,7 +147,10 @@ Zenda uses **Web Login Kit** on all platforms (system browser → backend → Ti
 5. Submit for TikTok review before public launch if required.
 6. Set `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TIKTOK_REDIRECT_URI` on PythonAnywhere. They must match the portal exactly.
 7. A **404 / “something went wrong”** on TikTok’s page is **not** a Zenda API 404. Production `GET /api/auth/social/tiktok/` already 302s to TikTok. If the authorize redirect includes `enter_from=dev_<client_key>` (currently `dev_aws0wuv2weiy18dw`), the TikTok app is still **sandbox**. In [TikTok for Developers](https://developers.tiktok.com/apps): switch Login Kit to **Production**, keep the redirect URI exact, and while still in sandbox add your TikTok account under **Target users**.
-8. A `400 Bad Request` on TikTok’s authorize page is almost always a portal mismatch (client key, redirect URI, sandbox, or Login Kit not enabled). Backend logs include TikTok `log_id` (no secrets) for support.
+
+   **Production probe (18 Aug 2026):** Django start = HTTP 302 to `tiktok.com/v2/auth/authorize` (redirect URI correct, trailing slash present). Django callback = HTTP 302 (not 404). TikTok then 302s to `/login?enter_from=dev_aws0wuv2weiy18dw` — that sandbox flag is the production 404/Bad Request source. Next.js has no TikTok callback of its own; a safety-net route now 302s `www.rubianejoaquim.com/api/auth/social/tiktok/callback` to Django. The domain verification file is also served on PythonAnywhere (`/tiktokFpaaRaUmoGf5Zl6lZ8hX77igVQZVuzJS.txt`). Run `python manage.py check_social_login --probe-tiktok` after changing the portal.
+
+8. A `400 Bad Request` on TikTok’s authorize page is almost always a portal mismatch (client key, redirect URI, sandbox, or Login Kit not enabled). Backend logs include TikTok `log_id` (no secrets) for support. Look for `oauth_step provider=tiktok step=… status=…`.
 
 Web success contract: backend redirects to  
 `https://www.rubianejoaquim.com/login/social-callback?status=authenticated&exchange_code=...&next=/area-do-aluno`  

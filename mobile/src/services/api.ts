@@ -161,6 +161,15 @@ export const configApi = {
     }>('/config/app-version/', { timeout: 8000 })
     return response.data
   },
+  getAppVersionV2: async () => {
+    const response = await api.get<{
+      ios: { minimum_version: string; latest_version: string; store_url: string }
+      android: { minimum_version: string; latest_version: string; store_url: string }
+      force_update: boolean
+      message: { en?: string; pt?: string; fr?: string; es?: string }
+    }>('/app/version/', { timeout: 8000 })
+    return response.data
+  },
 }
 
 // Public CMS content shared with the website. Django localizes by the lang query.
@@ -1040,6 +1049,20 @@ export const aiCopilotApi = {
     return response.data
   },
 
+  getFinancialHealth: async (locale?: string) => {
+    const response = await api.get('/ai-copilot/conversations/financial-health/', {
+      params: locale ? { locale } : undefined,
+    })
+    return response.data
+  },
+
+  getGoalCoach: async (goalId: number) => {
+    const response = await api.get('/ai-copilot/conversations/goal-coach/', {
+      params: { goal_id: goalId },
+    })
+    return response.data
+  },
+
   getMonthlyReport: async () => {
     const response = await api.get('/ai-copilot/conversations/monthly-report/')
     return response.data
@@ -1168,6 +1191,10 @@ export const receiptApi = {
     const response = await api.get('/finance/receipts/')
     return response.data.results || response.data
   },
+  get: async (id: number) => {
+    const response = await api.get(`/finance/receipts/${id}/`)
+    return response.data
+  },
   upload: async (formData: FormData) => {
     const response = await api.post('/finance/receipts/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -1176,6 +1203,55 @@ export const receiptApi = {
   },
   reprocess: async (id: number) => {
     const response = await api.post(`/finance/receipts/${id}/reprocess/`)
+    return response.data
+  },
+  createExpense: async (
+    id: number,
+    data: {
+      category_id?: number
+      budget_id?: number
+      description?: string
+      amount?: string
+      currency?: string
+      date?: string
+      payment_method?: string
+      confirmed_low_confidence?: boolean
+    },
+  ) => {
+    const response = await api.post(`/finance/receipts/${id}/create-expense/`, data)
+    return response.data
+  },
+}
+
+export const transactionHistoryApi = {
+  list: async (params?: Record<string, string | number | undefined>) => {
+    const response = await api.get('/finance/transactions/history/', { params })
+    return response.data as { results: unknown[]; count: number }
+  },
+}
+
+export const walletApi = {
+  getWallet: async () => {
+    const response = await api.get('/wallet/')
+    return response.data
+  },
+  getStatus: async () => {
+    const response = await api.get('/wallet/status/')
+    return response.data
+  },
+  transfer: async (data: {
+    amount: string
+    currency: string
+    transaction_type: string
+    idempotency_key: string
+    beneficiary_id?: number
+    simulate?: string
+  }) => {
+    const response = await api.post('/wallet/transfer/', data)
+    return response.data
+  },
+  getTransactions: async () => {
+    const response = await api.get('/wallet/transactions/')
     return response.data
   },
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, Dimensions, Alert, Text as RNText } from 'react-native'
 import { useNavigation, useRoute } from '@react-navigation/native'
-import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButtons, Menu, IconButton } from 'react-native-paper'
+import { Text, Card, Button, FAB, Chip, Portal, Modal, TextInput, SegmentedButtons, Menu, IconButton, Switch } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
@@ -15,8 +15,9 @@ import PersonalIncomeTab from '../components/finance/PersonalIncomeTab'
 import CurrencyPicker from '../components/CurrencyPicker'
 import { colors } from '../theme'
 import type { CurrencyCode } from '../utils/currency'
-import { getApiErrorMessage, unwrapList, type BudgetPayload, type DebtPayload, type ExpenseCreateResponse, type ExpensePayload, type ExpenseSummary } from '../types/api'
+import { getApiErrorMessage, unwrapList, type BudgetPayload, type DebtPayload, type ExpenseCreateResponse, type ExpensePayload, type ExpenseSummary, type GoalPayload } from '../types/api'
 import { handleBudgetAlerts } from '../utils/budgetAlerts'
+import { syncGoalReminders, cancelGoalReminders, notifyGoalProgressLocal } from '../utils/goalReminders'
 import { logger } from '../utils/logger'
 import { useI18n } from '../contexts/I18nContext'
 import { useAlert } from '../hooks/useAlert'
@@ -74,6 +75,10 @@ interface Goal {
   progress_percentage: string
   remaining_amount: string
   currency?: string
+  reminder_enabled?: boolean
+  reminder_time?: string | null
+  reminder_frequency?: 'once' | 'daily' | 'weekly' | string
+  reminder_offsets_minutes?: number[]
 }
 
 interface DebtPaymentRecord {
@@ -188,7 +193,17 @@ export default function PersonalFinanceScreen() {
     description: '',
     currency: preferredCurrency,
   })
-  const [goalForm, setGoalForm] = useState({ title: '', description: '', target_amount: '', target_date: null as Date | null, current_amount: '0', currency: preferredCurrency })
+  const [goalForm, setGoalForm] = useState({
+    title: '',
+    description: '',
+    target_amount: '',
+    target_date: null as Date | null,
+    current_amount: '0',
+    currency: preferredCurrency,
+    reminder_enabled: false,
+    reminder_time: null as Date | null,
+    reminder_frequency: 'once' as 'once' | 'daily' | 'weekly',
+  })
   const [debtForm, setDebtForm] = useState({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null as Date | null, description: '', currency: preferredCurrency })
 
   // Regras de Ouro (Fundamentos das {t('personal.title')})
@@ -268,7 +283,12 @@ export default function PersonalFinanceScreen() {
           switch (name) {
             case 'expenses': setExpenses(unwrapList(data as Expense[])); break
             case 'budgets': setBudgets(unwrapList(data as Budget[])); break
-            case 'goals': setGoals(unwrapList(data as Goal[])); break
+            case 'goals': {
+              const list = unwrapList(data as Goal[])
+              setGoals(list)
+              syncGoalReminders(list).catch((error) => logger.warn('syncGoalReminders failed', error))
+              break
+            }
             case 'debts': setDebts(unwrapList(data as Debt[])); break
             case 'categories': setCategories(unwrapList(data as Category[])); break
             case 'summary': setSummary(data as ExpenseSummary); break
@@ -431,8 +451,19 @@ export default function PersonalFinanceScreen() {
   const handleSaveGoal = async () => {
     await feedback.run(
       async () => {
-        const goalData = {
-          ...goalForm,
+        const reminderTime = goalForm.reminder_time
+          ? `${String(goalForm.reminder_time.getHours()).padStart(2, '0')}:${String(goalForm.reminder_time.getMinutes()).padStart(2, '0')}`
+          : null
+        const goalData: GoalPayload = {
+          title: goalForm.title,
+          description: goalForm.description,
+          target_amount: goalForm.target_amount,
+          current_amount: goalForm.current_amount,
+          currency: goalForm.currency,
+          reminder_enabled: goalForm.reminder_enabled,
+          reminder_time: reminderTime,
+          reminder_frequency: goalForm.reminder_frequency,
+          reminder_offsets_minutes: [10],
           target_date: goalForm.target_date
             ? `${goalForm.target_date.getFullYear()}-${String(goalForm.target_date.getMonth() + 1).padStart(2, '0')}-${String(goalForm.target_date.getDate()).padStart(2, '0')}`
             : '',
@@ -465,12 +496,19 @@ export default function PersonalFinanceScreen() {
 
     await feedback.run(
       async () => {
-        await personalFinanceApi.addMoneyToGoal(
+        const updated = await personalFinanceApi.addMoneyToGoal(
           selectedGoal.id,
           parseFloat(addMoneyAmount),
           undefined,
           contributeCurrency,
         )
+        const events = (updated as { progress_events?: string[] }).progress_events || []
+        if (events.includes('75')) {
+          await notifyGoalProgressLocal(selectedGoal.title, '75')
+        }
+        if (events.includes('100')) {
+          await notifyGoalProgressLocal(selectedGoal.title, '100')
+        }
         setShowAddMoneyModal(false)
         setSelectedGoal(null)
         setAddMoneyAmount('')
@@ -558,7 +596,60 @@ export default function PersonalFinanceScreen() {
     description: '',
     currency: preferredCurrency,
   })
-  const resetGoalForm = () => setGoalForm({ title: '', description: '', target_amount: '', target_date: null, current_amount: '0', currency: preferredCurrency })
+  const resetGoalForm = () => setGoalForm({
+    title: '',
+    description: '',
+    target_amount: '',
+    target_date: null,
+    current_amount: '0',
+    currency: preferredCurrency,
+    reminder_enabled: false,
+    reminder_time: null,
+    reminder_frequency: 'once',
+  })
+
+  const openEditGoal = (goal: Goal) => {
+    let reminderTime: Date | null = null
+    if (goal.reminder_time) {
+      const [hh, mm] = goal.reminder_time.split(':').map(Number)
+      const d = new Date()
+      d.setHours(hh || 0, mm || 0, 0, 0)
+      reminderTime = d
+    }
+    setEditingItem(goal)
+    setGoalForm({
+      title: goal.title,
+      description: goal.description || '',
+      target_amount: String(goal.target_amount),
+      target_date: goal.target_date ? new Date(`${goal.target_date}T00:00:00`) : null,
+      current_amount: String(goal.current_amount),
+      currency: (goal.currency || preferredCurrency) as CurrencyCode,
+      reminder_enabled: Boolean(goal.reminder_enabled),
+      reminder_time: reminderTime,
+      reminder_frequency: (goal.reminder_frequency as 'once' | 'daily' | 'weekly') || 'once',
+    })
+    setShowGoalModal(true)
+  }
+
+  const handleDeleteGoal = async (goalId: number) => {
+    await feedback.run(
+      async () => {
+        await personalFinanceApi.deleteGoal(goalId)
+        await cancelGoalReminders(goalId)
+        setShowGoalModal(false)
+        setEditingItem(null)
+        resetGoalForm()
+        await loadData()
+      },
+      {
+        pendingKey: 'deleteGoal',
+        pendingMessage: 'feedback.deleting',
+        successMessage: 'feedback.successDeleted',
+        errorFallback: 'feedback.tryAgain',
+        onError: (error) => logger.error('Error deleting goal:', error),
+      },
+    )
+  }
   const resetDebtForm = () => setDebtForm({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null, description: '', currency: preferredCurrency })
 
   const handlePayDebt = async () => {
@@ -1242,6 +1333,7 @@ export default function PersonalFinanceScreen() {
                         <Text variant="titleMedium">{goal.title}</Text>
                         <Text variant="bodySmall" style={styles.goalDescription}>{goal.description}</Text>
                       </View>
+                      <IconButton icon="pencil" onPress={() => openEditGoal(goal)} />
                       {(goal.status === 'active' || goal.status === 'completed' || goal.status === 'cancelled') && (
                         <Chip
                           icon="check-circle"
@@ -1844,6 +1936,37 @@ export default function PersonalFinanceScreen() {
             value={goalForm.target_date}
             onChange={(date) => setGoalForm({ ...goalForm, target_date: date })}
           />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text variant="bodyMedium">{t('personal.goalReminder')}</Text>
+            <Switch
+              value={goalForm.reminder_enabled}
+              onValueChange={(value) => setGoalForm({ ...goalForm, reminder_enabled: value })}
+            />
+          </View>
+          {goalForm.reminder_enabled ? (
+            <>
+              <DatePicker
+                label={t('personal.reminderTime')}
+                value={goalForm.reminder_time}
+                onChange={(date) => setGoalForm({ ...goalForm, reminder_time: date })}
+                mode="time"
+              />
+              <SegmentedButtons
+                value={goalForm.reminder_frequency}
+                onValueChange={(value) =>
+                  setGoalForm({ ...goalForm, reminder_frequency: value as 'once' | 'daily' | 'weekly' })
+                }
+                buttons={[
+                  { value: 'once', label: t('personal.reminderOnce') },
+                  { value: 'daily', label: t('personal.reminderDaily') },
+                  { value: 'weekly', label: t('personal.reminderWeekly') },
+                ]}
+              />
+              <Text variant="bodySmall" style={{ marginTop: 8, marginBottom: 8 }}>
+                {t('personal.reminderTenMinutes')}
+              </Text>
+            </>
+          ) : null}
           <Button
             mode="contained"
             onPress={handleSaveGoal}
@@ -1852,6 +1975,16 @@ export default function PersonalFinanceScreen() {
           >
             {feedback.actionLabel('common.save', 'saveGoal', 'feedback.savingGoal')}
           </Button>
+          {editingItem && 'target_amount' in editingItem && 'current_amount' in editingItem ? (
+            <Button
+              mode="outlined"
+              onPress={() => handleDeleteGoal(editingItem.id)}
+              style={styles.modalButton}
+              textColor="#E53935"
+            >
+              {t('common.delete')}
+            </Button>
+          ) : null}
         </Modal>
       </Portal>
 

@@ -29,6 +29,7 @@ from .social_providers import (
     build_tiktok_authorize_url,
     exchange_tiktok_code,
     log_oauth_failure,
+    log_oauth_step,
     verify_apple_identity_token,
     verify_facebook_access_token,
     verify_google_id_token,
@@ -272,11 +273,14 @@ def social_exchange(request):
     code = request.data.get('exchange_code') or request.data.get('code')
     if not code:
         return Response({'error': 'exchange_code em falta.', 'code': 'missing_code'}, status=400)
+    platform = _client_platform(request)
+    log_oauth_step(provider='tiktok', step='session_exchange', platform=platform, status='started')
     try:
         token_key = redeem_session_exchange_code(code)
         token = Token.objects.select_related('user').filter(key=token_key).first()
         if not token or not token.user.is_active:
             raise SocialAuthError('Sessão inválida.', code='invalid_session', status=401)
+        log_oauth_step(provider='tiktok', step='session_exchange', platform=platform, status='success')
         return Response({
             'status': 'authenticated',
             'user': UserSerializer(token.user).data,
@@ -285,6 +289,12 @@ def social_exchange(request):
             'provider': request.data.get('provider') or 'tiktok',
         })
     except SocialAuthError as exc:
+        log_oauth_failure(
+            provider='tiktok',
+            step='session_exchange',
+            platform=platform,
+            error=exc.code,
+        )
         return _error_response(exc)
     except Exception as exc:
         return _error_response(exc)
@@ -330,6 +340,9 @@ def tiktok_start(request):
         # Encode client into redirect_path marker consumed by callback
         redirect_path = f'mobile:{redirect_path}'
 
+    platform = _client_platform(request)
+    log_oauth_step(provider='tiktok', step='authorization', platform=platform, status='started')
+
     linking_user = None
     if purpose == OAuthState.PURPOSE_LINK:
         if not request.user.is_authenticated:
@@ -345,11 +358,12 @@ def tiktok_start(request):
     except ProviderVerificationError as exc:
         log_oauth_failure(
             provider='tiktok',
-            step='authorize_start',
-            platform=_client_platform(request),
+            step='authorization',
+            platform=platform,
         )
         return _error_response(exc)
 
+    log_oauth_step(provider='tiktok', step='authorization', platform=platform, status='redirected')
     return HttpResponseRedirect(url)
 
 
@@ -365,6 +379,14 @@ def tiktok_callback(request):
         else None
     )
     client = 'mobile' if oauth_state and (oauth_state.redirect_path or '').startswith('mobile:') else 'web'
+    log_oauth_step(
+        provider='tiktok',
+        step='callback',
+        platform=client,
+        status='received',
+        error=request.query_params.get('error') or None,
+        log_id=request.query_params.get('log_id') or '',
+    )
 
     def _fail_redirect(*, cancelled: bool = False, message: str = '') -> HttpResponseRedirect:
         params = {
@@ -412,8 +434,15 @@ def tiktok_callback(request):
             redirect_uri=redirect_uri,
             code_verifier=oauth_state.code_verifier,
         )
+        log_oauth_step(provider='tiktok', step='token_exchange', platform=client, status='success')
         linking_user = oauth_state.user if oauth_state.purpose == OAuthState.PURPOSE_LINK else None
         result = authenticate_social_user(verified, linking_user=linking_user)
+        log_oauth_step(
+            provider='tiktok',
+            step='user_create_or_login',
+            platform=client,
+            status='success' if result.status == 'authenticated' else result.status,
+        )
     except (ProviderVerificationError, SocialAuthError) as exc:
         log_oauth_failure(
             provider='tiktok',

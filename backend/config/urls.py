@@ -5,11 +5,13 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import app_version
+from .views import app_version, app_version_v2, tiktok_domain_verification
 
 urlpatterns = [
+    path('tiktokFpaaRaUmoGf5Zl6lZ8hX77igVQZVuzJS.txt', tiktok_domain_verification),
     path('admin/', admin.site.urls),
     path('api/config/app-version/', app_version),
+    path('api/app/version/', app_version_v2),
     path('api/auth/', include('accounts.urls')),
     path('api/course/', include('courses.urls')),
     path('api/mentorship/', include('mentorship.urls')),
@@ -20,6 +22,7 @@ urlpatterns = [
     path('api/portfolio/', include('portfolio.urls')),
     path('api/public/', include('portfolio.public_urls')),
     path('api/finance-space/', include('finance_space.urls')),
+    path('api/wallet/', include('wallet.urls')),
 ]
 
 if settings.DEBUG:

@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from django.utils import timezone
 
+from finance.budget_alert_i18n import budget_alert_level, t
+
 
 def _prefs(user) -> dict:
     raw = getattr(user, 'notification_prefs', None) or {}
@@ -81,15 +83,76 @@ def compute_plan_progress(plan) -> dict:
 
 
 def _alert_level(percent: Decimal, actual: Decimal, limit: Decimal) -> int:
+    return budget_alert_level(percent, actual, limit)
+
+
+def maybe_emit_category_budget_alerts(user, budget) -> list[dict]:
+    """Per-budget alerts at 70/80/90/100/exceeded thresholds."""
+    from finance.models import Budget
+    from tasks.models import Notification
+
+    if not isinstance(budget, Budget) or not budget.amount:
+        return []
+
+    spent = budget.spent
+    limit = Decimal(str(budget.amount))
     if limit <= 0:
-        return 0
-    if actual > limit:
-        return 101
-    if percent >= Decimal('100'):
-        return 100
-    if percent >= Decimal('80'):
-        return 80
-    return 0
+        return []
+
+    percent = ((spent / limit) * Decimal('100')).quantize(Decimal('0.01'))
+    level = budget_alert_level(percent, spent, limit)
+    prev = budget.last_budget_alert_level or 0
+    if level == 0 or level <= prev:
+        return []
+
+    name = budget.category.name if budget.category else budget.description or 'Budget'
+    currency = (budget.currency or 'AOA').upper()
+    remaining = (limit - spent).quantize(Decimal('0.01'))
+    over = (spent - limit).quantize(Decimal('0.01'))
+    created: list[dict] = []
+
+    thresholds = [
+        (70, 'budget_warning_70', 'budget_warning'),
+        (80, 'budget_warning_80', 'budget_warning'),
+        (90, 'budget_warning_90', 'budget_warning'),
+        (100, 'budget_at_limit', 'budget_at_limit'),
+        (101, 'budget_exceeded', 'budget_exceeded'),
+    ]
+
+    for thresh, msg_key, ntype in thresholds:
+        if level >= thresh and prev < thresh:
+            if not prefs_enabled(user, 'budget_warnings' if thresh < 101 else 'budget_exceeded', True):
+                continue
+            kwargs = {'name': name, 'remaining': str(remaining), 'currency': currency}
+            if thresh >= 101:
+                kwargs = {'name': name, 'over': str(over), 'currency': currency}
+            message = t(user, msg_key, **kwargs)
+            title = t(user, msg_key, **kwargs)[:120]
+            n = Notification.objects.create(
+                user=user,
+                title=title,
+                message=message,
+                notification_type=ntype,
+                related_object_type='budget',
+                related_object_id=budget.id,
+                action_url=f'zenda://personal?initialTab=budgets',
+            )
+            created.append({
+                'id': n.id,
+                'level': thresh,
+                'type': ntype,
+                'title': title,
+                'message': message,
+                'budget_id': budget.id,
+                'percent_used': str(percent),
+                'currency': currency,
+            })
+
+    if created:
+        budget.last_budget_alert_level = level
+        budget.save(update_fields=['last_budget_alert_level', 'updated_at'])
+
+    return created
 
 
 def maybe_emit_budget_alerts(user, *, month: int | None = None, year: int | None = None) -> list[dict]:
@@ -124,11 +187,8 @@ def maybe_emit_budget_alerts(user, *, month: int | None = None, year: int | None
 
     if level >= 80 and (plan.last_budget_alert_level or 0) < 80:
         if prefs_enabled(user, 'budget_warnings', True):
-            title = 'Budget Alert'
-            message = (
-                f'You have used 80% of your monthly spending budget. '
-                f'You have {remaining} {currency} remaining.'
-            )
+            title = t(user, 'monthly_warning_80', remaining=str(remaining), currency=currency)
+            message = title
             # Localized titles stored as EN keys-ish; mobile can re-translate by type
             n = Notification.objects.create(
                 user=user,
@@ -152,8 +212,8 @@ def maybe_emit_budget_alerts(user, *, month: int | None = None, year: int | None
 
     if level >= 100 and (plan.last_budget_alert_level or 0) < 100:
         if prefs_enabled(user, 'budget_exceeded', True):
-            title = 'Budget Exceeded'
-            message = 'You have reached your monthly spending limit.'
+            title = t(user, 'monthly_at_limit')
+            message = title
             n = Notification.objects.create(
                 user=user,
                 title=title,
@@ -177,11 +237,8 @@ def maybe_emit_budget_alerts(user, *, month: int | None = None, year: int | None
     if level >= 101 and (plan.last_budget_alert_level or 0) < 101:
         if prefs_enabled(user, 'budget_exceeded', True):
             over = (actual - limit).quantize(Decimal('0.01'))
-            title = 'URGENT: Budget Exceeded'
-            message = (
-                f'You have exceeded your monthly budget by {over} {currency}. '
-                f'Review your expenses before making another purchase.'
-            )
+            title = t(user, 'monthly_exceeded', over=str(over), currency=currency)
+            message = title
             n = Notification.objects.create(
                 user=user,
                 title=title,

@@ -97,7 +97,7 @@ from .serializers import (
     CategorySerializer, PersonalExpenseSerializer, PersonalIncomeSerializer,
     BudgetSerializer, GoalSerializer, DebtSerializer, SaleSerializer,
     BusinessExpenseSerializer, ExchangeRateSerializer, UserFavoriteCurrencySerializer,
-    ReceiptSerializer, MonthlyFinancialPlanSerializer,
+    ReceiptSerializer, MonthlyFinancialPlanSerializer, ReceiptCreateExpenseSerializer,
 )
 from .services import (
     build_dashboard,
@@ -105,6 +105,9 @@ from .services import (
     get_health_history,
     build_analytics,
     process_receipt_ocr,
+    create_expense_from_receipt,
+    apply_expense_fx_snapshot,
+    build_transaction_history,
 )
 
 
@@ -233,17 +236,19 @@ class PersonalExpenseViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         save_with_user_currency(serializer, self.request.user)
         expense = serializer.instance
+        apply_expense_fx_snapshot(expense, self.request.user)
         alerts = []
         try:
-            from finance.budget_alerts import maybe_emit_budget_alerts
+            from finance.budget_alerts import maybe_emit_budget_alerts, maybe_emit_category_budget_alerts
             alerts = maybe_emit_budget_alerts(
                 self.request.user,
                 month=expense.date.month,
                 year=expense.date.year,
             )
+            if expense.budget_id:
+                alerts.extend(maybe_emit_category_budget_alerts(self.request.user, expense.budget))
         except Exception:
             alerts = []
-        # Stash for create() response enrichment
         self._budget_alerts = alerts
 
     def create(self, request, *args, **kwargs):
@@ -478,6 +483,7 @@ class GoalViewSet(viewsets.ModelViewSet):
                 rate = fx['exchange_rate']
 
             note = str(request.data.get('note', '') or '')[:255]
+            previous_amount = goal.current_amount
             GoalContribution.objects.create(
                 user=request.user,
                 goal=goal,
@@ -497,9 +503,14 @@ class GoalViewSet(viewsets.ModelViewSet):
                 goal.current_amount = goal.target_amount
 
             goal.save()
-            
+            from finance.goal_progress import notify_goal_progress
+            progress_events = notify_goal_progress(goal, previous_amount)
+            goal.refresh_from_db()
+
             serializer = self.get_serializer(goal)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            data = serializer.data
+            data['progress_events'] = progress_events
+            return Response(data, status=status.HTTP_200_OK)
             
         except (ValueError, TypeError):
             return Response(
@@ -761,6 +772,11 @@ class ReceiptViewSet(viewsets.ModelViewSet):
     serializer_class = ReceiptSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx['request'] = self.request
+        return ctx
+
     def get_queryset(self):
         return Receipt.objects.filter(user=self.request.user)
 
@@ -774,12 +790,99 @@ class ReceiptViewSet(viewsets.ModelViewSet):
         process_receipt_ocr(receipt)
         return Response(self.get_serializer(receipt).data)
 
+    @action(detail=True, methods=['post'], url_path='create-expense')
+    def create_expense(self, request, pk=None):
+        receipt = self.get_object()
+        ser = ReceiptCreateExpenseSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        data = ser.validated_data
+        try:
+            expense, alerts = create_expense_from_receipt(
+                receipt,
+                category_id=data.get('category_id'),
+                budget_id=data.get('budget_id'),
+                description=data.get('description'),
+                amount=data.get('amount'),
+                currency=data.get('currency'),
+                expense_date=data.get('date'),
+                payment_method=data.get('payment_method'),
+                confirmed_low_confidence=data.get('confirmed_low_confidence', False),
+            )
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        budget_impact = None
+        if expense.budget_id:
+            b = expense.budget
+            budget_impact = {
+                'budget_id': b.id,
+                'budget_name': b.category.name if b.category else b.description,
+                'limit': str(b.amount),
+                'spent': str(b.spent),
+                'remaining': str(b.remaining),
+                'currency': b.currency,
+            }
+
+        return Response({
+            'expense': PersonalExpenseSerializer(expense).data,
+            'receipt': self.get_serializer(receipt).data,
+            'budget_alerts': alerts,
+            'budget_impact': budget_impact,
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='file')
+    def file(self, request, pk=None):
+        from django.http import FileResponse, Http404
+        from finance.receipt_storage import verify_receipt_access_token
+
+        receipt = self.get_object()
+        token = request.query_params.get('token')
+        if token:
+            if not verify_receipt_access_token(token, receipt.id, request.user.id):
+                return Response({'detail': 'Invalid or expired token'}, status=status.HTTP_403_FORBIDDEN)
+        elif receipt.user_id != request.user.id:
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not receipt.file:
+            raise Http404
+        try:
+            return FileResponse(receipt.file.open('rb'), content_type='application/octet-stream')
+        except FileNotFoundError:
+            raise Http404
+
+
+class TransactionHistoryViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        filters = {
+            'date_from': request.query_params.get('date_from'),
+            'date_to': request.query_params.get('date_to'),
+            'month': request.query_params.get('month'),
+            'year': request.query_params.get('year'),
+            'category': request.query_params.get('category'),
+            'budget': request.query_params.get('budget'),
+            'currency': request.query_params.get('currency'),
+            'merchant': request.query_params.get('merchant'),
+            'payment_method': request.query_params.get('payment_method'),
+            'amount_min': request.query_params.get('amount_min'),
+            'amount_max': request.query_params.get('amount_max'),
+        }
+        rows = build_transaction_history(request.user, filters=filters)
+        return Response({'results': rows, 'count': len(rows)})
+
 
 class ExchangeRateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ExchangeRate.objects.all()
     serializer_class = ExchangeRateSerializer
     permission_classes = [AllowAny]
     pagination_class = None
+
+    def get_throttles(self):
+        from finance.throttling import FxAnonRateThrottle, FxUserRateThrottle
+        if self.request.user and self.request.user.is_authenticated:
+            return [FxUserRateThrottle()]
+        return [FxAnonRateThrottle()]
 
     def list(self, request, *args, **kwargs):
         """Optionally refresh live rates when ?refresh=1. Always expose source/stale/freshness."""

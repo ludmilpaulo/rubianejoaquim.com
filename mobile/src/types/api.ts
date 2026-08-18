@@ -181,6 +181,10 @@ export interface GoalPayload {
   target_date: string
   status?: 'active' | 'completed' | 'cancelled'
   currency?: string
+  reminder_enabled?: boolean
+  reminder_time?: string | null
+  reminder_frequency?: 'once' | 'daily' | 'weekly'
+  reminder_offsets_minutes?: number[]
 }
 
 export interface DebtPayload {

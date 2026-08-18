@@ -43,3 +43,36 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.role} - {self.content[:50]}..."
+
+
+class FinancialSnapshot(models.Model):
+    """Cached monthly financial summary for AI health trends."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='financial_snapshots')
+    month = models.PositiveSmallIntegerField()
+    year = models.PositiveSmallIntegerField()
+    income = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    expenses = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    savings = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    debt_payments = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    available = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, default='AOA')
+    components = models.JSONField(default=dict, blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'month', 'year']
+        ordering = ['-year', '-month']
+
+
+class AIInsight(models.Model):
+    """Stored pattern insight with auditable source data."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_insights')
+    insight_type = models.CharField(max_length=64)
+    message = models.TextField()
+    source_data = models.JSONField(default=dict)
+    month = models.PositiveSmallIntegerField(null=True, blank=True)
+    year = models.PositiveSmallIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']

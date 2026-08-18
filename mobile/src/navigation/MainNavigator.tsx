@@ -23,56 +23,68 @@ import MarketScreen from '../screens/MarketScreen'
 import SettingsScreen from '../screens/SettingsScreen'
 import AboutScreen from '../screens/AboutScreen'
 import HelpSupportScreen from '../screens/HelpSupportScreen'
+import type { HomeStackParamList } from './types'
 import { useI18n } from '../contexts/I18nContext'
 import { colors } from '../theme'
 import HealthHistoryScreen from '../screens/HealthHistoryScreen'
 import AnalyticsScreen from '../screens/AnalyticsScreen'
 import FamilyFinanceScreen from '../screens/FamilyFinanceScreen'
 import ReceiptScannerScreen from '../screens/ReceiptScannerScreen'
+import ScanReceiptScreen from '../screens/ScanReceiptScreen'
+import ReviewReceiptScreen from '../screens/ReviewReceiptScreen'
+import TransactionHistoryScreen from '../screens/TransactionHistoryScreen'
+import FinancialHealthScreen from '../screens/FinancialHealthScreen'
+import WalletHomeScreen from '../screens/wallet/WalletHomeScreen'
 
 const Tab = createBottomTabNavigator()
+const HomeStackNav = createStackNavigator<HomeStackParamList>()
 const Stack = createStackNavigator()
 
 function HomeStack() {
   const { t } = useI18n()
   const headerStyle = { backgroundColor: colors.brand.primary }
   return (
-    <Stack.Navigator>
-      <Stack.Screen 
+    <HomeStackNav.Navigator>
+      <HomeStackNav.Screen 
         name="HomeMain" 
         component={HomeScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen 
+      <HomeStackNav.Screen 
         name="ToDoList" 
         component={ToDoListScreen}
         options={{ title: t('navigation.todoList'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen 
+      <HomeStackNav.Screen 
         name="Targets" 
         component={TargetsScreen}
         options={{ title: t('navigation.targets'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen 
+      <HomeStackNav.Screen 
         name="Notifications" 
         component={NotificationsScreen}
         options={{ title: t('navigation.notifications'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen 
+      <HomeStackNav.Screen 
         name="AICopilot" 
         component={AICopilotScreen}
         options={{ title: t('navigation.aiCopilot'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen 
+      <HomeStackNav.Screen 
         name="Market" 
         component={MarketScreen}
         options={{ title: t('navigation.market'), headerStyle, headerTintColor: '#fff' }}
       />
-      <Stack.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
-      <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle, headerTintColor: '#fff' }} />
-      <Stack.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle, headerTintColor: '#fff' }} />
-      <Stack.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle, headerTintColor: '#fff' }} />
-    </Stack.Navigator>
+      <HomeStackNav.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="FinancialHealth" component={FinancialHealthScreen} options={{ title: t('navigation.financialHealth'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ScanReceipt" component={ScanReceiptScreen} options={{ title: t('receipt.scanCamera'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ReviewReceipt" component={ReviewReceiptScreen} options={{ title: t('receipt.reviewTitle'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="TransactionHistory" component={TransactionHistoryScreen} options={{ title: t('navigation.transactionHistory'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="WalletHome" component={WalletHomeScreen} options={{ title: t('navigation.wallet'), headerStyle, headerTintColor: '#fff' }} />
+    </HomeStackNav.Navigator>
   )
 }
 

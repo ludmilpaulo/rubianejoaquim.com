@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 
 from django.conf import settings
 from rest_framework import viewsets, status
@@ -308,7 +309,112 @@ class ConversationViewSet(viewsets.ModelViewSet):
             'suggested_prompts': suggested[:7],
             'goals_count': len(data.get('goals') or []),
             'debts_count': len(data.get('debts') or []),
+            'patterns': self._localized_patterns(request.user, locale),
         })
+
+    @action(detail=False, methods=['get'], url_path='financial-health')
+    def financial_health(self, request):
+        from ai_copilot.insights_engine import build_financial_health_summary, detect_spending_patterns
+        from ai_copilot.models import FinancialSnapshot
+
+        summary = build_financial_health_summary(request.user)
+        patterns = detect_spending_patterns(request.user)
+        locale = (request.query_params.get('locale') or getattr(request.user, 'preferred_locale', None) or 'en').lower()[:2]
+
+        FinancialSnapshot.objects.update_or_create(
+            user=request.user,
+            month=summary['month'],
+            year=summary['year'],
+            defaults={
+                'income': Decimal(str(summary['income'])),
+                'expenses': Decimal(str(summary['expenses'])),
+                'savings': Decimal(str(summary['savings'])),
+                'debt_payments': Decimal(str(summary['debt_payments'])),
+                'available': Decimal(str(summary['available'])),
+                'currency': summary['currency'],
+                'components': {'patterns_count': len(patterns)},
+            },
+        )
+
+        narrative = self._build_health_narrative(summary, patterns, locale)
+        return Response({
+            'summary': summary,
+            'patterns': self._localized_patterns(request.user, locale),
+            'narrative': narrative,
+        })
+
+    @action(detail=False, methods=['get'], url_path='goal-coach')
+    def goal_coach(self, request):
+        from ai_copilot.insights_engine import build_goal_coach
+        goal_id = request.query_params.get('goal_id')
+        if not goal_id:
+            return Response({'detail': 'goal_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        data = build_goal_coach(request.user, int(goal_id))
+        if data.get('error'):
+            return Response(data, status=status.HTTP_404_NOT_FOUND)
+        return Response(data)
+
+    def _localized_patterns(self, user, locale: str) -> list[dict]:
+        from ai_copilot.insights_engine import detect_spending_patterns
+
+        patterns = detect_spending_patterns(user)
+        out = []
+        for p in patterns:
+            msg = self._pattern_message(p, locale)
+            out.append({**p, 'message': msg})
+        return out
+
+    def _pattern_message(self, pattern: dict, locale: str) -> str:
+        key = pattern.get('message_key', '')
+        templates = {
+            'spending_change': {
+                'en': 'Your spending is {percent}% {direction} vs last month.',
+                'pt': 'Os seus gastos estão {percent}% {direction} face ao mês passado.',
+            },
+            'category_increase': {
+                'en': 'Your {category} spending is {percent}% above your 3-month average.',
+                'pt': 'Gastos em {category} estão {percent}% acima da média de 3 meses.',
+            },
+            'recurring_payments': {
+                'en': 'You appear to have {count} recurring payment(s).',
+                'pt': 'Parece ter {count} pagamento(s) recorrente(s).',
+            },
+            'budget_risk': {
+                'en': 'At your current rate, you may exceed {budget} budget by ~{projected_over} {currency}.',
+                'pt': 'Ao ritmo actual, pode exceder o orçamento {budget} em ~{projected_over} {currency}.',
+            },
+            'savings_opportunity': {
+                'en': 'You could potentially save {potential_monthly} {currency}/month in discretionary categories.',
+                'pt': 'Pode poupar cerca de {potential_monthly} {currency}/mês em categorias discricionárias.',
+            },
+        }
+        tpl = (templates.get(key) or {}).get(locale) or (templates.get(key) or {}).get('en', '')
+        direction = 'higher' if pattern.get('direction') == 'up' else 'lower'
+        if locale == 'pt':
+            direction = 'superiores' if pattern.get('direction') == 'up' else 'inferiores'
+        try:
+            return tpl.format(**pattern, direction=direction)
+        except Exception:
+            return tpl
+
+    def _build_health_narrative(self, summary: dict, patterns: list, locale: str) -> str:
+        lines = []
+        if locale == 'pt':
+            lines.append(
+                f"Receitas: {summary['income']} {summary['currency']} | "
+                f"Despesas: {summary['expenses']} | Poupança: {summary['savings']} | "
+                f"Disponível: {summary['available']}"
+            )
+        else:
+            lines.append(
+                f"Income: {summary['income']} {summary['currency']} | "
+                f"Expenses: {summary['expenses']} | Savings: {summary['savings']} | "
+                f"Available: {summary['available']}"
+            )
+        for p in patterns[:3]:
+            lines.append(self._pattern_message(p, locale))
+        lines.append(summary.get('disclaimer', ''))
+        return ' '.join(lines)
 
     def _call_openai(self, conversation, bundle: dict, fallback: str) -> str:
         api_key = getattr(settings, 'OPENAI_API_KEY', None)

@@ -5,11 +5,11 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.utils import timezone
 
 from .fx import convert_amount, sum_in_currency
-from .models import Budget, Debt, Goal, PersonalExpense, PersonalIncome, Sale, BusinessExpense
+from .models import Budget, Category, Debt, Goal, PersonalExpense, PersonalIncome, Sale, BusinessExpense
 
 
 def _decimal(value: Decimal | None) -> Decimal:
@@ -343,19 +343,223 @@ def build_analytics(user) -> dict[str, Any]:
 
 
 def process_receipt_ocr(receipt) -> None:
-    """Lightweight OCR stub: extract amount from filename or notes until full OCR service."""
-    import re
+    """Parse scanned_text via receipt_parser and update receipt fields.
 
-    text = receipt.scanned_text or ''
-    if receipt.file and not text:
-        text = receipt.file.name
-    match = re.search(r'(\d+[.,]\d{2})', text.replace(',', '.'))
-    if match and not receipt.amount:
-        try:
-            receipt.amount = Decimal(match.group(1).replace(',', '.'))
-        except Exception:
-            pass
-    if not receipt.merchant and receipt.file:
-        receipt.merchant = receipt.file.name.split('/')[-1][:80]
-    receipt.status = 'processed'
-    receipt.save(update_fields=['amount', 'merchant', 'status'])
+    Do not treat the uploaded filename as OCR text. If on-device text is empty
+    or the parse has no total, optionally run OpenAI vision (when configured).
+    """
+    from .receipt_parser import parse_receipt_text
+    from .receipt_vision import extract_receipt_with_vision
+
+    text = (receipt.scanned_text or '').strip()
+    default_currency = getattr(receipt.user, 'preferred_currency', None) or 'AOA'
+    parsed = parse_receipt_text(text, default_currency=default_currency)
+
+    needs_vision = (not text) or parsed.get('amount') is None or parsed.get('status') in (
+        'failed',
+        'low_confidence',
+    )
+    if needs_vision:
+        vision = extract_receipt_with_vision(receipt)
+        if vision:
+            if vision.get('raw_text') and not text:
+                receipt.scanned_text = vision['raw_text']
+                text = vision['raw_text']
+                parsed = parse_receipt_text(text, default_currency=default_currency)
+            if parsed.get('amount') is None and vision.get('amount') is not None:
+                parsed['amount'] = vision['amount']
+                parsed['status'] = 'low_confidence' if vision.get('confidence', 0) < 0.6 else 'processed'
+                parsed['confidence_score'] = Decimal(str(round(vision.get('confidence') or 0.5, 3)))
+            if vision.get('currency') and (not parsed.get('currency') or parsed.get('status') != 'processed'):
+                parsed['currency'] = vision['currency']
+            if vision.get('merchant') and not parsed.get('merchant'):
+                parsed['merchant'] = vision['merchant']
+            if vision.get('date') and not parsed.get('receipt_date'):
+                from datetime import date as date_cls
+
+                try:
+                    parsed['receipt_date'] = date_cls.fromisoformat(vision['date'])
+                except ValueError:
+                    pass
+            if not text:
+                parsed['status'] = parsed.get('status') or 'low_confidence'
+
+    receipt.merchant = parsed.get('merchant') or receipt.merchant
+    if parsed.get('amount') is not None:
+        receipt.amount = parsed['amount']
+    receipt.currency = parsed.get('currency') or receipt.currency
+    receipt.receipt_date = parsed.get('receipt_date')
+    receipt.receipt_time = parsed.get('receipt_time')
+    receipt.tax_amount = parsed.get('tax_amount')
+    receipt.receipt_number = parsed.get('receipt_number') or ''
+    receipt.items = parsed.get('items') or []
+    if parsed.get('payment_method'):
+        receipt.payment_method = parsed['payment_method']
+    receipt.suggested_category = parsed.get('suggested_category') or ''
+    receipt.confidence_score = parsed.get('confidence_score')
+    receipt.status = parsed.get('status') or 'failed'
+    receipt.save(
+        update_fields=[
+            'merchant', 'amount', 'currency', 'receipt_date', 'receipt_time',
+            'tax_amount', 'receipt_number', 'items', 'payment_method',
+            'suggested_category', 'confidence_score', 'status', 'scanned_text',
+            'updated_at',
+        ]
+    )
+
+
+def apply_expense_fx_snapshot(expense, user) -> None:
+    """Store immutable FX conversion into user's preferred currency."""
+    from django.utils import timezone as tz
+
+    display = (getattr(user, 'preferred_currency', None) or expense.currency or 'AOA').upper()
+    expense.display_currency = display
+    src = (expense.currency or display).upper()
+    if src == display:
+        expense.exchange_rate = Decimal('1')
+        expense.converted_amount = Decimal(str(expense.amount)).quantize(Decimal('0.01'))
+        expense.exchange_rate_source = 'identity'
+        expense.exchange_rate_timestamp = tz.now()
+    else:
+        fx = convert_amount(expense.amount, src, display)
+        if fx:
+            expense.exchange_rate = fx['rate']
+            expense.converted_amount = fx['converted_amount']
+            expense.exchange_rate_source = fx.get('source') or ''
+            expense.exchange_rate_timestamp = fx.get('provider_updated_at') or tz.now()
+    expense.save(
+        update_fields=[
+            'display_currency', 'exchange_rate', 'converted_amount',
+            'exchange_rate_source', 'exchange_rate_timestamp', 'updated_at',
+        ]
+    )
+
+
+def create_expense_from_receipt(
+    receipt,
+    *,
+    category_id: int | None = None,
+    budget_id: int | None = None,
+    description: str | None = None,
+    amount=None,
+    currency: str | None = None,
+    expense_date=None,
+    payment_method: str | None = None,
+    confirmed_low_confidence: bool = False,
+) -> tuple[PersonalExpense, list[dict]]:
+    """Create PersonalExpense from receipt and link; returns expense + budget alerts."""
+    from finance.budget_alerts import maybe_emit_budget_alerts, maybe_emit_category_budget_alerts
+
+    if receipt.linked_expense_id:
+        raise ValueError('Receipt already linked to an expense')
+
+    if receipt.status == 'low_confidence' and not confirmed_low_confidence:
+        raise ValueError('Low confidence total — user confirmation required')
+
+    if receipt.status == 'failed' or receipt.amount is None:
+        raise ValueError('Receipt has no valid amount')
+
+    final_amount = Decimal(str(amount)) if amount is not None else receipt.amount
+    final_currency = (currency or receipt.currency or 'AOA').upper()
+    final_date = expense_date or receipt.receipt_date or timezone.now().date()
+    final_payment = payment_method or receipt.payment_method or 'cash'
+    desc = description or receipt.merchant or 'Receipt expense'
+
+    category = None
+    if category_id:
+        category = Category.objects.filter(
+            Q(user=receipt.user) | Q(user__isnull=True),
+            id=category_id,
+        ).first()
+
+    budget = None
+    if budget_id:
+        budget = Budget.objects.filter(user=receipt.user, id=budget_id).first()
+
+    expense = PersonalExpense.objects.create(
+        user=receipt.user,
+        category=category,
+        budget=budget,
+        amount=final_amount,
+        currency=final_currency,
+        description=desc,
+        date=final_date,
+        payment_method=final_payment,
+        notes=receipt.receipt_number or '',
+    )
+    apply_expense_fx_snapshot(expense, receipt.user)
+
+    receipt.linked_expense = expense
+    if category:
+        receipt.category = category
+    receipt.save(update_fields=['linked_expense', 'category', 'updated_at'])
+
+    alerts: list[dict] = []
+    try:
+        alerts.extend(maybe_emit_budget_alerts(receipt.user, month=final_date.month, year=final_date.year))
+        if budget:
+            alerts.extend(maybe_emit_category_budget_alerts(receipt.user, budget))
+    except Exception:
+        pass
+
+    return expense, alerts
+
+
+def build_transaction_history(user, *, filters: dict | None = None) -> list[dict]:
+    """Unified expense + receipt history for filtering."""
+    from finance.receipt_storage import get_receipt_file_url
+
+    filters = filters or {}
+    qs = PersonalExpense.objects.filter(user=user).select_related('category', 'budget').prefetch_related('receipts')
+
+    if filters.get('date_from') and filters.get('date_to'):
+        qs = qs.filter(date__gte=filters['date_from'], date__lte=filters['date_to'])
+    if filters.get('month'):
+        qs = qs.filter(date__month=int(filters['month']))
+    if filters.get('year'):
+        qs = qs.filter(date__year=int(filters['year']))
+    if filters.get('category'):
+        qs = qs.filter(category_id=filters['category'])
+    if filters.get('budget'):
+        qs = qs.filter(budget_id=filters['budget'])
+    if filters.get('currency'):
+        qs = qs.filter(currency__iexact=filters['currency'])
+    if filters.get('payment_method'):
+        qs = qs.filter(payment_method=filters['payment_method'])
+    if filters.get('merchant'):
+        qs = qs.filter(
+            Q(description__icontains=filters['merchant'])
+            | Q(receipts__merchant__icontains=filters['merchant'])
+        ).distinct()
+    if filters.get('amount_min'):
+        qs = qs.filter(amount__gte=Decimal(str(filters['amount_min'])))
+    if filters.get('amount_max'):
+        qs = qs.filter(amount__lte=Decimal(str(filters['amount_max'])))
+
+    rows: list[dict] = []
+    for exp in qs.order_by('-date', '-created_at')[:500]:
+        receipt = exp.receipts.first()
+        rows.append({
+            'id': exp.id,
+            'type': 'expense',
+            'merchant': receipt.merchant if receipt else exp.description,
+            'description': exp.description,
+            'date': str(exp.date),
+            'original_amount': str(exp.amount),
+            'original_currency': exp.currency,
+            'converted_amount': str(exp.converted_amount) if exp.converted_amount else None,
+            'display_currency': exp.display_currency or None,
+            'exchange_rate': str(exp.exchange_rate) if exp.exchange_rate else None,
+            'exchange_rate_source': exp.exchange_rate_source or None,
+            'exchange_rate_timestamp': (
+                exp.exchange_rate_timestamp.isoformat() if exp.exchange_rate_timestamp else None
+            ),
+            'category_id': exp.category_id,
+            'category_name': exp.category.name if exp.category else None,
+            'budget_id': exp.budget_id,
+            'payment_method': exp.payment_method,
+            'receipt_id': receipt.id if receipt else None,
+            'receipt_status': receipt.status if receipt else None,
+        })
+    return rows
+

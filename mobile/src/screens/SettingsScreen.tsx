@@ -16,6 +16,7 @@ import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import type { Locale } from '../i18n'
 import { authApi } from '../services/api'
+import { getInstalledAppVersion } from '../utils/storeUpdate'
 import type { SocialLoginMethods } from '../types/api'
 import {
   authenticateWithBiometric,
@@ -446,7 +447,7 @@ export default function SettingsScreen() {
         {/* App Info */}
         <View style={styles.appInfo}>
           <Text variant="bodySmall" style={styles.appVersion}>
-            {tw('settings.versionLabel', { version: '1.0.3' })}
+            {tw('settings.versionLabel', { version: getInstalledAppVersion() })}
           </Text>
           <Text variant="bodySmall" style={styles.appCopyright}>
             {tw('settings.copyright', { year: new Date().getFullYear() })}

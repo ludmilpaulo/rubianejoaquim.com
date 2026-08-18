@@ -169,3 +169,31 @@ class SocialAPITests(TestCase):
         self.assertTrue(
             OAuthState.objects.filter(provider='tiktok', user=user, purpose='link').exists()
         )
+
+    @override_settings(
+        TIKTOK_CLIENT_KEY='test_key',
+        TIKTOK_CLIENT_SECRET='test_secret',
+        TIKTOK_REDIRECT_URI='https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/',
+        API_PUBLIC_URL='https://ludmilpaulo.pythonanywhere.com',
+        MOBILE_OAUTH_REDIRECT_URI='zenda://social-callback',
+    )
+    def test_tiktok_start_redirects_to_tiktok(self):
+        resp = self.client.get(
+            '/api/auth/social/tiktok/?client=mobile&purpose=login&platform=android'
+        )
+        self.assertEqual(resp.status_code, 302)
+        location = resp['Location']
+        self.assertIn('tiktok.com/v2/auth/authorize', location)
+        self.assertIn('client_key=test_key', location)
+        self.assertIn('redirect_uri=', location)
+        self.assertNotIn('enter_from=dev_', location)
+
+    def test_tiktok_callback_is_not_404(self):
+        resp = self.client.get('/api/auth/social/tiktok/callback/')
+        self.assertNotEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 302)
+
+    def test_tiktok_domain_verification_file(self):
+        resp = self.client.get('/tiktokFpaaRaUmoGf5Zl6lZ8hX77igVQZVuzJS.txt')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('tiktok-developers-site-verification=', resp.content.decode())

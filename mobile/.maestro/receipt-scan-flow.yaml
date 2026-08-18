@@ -1,0 +1,13 @@
+# Receipt scan flow (requires dev build with camera + auth)
+appId: com.rubianejoaquim.zenda
+---
+- launchApp
+- assertVisible:
+    id: ".*"
+    optional: true
+- tapOn:
+    text: "Receipts"
+    optional: true
+- tapOn:
+    text: "Scan with camera"
+    optional: true

@@ -1,6 +1,6 @@
 {
   "name": "mobile",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "main": "index.ts",
   "scripts": {
     "version:bump": "node scripts/bump-version.js",
@@ -40,6 +40,7 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^8.4.4",
     "@react-native-google-signin/google-signin": "^16.1.4",
+    "@react-native-ml-kit/text-recognition": "^2.0.0",
     "@react-navigation/bottom-tabs": "^7.10.1",
     "@react-navigation/native": "^7.1.28",
     "@react-navigation/stack": "^7.6.16",
@@ -49,6 +50,7 @@
     "expo": "~54.0.36",
     "expo-apple-authentication": "~8.0.8",
     "expo-auth-session": "~7.0.11",
+    "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.9",
     "expo-dev-client": "~6.0.21",

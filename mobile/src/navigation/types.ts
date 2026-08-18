@@ -9,8 +9,13 @@ export type HomeStackParamList = {
   Market: undefined
   HealthHistory: undefined
   Analytics: undefined
+  FinancialHealth: undefined
   FamilyFinance: { inviteCode?: string; spaceId?: number } | undefined
   ReceiptScanner: undefined
+  ScanReceipt: undefined
+  ReviewReceipt: { receiptId: number }
+  TransactionHistory: undefined
+  WalletHome: undefined
 }
 
 export type PersonalStackParamList = {

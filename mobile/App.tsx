@@ -15,7 +15,8 @@ import { linking } from './src/navigation/linking'
 import LoadingScreen from './src/screens/LoadingScreen'
 import OnboardingScreen, { isOnboardingComplete } from './src/screens/OnboardingScreen'
 import { setupNotifications } from './src/utils/notifications'
-import { checkStoreUpdate } from './src/utils/storeUpdate'
+import { checkStoreUpdate, checkMandatoryUpdate, type ForceUpdateInfo } from './src/utils/storeUpdate'
+import ForceUpdateScreen from './src/screens/ForceUpdateScreen'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
 import { I18nProvider, useI18n } from './src/contexts/I18nContext'
 import { CurrencyProvider } from './src/contexts/CurrencyContext'
@@ -33,7 +34,7 @@ import {
 
 function AppContent() {
   const dispatch = useAppDispatch()
-  const { t, setLocale } = useI18n()
+  const { t, setLocale, locale } = useI18n()
   const { isDarkMode, ready: appearanceReady } = useAppAppearance()
   const { user, isLoading, hasPaidAccess, hasExpiredSubscription, accessChecked } = useAppSelector(
     (state) => state.auth,
@@ -41,6 +42,7 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState<boolean | null>(null)
   const [appLocked, setAppLocked] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
+  const [forceUpdate, setForceUpdate] = useState<ForceUpdateInfo | null | 'checking'>('checking')
 
   const unlockWithBiometrics = useCallback(async () => {
     if (!user) {
@@ -76,6 +78,20 @@ function AppContent() {
     dispatch(checkAuth())
     warmupIap().catch(() => {})
   }, [dispatch])
+
+  useEffect(() => {
+    let cancelled = false
+    checkMandatoryUpdate(locale)
+      .then((info) => {
+        if (!cancelled) setForceUpdate(info)
+      })
+      .catch(() => {
+        if (!cancelled) setForceUpdate(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [locale])
 
   // After login/session restore: honor explicit profile language when set
   useEffect(() => {
@@ -143,7 +159,23 @@ function AppContent() {
     }
   }, [user, hasPaidAccess])
 
-  if (!appearanceReady || isLoading || showOnboarding === null) {
+  if (forceUpdate === 'checking' || !appearanceReady) {
+    return <LoadingScreen />
+  }
+
+  if (forceUpdate) {
+    const theme = isDarkMode ? zendaDarkTheme : zendaLightTheme
+    return (
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <ForceUpdateScreen info={forceUpdate} />
+          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        </PaperProvider>
+      </SafeAreaProvider>
+    )
+  }
+
+  if (isLoading || showOnboarding === null) {
     return <LoadingScreen />
   }
 

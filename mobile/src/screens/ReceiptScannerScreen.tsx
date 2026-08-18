@@ -4,11 +4,17 @@ import { ActivityIndicator, Button, Text } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import type { StackScreenProps } from '@react-navigation/stack'
 import { receiptApi } from '../services/api'
+import { recognizeReceiptText } from '../utils/receiptOcr'
+import { getApiErrorMessage } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
 import ZendaCard from '../components/ui/ZendaCard'
 import { colors, radius, spacing, typography } from '../theme'
 import { formatCurrency } from '../utils/currency'
+import type { HomeStackParamList } from '../navigation/types'
+
+type Props = StackScreenProps<HomeStackParamList, 'ReceiptScanner'>
 
 interface ReceiptItem {
   id: number
@@ -29,7 +35,7 @@ function statusColor(status?: string | null) {
   return colors.brand.accent
 }
 
-export default function ReceiptScannerScreen() {
+export default function ReceiptScannerScreen({ navigation }: Props) {
   const { t, locale } = useI18n()
   const [receipts, setReceipts] = useState<ReceiptItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,11 +73,24 @@ export default function ReceiptScannerScreen() {
         name: asset.name || 'receipt.jpg',
         type: asset.mimeType || 'image/jpeg',
       } as unknown as Blob)
-      await receiptApi.upload(form)
+      const isImage =
+        (asset.mimeType || '').startsWith('image/') ||
+        /\.(jpe?g|png|webp|gif)$/i.test(asset.name || '')
+      if (isImage) {
+        const scannedText = await recognizeReceiptText(asset.uri)
+        if (scannedText) {
+          form.append('scanned_text', scannedText)
+        }
+      }
+      const uploaded = await receiptApi.upload(form)
       await load()
+      if (uploaded?.id) {
+        navigation.navigate('ReviewReceipt', { receiptId: uploaded.id })
+        return
+      }
       Alert.alert(t('common.success'), t('receipt.uploaded'))
-    } catch {
-      Alert.alert(t('common.error'))
+    } catch (error) {
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('receipt.uploadFailed')))
     } finally {
       setUploading(false)
     }
@@ -82,8 +101,8 @@ export default function ReceiptScannerScreen() {
       setReprocessingId(id)
       const updated = await receiptApi.reprocess(id)
       setReceipts((current) => current.map((item) => (item.id === id ? updated : item)))
-    } catch {
-      Alert.alert(t('common.error'))
+    } catch (error) {
+      Alert.alert(t('common.error'), getApiErrorMessage(error, t('receipt.uploadFailed')))
     } finally {
       setReprocessingId(null)
     }
@@ -151,6 +170,15 @@ export default function ReceiptScannerScreen() {
           <Text style={styles.scanHint}>{t('receipt.scanHint')}</Text>
           <Button
             mode="contained"
+            icon="camera"
+            onPress={() => navigation.navigate('ScanReceipt')}
+            style={styles.btn}
+            contentStyle={styles.btnContent}
+          >
+            {t('receipt.scanCamera')}
+          </Button>
+          <Button
+            mode="outlined"
             icon="upload"
             onPress={pickAndUpload}
             loading={uploading}
@@ -159,6 +187,13 @@ export default function ReceiptScannerScreen() {
             contentStyle={styles.btnContent}
           >
             {t('receipt.uploadCta')}
+          </Button>
+          <Button
+            mode="text"
+            icon="history"
+            onPress={() => navigation.navigate('TransactionHistory')}
+          >
+            {t('navigation.transactionHistory')}
           </Button>
         </ZendaCard>
 

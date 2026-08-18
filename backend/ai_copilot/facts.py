@@ -271,6 +271,33 @@ def _category_totals(user, month: int, year: int, preferred: str) -> list[dict[s
     return [{'name': name, **_money(total, preferred)} for name, total in ranked[:8]]
 
 
+def _recent_personal_expenses(user, preferred: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Authenticated user's own expenses only — merchant/category from the database."""
+    from finance.models import PersonalExpense
+
+    rows = []
+    qs = (
+        PersonalExpense.objects.filter(user=user)
+        .select_related('category')
+        .prefetch_related('receipts')
+        .order_by('-date', '-id')[:limit]
+    )
+    for exp in qs:
+        merchant = ''
+        receipt = exp.receipts.first() if hasattr(exp, 'receipts') else None
+        if receipt:
+            merchant = (receipt.merchant or '').strip()
+        rows.append({
+            'date': exp.date.isoformat() if exp.date else None,
+            'amount': str(_dec(exp.amount)),
+            'currency': (exp.currency or preferred).upper(),
+            'category': exp.category.name if exp.category else 'Other',
+            'merchant': merchant,
+            'description': (exp.description or '')[:120],
+        })
+    return rows
+
+
 def _family_context(user, preferred: str, today: date) -> list[dict[str, Any]]:
     try:
         from finance_space.models import FinanceSpace
@@ -480,6 +507,7 @@ def build_user_snapshot(user, locale: str | None = None) -> dict[str, Any]:
         'over_budget': over,
         'categories': cats,
         'last_month_categories': last_cats,
+        'recent_expenses': _recent_personal_expenses(user, preferred),
         'debts': debts,
         'debt_total': str(debt_total),
         'goals': goals,

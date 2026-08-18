@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.8",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -18,6 +18,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "deploymentTarget": "15.5",
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.rubianejoaquim.zenda",
       "associatedDomains": [
@@ -26,6 +27,7 @@
       ],
       "infoPlist": {
         "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
+        "NSCameraUsageDescription": "O Zenda precisa da câmara para digitalizar recibos e extrair valores das despesas.",
         "ITSAppUsesNonExemptEncryption": false,
         "FacebookAppID": "2691305731001778",
         "FacebookDisplayName": "Zenda",
@@ -40,7 +42,7 @@
           }
         ]
       },
-      "buildNumber": "40"
+      "buildNumber": "41"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,9 +52,12 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 39,
+      "versionCode": 40,
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
+      ],
+      "permissions": [
+        "android.permission.CAMERA"
       ],
       "intentFilters": [
         {
@@ -161,6 +166,14 @@
           "autoLogAppEventsEnabled": false,
           "isAutoInitEnabled": true
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Zenda precisa da câmara para digitalizar recibos e extrair valores das despesas.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "updates": {
@@ -169,7 +182,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.8",
+    "runtimeVersion": "1.0.9",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {

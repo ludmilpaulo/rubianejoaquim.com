@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'subscriptions',
     'portfolio',
     'finance_space',
+    'wallet',
 ]
 
 MIDDLEWARE = [
@@ -164,6 +165,8 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'auth_burst': '30/min',
         'auth_user': '60/min',
+        'fx_anon': '120/min',
+        'fx_user': '300/min',
     },
 }
 
@@ -208,8 +211,27 @@ SUBSCRIPTION_IBAN = config('SUBSCRIPTION_IBAN', default='0040 0000 4047.9796.101
 SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Patricia Fernando Joaquim')
 
 # Mobile App (Zenda) store update check - bump when you publish a new version
-APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.0')
-APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.0')
+APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.8')
+APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.8')
+APP_MINIMUM_VERSION_IOS = config('APP_MINIMUM_VERSION_IOS', default='1.0.0')
+APP_MINIMUM_VERSION_ANDROID = config('APP_MINIMUM_VERSION_ANDROID', default='1.0.0')
+APP_FORCE_UPDATE = config('APP_FORCE_UPDATE', default=False, cast=bool)
+APP_UPDATE_MESSAGE_EN = config(
+    'APP_UPDATE_MESSAGE_EN',
+    default='A new version of Zenda is required. Please update to continue.',
+)
+APP_UPDATE_MESSAGE_PT = config(
+    'APP_UPDATE_MESSAGE_PT',
+    default='É necessária uma nova versão da Zenda. Atualize para continuar.',
+)
+APP_UPDATE_MESSAGE_FR = config(
+    'APP_UPDATE_MESSAGE_FR',
+    default='Une nouvelle version de Zenda est requise. Veuillez mettre à jour pour continuer.',
+)
+APP_UPDATE_MESSAGE_ES = config(
+    'APP_UPDATE_MESSAGE_ES',
+    default='Se requiere una nueva versión de Zenda. Actualice para continuar.',
+)
 APP_STORE_URL_IOS = config('APP_STORE_URL_IOS', default='https://apps.apple.com/app/id6758412176') or 'https://apps.apple.com/app/id6758412176'
 APP_STORE_URL_ANDROID = config(
     'APP_STORE_URL_ANDROID',
@@ -249,6 +271,12 @@ TIKTOK_SCOPES = config('TIKTOK_SCOPES', default='user.info.basic')
 
 # Mobile deep-link target after TikTok OAuth (must match app scheme)
 MOBILE_OAUTH_REDIRECT_URI = config('MOBILE_OAUTH_REDIRECT_URI', default='zenda://social-callback')
+
+# Receipt signed URL validity (seconds)
+RECEIPT_SIGNED_URL_MAX_AGE = config('RECEIPT_SIGNED_URL_MAX_AGE', default=3600, cast=int)
+
+# Wallet — must remain False until licensed provider + KYC signed off
+WALLET_LIVE_ENABLED = config('WALLET_LIVE_ENABLED', default=False, cast=bool)
 
 # Live FX: skip outbound fetch while last successful write is this young.
 # Stale flag uses FX_STALE_AFTER_HOURS against our last live write, not the provider clock

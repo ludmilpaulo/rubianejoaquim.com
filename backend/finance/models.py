@@ -95,6 +95,25 @@ class PersonalExpense(models.Model):
         ],
         default='cash'
     )
+    budget = models.ForeignKey(
+        'Budget',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expenses',
+    )
+    # FX snapshot at save time (original amount/currency never overwritten)
+    exchange_rate = models.DecimalField(max_digits=18, decimal_places=8, null=True, blank=True)
+    converted_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Amount converted into display_currency at save time',
+    )
+    display_currency = models.CharField(max_length=3, blank=True, default='')
+    exchange_rate_source = models.CharField(max_length=64, blank=True, default='')
+    exchange_rate_timestamp = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -173,6 +192,7 @@ class Budget(models.Model):
     month = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
     year = models.IntegerField()
     description = models.TextField(blank=True, help_text="Descrição do orçamento")
+    last_budget_alert_level = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -276,6 +296,24 @@ class Goal(models.Model):
     current_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, validators=[MinValueValidator(Decimal('0'))])
     currency = models.CharField(max_length=3, default='AOA', help_text='Original goal currency')
     target_date = models.DateField(help_text="Data alvo para alcançar o objetivo")
+    reminder_enabled = models.BooleanField(default=False)
+    reminder_time = models.TimeField(null=True, blank=True)
+    reminder_frequency = models.CharField(
+        max_length=16,
+        choices=[
+            ('once', 'Once'),
+            ('daily', 'Daily'),
+            ('weekly', 'Weekly'),
+        ],
+        default='once',
+    )
+    reminder_offsets_minutes = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Minutes before reminder_time to fire, e.g. [10, 30, 60, 1440]',
+    )
+    progress_notified_75 = models.BooleanField(default=False)
+    progress_notified_100 = models.BooleanField(default=False)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -462,22 +500,52 @@ class Receipt(models.Model):
     """Scanned receipt / invoice for expenses."""
     STATUS_CHOICES = [
         ('pending', 'Pendente'),
+        ('processing', 'A processar'),
         ('processed', 'Processado'),
         ('failed', 'Falhou'),
+        ('low_confidence', 'Confiança baixa'),
     ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Dinheiro'),
+        ('card', 'Cartão'),
+        ('transfer', 'Transferência'),
+        ('other', 'Outro'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='receipts')
     file = models.FileField(upload_to='receipts/%Y/%m/')
     merchant = models.CharField(max_length=200, blank=True)
+    merchant_address = models.TextField(blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default='AOA')
+    receipt_date = models.DateField(null=True, blank=True)
+    receipt_time = models.TimeField(null=True, blank=True)
+    receipt_number = models.CharField(max_length=100, blank=True)
+    items = models.JSONField(default=list, blank=True)
+    payment_method = models.CharField(
+        max_length=50,
+        choices=PAYMENT_METHOD_CHOICES,
+        blank=True,
+        default='',
+    )
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    suggested_category = models.CharField(max_length=100, blank=True)
     scanned_text = models.TextField(blank=True)
+    confidence_score = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('1'))],
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     linked_expense = models.ForeignKey(
         'PersonalExpense', on_delete=models.SET_NULL, null=True, blank=True, related_name='receipts'
     )
     is_business = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']

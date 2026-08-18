@@ -11,6 +11,8 @@ from finance.models import Budget, Category, Goal, PersonalExpense
 
 def execute_action(user, action: dict) -> dict:
     kind = action.get('type')
+    if kind in ('send_money', 'withdraw', 'add_funds', 'buy_airtime', 'buy_electricity', 'wallet_transfer'):
+        return {'ok': False, 'error': 'wallet_actions_forbidden', 'detail': 'AI cannot execute money movements.'}
     payload = action.get('payload') or {}
     if kind == 'create_budget':
         month = int(payload.get('month') or date.today().month)

@@ -36,9 +36,16 @@ class PersonalExpenseSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'category_name', 'category_icon', 'category_color',
             'amount', 'description', 'date', 'currency', 'is_recurring', 'recurrence',
-            'notes', 'receipt_url', 'payment_method', 'created_at', 'updated_at',
+            'notes', 'receipt_url', 'payment_method', 'budget',
+            'exchange_rate', 'converted_amount', 'display_currency',
+            'exchange_rate_source', 'exchange_rate_timestamp',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = [
+            'exchange_rate', 'converted_amount', 'display_currency',
+            'exchange_rate_source', 'exchange_rate_timestamp',
+            'created_at', 'updated_at',
+        ]
 
 
 class PersonalIncomeSerializer(serializers.ModelSerializer):
@@ -184,15 +191,50 @@ class GoalSerializer(serializers.ModelSerializer):
     progress_percentage = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
     remaining_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     contributions = GoalContributionSerializer(many=True, read_only=True)
+    reminder_time = serializers.TimeField(
+        required=False,
+        allow_null=True,
+        format='%H:%M',
+        input_formats=['%H:%M', '%H:%M:%S'],
+    )
 
     class Meta:
         model = Goal
         fields = [
             'id', 'title', 'description', 'target_amount', 'current_amount', 'currency',
             'target_date', 'status', 'progress_percentage', 'remaining_amount',
-            'contributions', 'created_at', 'updated_at'
+            'reminder_enabled', 'reminder_time', 'reminder_frequency',
+            'reminder_offsets_minutes', 'progress_notified_75', 'progress_notified_100',
+            'contributions', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = [
+            'created_at', 'updated_at', 'progress_notified_75', 'progress_notified_100',
+        ]
+
+    def validate_reminder_offsets_minutes(self, value):
+        allowed = {10, 30, 60, 1440}
+        if value in (None, '', []):
+            return [10]
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Must be a list of minutes.')
+        cleaned: list[int] = []
+        for item in value:
+            try:
+                minutes = int(item)
+            except (TypeError, ValueError) as exc:
+                raise serializers.ValidationError('Offsets must be integers.') from exc
+            if minutes not in allowed:
+                raise serializers.ValidationError('Supported offsets: 10, 30, 60, 1440.')
+            if minutes not in cleaned:
+                cleaned.append(minutes)
+        return cleaned or [10]
+
+    def validate_reminder_frequency(self, value):
+        if value in (None, ''):
+            return 'once'
+        if value not in ('once', 'daily', 'weekly'):
+            raise serializers.ValidationError('Invalid reminder frequency.')
+        return value
 
 
 class DebtPaymentSerializer(serializers.ModelSerializer):
@@ -267,13 +309,39 @@ class FinancialHealthSnapshotSerializer(serializers.ModelSerializer):
 
 
 class ReceiptSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
+    def get_file_url(self, obj):
+        request = self.context.get('request')
+        if not request or not obj.file:
+            return None
+        from finance.receipt_storage import get_receipt_file_url
+        return get_receipt_file_url(obj, request)
+
     class Meta:
         model = Receipt
         fields = [
-            'id', 'file', 'merchant', 'amount', 'currency', 'category',
-            'scanned_text', 'status', 'linked_expense', 'is_business', 'created_at',
+            'id', 'file', 'file_url', 'merchant', 'merchant_address', 'amount', 'tax_amount',
+            'currency', 'receipt_date', 'receipt_time', 'receipt_number', 'items',
+            'payment_method', 'category', 'suggested_category', 'scanned_text',
+            'confidence_score', 'status', 'linked_expense', 'is_business',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['status', 'linked_expense', 'created_at']
+        read_only_fields = [
+            'status', 'linked_expense', 'confidence_score', 'file_url',
+            'created_at', 'updated_at',
+        ]
+
+
+class ReceiptCreateExpenseSerializer(serializers.Serializer):
+    category_id = serializers.IntegerField(required=False, allow_null=True)
+    budget_id = serializers.IntegerField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, required=False)
+    currency = serializers.CharField(max_length=3, required=False)
+    date = serializers.DateField(required=False)
+    payment_method = serializers.CharField(max_length=50, required=False)
+    confirmed_low_confidence = serializers.BooleanField(default=False)
 
 
 class MonthlyPlanItemSerializer(serializers.ModelSerializer):

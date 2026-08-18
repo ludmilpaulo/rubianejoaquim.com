@@ -324,6 +324,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
     try {
       const apiRoot = getApiBaseUrl().replace(/\/api\/?$/, '')
       const startUrl = `${apiRoot}/api/auth/social/tiktok/?client=mobile&purpose=login&redirect=${encodeURIComponent('/')}&platform=${encodeURIComponent(Platform.OS)}`
+      logger.info('oauth_step provider=tiktok step=authorization status=started')
       // TikTok's login page 404s in ephemeral Custom Tabs / isolated Safari.
       // Share the system browser session and keep the activity in recents.
       const result = await WebBrowser.openAuthSessionAsync(startUrl, TIKTOK_RETURN_URL, {
@@ -332,6 +333,7 @@ export default function SocialAuthButtons({ onSuccess, onLinkRequired, disabled 
         createTask: true,
       })
       if (result.type === 'success' && 'url' in result && result.url) {
+        logger.info('oauth_step provider=tiktok step=callback status=received')
         await finishTikTokFromUrl(result.url)
         return
       }

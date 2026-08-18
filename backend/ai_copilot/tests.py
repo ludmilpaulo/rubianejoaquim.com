@@ -114,6 +114,9 @@ class CopilotFactsTests(TestCase):
         bundle = run_calculations(self.user, 'How much did I spend this month?', locale='en')
         self.assertEqual(bundle['snapshot']['expenses'], '5000.00')
         self.assertNotIn('99999', bundle['snapshot']['expenses'])
+        merchants = [row.get('description') for row in bundle['snapshot']['recent_expenses']]
+        self.assertIn('Food', merchants)
+        self.assertNotIn('Secret', merchants)
 
     def test_missing_income_is_honest(self):
         empty = User.objects.create_user(

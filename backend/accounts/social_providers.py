@@ -19,6 +19,30 @@ logger = logging.getLogger(__name__)
 SAFE_PROVIDER_ERROR = 'Não foi possível validar a autenticação com o fornecedor. Tente novamente.'
 
 
+def log_oauth_step(
+    *,
+    provider: str,
+    step: str,
+    platform: str = 'unknown',
+    status: str = 'started',
+    status_code: Optional[int] = None,
+    error: Optional[str] = None,
+    log_id: Optional[str] = None,
+) -> None:
+    """Production-safe OAuth diagnostic log. Never includes secrets, tokens, or PII."""
+    err = (error or '')[:120].replace('\n', ' ')
+    logger.info(
+        'oauth_step provider=%s platform=%s step=%s status=%s http=%s error=%s log_id=%s',
+        provider,
+        platform or 'unknown',
+        step,
+        status,
+        status_code if status_code is not None else '-',
+        err or '-',
+        (log_id or '-')[:80],
+    )
+
+
 def log_oauth_failure(
     *,
     provider: str,
@@ -29,15 +53,14 @@ def log_oauth_failure(
     log_id: Optional[str] = None,
 ) -> None:
     """Log OAuth failures without tokens, secrets, emails, or personal data."""
-    err = (error or '')[:120].replace('\n', ' ')
-    logger.info(
-        'oauth_failure provider=%s platform=%s step=%s status=%s error=%s log_id=%s',
-        provider,
-        platform or 'unknown',
-        step,
-        status_code if status_code is not None else '-',
-        err or '-',
-        (log_id or '-')[:80],
+    log_oauth_step(
+        provider=provider,
+        step=step,
+        platform=platform,
+        status='failure',
+        status_code=status_code,
+        error=error,
+        log_id=log_id,
     )
 
 
@@ -301,7 +324,9 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
     access_token = token_payload.get('access_token')
     open_id = token_payload.get('open_id')
     if not access_token or not open_id:
+        log_oauth_failure(provider='tiktok', step='token_exchange', error='missing_token_or_open_id')
         raise ProviderVerificationError()
+    log_oauth_step(provider='tiktok', step='token_exchange', status='success')
 
     try:
         user_resp = requests.get(
