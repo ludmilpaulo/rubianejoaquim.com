@@ -39,3 +39,10 @@ android/
 *.apk
 *.aab
 *.ipa
+
+# Signing — never commit
+credentials.json
+.eas-credentials.json
+*.jks
+*.keystore
+keystore.properties
