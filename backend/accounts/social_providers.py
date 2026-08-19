@@ -68,15 +68,33 @@ def _tiktok_error_meta(payload: object, resp: Optional[requests.Response] = None
     """Return (error_code, log_id) from a TikTok JSON body. Never includes tokens."""
     data = payload if isinstance(payload, dict) else {}
     nested = data.get('error')
+    description = str(data.get('error_description') or '')[:160]
     if isinstance(nested, dict):
         code = str(nested.get('code') or nested.get('message') or nested.get('error') or '')[:80]
         log_id = str(nested.get('log_id') or data.get('log_id') or '')[:80]
-        return code, log_id
-    code = str(nested or data.get('error_description') or '')[:80]
+        message = str(nested.get('message') or description or '')[:160]
+        combined = code if not message or message == code else f'{code}: {message}'
+        return combined[:120], log_id
+    code = str(nested or '')[:80]
     log_id = str(data.get('log_id') or '')[:80]
     if not log_id and resp is not None:
         log_id = str(resp.headers.get('x-tt-logid') or resp.headers.get('X-Tt-Logid') or '')[:80]
-    return code, log_id
+    combined = code if not description else f'{code}: {description}' if code else description
+    return combined[:120], log_id
+
+
+def _tiktok_payload_is_error(payload: object, status_code: int) -> bool:
+    """True when TikTok returned a real error (HTTP 4xx/5xx or error != ok)."""
+    if status_code >= 400:
+        return True
+    data = payload if isinstance(payload, dict) else {}
+    err = data.get('error')
+    if not err:
+        return False
+    if isinstance(err, dict):
+        code = str(err.get('code') or '').strip().lower()
+        return code not in ('', 'ok', '0', 'success')
+    return True
 
 
 class ProviderVerificationError(Exception):
@@ -291,6 +309,12 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         logger.error('TikTok social login misconfigured')
         raise ProviderVerificationError('Login com TikTok não está configurado.')
 
+    if not code_verifier:
+        log_oauth_failure(provider='tiktok', step='token_exchange', error='missing_code_verifier')
+        raise ProviderVerificationError()
+
+    log_oauth_step(provider='tiktok', step='token_exchange', status='started')
+    token_resp = None
     try:
         token_resp = requests.post(
             'https://open.tiktokapis.com/v2/oauth/token/',
@@ -307,16 +331,20 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         )
         token_payload = token_resp.json()
     except Exception:
-        log_oauth_failure(provider='tiktok', step='token_exchange_request')
+        log_oauth_failure(
+            provider='tiktok',
+            step='token_exchange_request',
+            status_code=getattr(token_resp, 'status_code', None),
+        )
         raise ProviderVerificationError() from None
 
-    if token_resp.status_code >= 400 or token_payload.get('error'):
+    if _tiktok_payload_is_error(token_payload, token_resp.status_code):
         err, log_id = _tiktok_error_meta(token_payload, token_resp)
         log_oauth_failure(
             provider='tiktok',
             step='token_exchange',
             status_code=token_resp.status_code,
-            error=err,
+            error=err or 'token_exchange_failed',
             log_id=log_id,
         )
         raise ProviderVerificationError()
@@ -343,13 +371,13 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         # Do not retain provider access tokens
         access_token = None
 
-    if user_resp.status_code >= 400:
+    if _tiktok_payload_is_error(user_payload, user_resp.status_code):
         err, log_id = _tiktok_error_meta(user_payload, user_resp)
         log_oauth_failure(
             provider='tiktok',
             step='user_info',
             status_code=user_resp.status_code,
-            error=err,
+            error=err or 'user_info_failed',
             log_id=log_id,
         )
         raise ProviderVerificationError()

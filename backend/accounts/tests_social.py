@@ -1,6 +1,10 @@
 """Unit tests for social authentication service (no live provider calls)."""
 
+from datetime import timedelta
+from unittest.mock import patch
+
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
@@ -187,13 +191,109 @@ class SocialAPITests(TestCase):
         self.assertIn('client_key=test_key', location)
         self.assertIn('redirect_uri=', location)
         self.assertNotIn('enter_from=dev_', location)
+        state_row = OAuthState.objects.filter(provider='tiktok').latest('id')
+        self.assertTrue(state_row.redirect_path.startswith('mobile:android:'))
 
     def test_tiktok_callback_is_not_404(self):
         resp = self.client.get('/api/auth/social/tiktok/callback/')
         self.assertNotEqual(resp.status_code, 404)
+        self.assertNotEqual(resp.status_code, 400)
         self.assertEqual(resp.status_code, 302)
+
+    @override_settings(MOBILE_OAUTH_REDIRECT_URI='zenda://social-callback')
+    def test_tiktok_callback_without_code_is_controlled_oauth_redirect(self):
+        resp = self.client.get('/api/auth/social/tiktok/callback/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('social=tiktok', resp['Location'])
+        self.assertIn('status=error', resp['Location'])
+
+    @override_settings(MOBILE_OAUTH_REDIRECT_URI='zenda://social-callback')
+    def test_tiktok_callback_mobile_missing_code_redirects_to_app_scheme(self):
+        """Django blocks unknown redirect schemes as HTTP 400 unless zenda:// is allowed."""
+        OAuthState.objects.create(
+            state='mobile-state-no-code',
+            provider=SocialAccount.PROVIDER_TIKTOK,
+            purpose=OAuthState.PURPOSE_LOGIN,
+            redirect_path='mobile:android:/',
+            code_verifier='verifier',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        resp = self.client.get(
+            '/api/auth/social/tiktok/callback/?state=mobile-state-no-code'
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp['Location'].startswith('zenda://social-callback'))
+        self.assertIn('status=error', resp['Location'])
+
+    @override_settings(
+        TIKTOK_CLIENT_KEY='test_key',
+        TIKTOK_CLIENT_SECRET='test_secret',
+        TIKTOK_REDIRECT_URI='https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/',
+        MOBILE_OAUTH_REDIRECT_URI='zenda://social-callback',
+    )
+    def test_tiktok_callback_mobile_success_redirects_to_app_not_400(self):
+        OAuthState.objects.create(
+            state='mobile-state-ok',
+            provider=SocialAccount.PROVIDER_TIKTOK,
+            purpose=OAuthState.PURPOSE_LOGIN,
+            redirect_path='mobile:android:/',
+            code_verifier='pkce-verifier',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        verified = _verified(provider='tiktok', pid='tt-open-1', email=None, verified=False)
+        verified.full_name = 'Tik User'
+        with patch('accounts.social_views.exchange_tiktok_code', return_value=verified):
+            resp = self.client.get(
+                '/api/auth/social/tiktok/callback/?code=fresh-auth-code&state=mobile-state-ok&scopes=user.info.basic'
+            )
+        self.assertEqual(resp.status_code, 302)
+        location = resp['Location']
+        self.assertTrue(location.startswith('zenda://social-callback'))
+        self.assertIn('status=authenticated', location)
+        self.assertIn('exchange_code=', location)
+
+    @override_settings(MOBILE_OAUTH_REDIRECT_URI='zenda://social-callback')
+    def test_tiktok_callback_legacy_mobile_path_still_uses_app_scheme(self):
+        OAuthState.objects.create(
+            state='legacy-mobile-state',
+            provider=SocialAccount.PROVIDER_TIKTOK,
+            purpose=OAuthState.PURPOSE_LOGIN,
+            redirect_path='mobile:/',
+            code_verifier='verifier',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+        resp = self.client.get(
+            '/api/auth/social/tiktok/callback/?state=legacy-mobile-state'
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp['Location'].startswith('zenda://'))
 
     def test_tiktok_domain_verification_file(self):
         resp = self.client.get('/tiktokFpaaRaUmoGf5Zl6lZ8hX77igVQZVuzJS.txt')
         self.assertEqual(resp.status_code, 200)
         self.assertIn('tiktok-developers-site-verification=', resp.content.decode())
+
+
+class TikTokProviderHelperTests(TestCase):
+    def test_token_error_includes_description_and_log_id(self):
+        from accounts.social_providers import _tiktok_error_meta, _tiktok_payload_is_error
+
+        payload = {
+            'error': 'invalid_grant',
+            'error_description': 'Authorization code is expired or invalid.',
+            'log_id': 'abc123',
+        }
+        self.assertTrue(_tiktok_payload_is_error(payload, 400))
+        code, log_id = _tiktok_error_meta(payload)
+        self.assertIn('invalid_grant', code)
+        self.assertIn('expired', code)
+        self.assertEqual(log_id, 'abc123')
+
+    def test_user_info_ok_code_is_not_an_error(self):
+        from accounts.social_providers import _tiktok_payload_is_error
+
+        payload = {
+            'data': {'user': {'open_id': 'x'}},
+            'error': {'code': 'ok', 'message': '', 'log_id': 'z'},
+        }
+        self.assertFalse(_tiktok_payload_is_error(payload, 200))

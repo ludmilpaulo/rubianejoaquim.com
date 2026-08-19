@@ -16,7 +16,12 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
@@ -45,6 +50,15 @@ from .social_service import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class AppSchemeRedirect(HttpResponseRedirect):
+    """
+    Django's HttpResponseRedirect only allows http/https/ftp.
+    Redirecting to zenda:// raises DisallowedRedirect, which production maps to HTTP 400.
+    """
+
+    allowed_schemes = ['http', 'https', 'ftp', 'zenda', 'com.rubianejoaquim.zenda']
 
 
 class AuthBurstThrottle(AnonRateThrottle):
@@ -79,6 +93,37 @@ def _post_auth_redirect_base(*, client: str | None) -> str:
         if mobile.startswith(('zenda://', 'com.rubianejoaquim.zenda://')):
             return mobile
     return _frontend_url('/login/social-callback')
+
+
+def _encode_mobile_redirect_path(platform: str, path: str) -> str:
+    plat = platform if platform in ('android', 'ios') else 'mobile'
+    return f'mobile:{plat}:{path}'
+
+
+def _parse_mobile_redirect_path(stored: str | None) -> tuple[str, str, str]:
+    """Return (client, platform, path) from OAuthState.redirect_path."""
+    stored = stored or '/area-do-aluno'
+    if not stored.startswith('mobile:'):
+        return 'web', 'web', stored
+    rest = stored[7:]
+    for plat in ('android', 'ios', 'mobile'):
+        prefix = f'{plat}:'
+        if rest.startswith(prefix):
+            return 'mobile', plat, rest[len(prefix):]
+    return 'mobile', 'mobile', rest
+
+
+def _oauth_param(request, name: str) -> str:
+    value = str(request.query_params.get(name) or '').strip()
+    if value:
+        return value
+    try:
+        data = getattr(request, 'data', None)
+        if data is not None:
+            return str(data.get(name) or '').strip()
+    except Exception:
+        pass
+    return str(request.POST.get(name) or '').strip()
 
 
 def _auth_response(result) -> Response:
@@ -154,7 +199,7 @@ def _client_platform(request) -> str:
 
 
 def _tiktok_redirect_uri() -> str:
-    redirect_uri = getattr(settings, 'TIKTOK_REDIRECT_URI', '') or ''
+    redirect_uri = (getattr(settings, 'TIKTOK_REDIRECT_URI', '') or '').strip()
     if redirect_uri:
         return redirect_uri
     api_base = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
@@ -324,6 +369,7 @@ def social_link_confirm(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@authentication_classes([])
 @throttle_classes([AuthBurstThrottle])
 def tiktok_start(request):
     """
@@ -336,11 +382,10 @@ def tiktok_start(request):
 
     client = (request.query_params.get('client') or 'web').strip().lower()
     redirect_path = _safe_redirect_path(request.query_params.get('redirect'))
-    if client == 'mobile':
-        # Encode client into redirect_path marker consumed by callback
-        redirect_path = f'mobile:{redirect_path}'
-
     platform = _client_platform(request)
+    if client == 'mobile':
+        redirect_path = _encode_mobile_redirect_path(platform, redirect_path)
+
     log_oauth_step(provider='tiktok', step='authorization', platform=platform, status='started')
 
     linking_user = None
@@ -364,31 +409,48 @@ def tiktok_start(request):
         return _error_response(exc)
 
     log_oauth_step(provider='tiktok', step='authorization', platform=platform, status='redirected')
-    return HttpResponseRedirect(url)
+    return AppSchemeRedirect(url)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
+@authentication_classes([])
 @throttle_classes([AuthBurstThrottle])
+@csrf_exempt
 def tiktok_callback(request):
-    """TikTok OAuth callback — validate state, exchange code, create app session, redirect to frontend."""
-    state = request.query_params.get('state')
+    """TikTok OAuth callback — validate state, exchange code, create app session, redirect to app/web."""
+    state = _oauth_param(request, 'state')
     oauth_state = (
         OAuthState.objects.filter(state=state, provider=SocialAccount.PROVIDER_TIKTOK).first()
         if state
         else None
     )
-    client = 'mobile' if oauth_state and (oauth_state.redirect_path or '').startswith('mobile:') else 'web'
+    client, platform, _stored_path = _parse_mobile_redirect_path(
+        oauth_state.redirect_path if oauth_state else None
+    )
+    if not oauth_state:
+        client, platform = 'web', 'web'
+    code = _oauth_param(request, 'code')
+    error = _oauth_param(request, 'error')
+    error_description = _oauth_param(request, 'error_description')
+    log_id = _oauth_param(request, 'log_id')
     log_oauth_step(
         provider='tiktok',
         step='callback',
-        platform=client,
+        platform=platform,
         status='received',
-        error=request.query_params.get('error') or None,
-        log_id=request.query_params.get('log_id') or '',
+        error=error or None,
+        log_id=log_id,
+    )
+    logger.info(
+        'oauth_step provider=tiktok platform=%s step=callback_received status=received has_code=%s has_state=%s has_error=%s',
+        platform,
+        'true' if code else 'false',
+        'true' if state else 'false',
+        'true' if error else 'false',
     )
 
-    def _fail_redirect(*, cancelled: bool = False, message: str = '') -> HttpResponseRedirect:
+    def _fail_redirect(*, cancelled: bool = False, message: str = '') -> AppSchemeRedirect:
         params = {
             'social': 'tiktok',
             'status': 'cancelled' if cancelled else 'error',
@@ -396,19 +458,21 @@ def tiktok_callback(request):
         if message and not cancelled:
             params['message'] = message
         if client == 'mobile':
-            return HttpResponseRedirect(f"{_post_auth_redirect_base(client='mobile')}?{urlencode(params)}")
-        return HttpResponseRedirect(f"{_frontend_url('/login')}?{urlencode(params)}")
+            return AppSchemeRedirect(f"{_post_auth_redirect_base(client='mobile')}?{urlencode(params)}")
+        return AppSchemeRedirect(f"{_frontend_url('/login')}?{urlencode(params)}")
 
-    error = request.query_params.get('error')
     if error:
         cancelled = error in ('access_denied', 'user_cancelled', 'login_denied')
         if not cancelled:
+            provider_error = error
+            if error_description:
+                provider_error = f'{error}: {error_description[:120]}'
             log_oauth_failure(
                 provider='tiktok',
                 step='authorization_callback',
-                platform=client,
-                error=error,
-                log_id=request.query_params.get('log_id') or '',
+                platform=platform,
+                error=provider_error,
+                log_id=log_id,
             )
         if oauth_state and oauth_state.is_valid():
             oauth_state.consume()
@@ -417,7 +481,6 @@ def tiktok_callback(request):
             message='Não foi possível entrar com TikTok. Tente novamente.',
         )
 
-    code = request.query_params.get('code')
     if not state or not code:
         return _fail_redirect(message='Resposta OAuth inválida.')
 
@@ -434,31 +497,30 @@ def tiktok_callback(request):
             redirect_uri=redirect_uri,
             code_verifier=oauth_state.code_verifier,
         )
-        log_oauth_step(provider='tiktok', step='token_exchange', platform=client, status='success')
+        log_oauth_step(provider='tiktok', step='token_exchange', platform=platform, status='success')
         linking_user = oauth_state.user if oauth_state.purpose == OAuthState.PURPOSE_LINK else None
         result = authenticate_social_user(verified, linking_user=linking_user)
         log_oauth_step(
             provider='tiktok',
             step='user_create_or_login',
-            platform=client,
+            platform=platform,
             status='success' if result.status == 'authenticated' else result.status,
         )
     except (ProviderVerificationError, SocialAuthError) as exc:
         log_oauth_failure(
             provider='tiktok',
             step='callback_exchange',
-            platform=client,
-            error=type(exc).__name__,
+            platform=platform,
+            error=getattr(exc, 'code', None) or type(exc).__name__,
         )
         return _fail_redirect(message='Não foi possível entrar com TikTok. Tente novamente.')
     except Exception:
         logger.exception('TikTok callback failed')
-        log_oauth_failure(provider='tiktok', step='callback_unexpected', platform=client)
+        log_oauth_failure(provider='tiktok', step='callback_unexpected', platform=platform)
         return _fail_redirect(message='Não foi possível entrar com TikTok. Tente novamente.')
 
-    stored_redirect = oauth_state.redirect_path or '/area-do-aluno'
-    client = 'mobile' if stored_redirect.startswith('mobile:') else 'web'
-    dest = _safe_redirect_path(stored_redirect.replace('mobile:', '', 1) if client == 'mobile' else stored_redirect)
+    client, platform, stored_redirect = _parse_mobile_redirect_path(oauth_state.redirect_path)
+    dest = _safe_redirect_path(stored_redirect)
 
     if result.status == 'link_required':
         params = urlencode({
@@ -469,8 +531,8 @@ def tiktok_callback(request):
             'provider': 'tiktok',
         })
         if client == 'mobile':
-            return HttpResponseRedirect(f"{_post_auth_redirect_base(client='mobile')}?{params}")
-        return HttpResponseRedirect(f"{_frontend_url('/login')}?{params}")
+            return AppSchemeRedirect(f"{_post_auth_redirect_base(client='mobile')}?{params}")
+        return AppSchemeRedirect(f"{_frontend_url('/login')}?{params}")
 
     # Hand a short-lived exchange code to the client (never put the DRF token in the URL).
     exchange = make_session_exchange_code(result.token or '')
@@ -481,7 +543,7 @@ def tiktok_callback(request):
         'created': '1' if result.created else '0',
         'next': dest,
     })
-    return HttpResponseRedirect(f"{_post_auth_redirect_base(client=client)}?{params}")
+    return AppSchemeRedirect(f"{_post_auth_redirect_base(client=client)}?{params}")
 
 
 @api_view(['POST'])
