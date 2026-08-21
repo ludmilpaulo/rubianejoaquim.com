@@ -39,6 +39,7 @@ android/
 *.apk
 *.aab
 *.ipa
+release/
 
 # Signing — never commit
 credentials.json
