@@ -9,6 +9,7 @@ import ChromeBody from '@/components/ChromeBody'
 import { LocaleProvider } from '@/contexts/LocaleContext'
 import { SiteDataProvider } from '@/contexts/SiteDataContext'
 import { defaultLocale, isLocale, LOCALE_COOKIE, type Locale } from '@/lib/i18n/config'
+import { ZENDA_MARKETING_PREFIXES, ZENDA_PRODUCT_PREFIXES } from '@/lib/zenda-routes'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -112,6 +113,11 @@ export default async function RootLayout({
   return (
     <html lang={htmlLang} className={`${playfair.variable} ${dmSans.variable}`}>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=location.pathname;var product=${JSON.stringify([...ZENDA_PRODUCT_PREFIXES])}.some(function(x){return p===x||p.indexOf(x+'/')===0});var marketing=${JSON.stringify([...ZENDA_MARKETING_PREFIXES])}.some(function(x){return p===x||p.indexOf(x+'/')===0});document.documentElement.classList.toggle('chrome-product',product);document.documentElement.classList.toggle('chrome-cinema',!product&&!marketing);document.documentElement.classList.toggle('chrome-marketing',marketing);}catch(e){}})();`,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

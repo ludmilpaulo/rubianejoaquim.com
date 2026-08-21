@@ -262,7 +262,7 @@ export default function SocialLoginButtons({
 
   if (!config) {
     return (
-      <div className="flex justify-center py-2">
+      <div className="flex justify-center py-2" aria-hidden>
         <div className="w-6 h-6 border-2 border-gray-300 border-t-zenda-growth rounded-full animate-spin" />
       </div>
     )

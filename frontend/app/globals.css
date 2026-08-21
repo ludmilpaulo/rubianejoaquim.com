@@ -280,7 +280,14 @@ img {
   }
 
   .zenda-input {
-    @apply w-full border border-zenda-border rounded-xl px-4 py-2.5 bg-white text-zenda-navy placeholder:text-zenda-textSecondary focus:outline-none focus:ring-2 focus:ring-zenda-primary/40 focus:border-zenda-primary transition-colors;
+    @apply w-full border border-zenda-border rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-zenda-primary/40 focus:border-zenda-primary transition-colors;
+    background-color: #ffffff;
+    color: #05050b;
+    caret-color: #05050b;
+  }
+
+  .zenda-input::placeholder {
+    color: #5b6178;
   }
 
   .zenda-alert-error {
@@ -375,14 +382,52 @@ img {
   --zenda-container: #11145A;
 }
 
+html.chrome-product,
+body.chrome-product {
+  background-color: #f7f7fa;
+  color: #05050b;
+}
+
+html.chrome-cinema,
 body.chrome-cinema {
   background-color: #020617;
   color: #f1f5f9;
 }
 
-body.chrome-product input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='range']):not([type='color']),
-body.chrome-product textarea,
-body.chrome-product select {
+/*
+  Form controls must set their own color. Otherwise cinema body text
+  (slate-100) inherits onto white inputs and fields look empty.
+*/
+input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='range']):not([type='color']):not([type='submit']):not([type='button']):not([type='reset']),
+textarea,
+select {
   color: #05050b;
   background-color: #ffffff;
+  caret-color: #05050b;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #5b6178;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #05050b;
+  caret-color: #05050b;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+}
+
+.input-field,
+.input-field:focus {
+  color: #f8fafc;
+  background-color: rgba(2, 6, 23, 0.8);
+  caret-color: #f8fafc;
+}
+
+.input-field::placeholder {
+  color: #64748b;
 }

@@ -14,9 +14,14 @@ export default function ChromeBody() {
   useEffect(() => {
     const chrome = getZendaChrome(pathname)
     const product = chrome === 'product'
+    const cinema = chrome === 'cinema'
+    const marketing = chrome === 'marketing'
     document.body.classList.toggle('chrome-product', product)
-    document.body.classList.toggle('chrome-cinema', !product)
+    document.body.classList.toggle('chrome-cinema', cinema)
+    document.body.classList.toggle('chrome-marketing', marketing)
     document.documentElement.classList.toggle('chrome-product', product)
+    document.documentElement.classList.toggle('chrome-cinema', cinema)
+    document.documentElement.classList.toggle('chrome-marketing', marketing)
   }, [pathname])
 
   return null

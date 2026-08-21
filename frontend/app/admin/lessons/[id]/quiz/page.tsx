@@ -85,13 +85,14 @@ export default function LessonQuizPage() {
         if (Array.isArray(quizData) && quizData.length > 0) {
           const existingQuiz = quizData[0]
           setQuiz(existingQuiz)
-          setFormData({
+          setFormData((prev) => ({
+            ...prev,
             title: existingQuiz.title || 'Quiz da Aula',
             description: existingQuiz.description || '',
             passing_score: existingQuiz.passing_score || 70,
             time_limit_minutes: existingQuiz.time_limit_minutes,
             is_active: existingQuiz.is_active,
-          })
+          }))
           setSelectedQuestions(existingQuiz.questions?.map((q: QuizQuestion) => q.question.id) || [])
         }
       } catch (err: any) {
