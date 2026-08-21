@@ -106,10 +106,9 @@ export default function LessonQuizScreen() {
         correct_answers?: number
         total_questions?: number
       }
-      const passed = !!(data?.passed ?? (data?.score != null && data.score >= (quiz.passing_score ?? 0)))
       setResult({
         score: Number(data?.score ?? 0),
-        passed,
+        passed: data?.passed === true,
         correct_answers: Number(data?.correct_answers ?? 0),
         total_questions: Number(data?.total_questions ?? questions.length),
       })

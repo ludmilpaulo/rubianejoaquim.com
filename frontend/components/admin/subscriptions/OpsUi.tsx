@@ -50,7 +50,7 @@ export function StatusBadge({
 }
 
 export function Sparkline({ values, color = '#3734D0' }: { values: number[]; color?: string }) {
-  if (!values.length) return null
+  if (!Array.isArray(values) || values.length === 0) return null
   const max = Math.max(...values, 1)
   const w = 88
   const h = 28

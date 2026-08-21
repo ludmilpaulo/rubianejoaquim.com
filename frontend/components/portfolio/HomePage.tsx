@@ -97,7 +97,7 @@ export default function HomePage() {
     data.settings && 'contact_email' in data.settings ? data.settings : undefined
 
   return (
-    <>
+    <div className="bg-slate-950 text-slate-100 min-h-screen">
       {isSectionVisible(ctx.visibility, 'hero') && (
         <HeroSection
           section={ctx.hero}
@@ -145,6 +145,6 @@ export default function HomePage() {
       {isSectionVisible(ctx.visibility, 'contact_intro') && (
         <ContactSection settings={data.settings} />
       )}
-    </>
+    </div>
   )
 }

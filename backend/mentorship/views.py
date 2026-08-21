@@ -104,6 +104,7 @@ class MentorAvailabilityViewSet(viewsets.ModelViewSet):
 class MentorshipSessionViewSet(viewsets.ModelViewSet):
     serializer_class = MentorshipSessionSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
         user = self.request.user
@@ -159,6 +160,20 @@ class MentorshipSessionViewSet(viewsets.ModelViewSet):
         session.meeting_url = request.data.get('meeting_url', '')
         session.meeting_provider = request.data.get('meeting_provider', session.meeting_provider)
         session.save(update_fields=['meeting_url', 'meeting_provider'])
+        return Response(MentorshipSessionSerializer(session).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        session = self.get_object()
+        mentor = approved_mentor(request.user)
+        is_student = session.student_id == request.user.id
+        is_mentor = mentor is not None and session.mentor_id == mentor.id
+        if not (is_staff_admin(request.user) or is_student or is_mentor):
+            return Response({'detail': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        if session.status in (MentorshipSession.STATUS_COMPLETED, MentorshipSession.STATUS_CANCELLED):
+            return Response({'detail': 'cannot_cancel'}, status=status.HTTP_400_BAD_REQUEST)
+        session.status = MentorshipSession.STATUS_CANCELLED
+        session.save(update_fields=['status'])
         return Response(MentorshipSessionSerializer(session).data)
 
 

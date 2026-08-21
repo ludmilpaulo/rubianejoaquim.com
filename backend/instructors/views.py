@@ -496,6 +496,7 @@ class TutorAvailabilityViewSet(viewsets.ModelViewSet):
 class TutorBookingViewSet(viewsets.ModelViewSet):
     serializer_class = TutorBookingSerializer
     permission_classes = [IsAuthenticated]
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
         user = self.request.user
@@ -535,6 +536,20 @@ class TutorBookingViewSet(viewsets.ModelViewSet):
         except IntegrityError:
             return Response({'detail': 'slot_taken'}, status=status.HTTP_409_CONFLICT)
         return Response(TutorBookingSerializer(booking).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        booking = self.get_object()
+        tutor = approved_tutor(request.user)
+        is_owner = booking.student_id == request.user.id
+        is_tutor = tutor is not None and booking.tutor_id == tutor.id
+        if not (is_staff_admin(request.user) or is_owner or is_tutor):
+            return Response({'detail': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        if booking.status in (TutorBooking.STATUS_COMPLETED, TutorBooking.STATUS_CANCELLED):
+            return Response({'detail': 'cannot_cancel'}, status=status.HTTP_400_BAD_REQUEST)
+        booking.status = TutorBooking.STATUS_CANCELLED
+        booking.save(update_fields=['status'])
+        return Response(TutorBookingSerializer(booking).data)
 
 
 class AdminEducatorApplicationViewSet(viewsets.ModelViewSet):

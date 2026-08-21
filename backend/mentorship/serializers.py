@@ -71,13 +71,13 @@ class MentorshipSessionSerializer(serializers.ModelSerializer):
             'duration_minutes', 'status', 'meeting_provider', 'meeting_url',
             'notes', 'mentor_name', 'created_at',
         ]
+        read_only_fields = ['status', 'meeting_url', 'created_at']
         extra_kwargs = {
             'ends_at': {'required': False},
             'package': {'required': False},
             'request': {'required': False},
             'meeting_provider': {'required': False},
             'notes': {'required': False},
-            'meeting_url': {'required': False},
         }
 
     def get_mentor_name(self, obj):

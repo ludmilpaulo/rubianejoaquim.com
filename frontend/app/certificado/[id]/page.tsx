@@ -13,6 +13,12 @@ interface CertificateInfo {
   user_name: string
   completed_at: string | null
   message: string | null
+  certificate?: {
+    public_id?: string
+    code: string
+    verify_url: string
+    instructor_name?: string
+  } | null
 }
 
 export default function CertificadoPage() {
@@ -119,16 +125,37 @@ export default function CertificadoPage() {
         <div className="bg-white rounded-2xl shadow-xl border-2 border-primary-200 overflow-hidden print:rounded-none print:shadow-none print:border-0">
           <div className="p-8 sm:p-12 print:p-12">
             <div className="text-center border-b-2 border-primary-200 pb-8 mb-8">
-              <p className="text-sm uppercase tracking-widest text-zenda-primary font-semibold mb-2">Certificado de Conclusão</p>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Rubiane Joaquim</h1>
-              <p className="text-gray-600">Educação Financeira</p>
+              <p className="text-sm uppercase tracking-widest text-zenda-primary font-semibold mb-2">ZENDA</p>
+              <p className="text-sm uppercase tracking-widest text-zenda-primary font-semibold mb-2">Certificate of Completion</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Zenda</h1>
+              <p className="text-gray-600">Financial Education</p>
             </div>
-            <p className="text-center text-gray-600 mb-4">Certificamos que</p>
+            <p className="text-center text-gray-600 mb-4">This certifies that</p>
             <p className="text-center text-2xl sm:text-3xl font-bold text-gray-900 mb-6">{info.user_name}</p>
-            <p className="text-center text-gray-600 mb-2">concluiu com sucesso o curso</p>
+            <p className="text-center text-gray-600 mb-2">has successfully completed</p>
             <p className="text-center text-xl sm:text-2xl font-semibold text-zenda-dark mb-8">{info.course_title}</p>
+            {info.certificate?.instructor_name && (
+              <p className="text-center text-sm text-gray-500 mb-2">Instructor: {info.certificate.instructor_name}</p>
+            )}
             {completedDate && (
-              <p className="text-center text-sm text-gray-500">Concluído em {completedDate}</p>
+              <p className="text-center text-sm text-gray-500">Completed: {completedDate}</p>
+            )}
+            {info.certificate && (
+              <div className="mt-8 text-center">
+                <p className="text-xs uppercase tracking-widest text-gray-500">Certificate ID</p>
+                <p className="font-mono font-semibold">{info.certificate.public_id || info.certificate.code}</p>
+                {info.certificate.verify_url && (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(info.certificate.verify_url)}`}
+                      alt="Certificate QR"
+                      className="mx-auto mt-4 w-40 h-40"
+                    />
+                    <p className="text-xs text-gray-500 mt-2 break-all">{info.certificate.verify_url}</p>
+                  </>
+                )}
+              </div>
             )}
             <div className="mt-10 pt-8 border-t border-gray-200 flex justify-center gap-12 print:mt-12">
               <div className="text-center">

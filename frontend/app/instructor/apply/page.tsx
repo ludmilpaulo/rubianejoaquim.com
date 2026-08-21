@@ -105,49 +105,50 @@ function ApplyForm() {
   }
 
   return (
+    <div className="zenda-page">
     <div className="max-w-2xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-display font-bold text-zenda-navy">{t('education.becomeInstructor')}</h1>
       <p className="text-zenda-text-secondary mt-2 mb-8">{t('education.becomeSubtitle')}</p>
       {error ? <ZendaAlert tone="error" className="mb-4">{error}</ZendaAlert> : null}
       {success ? <ZendaAlert tone="success" className="mb-4">{success}</ZendaAlert> : null}
-      <form onSubmit={submit} className="space-y-4 bg-white rounded-2xl border border-zenda-border p-6">
-        <label className="block text-sm font-medium">{t('education.fullName')}
-          <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+      <form onSubmit={submit} className="space-y-4 bg-white rounded-2xl border border-zenda-border p-6 text-zenda-navy">
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.fullName')}
+          <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.biography')}
-          <textarea required value={biography} onChange={(e) => setBiography(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2 min-h-[120px]" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.biography')}
+          <textarea required value={biography} onChange={(e) => setBiography(e.target.value)} className="zenda-input mt-1 min-h-[120px]" />
         </label>
-        <label className="block text-sm font-medium">{t('education.country')}
-          <input value={country} onChange={(e) => setCountry(e.target.value)} maxLength={2} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.country')}
+          <input value={country} onChange={(e) => setCountry(e.target.value)} maxLength={2} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.languages')}
-          <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.languages')}
+          <input value={languages} onChange={(e) => setLanguages(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.expertise')}
-          <input value={expertise} onChange={(e) => setExpertise(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.expertise')}
+          <input value={expertise} onChange={(e) => setExpertise(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.qualifications')}
-          <textarea value={qualifications} onChange={(e) => setQualifications(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.qualifications')}
+          <textarea value={qualifications} onChange={(e) => setQualifications(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.experience')}
-          <textarea value={experience} onChange={(e) => setExperience(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.experience')}
+          <textarea value={experience} onChange={(e) => setExperience(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.teachingExperience')}
-          <textarea value={teachingExperience} onChange={(e) => setTeachingExperience(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.teachingExperience')}
+          <textarea value={teachingExperience} onChange={(e) => setTeachingExperience(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.areasToTeach')}
-          <input value={areasToTeach} onChange={(e) => setAreasToTeach(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.areasToTeach')}
+          <input value={areasToTeach} onChange={(e) => setAreasToTeach(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.linkedin')}
-          <input type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.linkedin')}
+          <input type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.website')}
-          <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.website')}
+          <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <label className="block text-sm font-medium">{t('education.youtube')}
-          <input type="url" value={youtube} onChange={(e) => setYoutube(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+        <label className="block text-sm font-medium text-zenda-navy">{t('education.youtube')}
+          <input type="url" value={youtube} onChange={(e) => setYoutube(e.target.value)} className="zenda-input mt-1" />
         </label>
-        <fieldset className="text-sm">
+        <fieldset className="text-sm text-zenda-navy">
           <legend className="font-medium mb-2">{t('education.roles')}</legend>
           {(['instructor', 'mentor', 'tutor'] as const).map((role) => (
             <label key={role} className="mr-4 inline-flex items-center gap-2">
@@ -158,6 +159,7 @@ function ApplyForm() {
         </fieldset>
         <ZendaButton type="submit" disabled={saving}>{t('education.submitApplication')}</ZendaButton>
       </form>
+    </div>
     </div>
   )
 }

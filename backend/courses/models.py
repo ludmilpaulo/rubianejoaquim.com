@@ -124,6 +124,10 @@ class Course(models.Model):
     is_new = models.BooleanField(default=False)
     is_recommended = models.BooleanField(default=False)
     offers_certificate = models.BooleanField(default=True)
+    certificate_title = models.CharField(max_length=200, blank=True)
+    completion_lesson_percent = models.PositiveSmallIntegerField(default=100)
+    completion_quiz_percent = models.PositiveSmallIntegerField(default=100)
+    requires_final_exam = models.BooleanField(default=False)
     rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=0)
     rating_count = models.PositiveIntegerField(default=0)
 
@@ -336,10 +340,31 @@ class Progress(models.Model):
 
 class Question(models.Model):
     """Pergunta de múltipla escolha"""
+    TYPE_SINGLE = 'single'
+    TYPE_MULTIPLE = 'multiple'
+    TYPE_CHOICES = [
+        (TYPE_SINGLE, 'Single choice'),
+        (TYPE_MULTIPLE, 'Multiple choice'),
+    ]
+    DIFFICULTY_EASY = 'easy'
+    DIFFICULTY_MEDIUM = 'medium'
+    DIFFICULTY_HARD = 'hard'
+    DIFFICULTY_CHOICES = [
+        (DIFFICULTY_EASY, 'Easy'),
+        (DIFFICULTY_MEDIUM, 'Medium'),
+        (DIFFICULTY_HARD, 'Hard'),
+    ]
+
     course = models.ForeignKey(Course, related_name='questions', on_delete=models.CASCADE, null=True, blank=True, help_text="Curso associado (opcional)")
     lesson = models.ForeignKey(Lesson, related_name='questions', on_delete=models.CASCADE, null=True, blank=True, help_text="Aula associada (opcional)")
     question_text = models.TextField(help_text="Texto da pergunta")
     explanation = models.TextField(blank=True, help_text="Explicação da resposta correta")
+    question_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_SINGLE)
+    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default=DIFFICULTY_MEDIUM)
+    image = models.ImageField(upload_to='question_images/', blank=True, null=True)
+    points = models.PositiveIntegerField(default=1)
+    is_required = models.BooleanField(default=True)
+    time_limit_seconds = models.PositiveIntegerField(null=True, blank=True)
     order = models.IntegerField(default=0, help_text="Ordem da pergunta")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -368,11 +393,25 @@ class Choice(models.Model):
 
 class LessonQuiz(models.Model):
     """Quiz associado a uma aula"""
+    SCORING_ALL_OR_NOTHING = 'all_or_nothing'
+    SCORING_PARTIAL = 'partial'
+    SCORING_CHOICES = [
+        (SCORING_ALL_OR_NOTHING, 'All or nothing'),
+        (SCORING_PARTIAL, 'Partial credit'),
+    ]
+
     lesson = models.OneToOneField(Lesson, related_name='quiz', on_delete=models.CASCADE)
     title = models.CharField(max_length=200, default="Quiz da Aula")
     description = models.TextField(blank=True, help_text="Descrição do quiz")
     passing_score = models.IntegerField(default=70, help_text="Pontuação mínima para aprovação (0-100)")
     time_limit_minutes = models.IntegerField(null=True, blank=True, help_text="Tempo limite em minutos (opcional)")
+    max_attempts = models.PositiveIntegerField(default=0, help_text="0 = unlimited")
+    randomize_questions = models.BooleanField(default=False)
+    randomize_answers = models.BooleanField(default=False)
+    show_correct_after = models.BooleanField(default=True)
+    show_explanations = models.BooleanField(default=True)
+    allow_change_answers = models.BooleanField(default=True)
+    multi_scoring = models.CharField(max_length=20, choices=SCORING_CHOICES, default=SCORING_ALL_OR_NOTHING)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -408,6 +447,11 @@ class FinalExam(models.Model):
     passing_score = models.IntegerField(default=70, help_text="Pontuação mínima para aprovação (0-100)")
     time_limit_minutes = models.IntegerField(null=True, blank=True, help_text="Tempo limite em minutos (opcional)")
     max_attempts = models.IntegerField(default=3, help_text="Número máximo de tentativas permitidas")
+    randomize_questions = models.BooleanField(default=False)
+    randomize_answers = models.BooleanField(default=False)
+    show_correct_after = models.BooleanField(default=True)
+    show_explanations = models.BooleanField(default=True)
+    multi_scoring = models.CharField(max_length=20, default='all_or_nothing')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -440,12 +484,16 @@ class UserQuizAnswer(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='quiz_answers', on_delete=models.CASCADE)
     quiz = models.ForeignKey(LessonQuiz, related_name='user_answers', on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_choice = models.ForeignKey(Choice, on_delete=models.CASCADE)
+    result = models.ForeignKey(
+        'QuizResult', related_name='answers', on_delete=models.CASCADE, null=True, blank=True,
+    )
+    selected_choice = models.ForeignKey(Choice, on_delete=models.SET_NULL, null=True, blank=True)
+    choice_ids = models.JSONField(default=list, blank=True)
     is_correct = models.BooleanField(default=False)
+    earned_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     answered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['user', 'quiz', 'question']
         ordering = ['-answered_at']
 
     def __str__(self):
@@ -457,12 +505,16 @@ class UserExamAnswer(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='exam_answers', on_delete=models.CASCADE)
     exam = models.ForeignKey(FinalExam, related_name='user_answers', on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_choice = models.ForeignKey(Choice, on_delete=models.CASCADE)
+    result = models.ForeignKey(
+        'ExamResult', related_name='answers', on_delete=models.CASCADE, null=True, blank=True,
+    )
+    selected_choice = models.ForeignKey(Choice, on_delete=models.SET_NULL, null=True, blank=True)
+    choice_ids = models.JSONField(default=list, blank=True)
     is_correct = models.BooleanField(default=False)
+    earned_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     answered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['user', 'exam', 'question']
         ordering = ['-answered_at']
 
     def __str__(self):
@@ -473,7 +525,10 @@ class QuizResult(models.Model):
     """Resultado do quiz de uma aula"""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='quiz_results', on_delete=models.CASCADE)
     quiz = models.ForeignKey(LessonQuiz, related_name='results', on_delete=models.CASCADE)
+    attempt_number = models.PositiveIntegerField(default=1)
     score = models.DecimalField(max_digits=5, decimal_places=2, help_text="Pontuação em percentagem")
+    earned_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    maximum_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     total_questions = models.IntegerField()
     correct_answers = models.IntegerField()
     passed = models.BooleanField(default=False)
@@ -482,7 +537,7 @@ class QuizResult(models.Model):
 
     class Meta:
         ordering = ['-completed_at', '-started_at']
-        unique_together = ['user', 'quiz']
+        unique_together = ['user', 'quiz', 'attempt_number']
 
     def __str__(self):
         return f"{self.user.email} - {self.quiz.lesson.title} - {self.score}%"
@@ -510,6 +565,8 @@ class ExamResult(models.Model):
     exam = models.ForeignKey(FinalExam, related_name='results', on_delete=models.CASCADE)
     attempt_number = models.IntegerField(default=1)
     score = models.DecimalField(max_digits=5, decimal_places=2, help_text="Pontuação em percentagem")
+    earned_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    maximum_points = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     total_questions = models.IntegerField()
     correct_answers = models.IntegerField()
     passed = models.BooleanField(default=False)
@@ -747,6 +804,15 @@ class CourseReview(models.Model):
 
 
 class Certificate(models.Model):
+    STATUS_VALID = 'valid'
+    STATUS_REVOKED = 'revoked'
+    STATUS_EXPIRED = 'expired'
+    STATUS_CHOICES = [
+        (STATUS_VALID, 'Valid'),
+        (STATUS_REVOKED, 'Revoked'),
+        (STATUS_EXPIRED, 'Expired'),
+    ]
+
     enrollment = models.OneToOneField(Enrollment, related_name='certificate', on_delete=models.CASCADE)
     course = models.ForeignKey(Course, related_name='certificates', on_delete=models.CASCADE)
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='certificates')
@@ -758,13 +824,29 @@ class Certificate(models.Model):
         related_name='issued_certificates',
     )
     code = models.CharField(max_length=32, unique=True)
+    public_id = models.CharField(max_length=40, unique=True, null=True, blank=True)
     student_name = models.CharField(max_length=200)
     course_title = models.CharField(max_length=200)
     instructor_name = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_VALID)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_reason = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
     issued_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-issued_at']
 
     def __str__(self):
-        return self.code
+        return self.public_id or self.code
+
+
+class QuizAttemptDraft(models.Model):
+    """In-progress answers so a refresh does not lose the attempt."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='quiz_drafts', on_delete=models.CASCADE)
+    quiz = models.ForeignKey(LessonQuiz, related_name='drafts', on_delete=models.CASCADE)
+    answers = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'quiz']

@@ -92,6 +92,45 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         if not request.data.get('slug') and request.data.get('title'):
             request.data['slug'] = slugify(request.data['title'])
         return super().partial_update(request, *args, **kwargs)
+
+    def _catalog_status_for_active(self, *, is_active, current_status=None, creating=False):
+        """Keep the admin CMS is_active toggle in sync with marketplace status."""
+        moderation = {
+            Course.STATUS_PENDING,
+            Course.STATUS_REJECTED,
+            Course.STATUS_APPROVED,
+        }
+        if not creating and current_status in moderation:
+            return None
+        if is_active:
+            return Course.STATUS_PUBLISHED
+        return Course.STATUS_DRAFT if creating else Course.STATUS_UNPUBLISHED
+
+    def perform_create(self, serializer):
+        is_active = serializer.validated_data.get('is_active', True)
+        extra = {}
+        if 'status' not in serializer.validated_data:
+            extra['status'] = self._catalog_status_for_active(is_active=is_active, creating=True)
+            if extra['status'] == Course.STATUS_PUBLISHED:
+                extra['published_at'] = timezone.now()
+        elif serializer.validated_data.get('status') == Course.STATUS_PUBLISHED:
+            extra['is_active'] = True
+            extra['published_at'] = timezone.now()
+        serializer.save(**extra)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        is_active = serializer.validated_data.get('is_active', instance.is_active)
+        extra = {}
+        if 'status' not in serializer.validated_data:
+            new_status = self._catalog_status_for_active(
+                is_active=is_active, current_status=instance.status, creating=False,
+            )
+            if new_status:
+                extra['status'] = new_status
+                if new_status == Course.STATUS_PUBLISHED:
+                    extra['published_at'] = instance.published_at or timezone.now()
+        serializer.save(**extra)
     
     def destroy(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -553,15 +592,52 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
         """Garantir que o contexto da request está disponível"""
         context = super().get_serializer_context()
         context['request'] = self.request
+        context['reveal_answers'] = True
         return context
     
     def check_admin(self):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            return Response(
-                {'error': 'Acesso negado. Apenas administradores.'},
-                status=status.HTTP_403_FORBIDDEN
+        from instructors.permissions import approved_instructor, is_staff_admin
+        if is_staff_admin(self.request.user) or approved_instructor(self.request.user):
+            return None
+        return Response(
+            {'error': 'Acesso negado. Apenas administradores ou instrutores.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    def get_queryset(self):
+        from instructors.permissions import approved_instructor, is_staff_admin
+        qs = Question.objects.all()
+        if is_staff_admin(self.request.user):
+            return qs
+        instructor = approved_instructor(self.request.user)
+        if instructor:
+            return qs.filter(Q(course__instructor=instructor) | Q(lesson__course__instructor=instructor))
+        return qs.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        return super().retrieve(request, *args, **kwargs)
+
+    def _save_nested_choices(self, question, choices):
+        from courses.assessment import validate_question_payload
+        errors, cleaned = validate_question_payload(
+            question.question_text,
+            choices or [],
+            question.question_type,
+            question.points,
+        )
+        if errors:
+            raise ValueError(errors[0])
+        question.choices.all().delete()
+        for index, choice in enumerate(cleaned):
+            Choice.objects.create(
+                question=question,
+                choice_text=choice['choice_text'],
+                is_correct=bool(choice.get('is_correct')),
+                order=choice.get('order', index),
             )
-        return None
     
     def list(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -573,13 +649,46 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
-        return super().create(request, *args, **kwargs)
+        from courses.assessment import can_manage_course, validate_question_payload
+        errors, _ = validate_question_payload(
+            request.data.get('question_text'),
+            request.data.get('choices') or [],
+            request.data.get('question_type') or 'single',
+            request.data.get('points') or 1,
+        )
+        if errors and request.data.get('choices') is not None:
+            return Response({'error': errors[0], 'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        response = super().create(request, *args, **kwargs)
+        question = Question.objects.get(id=response.data['id'])
+        if question.course_id and not can_manage_course(request.user, question.course):
+            question.delete()
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        if request.data.get('choices') is not None:
+            try:
+                self._save_nested_choices(question, request.data.get('choices'))
+            except ValueError as exc:
+                question.delete()
+                return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(self.get_serializer(question).data, status=status.HTTP_201_CREATED)
+        return response
     
     def update(self, request, *args, **kwargs):
         check = self.check_admin()
         if check:
             return check
-        return super().update(request, *args, **kwargs)
+        from courses.assessment import can_manage_question
+        question = self.get_object()
+        if not can_manage_question(request.user, question):
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        response = super().update(request, *args, **kwargs)
+        if request.data.get('choices') is not None:
+            question.refresh_from_db()
+            try:
+                self._save_nested_choices(question, request.data.get('choices'))
+            except ValueError as exc:
+                return Response({'error': str(exc), 'errors': [str(exc)]}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(self.get_serializer(question).data)
+        return response
     
     def destroy(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -602,10 +711,12 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
     
     def check_admin(self):
         if not (self.request.user.is_staff or self.request.user.is_superuser):
-            return Response(
-                {'error': 'Acesso negado. Apenas administradores.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            from instructors.permissions import approved_instructor
+            if not approved_instructor(self.request.user):
+                return Response(
+                    {'error': 'Acesso negado. Apenas administradores.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         return None
     
     def get_queryset(self):
@@ -613,6 +724,12 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
         if question_id:
             return self.queryset.filter(question_id=question_id)
         return self.queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        return super().retrieve(request, *args, **kwargs)
     
     def list(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -657,17 +774,26 @@ class AdminLessonQuizViewSet(viewsets.ModelViewSet):
     
     def check_admin(self):
         if not (self.request.user.is_staff or self.request.user.is_superuser):
-            return Response(
-                {'error': 'Acesso negado. Apenas administradores.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            from instructors.permissions import approved_instructor
+            if not approved_instructor(self.request.user):
+                return Response(
+                    {'error': 'Acesso negado. Apenas administradores.'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
         return None
     
     def get_queryset(self):
         lesson_id = self.request.query_params.get('lesson')
+        qs = LessonQuiz.objects.all()
         if lesson_id:
-            return self.queryset.filter(lesson_id=lesson_id)
-        return self.queryset
+            qs = qs.filter(lesson_id=lesson_id)
+        return qs
+
+    def retrieve(self, request, *args, **kwargs):
+        check = self.check_admin()
+        if check:
+            return check
+        return super().retrieve(request, *args, **kwargs)
     
     def list(self, request, *args, **kwargs):
         check = self.check_admin()

@@ -305,7 +305,7 @@ function LoginPageInner() {
                   required={!isLogin}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                  className="zenda-input w-full text-sm sm:text-base"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -317,7 +317,7 @@ function LoginPageInner() {
                     type="text"
                     value={formData.first_name}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                    className="zenda-input w-full text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -328,7 +328,7 @@ function LoginPageInner() {
                     type="text"
                     value={formData.last_name}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                    className="zenda-input w-full text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -346,7 +346,7 @@ function LoginPageInner() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder={t('auth.emailPlaceholder')}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+              className="zenda-input w-full"
             />
           </div>
 
@@ -359,7 +359,7 @@ function LoginPageInner() {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                className="zenda-input w-full"
               />
             </div>
           )}
@@ -381,7 +381,7 @@ function LoginPageInner() {
                 required
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                className="zenda-input w-full pr-10"
               />
               <button
                 type="button"
@@ -414,7 +414,7 @@ function LoginPageInner() {
                   required={!isLogin}
                   value={formData.password_confirm}
                   onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
+                  className="zenda-input w-full pr-10"
                 />
                 <button
                   type="button"

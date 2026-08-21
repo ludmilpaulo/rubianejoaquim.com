@@ -3,11 +3,12 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
-from courses.models import Category, Course, CourseModule, Enrollment, Lesson
+from courses.models import Category, Course, CourseModule, CourseReview, Enrollment, Lesson
 from instructors.models import (
     EducatorApplication,
     EducationBillingSettings,
@@ -221,3 +222,109 @@ class MarketplaceFoundationTests(TestCase):
         ids = [c['id'] for c in payload]
         self.assertNotIn(draft.id, ids)
         self.assertIn(self.courses[0].id, ids)
+
+    def test_auth_routes_are_mounted(self):
+        self.assertEqual(reverse('login'), '/api/auth/login/')
+        self.assertEqual(reverse('register'), '/api/auth/register/')
+        self.assertEqual(reverse('push-token'), '/api/auth/push-token/')
+        res = self.client.post('/api/auth/login/', {
+            'email': 'studenta@test.com', 'password': 'wrong-password',
+        }, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_student_cannot_create_admin_category(self):
+        self._auth(self.student_a)
+        res = self.client.post('/api/course/admin/categories/', {
+            'slug': 'hacked', 'name': 'Hacked',
+        }, format='json')
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(Category.objects.filter(slug='hacked').exists())
+
+    def test_student_cannot_edit_or_delete_another_review(self):
+        review = CourseReview.objects.create(
+            course=self.courses[0], student=self.student_a, rating=5, body='Great',
+        )
+        self._auth(self.student_b)
+        res = self.client.patch(f'/api/course/reviews/{review.id}/', {'rating': 1}, format='json')
+        self.assertEqual(res.status_code, 403)
+        res = self.client.delete(f'/api/course/reviews/{review.id}/')
+        self.assertEqual(res.status_code, 403)
+        review.refresh_from_db()
+        self.assertEqual(review.rating, 5)
+        self.assertTrue(CourseReview.objects.filter(pk=review.pk).exists())
+
+    def test_admin_create_active_course_is_published(self):
+        self._auth(self.admin)
+        res = self.client.post('/api/course/admin/courses/', {
+            'title': 'Admin Course',
+            'slug': 'admin-course',
+            'description': 'Created from the CMS',
+            'price': '49.00',
+            'is_active': True,
+        }, format='json')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['status'], Course.STATUS_PUBLISHED)
+        course_id = res.data['id']
+        self.client.credentials()
+        res = self.client.get('/api/course/course/')
+        payload = res.data['results'] if isinstance(res.data, dict) else res.data
+        self.assertIn(course_id, [c['id'] for c in payload])
+
+    def test_student_cannot_reschedule_or_delete_mentorship_session(self):
+        user, inst = self.instructors[0]
+        mentor = MentorProfile.objects.create(
+            user=user, instructor=inst, status=InstructorProfile.STATUS_APPROVED,
+        )
+        start = timezone.now() + timedelta(days=2)
+        session = MentorshipSession.objects.create(
+            mentor=mentor,
+            student=self.student_a,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=60),
+            duration_minutes=60,
+        )
+        self._auth(self.student_b)
+        res = self.client.patch(f'/api/mentorship/sessions/{session.id}/', {
+            'meeting_url': 'https://evil.example/hijack',
+            'status': 'cancelled',
+        }, format='json')
+        self.assertEqual(res.status_code, 405)
+        res = self.client.delete(f'/api/mentorship/sessions/{session.id}/')
+        self.assertEqual(res.status_code, 405)
+        self._auth(self.student_a)
+        res = self.client.patch(f'/api/mentorship/sessions/{session.id}/', {
+            'starts_at': (start + timedelta(days=1)).isoformat(),
+        }, format='json')
+        self.assertEqual(res.status_code, 405)
+        res = self.client.post(f'/api/mentorship/sessions/{session.id}/cancel/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['status'], MentorshipSession.STATUS_CANCELLED)
+
+    def test_student_cannot_move_or_delete_tutor_booking(self):
+        user, inst = self.instructors[0]
+        tutor = TutorProfile.objects.create(
+            user=user, instructor=inst, status=InstructorProfile.STATUS_APPROVED, hourly_rate=25,
+        )
+        start = timezone.now() + timedelta(days=3)
+        booking = TutorBooking.objects.create(
+            tutor=tutor,
+            student=self.student_a,
+            starts_at=start,
+            ends_at=start + timedelta(minutes=60),
+            duration_minutes=60,
+            status=TutorBooking.STATUS_CONFIRMED,
+        )
+        self._auth(self.student_a)
+        res = self.client.patch(f'/api/instructors/tutor/bookings/{booking.id}/', {
+            'starts_at': (start + timedelta(hours=2)).isoformat(),
+            'tutor': tutor.id,
+        }, format='json')
+        self.assertEqual(res.status_code, 405)
+        res = self.client.delete(f'/api/instructors/tutor/bookings/{booking.id}/')
+        self.assertEqual(res.status_code, 405)
+        booking.refresh_from_db()
+        self.assertEqual(booking.starts_at, start)
+        self.assertEqual(booking.status, TutorBooking.STATUS_CONFIRMED)
+        res = self.client.post(f'/api/instructors/tutor/bookings/{booking.id}/cancel/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['status'], TutorBooking.STATUS_CANCELLED)

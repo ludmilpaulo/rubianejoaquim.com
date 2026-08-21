@@ -30,6 +30,9 @@ interface Question {
   explanation: string
   choices: Choice[]
   order: number
+  question_type?: string
+  points?: number
+  difficulty?: string
   course?: number
   course_id?: number
   course_title?: string
@@ -53,6 +56,9 @@ export default function AdminQuestionsPage() {
     order: 0,
     course: '' as string | number,
     lesson: '' as string | number,
+    question_type: 'single',
+    points: 1,
+    difficulty: 'medium',
   })
   const [choices, setChoices] = useState<Choice[]>([
     { choice_text: '', is_correct: false, order: 0 },
@@ -126,7 +132,7 @@ export default function AdminQuestionsPage() {
     const updated = [...choices]
     updated[index] = { ...updated[index], [field]: value }
     // Se marcar como correta, desmarcar outras
-    if (field === 'is_correct' && value) {
+    if (field === 'is_correct' && value && formData.question_type === 'single') {
       updated.forEach((c, i) => {
         if (i !== index) c.is_correct = false
       })
@@ -165,59 +171,27 @@ export default function AdminQuestionsPage() {
 
     try {
       // Criar pergunta
-      const questionData: any = {
+      const questionData: Record<string, unknown> = {
         question_text: formData.question_text,
         explanation: formData.explanation,
         order: formData.order,
         course: Number(formData.course),
         lesson: Number(formData.lesson),
+        question_type: formData.question_type,
+        points: formData.points,
+        difficulty: formData.difficulty,
+        choices: choices.filter(c => c.choice_text.trim()),
       }
 
-      let questionId: number
       if (editingQuestion) {
-        const response = await adminApi.questions.update(editingQuestion.id, questionData)
-        questionId = editingQuestion.id
-        // Deletar choices antigas e criar novas
-        if (editingQuestion.choices) {
-          for (const choice of editingQuestion.choices) {
-            if (choice.id) {
-              try {
-                await adminApi.choices.delete(choice.id)
-              } catch (err) {
-                // Ignorar
-              }
-            }
-          }
-        }
+        await adminApi.questions.update(editingQuestion.id, questionData)
       } else {
-        const response = await adminApi.questions.create(questionData)
-        questionId = response.data.id
-      }
-
-      // Criar choices
-      for (const choice of choices.filter(c => c.choice_text.trim())) {
-        try {
-          await adminApi.choices.create({
-            question: questionId,
-            choice_text: choice.choice_text,
-            is_correct: choice.is_correct,
-            order: choice.order,
-          })
-        } catch (choiceError: any) {
-          console.error('Erro ao criar choice:', choiceError)
-          console.error('Dados da choice:', {
-            question: questionId,
-            choice_text: choice.choice_text,
-            is_correct: choice.is_correct,
-            order: choice.order,
-          })
-          throw choiceError // Re-throw para ser capturado pelo catch externo
-        }
+        await adminApi.questions.create(questionData)
       }
 
       setShowForm(false)
       setEditingQuestion(null)
-      setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '' })
+      setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '', question_type: 'single', points: 1, difficulty: 'medium' })
       setChoices([
         { choice_text: '', is_correct: false, order: 0 },
         { choice_text: '', is_correct: false, order: 1 },
@@ -247,6 +221,9 @@ export default function AdminQuestionsPage() {
       order: question.order,
       course: question.course || question.course_id || '',
       lesson: question.lesson || question.lesson_id || '',
+      question_type: question.question_type || 'single',
+      points: question.points || 1,
+      difficulty: question.difficulty || 'medium',
     })
     setChoices(question.choices.length > 0 ? question.choices : [
       { choice_text: '', is_correct: false, order: 0 },
@@ -292,7 +269,7 @@ export default function AdminQuestionsPage() {
             onClick={() => {
               setShowForm(true)
               setEditingQuestion(null)
-              setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '' })
+              setFormData({ question_text: '', explanation: '', order: 0, course: '', lesson: '', question_type: 'single', points: 1, difficulty: 'medium' })
               setLessons([])
               setChoices([
                 { choice_text: '', is_correct: false, order: 0 },
@@ -350,6 +327,42 @@ export default function AdminQuestionsPage() {
                         {lesson.title}
                       </option>
                     ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
+                  <select
+                    value={formData.question_type}
+                    onChange={(e) => setFormData({ ...formData, question_type: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  >
+                    <option value="single">Escolha única</option>
+                    <option value="multiple">Escolha múltipla</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pontos</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={formData.points}
+                    onChange={(e) => setFormData({ ...formData, points: Number(e.target.value) })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Dificuldade</label>
+                  <select
+                    value={formData.difficulty}
+                    onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  >
+                    <option value="easy">Fácil</option>
+                    <option value="medium">Médio</option>
+                    <option value="hard">Difícil</option>
                   </select>
                 </div>
               </div>

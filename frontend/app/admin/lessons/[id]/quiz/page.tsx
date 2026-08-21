@@ -54,6 +54,12 @@ export default function LessonQuizPage() {
     description: '',
     passing_score: 70,
     time_limit_minutes: null as number | null,
+    max_attempts: 0,
+    randomize_questions: false,
+    randomize_answers: false,
+    show_correct_after: true,
+    show_explanations: true,
+    multi_scoring: 'all_or_nothing',
     is_active: true,
   })
 
@@ -235,6 +241,27 @@ export default function LessonQuizPage() {
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zenda-primary focus:border-transparent"
                     placeholder="Sem limite"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tentativas (0 = ilimitado)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formData.max_attempts}
+                    onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 0 })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pontuação múltipla</label>
+                  <select
+                    value={formData.multi_scoring}
+                    onChange={(e) => setFormData({ ...formData, multi_scoring: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  >
+                    <option value="all_or_nothing">Tudo ou nada</option>
+                    <option value="partial">Crédito parcial</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>

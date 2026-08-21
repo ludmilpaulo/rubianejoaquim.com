@@ -222,8 +222,8 @@ IKHOKHA_PAYMENT_URL = config('IKHOKHA_PAYMENT_URL', default='https://api.ikhokha
 IKHOKHA_CALLBACK_URL = config('IKHOKHA_CALLBACK_URL', default='')
 
 # Mobile App (Zenda) store update check - bump when you publish a new version
-APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.9')
-APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.9')
+APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.10')
+APP_LATEST_VERSION_ANDROID = config('APP_LATEST_VERSION_ANDROID', default='1.0.10')
 APP_MINIMUM_VERSION_IOS = config('APP_MINIMUM_VERSION_IOS', default='1.0.0')
 APP_MINIMUM_VERSION_ANDROID = config('APP_MINIMUM_VERSION_ANDROID', default='1.0.0')
 APP_FORCE_UPDATE = config('APP_FORCE_UPDATE', default=False, cast=bool)

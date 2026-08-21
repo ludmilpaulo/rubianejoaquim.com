@@ -280,7 +280,7 @@ img {
   }
 
   .zenda-input {
-    @apply w-full border border-zenda-border rounded-xl px-4 py-2.5 text-zenda-navy placeholder:text-zenda-textSecondary focus:outline-none focus:ring-2 focus:ring-zenda-primary/40 focus:border-zenda-primary transition-colors;
+    @apply w-full border border-zenda-border rounded-xl px-4 py-2.5 bg-white text-zenda-navy placeholder:text-zenda-textSecondary focus:outline-none focus:ring-2 focus:ring-zenda-primary/40 focus:border-zenda-primary transition-colors;
   }
 
   .zenda-alert-error {
@@ -373,4 +373,16 @@ img {
   --zenda-text-secondary: #A8ADC4;
   --zenda-border: #2A2D4A;
   --zenda-container: #11145A;
+}
+
+body.chrome-cinema {
+  background-color: #020617;
+  color: #f1f5f9;
+}
+
+body.chrome-product input:not([type='checkbox']):not([type='radio']):not([type='hidden']):not([type='file']):not([type='range']):not([type='color']),
+body.chrome-product textarea,
+body.chrome-product select {
+  color: #05050b;
+  background-color: #ffffff;
 }

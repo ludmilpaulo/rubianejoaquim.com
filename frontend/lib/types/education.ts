@@ -128,11 +128,14 @@ export interface CourseReview {
 export interface CertificateRecord {
   id: number
   code: string
+  public_id?: string
   student_name: string
   course_title: string
   instructor_name: string
   issued_at: string
   verify_url: string
+  status?: string
+  display_status?: string
 }
 
 export interface InstructorDashboard {

@@ -12,6 +12,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/config/app-version/', app_version),
     path('api/app/version/', app_version_v2),
+    path('api/auth/', include('accounts.urls')),
     path('api/locales/', include('config.locale_urls')),
     path('api/instructors/', include('instructors.urls')),
     path('api/course/', include('courses.urls')),

@@ -159,7 +159,10 @@ class TutorBookingSerializer(serializers.ModelSerializer):
             'id', 'tutor', 'offering', 'starts_at', 'ends_at', 'duration_minutes',
             'status', 'meeting_provider', 'meeting_url', 'notes', 'tutor_name', 'created_at',
         ]
-        read_only_fields = ['status', 'meeting_url', 'created_at', 'student']
+        read_only_fields = [
+            'status', 'meeting_url', 'created_at', 'student',
+            'tutor', 'starts_at', 'ends_at',
+        ]
         extra_kwargs = {
             'ends_at': {'required': False},
             'offering': {'required': False},

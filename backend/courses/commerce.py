@@ -1,10 +1,8 @@
 """Enrollment activation, certificates, and education ledger writes."""
 
-import secrets
-
 from django.utils import timezone
 
-from instructors.models import EducationPayment, InstructorProfile
+from instructors.models import EducationPayment
 from instructors.services import record_education_payment
 
 
@@ -44,40 +42,5 @@ def activate_enrollment(enrollment, *, payment_method: str, external_reference: 
 
 
 def issue_certificate(enrollment):
-    from courses.models import Certificate, Progress, LessonQuiz, QuizResult
-
-    if enrollment.status != 'active':
-        return None
-    if hasattr(enrollment, 'certificate'):
-        return enrollment.certificate
-    course = enrollment.course
-    if not course.offers_certificate:
-        return None
-    user = enrollment.user
-    lessons = course.lessons.all()
-    total = lessons.count()
-    if total == 0:
-        return None
-    done = Progress.objects.filter(user=user, lesson__in=lessons, completed=True).count()
-    if done < total:
-        return None
-    for lesson in lessons:
-        quiz = LessonQuiz.objects.filter(lesson=lesson, is_active=True).first()
-        if quiz:
-            result = QuizResult.objects.filter(user=user, quiz=quiz).first()
-            if not result or not result.passed:
-                return None
-    instructor = course.instructor
-    code = secrets.token_hex(8).upper()
-    while Certificate.objects.filter(code=code).exists():
-        code = secrets.token_hex(8).upper()
-    return Certificate.objects.create(
-        enrollment=enrollment,
-        course=course,
-        student=user,
-        instructor=instructor,
-        code=code,
-        student_name=user.get_full_name() or user.email,
-        course_title=course.title,
-        instructor_name=instructor.display_name if instructor else 'Zenda',
-    )
+    from courses.assessment import issue_certificate as _issue
+    return _issue(enrollment)

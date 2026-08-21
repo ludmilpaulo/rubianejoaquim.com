@@ -178,8 +178,10 @@ export const lessonsApi = {
 export const lessonQuizzesApi = {
   getByLesson: (lessonId: number) => api.get(`/course/lesson-quiz/by-lesson/${lessonId}/`),
   get: (id: number) => api.get(`/course/lesson-quiz/${id}/`),
-  submit: (id: number, answers: Array<{ question_id: number; choice_id: number }>) =>
+  submit: (id: number, answers: Array<{ question_id: number; choice_id?: number; choice_ids?: number[] }>) =>
     api.post(`/course/lesson-quiz/${id}/submit/`, { answers }),
+  saveProgress: (id: number, answers: Array<{ question_id: number; choice_id?: number; choice_ids?: number[] }>) =>
+    api.post(`/course/lesson-quiz/${id}/save-progress/`, { answers }),
 }
 
 // Mentorship

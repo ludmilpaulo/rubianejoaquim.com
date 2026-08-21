@@ -222,7 +222,12 @@ export default function SubscriptionsDashboard() {
   const from = subCount === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, subCount)
   const pages = Math.max(1, Math.ceil(subCount / pageSize))
-  const notificationCount = analytics?.proofs.pending ?? 0
+  const notificationCount = analytics?.proofs?.pending ?? 0
+  const kpis = analytics?.kpis
+  const totalUsers = kpis?.total_users
+  const activeSubs = kpis?.active_subscriptions
+  const monthlyRevenue = kpis?.monthly_revenue
+  const expiringSoon = kpis?.expiring_soon
 
   return (
     <OpsShell notificationCount={notificationCount}>
@@ -253,38 +258,38 @@ export default function SubscriptionsDashboard() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        {analyticsLoading || !analytics ? (
+        {analyticsLoading || !analytics || !kpis ? (
           [1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32" />)
         ) : (
           <>
             <KpiCard
               label={t('adminSubs.kpiTotalUsers')}
-              value={analytics.kpis.total_users.value.toLocaleString()}
-              change={analytics.kpis.total_users.change_pct}
-              spark={analytics.kpis.total_users.sparkline}
+              value={(totalUsers?.value ?? 0).toLocaleString()}
+              change={totalUsers?.change_pct}
+              spark={totalUsers?.sparkline || []}
               icon="users"
             />
             <KpiCard
               label={t('adminSubs.kpiActive')}
-              value={analytics.kpis.active_subscriptions.value.toLocaleString()}
-              change={analytics.kpis.active_subscriptions.change_pct}
-              spark={analytics.kpis.active_subscriptions.sparkline}
+              value={(activeSubs?.value ?? 0).toLocaleString()}
+              change={activeSubs?.change_pct}
+              spark={activeSubs?.sparkline || []}
               icon="active"
             />
             <KpiCard
               label={t('adminSubs.kpiRevenue')}
               value={formatMoney(
-                analytics.kpis.monthly_revenue.value,
-                analytics.kpis.monthly_revenue.currency || analytics.pricing.currency,
+                monthlyRevenue?.value ?? 0,
+                monthlyRevenue?.currency || analytics.pricing?.currency || 'AOA',
                 locale,
               )}
-              change={analytics.kpis.monthly_revenue.change_pct}
-              spark={analytics.kpis.monthly_revenue.sparkline}
+              change={monthlyRevenue?.change_pct}
+              spark={monthlyRevenue?.sparkline || []}
               icon="revenue"
             />
             <KpiCard
               label={t('adminSubs.kpiExpiring')}
-              value={String(analytics.kpis.expiring_soon.value)}
+              value={String(expiringSoon?.value ?? 0)}
               hint={t('adminSubs.requiresAction')}
               spark={[]}
               icon="alert"
@@ -293,7 +298,7 @@ export default function SubscriptionsDashboard() {
         )}
       </div>
 
-      {analytics && (analytics.alerts.expiring_7_days > 0 || analytics.alerts.failed_payments_today > 0 || analytics.alerts.expired > 0) && (
+      {analytics?.alerts && ((analytics.alerts.expiring_7_days ?? 0) > 0 || (analytics.alerts.failed_payments_today ?? 0) > 0 || (analytics.alerts.expired ?? 0) > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           {analytics.alerts.expiring_7_days > 0 && (
             <AlertCard
@@ -360,7 +365,7 @@ export default function SubscriptionsDashboard() {
           {analyticsLoading || !analytics ? (
             <Skeleton className="h-48" />
           ) : (
-            <RevenueChart series={analytics.revenue_series} locale={locale} currency={analytics.pricing.currency} />
+            <RevenueChart series={analytics.revenue_series || []} locale={locale} currency={analytics.pricing?.currency || 'AOA'} />
           )}
         </div>
         <div className="ops-card p-5">
@@ -369,10 +374,10 @@ export default function SubscriptionsDashboard() {
             <Skeleton className="h-48" />
           ) : (
             <div className="space-y-4">
-              {analytics.plan_performance.map((row) => (
+              {(analytics.plan_performance || []).map((row) => (
                 <div key={row.plan}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{t(PLAN_LABEL_KEYS[row.plan])}</span>
+                    <span className="font-medium">{t(PLAN_LABEL_KEYS[row.plan] || 'adminSubs.planPremium')}</span>
                     <span style={{ color: 'var(--ops-muted)' }}>
                       {interpolate(t('adminSubs.planUsers'), { count: row.users })} · {row.pct}%
                     </span>
@@ -729,7 +734,7 @@ function KpiCard({
           {icon === 'alert' && '!'}
         </div>
       </div>
-      {spark.length > 0 && (
+      {Array.isArray(spark) && spark.length > 0 && (
         <div className="mt-3">
           <Sparkline values={spark} color={colors[icon]} />
         </div>

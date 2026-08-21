@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { lessonsApi, coursesApi, lessonQuizzesApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/currency'
+import { useTranslations } from '@/contexts/LocaleContext'
 
 interface Lesson {
   id: number
@@ -81,6 +82,7 @@ export default function AulaPage() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuthStore()
+  const t = useTranslations()
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,7 +91,7 @@ export default function AulaPage() {
   const [showPurchasePopup, setShowPurchasePopup] = useState(false)
   const [showQuizModal, setShowQuizModal] = useState(false)
   const [quiz, setQuiz] = useState<any>(null)
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({})
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number[]>>({})
   const [quizResult, setQuizResult] = useState<any>(null)
   const [submittingQuiz, setSubmittingQuiz] = useState(false)
   const [loadingQuiz, setLoadingQuiz] = useState(false)
@@ -375,20 +377,30 @@ export default function AulaPage() {
     }
   }
 
-  const handleQuizAnswer = (questionId: number, choiceId: number) => {
-    setQuizAnswers(prev => ({ ...prev, [questionId]: choiceId }))
+  const handleQuizAnswer = (questionId: number, choiceId: number, multiple = false) => {
+    setQuizAnswers(prev => {
+      const current = prev[questionId] || []
+      if (multiple) {
+        const next = current.includes(choiceId)
+          ? current.filter((id) => id !== choiceId)
+          : [...current, choiceId]
+        return { ...prev, [questionId]: next }
+      }
+      return { ...prev, [questionId]: [choiceId] }
+    })
   }
 
   const handleSubmitQuiz = async () => {
     if (!quiz) return
 
-    const answersArray = Object.entries(quizAnswers).map(([questionId, choiceId]) => ({
+    const answersArray = Object.entries(quizAnswers).map(([questionId, choiceIds]) => ({
       question_id: Number(questionId),
-      choice_id: Number(choiceId),
+      choice_ids: choiceIds,
+      choice_id: choiceIds[0],
     }))
 
     if (answersArray.length !== quiz.questions?.length) {
-      alert('Por favor, responda a todas as perguntas do quiz.')
+      alert(t('quiz.answerAll'))
       return
     }
 
@@ -397,7 +409,7 @@ export default function AulaPage() {
       const result = await lessonQuizzesApi.submit(quiz.id, answersArray)
       const data = result?.data ?? result
       const score = Number(data?.score ?? 0)
-      const passed = score >= (quiz.passing_score ?? 0)
+      const passed = data?.passed === true
       setQuizResult({
         score,
         passed,
@@ -407,15 +419,10 @@ export default function AulaPage() {
 
       if (passed) {
         await markLessonAsCompleted()
-        setShowQuizModal(false)
-        setQuiz(null)
-        setQuizAnswers({})
-        setQuizResult(null)
-      } else {
-        alert(`Você obteve ${score}%, mas precisa de ${quiz.passing_score}% para passar. Tente novamente!`)
       }
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao submeter quiz.')
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string; detail?: string } } }
+      alert(err.response?.data?.error || err.response?.data?.detail || t('quiz.submitError'))
     } finally {
       setSubmittingQuiz(false)
     }
@@ -883,7 +890,7 @@ export default function AulaPage() {
                         // Mas pode ser que venha diretamente como qq se não houver aninhamento
                         const question = qq.question || qq
                         const questionId = question.id || qq.id || qIndex
-                        const isAnswered = quizAnswers[questionId] !== undefined
+                        const isAnswered = (quizAnswers[questionId] || []).length > 0
                         
                         // Debug: logar estrutura completa apenas na primeira vez
                         if (qIndex === 0) {
@@ -933,8 +940,10 @@ export default function AulaPage() {
                             
                             <div className="space-y-2 ml-14">
                               {question.choices && question.choices.length > 0 ? (
-                                question.choices.map((choice: any) => {
-                                  const isSelected = quizAnswers[questionId] === choice.id
+                                question.choices.map((choice: { id: number; choice_text: string }) => {
+                                  const selected = quizAnswers[questionId] || []
+                                  const isSelected = selected.includes(choice.id)
+                                  const multiple = question.question_type === 'multiple'
                                   return (
                                     <label
                                       key={choice.id}
@@ -946,11 +955,11 @@ export default function AulaPage() {
                                     >
                                       <div className="relative flex items-center">
                                         <input
-                                          type="radio"
+                                          type={multiple ? 'checkbox' : 'radio'}
                                           name={`question-${questionId}`}
                                           value={choice.id}
                                           checked={isSelected}
-                                          onChange={() => handleQuizAnswer(questionId, choice.id)}
+                                          onChange={() => handleQuizAnswer(questionId, choice.id, multiple)}
                                           className="sr-only"
                                         />
                                         <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${

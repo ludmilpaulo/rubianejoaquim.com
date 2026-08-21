@@ -20,6 +20,7 @@ from .serializers import (
     ReferralShareSerializer, ReferralPointsSerializer, UserPointsSerializer
 )
 from django.utils import timezone
+from instructors.permissions import IsStaffAdmin, is_staff_admin
 
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -152,6 +153,13 @@ class LessonViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        quiz = LessonQuiz.objects.filter(lesson=lesson, is_active=True).first()
+        if quiz and not QuizResult.objects.filter(user=user, quiz=quiz, passed=True).exists():
+            return Response(
+                {'error': 'quiz_not_passed', 'detail': 'Pass the lesson quiz before completing this lesson.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         progress, created = Progress.objects.get_or_create(
             user=user,
             lesson=lesson,
@@ -279,47 +287,28 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='certificate-info')
     def certificate_info(self, request, pk=None):
         """Check if user is eligible for a course certificate and return data for it."""
+        from courses.assessment import completion_status, issue_certificate as issue_if_eligible
+        from .serializers import CertificateSerializer
         enrollment = self.get_object()
         if enrollment.status != 'active':
             return Response({
                 'eligible': False,
                 'message': 'Inscrição não está ativa.',
             }, status=status.HTTP_200_OK)
-        course = enrollment.course
-        user = request.user
-        lessons = course.lessons.all()
-        total_lessons = lessons.count()
-        completed_lessons = Progress.objects.filter(
-            user=user, lesson__in=lessons, completed=True
-        ).count()
-        all_lessons_done = total_lessons > 0 and completed_lessons >= total_lessons
-        course_passed = True
-        total_quizzes = 0
-        for lesson in lessons:
-            try:
-                quiz = LessonQuiz.objects.get(lesson=lesson, is_active=True)
-                total_quizzes += 1
-                result = QuizResult.objects.filter(user=user, quiz=quiz).first()
-                if not result or not result.passed:
-                    course_passed = False
-                    break
-            except LessonQuiz.DoesNotExist:
-                pass
-        eligible = all_lessons_done and (total_quizzes == 0 or course_passed)
-        completed_at = None
+        progress = completion_status(enrollment)
+        eligible = progress['completed'] and enrollment.course.offers_certificate
+        cert = None
         if eligible:
-            last_progress = Progress.objects.filter(
-                user=user, lesson__course=course, completed=True
-            ).order_by('-updated_at').first()
-            if last_progress and last_progress.updated_at:
-                completed_at = last_progress.updated_at.isoformat()
+            cert = issue_if_eligible(enrollment)
         return Response({
             'eligible': eligible,
-            'course_id': course.id,
-            'course_title': course.title,
-            'user_name': getattr(user, 'get_full_name', lambda: '')() or user.username or user.email,
-            'completed_at': completed_at,
-            'message': None if eligible else 'Conclua todas as aulas e quizzes com aprovação para obter o certificado.',
+            'course_id': enrollment.course.id,
+            'course_title': enrollment.course.title,
+            'user_name': getattr(request.user, 'get_full_name', lambda: '')() or request.user.email,
+            'completed_at': cert.issued_at.isoformat() if cert else None,
+            'certificate': CertificateSerializer(cert).data if cert else None,
+            'progress': progress,
+            'message': None if eligible else 'Conclua as aulas, quizzes e exame exigidos para obter o certificado.',
         }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
@@ -463,18 +452,31 @@ class LessonQuizViewSet(viewsets.ReadOnlyModelViewSet):
                 previous_result = QuizResult.objects.filter(user=user, quiz=quiz).first()
                 
                 # Usar get_serializer para garantir que o contexto seja passado
-                serializer = self.get_serializer(quiz, context={'request': request})
+                serializer = self.get_serializer(quiz, context={
+                    'request': request,
+                    'randomize_answers': quiz.randomize_answers,
+                })
                 data = serializer.data
                 
-                # Adicionar informações do resultado anterior se existir
+                previous_results = QuizResult.objects.filter(user=user, quiz=quiz).order_by('-attempt_number')
+                previous_result = previous_results.first()
+                attempts_used = previous_results.count()
                 if previous_result:
                     data['previous_result'] = {
                         'score': float(previous_result.score),
                         'passed': previous_result.passed,
                         'correct_answers': previous_result.correct_answers,
                         'total_questions': previous_result.total_questions,
+                        'earned_points': float(previous_result.earned_points or 0),
+                        'maximum_points': float(previous_result.maximum_points or 0),
                         'completed_at': previous_result.completed_at.isoformat() if previous_result.completed_at else None,
                     }
+                data['attempts_used'] = attempts_used
+                data['attempts_allowed'] = quiz.max_attempts or 0
+                data['can_retry'] = quiz.max_attempts == 0 or attempts_used < quiz.max_attempts
+                from courses.models import QuizAttemptDraft
+                draft = QuizAttemptDraft.objects.filter(user=user, quiz=quiz).first()
+                data['draft_answers'] = draft.answers if draft else []
                 
                 return Response(data)
             except LessonQuiz.DoesNotExist:
@@ -494,86 +496,61 @@ class LessonQuizViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['post'], url_path='save-progress')
+    def save_progress(self, request, pk=None):
+        quiz = self.get_object()
+        user = request.user
+        if not (quiz.lesson.is_free or
+                Enrollment.objects.filter(user=user, course=quiz.lesson.course, status='active').exists()):
+            return Response({'error': 'no_access'}, status=status.HTTP_403_FORBIDDEN)
+        from courses.models import QuizAttemptDraft
+        answers = request.data.get('answers', [])
+        if not isinstance(answers, list):
+            answers = []
+        draft, _ = QuizAttemptDraft.objects.update_or_create(
+            user=user, quiz=quiz, defaults={'answers': answers}
+        )
+        return Response({'saved': True, 'updated_at': draft.updated_at})
+
     @action(detail=True, methods=['post'], url_path='submit')
     def submit_quiz(self, request, pk=None):
-        """Submeter respostas do quiz"""
+        """Submeter respostas do quiz — score is computed server-side."""
+        from courses.assessment import AttemptLimitError, submit_quiz_attempt
+        from courses.models import QuizAttemptDraft
+
         quiz = self.get_object()
         user = request.user
 
-        # Verificar acesso
-        if not (quiz.lesson.is_free or 
+        if not (quiz.lesson.is_free or
                 Enrollment.objects.filter(user=user, course=quiz.lesson.course, status='active').exists()):
             return Response(
                 {'error': 'Não tem acesso a este quiz.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Se já existe resultado anterior, deletar para permitir refazer
-        existing_result = QuizResult.objects.filter(user=user, quiz=quiz).first()
-        if existing_result:
-            # Deletar respostas anteriores e resultado anterior
-            UserQuizAnswer.objects.filter(user=user, quiz=quiz).delete()
-            existing_result.delete()
+        if request.data.get('score') is not None or request.data.get('passed') is not None:
+            return Response({'error': 'client_score_rejected'}, status=status.HTTP_400_BAD_REQUEST)
 
-        answers_data = request.data.get('answers', [])  # Lista de {question_id, choice_id}
+        answers_data = request.data.get('answers', [])
+        try:
+            result, breakdown = submit_quiz_attempt(user, quiz, answers_data)
+        except AttemptLimitError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 
-        # Salvar respostas
-        total_questions = quiz.questions.count()
-        correct_answers = 0
-
-        for answer_data in answers_data:
-            question_id = answer_data.get('question_id')
-            choice_id = answer_data.get('choice_id')
-
-            try:
-                question = Question.objects.get(id=question_id)
-                choice = Choice.objects.get(id=choice_id, question=question)
-                
-                # Verificar se a pergunta pertence ao quiz
-                if not quiz.questions.filter(question=question).exists():
-                    continue
-
-                is_correct = choice.is_correct
-                if is_correct:
-                    correct_answers += 1
-
-                UserQuizAnswer.objects.create(
-                    user=user,
-                    quiz=quiz,
-                    question=question,
-                    selected_choice=choice,
-                    is_correct=is_correct
-                )
-            except (Question.DoesNotExist, Choice.DoesNotExist):
-                continue
-
-        # Calcular pontuação
-        total_points = sum(qq.points for qq in quiz.questions.all())
-        user_answers = UserQuizAnswer.objects.filter(user=user, quiz=quiz)
-        earned_points = 0
-        for answer in user_answers:
-            if answer.is_correct:
-                try:
-                    qq = quiz.questions.get(question=answer.question)
-                    earned_points += qq.points
-                except LessonQuizQuestion.DoesNotExist:
-                    pass
-        score = (earned_points / total_points * 100) if total_points > 0 else 0
-        passed = score >= quiz.passing_score
-
-        # Criar resultado
-        result = QuizResult.objects.create(
-            user=user,
-            quiz=quiz,
-            score=score,
-            total_questions=total_questions,
-            correct_answers=correct_answers,
-            passed=passed,
-            completed_at=timezone.now()
-        )
-
+        QuizAttemptDraft.objects.filter(user=user, quiz=quiz).delete()
         serializer = QuizResultSerializer(result)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        payload = serializer.data
+        payload['percentage'] = float(result.score)
+        payload['earned_points'] = float(result.earned_points)
+        payload['maximum_points'] = float(result.maximum_points)
+        payload['attempts_used'] = result.attempt_number
+        payload['attempts_allowed'] = quiz.max_attempts or 0
+        payload['can_retry'] = (not result.passed) and (
+            quiz.max_attempts == 0 or result.attempt_number < quiz.max_attempts
+        )
+        if quiz.show_correct_after or quiz.show_explanations:
+            payload['question_results'] = breakdown
+        return Response(payload, status=status.HTTP_201_CREATED)
 
 
 class FinalExamViewSet(viewsets.ReadOnlyModelViewSet):
@@ -598,90 +575,32 @@ class FinalExamViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='submit')
     def submit_exam(self, request, pk=None):
-        """Submeter respostas do exame final"""
+        """Submeter respostas do exame final — score is computed server-side."""
+        from courses.assessment import AttemptLimitError, submit_exam_attempt
+
         exam = self.get_object()
         user = request.user
 
-        # Verificar acesso
         if not Enrollment.objects.filter(user=user, course=exam.course, status='active').exists():
             return Response(
                 {'error': 'Não tem acesso a este exame.'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        if request.data.get('score') is not None or request.data.get('passed') is not None:
+            return Response({'error': 'client_score_rejected'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verificar número de tentativas
-        existing_results = ExamResult.objects.filter(user=user, exam=exam)
-        attempt_number = existing_results.count() + 1
-
-        if attempt_number > exam.max_attempts:
-            return Response(
-                {'error': f'Número máximo de tentativas ({exam.max_attempts}) excedido.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        answers_data = request.data.get('answers', [])
-
-        # Limpar respostas anteriores desta tentativa (se houver)
-        # Na prática, cada tentativa cria um novo ExamResult
-
-        # Salvar respostas
-        total_questions = exam.questions.count()
-        correct_answers = 0
-
-        for answer_data in answers_data:
-            question_id = answer_data.get('question_id')
-            choice_id = answer_data.get('choice_id')
-
-            try:
-                question = Question.objects.get(id=question_id)
-                choice = Choice.objects.get(id=choice_id, question=question)
-                
-                # Verificar se a pergunta pertence ao exame
-                if not exam.questions.filter(question=question).exists():
-                    continue
-
-                is_correct = choice.is_correct
-                if is_correct:
-                    correct_answers += 1
-
-                UserExamAnswer.objects.create(
-                    user=user,
-                    exam=exam,
-                    question=question,
-                    selected_choice=choice,
-                    is_correct=is_correct
-                )
-            except (Question.DoesNotExist, Choice.DoesNotExist):
-                continue
-
-        # Calcular pontuação
-        total_points = sum(eq.points for eq in exam.questions.all())
-        user_answers = UserExamAnswer.objects.filter(user=user, exam=exam)
-        earned_points = 0
-        for answer in user_answers:
-            if answer.is_correct:
-                try:
-                    eq = exam.questions.get(question=answer.question)
-                    earned_points += eq.points
-                except FinalExamQuestion.DoesNotExist:
-                    pass
-        score = (earned_points / total_points * 100) if total_points > 0 else 0
-        passed = score >= exam.passing_score
-
-        # Criar resultado
-        result = ExamResult.objects.create(
-            user=user,
-            exam=exam,
-            attempt_number=attempt_number,
-            score=score,
-            total_questions=total_questions,
-            correct_answers=correct_answers,
-            passed=passed,
-            completed_at=timezone.now()
-        )
+        try:
+            result, breakdown = submit_exam_attempt(user, exam, request.data.get('answers', []))
+        except AttemptLimitError as exc:
+            return Response(exc.detail, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = ExamResultSerializer(result)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        payload = serializer.data
+        payload['percentage'] = float(result.score)
+        payload['can_retry'] = (not result.passed) and result.attempt_number < exam.max_attempts
+        if exam.show_correct_after or exam.show_explanations:
+            payload['question_results'] = breakdown
+        return Response(payload, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'], url_path='my-results')
     def my_results(self, request, pk=None):
@@ -973,7 +892,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStaffAdmin]
 
     def get_serializer_class(self):
         from .serializers import CategorySerializer
@@ -981,7 +900,7 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         from .models import Category
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
+        if not is_staff_admin(self.request.user):
             return Category.objects.none()
         return Category.objects.all()
 
@@ -1000,6 +919,12 @@ class CourseReviewViewSet(viewsets.ModelViewSet):
         if course_id:
             qs = qs.filter(course_id=course_id)
         return qs
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if self.action in ('update', 'partial_update', 'destroy'):
+            if obj.student_id != request.user.id and not is_staff_admin(request.user):
+                self.permission_denied(request, message='not_owner')
 
     def perform_create(self, serializer):
         from rest_framework.exceptions import ValidationError
@@ -1020,9 +945,20 @@ class CourseReviewViewSet(viewsets.ModelViewSet):
         serializer.save(student=self.request.user)
         refresh_course_rating(course)
 
+    def perform_update(self, serializer):
+        from instructors.services import refresh_course_rating
+        serializer.save()
+        refresh_course_rating(serializer.instance.course)
+
+    def perform_destroy(self, instance):
+        from instructors.services import refresh_course_rating
+        course = instance.course
+        instance.delete()
+        refresh_course_rating(course)
+
     @action(detail=True, methods=['post'])
     def reply(self, request, pk=None):
-        from instructors.permissions import approved_instructor, is_staff_admin
+        from instructors.permissions import approved_instructor
         review = self.get_object()
         instructor = approved_instructor(request.user)
         if not is_staff_admin(request.user) and (
@@ -1080,7 +1016,30 @@ class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
     def verify(self, request, code=None):
         from .models import Certificate
         from .serializers import CertificateSerializer
-        cert = get_object_or_404(Certificate, code=code)
+        from courses.assessment import CERT_REVOKED, CERT_EXPIRED, certificate_status
+        cert = Certificate.objects.filter(public_id=code).first() or Certificate.objects.filter(code=code).first()
+        if cert is None:
+            return Response({'detail': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        data = CertificateSerializer(cert, context={'request': request}).data
+        data['display_status'] = certificate_status(cert)
+        if data['display_status'] == CERT_REVOKED:
+            data['message'] = 'Certificate revoked.'
+        elif data['display_status'] == CERT_EXPIRED:
+            data['message'] = 'Certificate expired.'
+        return Response(data)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='revoke')
+    def revoke(self, request):
+        from .models import Certificate
+        from courses.assessment import revoke_certificate
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response({'detail': 'admin_required'}, status=status.HTTP_403_FORBIDDEN)
+        ident = request.data.get('code') or request.data.get('public_id')
+        cert = Certificate.objects.filter(public_id=ident).first() or Certificate.objects.filter(code=ident).first()
+        if cert is None:
+            return Response({'detail': 'not_found'}, status=status.HTTP_404_NOT_FOUND)
+        cert = revoke_certificate(cert, request.data.get('reason') or '')
+        from .serializers import CertificateSerializer
         return Response(CertificateSerializer(cert, context={'request': request}).data)
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='issue')

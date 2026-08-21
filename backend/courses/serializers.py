@@ -312,21 +312,31 @@ class CourseReviewSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj):
         return obj.student.get_full_name() or obj.student.email.split('@')[0]
 
+    def update(self, instance, validated_data):
+        validated_data.pop('course', None)
+        return super().update(instance, validated_data)
+
 
 class CertificateSerializer(serializers.ModelSerializer):
     verify_url = serializers.SerializerMethodField()
+    display_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Certificate
         fields = [
-            'id', 'code', 'student_name', 'course_title', 'instructor_name',
-            'issued_at', 'verify_url', 'course', 'enrollment',
+            'id', 'code', 'public_id', 'student_name', 'course_title', 'instructor_name',
+            'issued_at', 'verify_url', 'course', 'enrollment', 'status', 'display_status',
         ]
 
     def get_verify_url(self, obj):
         from django.conf import settings
         base = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
-        return f'{base}/certificado/verify/{obj.code}'
+        ident = obj.public_id or obj.code
+        return f'{base}/certificado/verify/{ident}'
+
+    def get_display_status(self, obj):
+        from courses.assessment import certificate_status
+        return certificate_status(obj)
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -420,10 +430,11 @@ class ChoiceSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'choice_text', 'is_correct', 'order']
 
     def to_representation(self, instance):
-        """Esconder is_correct para alunos (não-admin)"""
         representation = super().to_representation(instance)
         request = self.context.get('request')
-        # Só esconder se não for admin e se request existir
+        reveal = self.context.get('reveal_answers')
+        if reveal:
+            return representation
         if request and hasattr(request, 'user'):
             if not (request.user.is_staff or request.user.is_superuser):
                 representation.pop('is_correct', None)
@@ -436,10 +447,38 @@ class QuestionSerializer(serializers.ModelSerializer):
     course_title = serializers.CharField(source='course.title', read_only=True)
     lesson_id = serializers.IntegerField(source='lesson.id', read_only=True)
     lesson_title = serializers.CharField(source='lesson.title', read_only=True)
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
-        fields = ['id', 'course', 'course_id', 'course_title', 'lesson', 'lesson_id', 'lesson_title', 'question_text', 'explanation', 'choices', 'order', 'created_at', 'updated_at']
+        fields = [
+            'id', 'course', 'course_id', 'course_title', 'lesson', 'lesson_id', 'lesson_title',
+            'question_text', 'explanation', 'question_type', 'difficulty', 'image', 'image_url',
+            'points', 'is_required', 'time_limit_seconds', 'choices', 'order', 'created_at', 'updated_at',
+        ]
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(obj.image.url)
+        return obj.image.url
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        reveal = self.context.get('reveal_answers')
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        is_staff = bool(user and (getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False)))
+        if not reveal and not is_staff:
+            data['explanation'] = ''
+        if self.context.get('randomize_answers') and data.get('choices'):
+            import random
+            choices = list(data['choices'])
+            random.shuffle(choices)
+            data['choices'] = choices
+        return data
 
 
 class LessonQuizQuestionSerializer(serializers.ModelSerializer):
@@ -459,9 +498,20 @@ class LessonQuizSerializer(serializers.ModelSerializer):
         model = LessonQuiz
         fields = [
             'id', 'lesson', 'lesson_title', 'title', 'description',
-            'passing_score', 'time_limit_minutes', 'is_active',
-            'questions', 'created_at', 'updated_at'
+            'passing_score', 'time_limit_minutes', 'max_attempts',
+            'randomize_questions', 'randomize_answers', 'show_correct_after',
+            'show_explanations', 'allow_change_answers', 'multi_scoring',
+            'is_active', 'questions', 'created_at', 'updated_at',
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.randomize_questions and data.get('questions'):
+            import random
+            questions = list(data['questions'])
+            random.shuffle(questions)
+            data['questions'] = questions
+        return data
 
 
 class FinalExamQuestionSerializer(serializers.ModelSerializer):
@@ -481,8 +531,10 @@ class FinalExamSerializer(serializers.ModelSerializer):
         model = FinalExam
         fields = [
             'id', 'course', 'course_title', 'title', 'description',
-            'passing_score', 'time_limit_minutes', 'max_attempts', 'is_active',
-            'questions', 'created_at', 'updated_at'
+            'passing_score', 'time_limit_minutes', 'max_attempts',
+            'randomize_questions', 'randomize_answers', 'show_correct_after',
+            'show_explanations', 'multi_scoring',
+            'is_active', 'questions', 'created_at', 'updated_at',
         ]
 
 
@@ -512,8 +564,8 @@ class QuizResultSerializer(serializers.ModelSerializer):
         model = QuizResult
         fields = [
             'id', 'quiz', 'quiz_title', 'lesson_title', 'score',
-            'total_questions', 'correct_answers', 'passed',
-            'started_at', 'completed_at'
+            'earned_points', 'maximum_points', 'total_questions', 'correct_answers',
+            'passed', 'attempt_number', 'started_at', 'completed_at',
         ]
 
 
@@ -525,7 +577,8 @@ class ExamResultSerializer(serializers.ModelSerializer):
         model = ExamResult
         fields = [
             'id', 'exam', 'exam_title', 'course_title', 'attempt_number',
-            'score', 'total_questions', 'correct_answers', 'passed',
+            'score', 'earned_points', 'maximum_points',
+            'total_questions', 'correct_answers', 'passed',
             'started_at', 'completed_at'
         ]
 

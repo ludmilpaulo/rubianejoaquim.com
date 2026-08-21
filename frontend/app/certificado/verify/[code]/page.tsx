@@ -31,13 +31,17 @@ export default function VerifyCertificatePage() {
       <h1 className="text-2xl font-bold mb-4">{t('education.verifyCert')}</h1>
       {invalid || !cert ? (
         <ZendaAlert tone="error">{t('education.invalidCert')}</ZendaAlert>
+      ) : cert.display_status === 'revoked' ? (
+        <ZendaAlert tone="error">{t('education.revokedCert')}</ZendaAlert>
+      ) : cert.display_status === 'expired' ? (
+        <ZendaAlert tone="error">{t('education.expiredCert')}</ZendaAlert>
       ) : (
         <div className="bg-white rounded-2xl border p-6 space-y-2">
           <ZendaAlert tone="success">{t('education.validCert')}</ZendaAlert>
           <p className="font-semibold">{cert.student_name}</p>
           <p>{cert.course_title}</p>
           <p className="text-sm text-zenda-text-secondary">{cert.instructor_name}</p>
-          <p className="text-xs">{cert.code}</p>
+          <p className="text-xs">{cert.public_id || cert.code}</p>
         </div>
       )}
     </div>
