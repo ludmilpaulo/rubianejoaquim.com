@@ -374,7 +374,7 @@ export default function SubscriptionsDashboard() {
             <Skeleton className="h-48" />
           ) : (
             <div className="space-y-4">
-              {(analytics.plan_performance || []).map((row) => (
+              {(Array.isArray(analytics.plan_performance) ? analytics.plan_performance : []).map((row) => (
                 <div key={row.plan}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="font-medium">{t(PLAN_LABEL_KEYS[row.plan] || 'adminSubs.planPremium')}</span>
@@ -405,7 +405,7 @@ export default function SubscriptionsDashboard() {
               <button key={s} type="button" onClick={() => setProofStatus(s)} className="text-left">
                 <div style={{ color: 'var(--ops-muted)' }}>{t(`adminSubs.${s}`)}</div>
                 <div className="text-xl font-bold" style={{ color: proofStatus === s ? 'var(--ops-primary)' : 'var(--ops-text)' }}>
-                  {analytics?.proofs[s] ?? 0}
+                  {analytics?.proofs?.[s] ?? 0}
                 </div>
               </button>
             ))}
@@ -777,15 +777,16 @@ function RevenueChart({
   locale: string
   currency: string
 }) {
-  const max = Math.max(...series.map((s) => s.amount), 1)
-  if (!series.length) {
+  const rows = Array.isArray(series) ? series : []
+  if (!rows.length) {
     return <div className="h-48 flex items-center justify-center text-sm" style={{ color: 'var(--ops-muted)' }}>—</div>
   }
+  const max = Math.max(...rows.map((s) => Number(s.amount) || 0), 1)
   const w = 640
   const h = 180
-  const points = series.map((s, i) => {
-    const x = (i / Math.max(series.length - 1, 1)) * (w - 40) + 20
-    const y = h - 24 - (s.amount / max) * (h - 40)
+  const points = rows.map((s, i) => {
+    const x = (i / Math.max(rows.length - 1, 1)) * (w - 40) + 20
+    const y = h - 24 - ((Number(s.amount) || 0) / max) * (h - 40)
     return { x, y, s }
   })
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ')
@@ -802,7 +803,7 @@ function RevenueChart({
         ))}
       </svg>
       <p className="text-xs mt-1" style={{ color: 'var(--ops-muted)' }}>
-        {formatMoney(series[series.length - 1]?.amount ?? 0, currency, locale)}
+        {formatMoney(rows[rows.length - 1]?.amount ?? 0, currency, locale)}
       </p>
     </div>
   )
