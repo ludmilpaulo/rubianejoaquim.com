@@ -649,7 +649,7 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
-        from courses.assessment import can_manage_course, validate_question_payload
+        from courses.assessment import can_manage_question, validate_question_payload
         errors, _ = validate_question_payload(
             request.data.get('question_text'),
             request.data.get('choices') or [],
@@ -660,7 +660,7 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
             return Response({'error': errors[0], 'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
         response = super().create(request, *args, **kwargs)
         question = Question.objects.get(id=response.data['id'])
-        if question.course_id and not can_manage_course(request.user, question.course):
+        if not can_manage_question(request.user, question):
             question.delete()
             return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
         if request.data.get('choices') is not None:
@@ -694,6 +694,10 @@ class AdminQuestionViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
+        from courses.assessment import can_manage_question
+        question = self.get_object()
+        if not can_manage_question(request.user, question):
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
         return super().destroy(request, *args, **kwargs)
 
 
@@ -707,23 +711,42 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
         """Garantir que o contexto da request está disponível"""
         context = super().get_serializer_context()
         context['request'] = self.request
+        context['reveal_answers'] = True
         return context
     
     def check_admin(self):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            from instructors.permissions import approved_instructor
-            if not approved_instructor(self.request.user):
-                return Response(
-                    {'error': 'Acesso negado. Apenas administradores.'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        return None
+        from instructors.permissions import approved_instructor, is_staff_admin
+        if is_staff_admin(self.request.user) or approved_instructor(self.request.user):
+            return None
+        return Response(
+            {'error': 'Acesso negado. Apenas administradores ou instrutores.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
     
     def get_queryset(self):
+        from instructors.permissions import approved_instructor, is_staff_admin
+        qs = Choice.objects.all()
+        if is_staff_admin(self.request.user):
+            pass
+        else:
+            instructor = approved_instructor(self.request.user)
+            if instructor:
+                qs = qs.filter(
+                    Q(question__course__instructor=instructor)
+                    | Q(question__lesson__course__instructor=instructor)
+                )
+            else:
+                qs = qs.none()
         question_id = self.request.query_params.get('question')
         if question_id:
-            return self.queryset.filter(question_id=question_id)
-        return self.queryset
+            qs = qs.filter(question_id=question_id)
+        return qs
+
+    def _ensure_question_owner(self, request, question):
+        from courses.assessment import can_manage_question
+        if not can_manage_question(request.user, question):
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        return None
 
     def retrieve(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -741,6 +764,14 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
+        question_id = request.data.get('question')
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return Response({'error': 'Pergunta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+        denied = self._ensure_question_owner(request, question)
+        if denied:
+            return denied
         try:
             return super().create(request, *args, **kwargs)
         except Exception as e:
@@ -757,12 +788,29 @@ class AdminChoiceViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
+        choice = self.get_object()
+        denied = self._ensure_question_owner(request, choice.question)
+        if denied:
+            return denied
+        new_question_id = request.data.get('question')
+        if new_question_id is not None:
+            try:
+                new_question = Question.objects.get(id=new_question_id)
+            except Question.DoesNotExist:
+                return Response({'error': 'Pergunta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+            denied = self._ensure_question_owner(request, new_question)
+            if denied:
+                return denied
         return super().update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         check = self.check_admin()
         if check:
             return check
+        choice = self.get_object()
+        denied = self._ensure_question_owner(request, choice.question)
+        if denied:
+            return denied
         return super().destroy(request, *args, **kwargs)
 
 
@@ -771,23 +819,52 @@ class AdminLessonQuizViewSet(viewsets.ModelViewSet):
     queryset = LessonQuiz.objects.all()
     serializer_class = LessonQuizSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        context['reveal_answers'] = True
+        return context
     
     def check_admin(self):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            from instructors.permissions import approved_instructor
-            if not approved_instructor(self.request.user):
-                return Response(
-                    {'error': 'Acesso negado. Apenas administradores.'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-        return None
+        from instructors.permissions import approved_instructor, is_staff_admin
+        if is_staff_admin(self.request.user) or approved_instructor(self.request.user):
+            return None
+        return Response(
+            {'error': 'Acesso negado. Apenas administradores ou instrutores.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
     
     def get_queryset(self):
-        lesson_id = self.request.query_params.get('lesson')
+        from instructors.permissions import approved_instructor, is_staff_admin
         qs = LessonQuiz.objects.all()
+        if is_staff_admin(self.request.user):
+            pass
+        else:
+            instructor = approved_instructor(self.request.user)
+            if instructor:
+                qs = qs.filter(lesson__course__instructor=instructor)
+            else:
+                qs = qs.none()
+        lesson_id = self.request.query_params.get('lesson')
         if lesson_id:
             qs = qs.filter(lesson_id=lesson_id)
         return qs
+
+    def _ensure_lesson_owner(self, request, lesson):
+        from courses.assessment import can_manage_lesson
+        if not can_manage_lesson(request.user, lesson):
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        return None
+
+    def _lesson_from_request(self, request, fallback=None):
+        lesson_id = request.data.get('lesson')
+        if lesson_id is None:
+            return fallback
+        try:
+            return Lesson.objects.select_related('course').get(id=lesson_id)
+        except Lesson.DoesNotExist:
+            return None
 
     def retrieve(self, request, *args, **kwargs):
         check = self.check_admin()
@@ -805,18 +882,40 @@ class AdminLessonQuizViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
+        if request.data.get('lesson') is not None:
+            lesson = self._lesson_from_request(request)
+            if lesson is None:
+                return Response({'error': 'Aula não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+            denied = self._ensure_lesson_owner(request, lesson)
+            if denied:
+                return denied
         return super().create(request, *args, **kwargs)
     
     def update(self, request, *args, **kwargs):
         check = self.check_admin()
         if check:
             return check
+        quiz = self.get_object()
+        denied = self._ensure_lesson_owner(request, quiz.lesson)
+        if denied:
+            return denied
+        if request.data.get('lesson') is not None:
+            lesson = self._lesson_from_request(request)
+            if lesson is None:
+                return Response({'error': 'Aula não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+            denied = self._ensure_lesson_owner(request, lesson)
+            if denied:
+                return denied
         return super().update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         check = self.check_admin()
         if check:
             return check
+        quiz = self.get_object()
+        denied = self._ensure_lesson_owner(request, quiz.lesson)
+        if denied:
+            return denied
         return super().destroy(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'], url_path='add-question')
@@ -825,23 +924,29 @@ class AdminLessonQuizViewSet(viewsets.ModelViewSet):
         check = self.check_admin()
         if check:
             return check
-        
+        from courses.assessment import can_manage_question
+
         quiz = self.get_object()
+        denied = self._ensure_lesson_owner(request, quiz.lesson)
+        if denied:
+            return denied
         question_id = request.data.get('question_id')
         points = request.data.get('points', 1)
         order = request.data.get('order', quiz.questions.count())
         
         try:
             question = Question.objects.get(id=question_id)
-            quiz_question, created = LessonQuizQuestion.objects.get_or_create(
-                quiz=quiz,
-                question=question,
-                defaults={'points': points, 'order': order}
-            )
-            serializer = LessonQuizQuestionSerializer(quiz_question)
-            return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
         except Question.DoesNotExist:
             return Response({'error': 'Pergunta não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+        if not can_manage_question(request.user, question):
+            return Response({'error': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        quiz_question, created = LessonQuizQuestion.objects.get_or_create(
+            quiz=quiz,
+            question=question,
+            defaults={'points': points, 'order': order}
+        )
+        serializer = LessonQuizQuestionSerializer(quiz_question)
+        return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
     
     @action(detail=True, methods=['delete'], url_path='remove-question/(?P<question_id>[^/.]+)')
     def remove_question(self, request, pk=None, question_id=None):
@@ -851,6 +956,9 @@ class AdminLessonQuizViewSet(viewsets.ModelViewSet):
             return check
         
         quiz = self.get_object()
+        denied = self._ensure_lesson_owner(request, quiz.lesson)
+        if denied:
+            return denied
         try:
             quiz_question = LessonQuizQuestion.objects.get(quiz=quiz, question_id=question_id)
             quiz_question.delete()

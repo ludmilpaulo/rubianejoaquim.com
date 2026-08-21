@@ -472,8 +472,23 @@ def can_manage_course(user, course) -> bool:
     return bool(instructor and course and course.instructor_id == instructor.id)
 
 
+def can_manage_lesson(user, lesson) -> bool:
+    return bool(lesson) and can_manage_course(user, getattr(lesson, 'course', None))
+
+
 def can_manage_question(user, question) -> bool:
+    """True only if the user may manage every course the question is attached to."""
+    if question is None:
+        return False
+    from instructors.permissions import is_staff_admin
+    if is_staff_admin(user):
+        return True
     course = getattr(question, 'course', None)
-    if course is None and getattr(question, 'lesson', None) is not None:
-        course = question.lesson.course
-    return can_manage_course(user, course)
+    lesson = getattr(question, 'lesson', None)
+    if lesson is not None and not can_manage_lesson(user, lesson):
+        return False
+    if course is not None and not can_manage_course(user, course):
+        return False
+    if course is None and lesson is None:
+        return False
+    return True
