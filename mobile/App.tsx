@@ -14,7 +14,7 @@ import MainNavigator from './src/navigation/MainNavigator'
 import { linking } from './src/navigation/linking'
 import LoadingScreen from './src/screens/LoadingScreen'
 import OnboardingScreen, { isOnboardingComplete } from './src/screens/OnboardingScreen'
-import { setupNotifications } from './src/utils/notifications'
+import { setupNotifications, registerRemotePushToken } from './src/utils/notifications'
 import { checkStoreUpdate, checkMandatoryUpdate, type ForceUpdateInfo } from './src/utils/storeUpdate'
 import ForceUpdateScreen from './src/screens/ForceUpdateScreen'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
@@ -142,7 +142,9 @@ function AppContent() {
 
   useEffect(() => {
     if (user && (hasPaidAccess || hasExpiredSubscription)) {
-      setupNotifications().catch(() => {})
+      setupNotifications()
+        .then(() => registerRemotePushToken())
+        .catch(() => {})
     }
   }, [user, hasPaidAccess, hasExpiredSubscription])
 

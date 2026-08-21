@@ -4,7 +4,8 @@ from .models import (
     Course, Lesson, LessonAttachment, Enrollment, PaymentProof, Progress,
     Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
     UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
-    ReferralShare, ReferralPoints, UserPoints
+    ReferralShare, ReferralPoints, UserPoints,
+    Category, CourseModule, CourseReview, Certificate, Assignment, AssignmentSubmission,
 )
 
 
@@ -29,12 +30,14 @@ class LessonSerializer(serializers.ModelSerializer):
     attachments = LessonAttachmentSerializer(many=True, read_only=True)
     progress = serializers.SerializerMethodField()
     course = serializers.SerializerMethodField()
+    locked = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
-            'id', 'course', 'title', 'slug', 'description', 'video_url', 'duration',
-            'content', 'is_free', 'order', 'attachments', 'progress', 'created_at', 'updated_at'
+            'id', 'course', 'module', 'title', 'slug', 'description', 'video_url',
+            'video_file', 'lesson_type', 'duration', 'content', 'is_free', 'order',
+            'attachments', 'progress', 'locked', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -60,6 +63,34 @@ class LessonSerializer(serializers.ModelSerializer):
                 return {'completed': False, 'completed_at': None}
         return None
 
+    def _can_access(self, obj):
+        if obj.is_free:
+            return True
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if user.is_staff or user.is_superuser:
+            return True
+        instructor = getattr(user, 'instructor_profile', None)
+        if instructor and obj.course.instructor_id == instructor.id:
+            return True
+        return Enrollment.objects.filter(
+            user=user, course=obj.course, status='active'
+        ).exists()
+
+    def get_locked(self, obj):
+        return not self._can_access(obj)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if data.get('locked'):
+            data['content'] = ''
+            data['video_url'] = ''
+            data['video_file'] = None
+            data['attachments'] = []
+        return data
+
 
 class AdminLessonSerializer(serializers.ModelSerializer):
     """Serializer para admin com attachments writable"""
@@ -74,9 +105,9 @@ class AdminLessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = [
-            'id', 'course', 'title', 'slug', 'description', 'video_url', 'duration',
-            'content', 'is_free', 'order', 'attachments', 'attachments_data',
-            'created_at', 'updated_at'
+            'id', 'course', 'module', 'title', 'slug', 'description', 'video_url',
+            'video_file', 'lesson_type', 'duration', 'content', 'is_free', 'order',
+            'attachments', 'attachments_data', 'created_at', 'updated_at'
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -140,13 +171,21 @@ class CourseSerializer(serializers.ModelSerializer):
     lessons_count = serializers.SerializerMethodField()
     free_lessons_count = serializers.SerializerMethodField()
     enrollment_status = serializers.SerializerMethodField()
+    instructor = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
+    duration_minutes = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
             'id', 'title', 'slug', 'description', 'short_description',
-            'price', 'image', 'is_active', 'lessons_count', 'free_lessons_count',
-            'enrollment_status', 'created_at'
+            'price', 'currency', 'image', 'is_active', 'is_free', 'kind', 'status',
+            'language', 'level', 'category', 'category_name', 'instructor',
+            'trailer_url', 'learning_objectives', 'requirements', 'target_audience',
+            'is_featured', 'is_popular', 'is_new', 'is_recommended',
+            'offers_certificate', 'rating_avg', 'rating_count',
+            'lessons_count', 'free_lessons_count', 'duration_minutes',
+            'enrollment_status', 'rejection_reason', 'created_at'
         ]
 
     def validate_slug(self, value):
@@ -165,6 +204,26 @@ class CourseSerializer(serializers.ModelSerializer):
     def get_free_lessons_count(self, obj):
         return obj.lessons.filter(is_free=True).count()
 
+    def get_duration_minutes(self, obj):
+        from django.db.models import Sum
+        return obj.lessons.aggregate(s=Sum('duration'))['s'] or 0
+
+    def get_category_name(self, obj):
+        return obj.category.name if obj.category_id else None
+
+    def get_instructor(self, obj):
+        if not obj.instructor_id:
+            return None
+        inst = obj.instructor
+        return {
+            'id': inst.id,
+            'slug': inst.slug,
+            'display_name': inst.display_name,
+            'headline': inst.headline,
+            'rating_avg': str(inst.rating_avg),
+            'is_official': inst.is_official,
+        }
+
     def get_enrollment_status(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
@@ -182,9 +241,92 @@ class CourseSerializer(serializers.ModelSerializer):
 
 class CourseDetailSerializer(CourseSerializer):
     lessons = LessonSerializer(many=True, read_only=True)
+    modules = serializers.SerializerMethodField()
+    reviews_preview = serializers.SerializerMethodField()
 
     class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + ['lessons']
+        fields = CourseSerializer.Meta.fields + ['lessons', 'modules', 'reviews_preview']
+
+    def get_modules(self, obj):
+        return CourseModuleSerializer(obj.modules.all(), many=True, context=self.context).data
+
+    def get_reviews_preview(self, obj):
+        qs = obj.reviews.filter(status='published').order_by('-created_at')[:8]
+        return CourseReviewSerializer(qs, many=True).data
+
+
+class CourseWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = [
+            'id', 'title', 'slug', 'description', 'short_description', 'price',
+            'currency', 'image', 'is_active', 'is_free', 'kind', 'language', 'level',
+            'category', 'trailer_url', 'learning_objectives', 'requirements',
+            'target_audience', 'offers_certificate', 'status',
+        ]
+        read_only_fields = ['status']
+
+    def validate_slug(self, value):
+        if not value:
+            return value
+        return slugify(value)
+
+
+class CourseModuleSerializer(serializers.ModelSerializer):
+    lessons = LessonSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CourseModule
+        fields = ['id', 'course', 'title', 'description', 'order', 'lessons']
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    localized_name = serializers.SerializerMethodField()
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Category
+        fields = ['id', 'parent', 'slug', 'name', 'name_i18n', 'icon', 'order', 'is_active', 'localized_name', 'children']
+
+    def get_localized_name(self, obj):
+        request = self.context.get('request')
+        lang = request.query_params.get('lang') if request else None
+        return obj.localized_name(lang)
+
+    def get_children(self, obj):
+        kids = obj.children.filter(is_active=True)
+        return CategorySerializer(kids, many=True, context=self.context).data
+
+
+class CourseReviewSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseReview
+        fields = [
+            'id', 'course', 'rating', 'body', 'instructor_reply', 'replied_at',
+            'status', 'student_name', 'created_at',
+        ]
+        read_only_fields = ['instructor_reply', 'replied_at', 'status', 'created_at']
+
+    def get_student_name(self, obj):
+        return obj.student.get_full_name() or obj.student.email.split('@')[0]
+
+
+class CertificateSerializer(serializers.ModelSerializer):
+    verify_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Certificate
+        fields = [
+            'id', 'code', 'student_name', 'course_title', 'instructor_name',
+            'issued_at', 'verify_url', 'course', 'enrollment',
+        ]
+
+    def get_verify_url(self, obj):
+        from django.conf import settings
+        base = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
+        return f'{base}/certificado/verify/{obj.code}'
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):

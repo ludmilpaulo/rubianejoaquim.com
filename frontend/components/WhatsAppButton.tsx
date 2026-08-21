@@ -1,10 +1,16 @@
 'use client'
 
+import { usePathname } from 'next/navigation'
+
 const WHATSAPP_NUMBER = '244944905246'
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`
 const WHATSAPP_MESSAGE = 'Olá! Gostaria de mais informações sobre os cursos e mentoria em educação financeira.'
 
 export default function WhatsAppButton() {
+  const pathname = usePathname() || '/'
+  if (pathname.startsWith('/admin/subscriptions')) {
+    return null
+  }
   return (
     <a
       href={`${WHATSAPP_URL}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`}

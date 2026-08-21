@@ -2,6 +2,7 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 import { getApiBaseUrl } from './types/api'
 import { logger } from './logger'
+import type { ProofListParams, SubscriptionListParams } from './types/subscriptions'
 
 const API_URL = getApiBaseUrl()
 
@@ -134,11 +135,22 @@ export const authApi = {
 
 // Courses
 export const coursesApi = {
-  list: () => api.get('/course/course/'),
+  list: (params?: Record<string, string | number | boolean | undefined>) =>
+    api.get('/course/course/', { params }),
   get: (id: number) => api.get(`/course/course/${id}/`),
+  marketplace: () => api.get('/course/course/marketplace/'),
+  categories: () => api.get('/course/categories/'),
   freeLessons: () => api.get('/course/course/free-lesson/'),
   enroll: (courseId: number) => api.post('/course/enrollment/', { course_id: courseId }),
   myEnrollments: () => api.get('/course/enrollment/'),
+  myLearning: () => api.get('/course/my-learning/'),
+  reviews: (courseId: number) => api.get('/course/reviews/', { params: { course: courseId } }),
+  createReview: (data: { course: number; rating: number; body: string }) =>
+    api.post('/course/reviews/', data),
+  issueCertificate: (enrollmentId: number) =>
+    api.post('/course/certificates/issue/', { enrollment_id: enrollmentId }),
+  verifyCertificate: (code: string) => api.get(`/course/certificates/verify/${code}/`),
+  myCertificates: () => api.get('/course/certificates/'),
   uploadPaymentProof: (enrollmentId: number, file: File, notes?: string) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -172,10 +184,20 @@ export const lessonQuizzesApi = {
 
 // Mentorship
 export const mentorshipApi = {
-  packages: () => api.get('/mentorship/package/'),
+  packages: (mentorId?: number) =>
+    api.get('/mentorship/package/', { params: mentorId ? { mentor: mentorId } : undefined }),
   createRequest: (data: { package_id: number; objective: string; availability: string; contact: string }) =>
     api.post('/mentorship/request/', data),
   myRequests: () => api.get('/mentorship/request/'),
+  sessions: () => api.get('/mentorship/sessions/'),
+  bookSession: (data: {
+    mentor: number
+    package?: number
+    starts_at: string
+    duration_minutes: number
+  }) => api.post('/mentorship/sessions/', data),
+  publicAvailability: (mentorId: number) =>
+    api.get('/mentorship/public-availability/', { params: { mentor: mentorId } }),
   uploadPaymentProof: (requestId: number, file: File, notes?: string) => {
     const formData = new FormData()
     formData.append('file', file)
@@ -184,6 +206,85 @@ export const mentorshipApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+}
+
+export const instructorsApi = {
+  apply: (data: FormData | Record<string, unknown>) => api.post('/instructors/applications/', data),
+  myApplication: () => api.get('/instructors/applications/mine/'),
+  publicList: () => api.get('/instructors/public/'),
+  publicGet: (slug: string) => api.get(`/instructors/public/${slug}/`),
+  publicCourses: (slug: string) => api.get(`/instructors/public/${slug}/courses/`),
+  me: () => api.get('/instructors/me/'),
+  dashboard: () => api.get('/instructors/me/dashboard/'),
+  students: () => api.get('/instructors/me/students/'),
+  analytics: () => api.get('/instructors/me/analytics/'),
+  earnings: () => api.get('/instructors/me/earnings/'),
+  transactions: () => api.get('/instructors/me/transactions/'),
+  courses: {
+    list: () => api.get('/instructors/my-courses/'),
+    get: (id: number) => api.get(`/instructors/my-courses/${id}/`),
+    create: (data: Record<string, unknown>) => api.post('/instructors/my-courses/', data),
+    update: (id: number, data: Record<string, unknown>) => api.patch(`/instructors/my-courses/${id}/`, data),
+    submit: (id: number) => api.post(`/instructors/my-courses/${id}/submit/`),
+  },
+  modules: {
+    list: (courseId: number) => api.get('/instructors/my-modules/', { params: { course: courseId } }),
+    create: (data: Record<string, unknown>) => api.post('/instructors/my-modules/', data),
+    update: (id: number, data: Record<string, unknown>) => api.patch(`/instructors/my-modules/${id}/`, data),
+    delete: (id: number) => api.delete(`/instructors/my-modules/${id}/`),
+    reorder: (id: number, order: number[]) => api.post(`/instructors/my-modules/${id}/reorder_lessons/`, { order }),
+  },
+  lessons: {
+    list: (courseId: number) => api.get('/instructors/my-lessons/', { params: { course: courseId } }),
+    create: (data: Record<string, unknown>) => api.post('/instructors/my-lessons/', data),
+    update: (id: number, data: Record<string, unknown>) => api.patch(`/instructors/my-lessons/${id}/`, data),
+    delete: (id: number) => api.delete(`/instructors/my-lessons/${id}/`),
+  },
+  payoutMethods: {
+    list: () => api.get('/instructors/my-payout-methods/'),
+    create: (data: Record<string, unknown>) => api.post('/instructors/my-payout-methods/', data),
+  },
+  payouts: {
+    list: () => api.get('/instructors/my-payouts/'),
+    request: (amount: string, currency?: string) =>
+      api.post('/instructors/my-payouts/', { amount, currency }),
+  },
+  saved: {
+    list: () => api.get('/instructors/saved/'),
+    add: (kind: string, objectId: number) => api.post('/instructors/saved/', { kind, object_id: objectId }),
+    remove: (id: number) => api.delete(`/instructors/saved/${id}/`),
+  },
+  mentors: () => api.get('/instructors/mentors/'),
+  tutors: () => api.get('/instructors/tutors/'),
+  bookTutor: (data: { tutor: number; starts_at: string; duration_minutes: number }) =>
+    api.post('/instructors/tutor/bookings/', data),
+  payee: () => api.get('/instructors/payee/'),
+}
+
+export const educationAdminApi = {
+  overview: () => api.get('/instructors/admin/overview/'),
+  applications: () => api.get('/instructors/admin/applications/'),
+  approveApplication: (id: number, notes?: string) =>
+    api.post(`/instructors/admin/applications/${id}/approve/`, { admin_notes: notes || '' }),
+  rejectApplication: (id: number, notes?: string) =>
+    api.post(`/instructors/admin/applications/${id}/reject/`, { admin_notes: notes || '' }),
+  requestInfo: (id: number, notes?: string) =>
+    api.post(`/instructors/admin/applications/${id}/request-info/`, { admin_notes: notes || '' }),
+  instructors: () => api.get('/instructors/admin/instructors/'),
+  payouts: () => api.get('/instructors/admin/payouts/'),
+  markPayoutPaid: (id: number) => api.post(`/instructors/admin/payouts/${id}/paid/`),
+  rejectPayout: (id: number, notes?: string) =>
+    api.post(`/instructors/admin/payouts/${id}/reject/`, { notes: notes || '' }),
+  payments: () => api.get('/instructors/admin/payments/'),
+  billing: () => api.get('/instructors/admin/billing/'),
+  updateBilling: (data: Record<string, unknown>) => api.patch('/instructors/admin/billing/', data),
+  translations: () => api.get('/instructors/admin/translations/'),
+  approveCourse: (id: number) => api.post(`/course/admin/courses/${id}/approve/`),
+  rejectCourse: (id: number, reason: string) =>
+    api.post(`/course/admin/courses/${id}/reject/`, { reason }),
+  unpublishCourse: (id: number) => api.post(`/course/admin/courses/${id}/unpublish/`),
+  featureCourse: (id: number, flag: string, value: boolean) =>
+    api.post(`/course/admin/courses/${id}/feature/`, { flag, value }),
 }
 
 // Progress
@@ -313,21 +414,57 @@ export const adminApi = {
 
   // Mobile app subscriptions (admin)
   subscriptions: {
-    list: (status?: string) => {
-      const params = status ? { status } : {}
+    list: (statusOrParams?: string | SubscriptionListParams) => {
+      const params =
+        typeof statusOrParams === 'string' ? { status: statusOrParams } : statusOrParams
       return api.get('/subscriptions/admin/subscriptions/', { params })
     },
     get: (id: number) => api.get(`/subscriptions/admin/subscriptions/${id}/`),
+    analytics: (range?: string) =>
+      api.get('/subscriptions/admin/subscriptions/analytics/', { params: { range } }),
+    searchUsers: (q: string) =>
+      api.get('/subscriptions/admin/subscriptions/search-users/', { params: { q } }),
+    create: (data: { user_id: number; plan_tier: string; start_trial?: boolean }) =>
+      api.post('/subscriptions/admin/subscriptions/create-subscription/', data),
+    export: (params: SubscriptionListParams & { export_format: 'csv' | 'xlsx' | 'pdf' }) =>
+      api.get('/subscriptions/admin/subscriptions/export/', {
+        params,
+        responseType: 'blob',
+        timeout: 60000,
+      }),
     deactivate: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/deactivate/`),
-    extend30Days: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/extend-30-days/`),
+    pause: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/pause/`),
+    resume: (id: number) => api.post(`/subscriptions/admin/subscriptions/${id}/resume/`),
+    extend30Days: (id: number, days?: number) =>
+      api.post(`/subscriptions/admin/subscriptions/${id}/extend-30-days/`, days ? { days } : {}),
+    changePlan: (id: number, plan_tier: string) =>
+      api.post(`/subscriptions/admin/subscriptions/${id}/change-plan/`, { plan_tier }),
+    refund: (id: number, note?: string) =>
+      api.post(`/subscriptions/admin/subscriptions/${id}/refund/`, { note }),
+    sendReminder: (id: number, data?: { channels?: string[]; days?: number }) =>
+      api.post(`/subscriptions/admin/subscriptions/${id}/send-reminder/`, data ?? {}),
     paymentProofs: {
-      list: (status?: string) => {
-        const params = status ? { status } : {}
+      list: (statusOrParams?: string | ProofListParams) => {
+        const params =
+          typeof statusOrParams === 'string' ? { status: statusOrParams } : statusOrParams
         return api.get('/subscriptions/admin/payment-proofs/', { params })
       },
       get: (id: number) => api.get(`/subscriptions/admin/payment-proofs/${id}/`),
       approve: (id: number) => api.post(`/subscriptions/admin/payment-proofs/${id}/approve/`),
       reject: (id: number) => api.post(`/subscriptions/admin/payment-proofs/${id}/reject/`),
+      requestInfo: (id: number, message: string) =>
+        api.post(`/subscriptions/admin/payment-proofs/${id}/request-info/`, { message }),
+    },
+    payments: {
+      list: (params?: Record<string, string | number | undefined>) =>
+        api.get('/subscriptions/admin/payments/', { params }),
+      summary: () => api.get('/subscriptions/admin/payments/summary/'),
+    },
+    gatewayConfig: {
+      get: () => api.get('/subscriptions/admin/gateway-config/'),
+      update: (data: Record<string, unknown>) =>
+        api.patch('/subscriptions/admin/gateway-config/update/', data),
+      testConnection: () => api.post('/subscriptions/admin/gateway-config/test-connection/'),
     },
   },
 
@@ -716,5 +853,34 @@ export const aiCopilotApi = {
       params: locale ? { locale } : undefined,
     })
     return data
+  },
+}
+
+export const subscriptionApi = {
+  checkoutOptions: (platform = 'web') =>
+    api.get('/subscriptions/checkout-options/', { params: { platform } }),
+  createSession: () => api.post('/subscriptions/payments/create-session/', {}),
+  sync: (payload: { id?: number; external_id?: string; outcome?: string }) => {
+    if (payload.id) {
+      return api.post(`/subscriptions/payments/${payload.id}/sync/`, {
+        outcome: payload.outcome,
+      })
+    }
+    return api.post('/subscriptions/payments/sync/', {
+      external_id: payload.external_id,
+      outcome: payload.outcome,
+    })
+  },
+  history: (params?: { page?: number }) => api.get('/subscriptions/payments/', { params }),
+  paymentInfo: () => api.get('/subscriptions/mobile/payment-info/'),
+  me: () => api.get('/subscriptions/mobile/me/'),
+  subscribe: () => api.post('/subscriptions/mobile/subscribe/'),
+  uploadProof: (subscriptionId: number, file: File, notes?: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (notes) formData.append('notes', notes)
+    return api.post(`/subscriptions/mobile/${subscriptionId}/upload-proof/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
   },
 }

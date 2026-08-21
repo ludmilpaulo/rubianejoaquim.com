@@ -356,6 +356,11 @@ export const authApi = {
     await AsyncStorage.setItem('token', token)
   },
 
+  registerPushToken: async (data: { token: string; platform?: string }) => {
+    const response = await api.post('/auth/push-token/', data)
+    return response.data
+  },
+
   shareZenda: async () => {
     const response = await api.get<ShareZendaResponse>('/auth/share-zenda/')
     return response.data
@@ -463,6 +468,46 @@ export const accessApi = {
     const response = await api.post(`/subscriptions/mobile/${subscriptionId}/upload-proof/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return response.data
+  },
+
+  getCheckoutOptions: async (platform: 'ios' | 'android' | 'web' = 'android') => {
+    const response = await api.get('/subscriptions/checkout-options/', { params: { platform } })
+    return response.data
+  },
+
+  createCardPaymentSession: async () => {
+    const response = await api.post('/subscriptions/payments/create-session/', {})
+    if (response.status >= 400) {
+      const body = response.data as ApiErrorBody | undefined
+      throw new Error(typeof body?.detail === 'string' ? body.detail : 'Could not start card payment')
+    }
+    return response.data as {
+      id: number
+      external_id: string
+      paylink_url: string
+      amount: string
+      currency: string
+      status: string
+    }
+  },
+
+  syncSubscriptionPayment: async (payload: { id?: number; external_id?: string; outcome?: string }) => {
+    if (payload.id) {
+      const response = await api.post(`/subscriptions/payments/${payload.id}/sync/`, {
+        outcome: payload.outcome,
+      })
+      return response.data
+    }
+    const response = await api.post('/subscriptions/payments/sync/', {
+      external_id: payload.external_id,
+      outcome: payload.outcome,
+    })
+    return response.data
+  },
+
+  getSubscriptionPayments: async () => {
+    const response = await api.get('/subscriptions/payments/')
     return response.data
   },
 }
@@ -946,6 +991,39 @@ export const coursesApi = {
 
   getCertificateInfo: async (enrollmentId: number) => {
     const response = await api.get(`/course/enrollment/${enrollmentId}/certificate-info/`)
+    return response.data
+  },
+
+  marketplace: async (params?: Record<string, string>) => {
+    const response = await api.get('/course/course/', { params })
+    return response.data
+  },
+
+  myLearning: async () => {
+    const response = await api.get('/course/my-learning/')
+    return response.data
+  },
+}
+
+export const instructorsApi = {
+  dashboard: async () => {
+    const response = await api.get('/instructors/me/dashboard/')
+    return response.data
+  },
+  myCourses: async () => {
+    const response = await api.get('/instructors/my-courses/')
+    return response.data
+  },
+  earnings: async () => {
+    const response = await api.get('/instructors/me/earnings/')
+    return response.data
+  },
+  mentors: async () => {
+    const response = await api.get('/instructors/mentors/')
+    return response.data
+  },
+  apply: async (data: Record<string, unknown>) => {
+    const response = await api.post('/instructors/applications/', data)
     return response.data
   },
 }

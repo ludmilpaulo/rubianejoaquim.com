@@ -23,6 +23,7 @@ import MarketScreen from '../screens/MarketScreen'
 import SettingsScreen from '../screens/SettingsScreen'
 import AboutScreen from '../screens/AboutScreen'
 import HelpSupportScreen from '../screens/HelpSupportScreen'
+import InstructorDashboardScreen from '../screens/InstructorDashboardScreen'
 import type { HomeStackParamList } from './types'
 import { useI18n } from '../contexts/I18nContext'
 import { colors } from '../theme'
@@ -189,6 +190,11 @@ function ProfileStack() {
         name="HelpSupport" 
         component={HelpSupportScreen}
         options={{ title: t('navigation.help'), headerStyle, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen
+        name="InstructorDashboard"
+        component={InstructorDashboardScreen}
+        options={{ title: t('education.instructorDash'), headerStyle, headerTintColor: '#fff' }}
       />
     </Stack.Navigator>
   )

@@ -1,9 +1,77 @@
 from django.db import models
 from django.conf import settings
+from django.utils.text import slugify
+
+from config.locales import SUPPORTED_LOCALES
+
+
+class Category(models.Model):
+    """Admin-managed education taxonomy (Finance, Technology, Business, Education, …)."""
+
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
+    )
+    slug = models.SlugField(max_length=80, unique=True)
+    name = models.CharField(max_length=120)
+    name_i18n = models.JSONField(default=dict, blank=True, help_text='Optional {pt,en,fr,es} labels')
+    icon = models.CharField(max_length=40, blank=True)
+    order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['order', 'name']
+        verbose_name_plural = 'Categories'
+
+    def __str__(self):
+        return self.name
+
+    def localized_name(self, locale: str | None = None) -> str:
+        code = (locale or 'pt').split('-')[0]
+        if isinstance(self.name_i18n, dict):
+            return self.name_i18n.get(code) or self.name_i18n.get('pt') or self.name
+        return self.name
 
 
 class Course(models.Model):
-    """Modelo de Curso"""
+    """Modelo de Curso — marketplace-owned by an instructor."""
+
+    KIND_COURSE = 'course'
+    KIND_TUTORIAL = 'tutorial'
+    KIND_CHOICES = [
+        (KIND_COURSE, 'Course'),
+        (KIND_TUTORIAL, 'Tutorial'),
+    ]
+
+    STATUS_DRAFT = 'draft'
+    STATUS_PENDING = 'pending_review'
+    STATUS_APPROVED = 'approved'
+    STATUS_PUBLISHED = 'published'
+    STATUS_REJECTED = 'rejected'
+    STATUS_UNPUBLISHED = 'unpublished'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, 'Draft'),
+        (STATUS_PENDING, 'Pending review'),
+        (STATUS_APPROVED, 'Approved'),
+        (STATUS_PUBLISHED, 'Published'),
+        (STATUS_REJECTED, 'Rejected'),
+        (STATUS_UNPUBLISHED, 'Unpublished'),
+    ]
+
+    LEVEL_BEGINNER = 'beginner'
+    LEVEL_INTERMEDIATE = 'intermediate'
+    LEVEL_ADVANCED = 'advanced'
+    LEVEL_ALL = 'all'
+    LEVEL_CHOICES = [
+        (LEVEL_BEGINNER, 'Beginner'),
+        (LEVEL_INTERMEDIATE, 'Intermediate'),
+        (LEVEL_ADVANCED, 'Advanced'),
+        (LEVEL_ALL, 'All levels'),
+    ]
+
     title = models.CharField(max_length=200)
     slug = models.SlugField(unique=True)
     description = models.TextField()
@@ -15,23 +83,127 @@ class Course(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     order = models.IntegerField(default=0, help_text="Ordem de exibição")
 
+    instructor = models.ForeignKey(
+        'instructors.InstructorProfile',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='courses',
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+    )
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_COURSE)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_DRAFT)
+    language = models.CharField(
+        max_length=5,
+        default='pt',
+        help_text='Instructor content language (pt/en/fr/es). Not machine-translated.',
+    )
+    translations = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Optional explicit translations: {en: {title, description, ...}}',
+    )
+    level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default=LEVEL_BEGINNER)
+    currency = models.CharField(max_length=3, default='USD')
+    is_free = models.BooleanField(default=False)
+    trailer_url = models.URLField(blank=True)
+    learning_objectives = models.JSONField(default=list, blank=True)
+    requirements = models.JSONField(default=list, blank=True)
+    target_audience = models.TextField(blank=True)
+    rejection_reason = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    is_featured = models.BooleanField(default=False)
+    is_popular = models.BooleanField(default=False)
+    is_new = models.BooleanField(default=False)
+    is_recommended = models.BooleanField(default=False)
+    offers_certificate = models.BooleanField(default=True)
+    rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=0)
+    rating_count = models.PositiveIntegerField(default=0)
+
     class Meta:
         ordering = ['order', 'created_at']
+        indexes = [
+            models.Index(fields=['status', 'is_active', 'kind']),
+            models.Index(fields=['instructor', 'status']),
+            models.Index(fields=['language', 'level']),
+        ]
 
     def __str__(self):
         return self.title
 
+    def save(self, *args, **kwargs):
+        if not self.slug and self.title:
+            self.slug = slugify(self.title)
+        if self.is_free:
+            self.price = self.price or 0
+        if self.language and self.language not in SUPPORTED_LOCALES:
+            self.language = 'pt'
+        super().save(*args, **kwargs)
+
+    @property
+    def is_published(self):
+        return self.status == self.STATUS_PUBLISHED and self.is_active
+
+
+class CourseModule(models.Model):
+    course = models.ForeignKey(Course, related_name='modules', on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.course.title} / {self.title}'
+
 
 class Lesson(models.Model):
     """Modelo de Aula"""
+    TYPE_VIDEO = 'video'
+    TYPE_ARTICLE = 'article'
+    TYPE_QUIZ = 'quiz'
+    TYPE_ASSIGNMENT = 'assignment'
+    TYPE_RESOURCE = 'resource'
+    TYPE_CHOICES = [
+        (TYPE_VIDEO, 'Video'),
+        (TYPE_ARTICLE, 'Article'),
+        (TYPE_QUIZ, 'Quiz'),
+        (TYPE_ASSIGNMENT, 'Assignment'),
+        (TYPE_RESOURCE, 'Resource'),
+    ]
+
     course = models.ForeignKey(Course, related_name='lessons', on_delete=models.CASCADE)
+    module = models.ForeignKey(
+        CourseModule,
+        related_name='lessons',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     title = models.CharField(max_length=200)
     slug = models.SlugField()
     description = models.TextField(blank=True)
     video_url = models.URLField(blank=True, help_text="URL do YouTube (não listado) ou Google Drive")
+    video_file = models.FileField(
+        upload_to='lesson_videos/',
+        blank=True,
+        null=True,
+        help_text='Optional native upload (no transcoding in v1). Prefer YouTube URL.',
+    )
+    lesson_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_VIDEO)
     duration = models.IntegerField(help_text="Duração em minutos", default=0)
     content = models.TextField(blank=True, help_text="Conteúdo em texto da aula (HTML permitido)")
-    is_free = models.BooleanField(default=False, help_text="Aula gratuita/aberta")
+    is_free = models.BooleanField(default=False, help_text="Aula gratuita/aberta / preview")
     order = models.IntegerField(default=0, help_text="Ordem dentro do curso")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -42,6 +214,10 @@ class Lesson(models.Model):
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
+
+    @property
+    def is_preview(self):
+        return self.is_free
 
 
 class LessonAttachment(models.Model):
@@ -511,3 +687,84 @@ class UserPoints(models.Model):
         """Get current point balance for a user"""
         latest = cls.objects.filter(user=user).order_by('-created_at').first()
         return latest.balance_after if latest else 0
+
+
+class Assignment(models.Model):
+    lesson = models.OneToOneField(Lesson, related_name='assignment', on_delete=models.CASCADE)
+    instructions = models.TextField()
+    due_days = models.PositiveIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f'Assignment — {self.lesson.title}'
+
+
+class AssignmentSubmission(models.Model):
+    STATUS_SUBMITTED = 'submitted'
+    STATUS_GRADED = 'graded'
+    STATUS_CHOICES = [
+        (STATUS_SUBMITTED, 'Submitted'),
+        (STATUS_GRADED, 'Graded'),
+    ]
+
+    assignment = models.ForeignKey(Assignment, related_name='submissions', on_delete=models.CASCADE)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='assignment_submissions')
+    text = models.TextField(blank=True)
+    file = models.FileField(upload_to='assignment_submissions/', blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_SUBMITTED)
+    grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    feedback = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    graded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ['assignment', 'student']
+
+
+class CourseReview(models.Model):
+    STATUS_PUBLISHED = 'published'
+    STATUS_HIDDEN = 'hidden'
+    STATUS_CHOICES = [
+        (STATUS_PUBLISHED, 'Published'),
+        (STATUS_HIDDEN, 'Hidden'),
+    ]
+
+    course = models.ForeignKey(Course, related_name='reviews', on_delete=models.CASCADE)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='course_reviews')
+    rating = models.PositiveSmallIntegerField()
+    body = models.TextField(blank=True)
+    instructor_reply = models.TextField(blank=True)
+    replied_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PUBLISHED)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['course', 'student']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.course_id} ★{self.rating}'
+
+
+class Certificate(models.Model):
+    enrollment = models.OneToOneField(Enrollment, related_name='certificate', on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, related_name='certificates', on_delete=models.CASCADE)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='certificates')
+    instructor = models.ForeignKey(
+        'instructors.InstructorProfile',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issued_certificates',
+    )
+    code = models.CharField(max_length=32, unique=True)
+    student_name = models.CharField(max_length=200)
+    course_title = models.CharField(max_length=200)
+    instructor_name = models.CharField(max_length=200, blank=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-issued_at']
+
+    def __str__(self):
+        return self.code

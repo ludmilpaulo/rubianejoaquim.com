@@ -1,11 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useSiteData, navByPlacement } from '@/contexts/SiteDataContext'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 export default function Footer() {
+  const pathname = usePathname() || '/'
   const { settings, navigation } = useSiteData()
+  if (pathname.startsWith('/admin/subscriptions')) {
+    return null
+  }
   const navLinks = navByPlacement(navigation, 'footer')
   const email = settings.contact_email || ''
   const phone = settings.phone || ''

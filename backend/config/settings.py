@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
+    'instructors',
     'courses',
     'mentorship',
     'accounts',
@@ -207,8 +208,18 @@ OPENAI_MODEL = config('OPENAI_MODEL', default='gpt-4o-mini')
 
 # Mobile App (Zenda) subscription payment
 SUBSCRIPTION_MONTHLY_PRICE_KZ = config('SUBSCRIPTION_MONTHLY_PRICE_KZ', default=10000, cast=int)
+SUBSCRIPTION_MONTHLY_PRICE_ZAR = config('SUBSCRIPTION_MONTHLY_PRICE_ZAR', default='180')
 SUBSCRIPTION_IBAN = config('SUBSCRIPTION_IBAN', default='0040 0000 4047.9796.1015.9')
 SUBSCRIPTION_PAYEE_NAME = config('SUBSCRIPTION_PAYEE_NAME', default='Rubiane Patricia Fernando Joaquim')
+
+# iKhokha iK Pay API — optional env fallbacks. Prefer Admin → Settings → Payments.
+# Never expose these to web/mobile clients.
+IKHOKHA_APP_ID = config('IKHOKHA_APP_ID', default='')
+IKHOKHA_APP_SECRET = config('IKHOKHA_APP_SECRET', default='')
+IKHOKHA_ENVIRONMENT = config('IKHOKHA_ENVIRONMENT', default='sandbox')
+IKHOKHA_API_BASE_URL = config('IKHOKHA_API_BASE_URL', default='https://api.ikhokha.com/public-api/v1')
+IKHOKHA_PAYMENT_URL = config('IKHOKHA_PAYMENT_URL', default='https://api.ikhokha.com/public-api/v1/api/payment')
+IKHOKHA_CALLBACK_URL = config('IKHOKHA_CALLBACK_URL', default='')
 
 # Mobile App (Zenda) store update check - bump when you publish a new version
 APP_LATEST_VERSION_IOS = config('APP_LATEST_VERSION_IOS', default='1.0.9')
@@ -277,6 +288,28 @@ RECEIPT_SIGNED_URL_MAX_AGE = config('RECEIPT_SIGNED_URL_MAX_AGE', default=3600, 
 
 # Wallet — must remain False until licensed provider + KYC signed off
 WALLET_LIVE_ENABLED = config('WALLET_LIVE_ENABLED', default=False, cast=bool)
+
+# Subscription reminder channels (push / SMS / WhatsApp)
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_SMS_FROM = config('TWILIO_SMS_FROM', default='')
+WHATSAPP_PROVIDER_NUMBER = config('WHATSAPP_PROVIDER_NUMBER', default='+27659031894')
+TWILIO_WHATSAPP_FROM = config(
+    'TWILIO_WHATSAPP_FROM',
+    default=f"whatsapp:{WHATSAPP_PROVIDER_NUMBER}" if WHATSAPP_PROVIDER_NUMBER else '',
+)
+# Free WhatsApp gateway (GREEN-API). Link +27659031894 via QR in their console.
+GREEN_API_ID_INSTANCE = config('GREEN_API_ID_INSTANCE', default='')
+GREEN_API_API_TOKEN = config('GREEN_API_API_TOKEN', default='')
+GREEN_API_URL = config('GREEN_API_URL', default='https://api.green-api.com')
+WHATSAPP_ACCESS_TOKEN = config('WHATSAPP_ACCESS_TOKEN', default='')
+WHATSAPP_PHONE_NUMBER_ID = config('WHATSAPP_PHONE_NUMBER_ID', default='')
+WHATSAPP_TEMPLATE_NAME = config('WHATSAPP_TEMPLATE_NAME', default='')
+WHATSAPP_TEMPLATE_LANG = config('WHATSAPP_TEMPLATE_LANG', default='pt')
+WHATSAPP_WEBHOOK_URL = config('WHATSAPP_WEBHOOK_URL', default='')
+WHATSAPP_WEBHOOK_TOKEN = config('WHATSAPP_WEBHOOK_TOKEN', default='')
+SMS_WEBHOOK_URL = config('SMS_WEBHOOK_URL', default='')
+SMS_WEBHOOK_TOKEN = config('SMS_WEBHOOK_TOKEN', default='')
 
 # Live FX: skip outbound fetch while last successful write is this young.
 # Stale flag uses FX_STALE_AFTER_HOURS against our last live write, not the provider clock

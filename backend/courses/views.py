@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -23,8 +23,56 @@ from django.utils import timezone
 
 
 class CourseViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Course.objects.filter(is_active=True)
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        qs = Course.objects.filter(is_active=True, status=Course.STATUS_PUBLISHED).select_related(
+            'instructor', 'category'
+        )
+        params = self.request.query_params
+        kind = params.get('kind')
+        if kind in (Course.KIND_COURSE, Course.KIND_TUTORIAL):
+            qs = qs.filter(kind=kind)
+        category = params.get('category')
+        if category:
+            qs = qs.filter(Q(category__slug=category) | Q(category_id=category))
+        language = params.get('language')
+        if language:
+            qs = qs.filter(language=language)
+        level = params.get('level')
+        if level:
+            qs = qs.filter(level=level)
+        instructor = params.get('instructor')
+        if instructor:
+            qs = qs.filter(Q(instructor__slug=instructor) | Q(instructor_id=instructor))
+        if params.get('free') == '1':
+            qs = qs.filter(Q(is_free=True) | Q(price=0))
+        if params.get('paid') == '1':
+            qs = qs.filter(is_free=False, price__gt=0)
+        if params.get('featured') == '1':
+            qs = qs.filter(is_featured=True)
+        if params.get('popular') == '1':
+            qs = qs.filter(is_popular=True)
+        if params.get('new') == '1':
+            qs = qs.filter(is_new=True)
+        if params.get('recommended') == '1':
+            qs = qs.filter(is_recommended=True)
+        search = params.get('q') or params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(title__icontains=search)
+                | Q(description__icontains=search)
+                | Q(short_description__icontains=search)
+                | Q(instructor__user__first_name__icontains=search)
+                | Q(instructor__user__last_name__icontains=search)
+            )
+        min_rating = params.get('rating')
+        if min_rating:
+            qs = qs.filter(rating_avg__gte=min_rating)
+        ordering = params.get('ordering')
+        if ordering in ('price', '-price', 'rating_avg', '-rating_avg', 'created_at', '-created_at'):
+            qs = qs.order_by(ordering)
+        return qs
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -34,9 +82,40 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='free-lesson')
     def free_lessons(self, request):
         """Lista todas as aulas gratuitas de todos os cursos"""
-        lessons = Lesson.objects.filter(is_free=True).select_related('course')
+        lessons = Lesson.objects.filter(
+            is_free=True,
+            course__is_active=True,
+            course__status=Course.STATUS_PUBLISHED,
+        ).select_related('course')
         serializer = LessonSerializer(lessons, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def marketplace(self, request):
+        """Aggregated marketplace homepage sections from real published content."""
+        base = self.get_queryset()
+        def pack(qs):
+            return CourseSerializer(qs[:8], many=True, context={'request': request}).data
+
+        popular = base.filter(is_popular=True)
+        if not popular.exists():
+            popular = base.order_by('-rating_count', '-created_at')
+        newest = base.filter(is_new=True)
+        if not newest.exists():
+            newest = base.order_by('-created_at')
+        from instructors.models import InstructorProfile, MentorProfile
+        from instructors.serializers import InstructorPublicSerializer, MentorPublicSerializer
+        instructors = InstructorProfile.objects.filter(status='approved').order_by('-rating_avg', '-students_count')[:8]
+        mentors = MentorProfile.objects.filter(status='approved').order_by('-rating_avg')[:8]
+        return Response({
+            'popular': pack(popular),
+            'featured': pack(base.filter(is_featured=True)),
+            'new': pack(newest),
+            'recommended': pack(base.filter(is_recommended=True)),
+            'free': pack(base.filter(Q(is_free=True) | Q(price=0))),
+            'instructors': InstructorPublicSerializer(instructors, many=True, context={'request': request}).data,
+            'mentors': MentorPublicSerializer(mentors, many=True, context={'request': request}).data,
+        })
 
 
 class LessonViewSet(viewsets.ReadOnlyModelViewSet):
@@ -248,11 +327,11 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         course_id = request.data.get('course_id')
         course = get_object_or_404(Course, id=course_id, is_active=True)
 
-        # Verificar se já existe
+        initial_status = 'active' if (course.is_free or course.price == 0) else 'pending'
         enrollment, created = Enrollment.objects.get_or_create(
             user=request.user,
             course=course,
-            defaults={'status': 'pending'}
+            defaults={'status': initial_status}
         )
 
         if not created:
@@ -261,11 +340,14 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Store referral code if provided (for course-specific referrals)
         referral_code = request.data.get('referral_code') or request.query_params.get('ref')
         if referral_code:
             enrollment.referral_code = referral_code
             enrollment.save()
+
+        if enrollment.status == 'active':
+            from courses.commerce import activate_enrollment
+            activate_enrollment(enrollment, payment_method='free')
 
         serializer = self.get_serializer(enrollment)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -876,3 +958,174 @@ class UserPointsViewSet(viewsets.ReadOnlyModelViewSet):
             'remaining_kz': float(remaining_kz),
             'remaining_balance': float(new_balance)
         })
+
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        from .serializers import CategorySerializer
+        return CategorySerializer
+
+    def get_queryset(self):
+        from .models import Category
+        return Category.objects.filter(is_active=True, parent__isnull=True)
+
+
+class AdminCategoryViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import CategorySerializer
+        return CategorySerializer
+
+    def get_queryset(self):
+        from .models import Category
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            return Category.objects.none()
+        return Category.objects.all()
+
+
+class CourseReviewViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import CourseReviewSerializer
+        return CourseReviewSerializer
+
+    def get_queryset(self):
+        from .models import CourseReview
+        qs = CourseReview.objects.filter(status='published')
+        course_id = self.request.query_params.get('course')
+        if course_id:
+            qs = qs.filter(course_id=course_id)
+        return qs
+
+    def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
+        from .models import Progress
+        from instructors.services import refresh_course_rating
+        course = serializer.validated_data['course']
+        enrolled = Enrollment.objects.filter(
+            user=self.request.user, course=course, status='active'
+        ).exists()
+        if not enrolled:
+            raise ValidationError({'detail': 'must_enroll'})
+        total = course.lessons.count()
+        done = Progress.objects.filter(
+            user=self.request.user, lesson__course=course, completed=True
+        ).count()
+        if total and done < max(1, total // 4):
+            raise ValidationError({'detail': 'need_progress'})
+        serializer.save(student=self.request.user)
+        refresh_course_rating(course)
+
+    @action(detail=True, methods=['post'])
+    def reply(self, request, pk=None):
+        from instructors.permissions import approved_instructor, is_staff_admin
+        review = self.get_object()
+        instructor = approved_instructor(request.user)
+        if not is_staff_admin(request.user) and (
+            instructor is None or review.course.instructor_id != instructor.id
+        ):
+            return Response({'detail': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        review.instructor_reply = request.data.get('instructor_reply', '')
+        review.replied_at = timezone.now()
+        review.save(update_fields=['instructor_reply', 'replied_at'])
+        from .serializers import CourseReviewSerializer
+        return Response(CourseReviewSerializer(review).data)
+
+
+class AdminCourseReviewViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from .serializers import CourseReviewSerializer
+        return CourseReviewSerializer
+
+    def get_queryset(self):
+        from .models import CourseReview
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            return CourseReview.objects.none()
+        return CourseReview.objects.all()
+
+    @action(detail=True, methods=['post'])
+    def hide(self, request, pk=None):
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response({'detail': 'admin_required'}, status=status.HTTP_403_FORBIDDEN)
+        review = self.get_object()
+        review.status = 'hidden'
+        review.save(update_fields=['status'])
+        from instructors.services import refresh_course_rating
+        refresh_course_rating(review.course)
+        from .serializers import CourseReviewSerializer
+        return Response(CourseReviewSerializer(review).data)
+
+
+class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        from .serializers import CertificateSerializer
+        return CertificateSerializer
+
+    def get_queryset(self):
+        from .models import Certificate
+        user = self.request.user
+        if user.is_authenticated:
+            return Certificate.objects.filter(student=user)
+        return Certificate.objects.none()
+
+    @action(detail=False, methods=['get'], url_path='verify/(?P<code>[^/.]+)', permission_classes=[AllowAny])
+    def verify(self, request, code=None):
+        from .models import Certificate
+        from .serializers import CertificateSerializer
+        cert = get_object_or_404(Certificate, code=code)
+        return Response(CertificateSerializer(cert, context={'request': request}).data)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='issue')
+    def issue(self, request):
+        from .commerce import issue_certificate
+        enrollment_id = request.data.get('enrollment_id')
+        enrollment = get_object_or_404(Enrollment, id=enrollment_id, user=request.user)
+        cert = issue_certificate(enrollment)
+        if cert is None:
+            return Response({'detail': 'not_eligible'}, status=status.HTTP_400_BAD_REQUEST)
+        from .serializers import CertificateSerializer
+        return Response(CertificateSerializer(cert, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_learning(request):
+    from .models import CourseReview, Certificate as Cert
+    from .serializers import EnrollmentSerializer, CourseSerializer, CertificateSerializer
+    from instructors.models import SavedItem
+    from mentorship.models import MentorshipRequest, MentorshipSession
+    from mentorship.serializers import MentorshipSessionSerializer
+    enrollments = Enrollment.objects.filter(user=request.user).select_related('course')
+    continue_qs = list(enrollments.filter(status='active')[:8])
+    published = Course.objects.filter(status=Course.STATUS_PUBLISHED, is_active=True)
+    enrolled_ids = enrollments.values_list('course_id', flat=True)
+    recommended = published.exclude(id__in=enrolled_ids).order_by('-is_recommended', '-rating_avg')[:6]
+    upcoming = MentorshipSession.objects.filter(
+        student=request.user,
+        status='scheduled',
+        starts_at__gte=timezone.now(),
+    ).order_by('starts_at')[:5]
+    return Response({
+        'enrollments': EnrollmentSerializer(enrollments, many=True, context={'request': request}).data,
+        'continue_learning': EnrollmentSerializer(continue_qs, many=True, context={'request': request}).data,
+        'certificates': CertificateSerializer(
+            Cert.objects.filter(student=request.user), many=True, context={'request': request}
+        ).data,
+        'saved': list(SavedItem.objects.filter(user=request.user).values('id', 'kind', 'object_id', 'created_at')),
+        'recommended': CourseSerializer(recommended, many=True, context={'request': request}).data,
+        'upcoming_sessions': MentorshipSessionSerializer(upcoming, many=True).data,
+        'mentorship_requests': list(
+            MentorshipRequest.objects.filter(user=request.user).values('id', 'status', 'package_id', 'created_at')
+        ),
+        'reviews': list(
+            CourseReview.objects.filter(student=request.user).values('id', 'course_id', 'rating', 'created_at')
+        ),
+    })

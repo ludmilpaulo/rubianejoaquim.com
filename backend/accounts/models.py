@@ -20,6 +20,12 @@ class User(AbstractUser):
         help_text='pt, en, fr, es — blank means follow device language',
     )
     preferred_currency = models.CharField(max_length=3, default='AOA')
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        default='',
+        help_text='ISO-3166-1 alpha-2 country code used for payment routing',
+    )
     onboarding_completed = models.BooleanField(default=False)
     onboarding_goals = models.JSONField(default=list, blank=True, help_text='Goal ids from onboarding: save, debt, business, learn, budget')
     finance_level = models.CharField(
@@ -191,3 +197,35 @@ class OAuthState(models.Model):
     def consume(self):
         self.consumed_at = timezone.now()
         self.save(update_fields=['consumed_at'])
+
+
+class DevicePushToken(models.Model):
+    """Expo push token for remote notifications to the Zenda app."""
+
+    PLATFORM_IOS = 'ios'
+    PLATFORM_ANDROID = 'android'
+    PLATFORM_CHOICES = [
+        (PLATFORM_IOS, 'iOS'),
+        (PLATFORM_ANDROID, 'Android'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_tokens',
+    )
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=16, choices=PLATFORM_CHOICES, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Token Push'
+        verbose_name_plural = 'Tokens Push'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id}:{self.platform}:{self.token[:12]}'

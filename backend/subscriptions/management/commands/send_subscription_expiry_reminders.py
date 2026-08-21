@@ -1,16 +1,19 @@
 """
-Notifica utilizadores 3 dias antes da subscrição do app móvel expirar.
+Notifica utilizadores 7, 3 e 1 dias antes da subscrição do app móvel expirar.
+Canais: email, push, SMS e WhatsApp.
 Executar diariamente (cron): python manage.py send_subscription_expiry_reminders
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.conf import settings
-from datetime import timedelta
 from subscriptions.models import MobileAppSubscription
+from subscriptions.notify import send_subscription_reminders
+
+
+REMINDER_DAYS = (7, 3, 1)
 
 
 class Command(BaseCommand):
-    help = 'Envia email 3 dias antes da subscrição do app móvel expirar'
+    help = 'Envia lembretes (email, push, SMS, WhatsApp) 7, 3 e 1 dias antes da expiração'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -22,61 +25,48 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry_run = options['dry_run']
         now = timezone.now()
-        in_3_days = now.date() + timedelta(days=3)
-
-        # Subscrições que expiram em 3 dias (trial ou subscrição paga)
         to_notify = []
-        for sub in MobileAppSubscription.objects.filter(status__in=['trial', 'active']):
+
+        for sub in MobileAppSubscription.objects.filter(status__in=['trial', 'active']).select_related('user'):
             end_date = None
-            is_trial = False
             if sub.status == 'trial' and sub.trial_ends_at:
                 end_date = sub.trial_ends_at.date()
-                is_trial = True
             elif sub.status == 'active' and sub.subscription_ends_at:
                 end_date = sub.subscription_ends_at.date()
-            if end_date and end_date == in_3_days:
-                if not sub.expiry_reminder_sent_at:
-                    to_notify.append((sub, end_date, is_trial))
+            if not end_date:
+                continue
+            days_left = (end_date - now.date()).days
+            if days_left not in REMINDER_DAYS:
+                continue
+            if self._already_sent(sub, days_left):
+                continue
+            to_notify.append((sub, end_date, days_left))
 
         if not to_notify:
             self.stdout.write(self.style.SUCCESS('Nenhum aviso a enviar.'))
             return
 
-        self.stdout.write(f'Encontrados {len(to_notify)} utilizador(es) a notificar (expira em 3 dias).')
+        self.stdout.write(f'Encontrados {len(to_notify)} utilizador(es) a notificar.')
 
-        for sub, end_date in to_notify:
+        for sub, end_date, days_left in to_notify:
             user = sub.user
-            self.stdout.write(f'  - {user.email} (expira em {end_date})')
+            self.stdout.write(f'  - {user.email} (expira em {end_date}, {days_left}d)')
             if dry_run:
                 continue
-
-            # Marcar como enviado antes de enviar (evitar duplicados se falhar o envio)
-            sub.expiry_reminder_sent_at = now
-            sub.save(update_fields=['expiry_reminder_sent_at'])
-
-            # Enviar email
             try:
-                self._send_reminder_email(user, end_date, sub.status)
-                self.stdout.write(self.style.SUCCESS(f'  Email enviado para {user.email}'))
+                results = send_subscription_reminders(
+                    user,
+                    sub,
+                    channels=['email', 'push', 'sms', 'whatsapp'],
+                    days=days_left,
+                )
+                self.stdout.write(self.style.SUCCESS(f'  Enviado {results}'))
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'  Erro ao enviar para {user.email}: {e}'))
-                sub.expiry_reminder_sent_at = None
-                sub.save(update_fields=['expiry_reminder_sent_at'])
 
-    def _send_reminder_email(self, user, end_date, status):
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-        from django.utils.html import strip_tags
-
-        subject = 'Zenda – A sua subscrição expira em 3 dias'
-        message_plain = (
-            f'Olá {user.first_name or user.email},\n\n'
-            f'A sua subscrição do app Zenda expira no dia {end_date}.\n\n'
-            'Para continuar a usar o app, faça o pagamento da renovação mensal e '
-            'envie o comprovativo na aplicação (ou entre em contacto connosco).\n\n'
-            'Obrigado,\n'
-            'Equipa Rubiane Joaquim Educação Financeira'
-        )
-        recipient = [user.email]
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@rubianejoaquim.com')
-        send_mail(subject, message_plain, from_email, recipient, fail_silently=False)
+    def _already_sent(self, sub, days_left):
+        if days_left == 7:
+            return bool(sub.reminder_7d_sent_at)
+        if days_left == 1:
+            return bool(sub.reminder_1d_sent_at)
+        return bool(sub.reminder_3d_sent_at or sub.expiry_reminder_sent_at)

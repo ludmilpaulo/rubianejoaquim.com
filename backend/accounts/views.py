@@ -94,6 +94,26 @@ def update_profile(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def register_push_token(request):
+    """Register or refresh an Expo push token for the signed-in device."""
+    from .models import DevicePushToken
+
+    token = (request.data.get('token') or '').strip()
+    platform = (request.data.get('platform') or '').strip().lower()
+    if not token:
+        return Response({'detail': 'token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+    if platform not in ('ios', 'android', ''):
+        platform = ''
+    DevicePushToken.objects.filter(token=token).exclude(user=request.user).delete()
+    obj, _created = DevicePushToken.objects.update_or_create(
+        token=token,
+        defaults={'user': request.user, 'platform': platform, 'is_active': True},
+    )
+    return Response({'ok': True, 'id': obj.id})
+
+
+@api_view(['POST'])
 @permission_classes([AllowAny])
 @csrf_exempt
 def forgot_password(request):
@@ -260,6 +280,7 @@ DEFAULT_NOTIFICATION_PREFS = {
     'savings_reminders': True,
     'monthly_summary': True,
     'goal_reminders': True,
+    'subscription_reminders': True,
 }
 
 

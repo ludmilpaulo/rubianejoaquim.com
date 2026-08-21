@@ -27,6 +27,10 @@ export default function Navbar() {
     checkAuth()
   }, [checkAuth])
 
+  if (pathname.startsWith('/admin/subscriptions')) {
+    return null
+  }
+
   const handleLogout = () => {
     logout()
     setMobileMenuOpen(false)
@@ -93,8 +97,14 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-6">
             {isProduct ? (
               <>
-                <Link href="/cursos" className={linkClass}>Cursos</Link>
-                <Link href="/zenda" className={linkClass}>App</Link>
+                <Link href="/cursos" className={linkClass}>{t('nav.courses')}</Link>
+                <Link href="/mentoria" className={linkClass}>{t('nav.mentorship')}</Link>
+                <Link href="/zenda" className={linkClass}>{t('nav.zenda')}</Link>
+                {user?.is_instructor ? (
+                  <Link href="/instructor" className={linkClass}>{t('education.goDashboard')}</Link>
+                ) : user ? (
+                  <Link href="/instructor/apply" className={linkClass}>{t('education.applyCta')}</Link>
+                ) : null}
               </>
             ) : (
               renderLinks()

@@ -2,14 +2,15 @@ from django.contrib import admin
 from .models import (
     Course, Lesson, LessonAttachment, Enrollment, PaymentProof, Progress,
     Question, Choice, LessonQuiz, LessonQuizQuestion, FinalExam, FinalExamQuestion,
-    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult
+    UserQuizAnswer, UserExamAnswer, QuizResult, ExamResult,
+    Category, CourseModule, CourseReview, Certificate,
 )
 
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ['title', 'price', 'is_active', 'order', 'created_at']
-    list_filter = ['is_active', 'created_at']
+    list_display = ['title', 'instructor', 'status', 'kind', 'price', 'is_active', 'order', 'created_at']
+    list_filter = ['is_active', 'status', 'kind', 'language', 'created_at']
     search_fields = ['title', 'description']
     prepopulated_fields = {'slug': ('title',)}
 
@@ -133,3 +134,26 @@ class ExamResultAdmin(admin.ModelAdmin):
     list_filter = ['passed', 'completed_at']
     search_fields = ['user__email', 'exam__course__title']
     readonly_fields = ['score', 'total_questions', 'correct_answers', 'passed']
+
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'slug', 'parent', 'is_active', 'order']
+    prepopulated_fields = {'slug': ('name',)}
+
+
+@admin.register(CourseModule)
+class CourseModuleAdmin(admin.ModelAdmin):
+    list_display = ['title', 'course', 'order']
+
+
+@admin.register(CourseReview)
+class CourseReviewAdmin(admin.ModelAdmin):
+    list_display = ['course', 'student', 'rating', 'status', 'created_at']
+    list_filter = ['status', 'rating']
+
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = ['code', 'student_name', 'course_title', 'issued_at']
+    search_fields = ['code', 'student_name']

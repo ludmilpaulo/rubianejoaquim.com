@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils/currency'
 import LoginMethodsPanel from '@/components/LoginMethodsPanel'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
+import BankPayeeDetails from '@/components/education/BankPayeeDetails'
 
 interface Enrollment {
   id: number
@@ -280,6 +281,16 @@ export default function AreaDoAlunoPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <Link
+          href="/subscribe"
+          className="block rounded-2xl bg-white border border-zenda-primary/20 p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+        >
+          <p className="font-semibold text-zenda-dark">Zenda subscription</p>
+          <p className="text-sm text-gray-600">Pay, view history, or upload proof of payment.</p>
+        </Link>
       </div>
 
       <div
@@ -869,14 +880,7 @@ function PaymentUploadForm({ enrollmentId, onUpload, uploading }: { enrollmentId
       <h4 className="font-semibold text-gray-900 mb-2">Instruções de Pagamento</h4>
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
         <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium text-gray-700">IBAN:</span>
-            <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">Destinatário:</span>
-            <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
-          </div>
+          <BankPayeeDetails />
           <div>
             <span className="font-medium text-gray-700">Valor:</span>
             <p className="text-gray-600 mt-1">Consulte o valor do curso na página de detalhes.</p>
@@ -938,14 +942,7 @@ function MentorshipPaymentUploadForm({ requestId, onUpload, uploading }: { reque
       <h4 className="font-semibold text-gray-900 mb-2">Instruções de Pagamento</h4>
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
         <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium text-gray-700">IBAN:</span>
-            <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">Destinatário:</span>
-            <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
-          </div>
+          <BankPayeeDetails />
         </div>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3">

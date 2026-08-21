@@ -3,17 +3,33 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import MentorshipPackage, MentorshipRequest, MentorshipPaymentProof
+from django.db import IntegrityError, transaction
+from datetime import timedelta
+from .models import (
+    MentorshipPackage, MentorshipRequest, MentorshipPaymentProof,
+    MentorAvailability, MentorshipSession,
+)
 from .serializers import (
     MentorshipPackageSerializer, MentorshipRequestSerializer,
-    MentorshipPaymentProofSerializer
+    MentorshipPaymentProofSerializer, MentorAvailabilitySerializer,
+    MentorshipSessionSerializer,
 )
+from instructors.permissions import approved_mentor, is_staff_admin
+from instructors.models import MentorProfile, InstructorProfile
 
 
 class MentorshipPackageViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = MentorshipPackage.objects.filter(is_active=True)
     serializer_class = MentorshipPackageSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        qs = MentorshipPackage.objects.filter(is_active=True)
+        if hasattr(MentorshipPackage, 'status'):
+            qs = qs.filter(status=MentorshipPackage.STATUS_PUBLISHED)
+        mentor = self.request.query_params.get('mentor')
+        if mentor:
+            qs = qs.filter(mentor_id=mentor)
+        return qs
 
 
 class MentorshipRequestViewSet(viewsets.ModelViewSet):
@@ -68,3 +84,91 @@ class MentorshipRequestViewSet(viewsets.ModelViewSet):
 
         serializer = MentorshipPaymentProofSerializer(proof)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class MentorAvailabilityViewSet(viewsets.ModelViewSet):
+    serializer_class = MentorAvailabilitySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        mentor = approved_mentor(self.request.user)
+        if mentor:
+            return MentorAvailability.objects.filter(mentor=mentor)
+        return MentorAvailability.objects.none()
+
+    def perform_create(self, serializer):
+        mentor = approved_mentor(self.request.user)
+        serializer.save(mentor=mentor)
+
+
+class MentorshipSessionViewSet(viewsets.ModelViewSet):
+    serializer_class = MentorshipSessionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        mentor = approved_mentor(user)
+        if is_staff_admin(user):
+            return MentorshipSession.objects.all()
+        if mentor:
+            return MentorshipSession.objects.filter(mentor=mentor) | MentorshipSession.objects.filter(student=user)
+        return MentorshipSession.objects.filter(student=user)
+
+    def create(self, request, *args, **kwargs):
+        mentor = MentorProfile.objects.filter(
+            pk=request.data.get('mentor'),
+            status=InstructorProfile.STATUS_APPROVED,
+        ).first()
+        if mentor is None:
+            return Response({'detail': 'mentor_not_found'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        duration = int(serializer.validated_data.get('duration_minutes') or 60)
+        starts = serializer.validated_data['starts_at']
+        ends = serializer.validated_data.get('ends_at') or (starts + timedelta(minutes=duration))
+        overlap = MentorshipSession.objects.filter(
+            mentor=mentor,
+            status=MentorshipSession.STATUS_SCHEDULED,
+            starts_at=starts,
+        ).exists()
+        if overlap:
+            return Response({'detail': 'slot_taken'}, status=status.HTTP_409_CONFLICT)
+        try:
+            with transaction.atomic():
+                session = MentorshipSession.objects.create(
+                    mentor=mentor,
+                    student=request.user,
+                    package_id=request.data.get('package') or None,
+                    request_id=request.data.get('request') or None,
+                    starts_at=starts,
+                    ends_at=ends,
+                    duration_minutes=duration,
+                    meeting_provider=serializer.validated_data.get('meeting_provider') or 'custom',
+                    notes=serializer.validated_data.get('notes', ''),
+                )
+        except IntegrityError:
+            return Response({'detail': 'slot_taken'}, status=status.HTTP_409_CONFLICT)
+        return Response(MentorshipSessionSerializer(session).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def meeting_url(self, request, pk=None):
+        session = self.get_object()
+        mentor = approved_mentor(request.user)
+        if not is_staff_admin(request.user) and (mentor is None or session.mentor_id != mentor.id):
+            return Response({'detail': 'not_owner'}, status=status.HTTP_403_FORBIDDEN)
+        session.meeting_url = request.data.get('meeting_url', '')
+        session.meeting_provider = request.data.get('meeting_provider', session.meeting_provider)
+        session.save(update_fields=['meeting_url', 'meeting_provider'])
+        return Response(MentorshipSessionSerializer(session).data)
+
+
+class PublicMentorAvailabilityViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = MentorAvailabilitySerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        mentor_id = self.request.query_params.get('mentor')
+        qs = MentorAvailability.objects.filter(is_active=True)
+        if mentor_id:
+            qs = qs.filter(mentor_id=mentor_id)
+        return qs

@@ -99,6 +99,49 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
             return check
         return super().destroy(request, *args, **kwargs)
 
+    def _moderate(self, request, new_status, extra=None):
+        check = self.check_admin()
+        if check:
+            return check
+        course = self.get_object()
+        course.status = new_status
+        if extra:
+            for k, v in extra.items():
+                setattr(course, k, v)
+        if new_status == 'published':
+            course.is_active = True
+            course.published_at = timezone.now()
+            course.rejection_reason = ''
+        course.save()
+        serializer = self.get_serializer(course)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        return self._moderate(request, 'published')
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        reason = request.data.get('reason') or request.data.get('rejection_reason') or ''
+        return self._moderate(request, 'rejected', {'rejection_reason': reason})
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        return self._moderate(request, 'unpublished', {'is_active': False})
+
+    @action(detail=True, methods=['post'])
+    def feature(self, request, pk=None):
+        check = self.check_admin()
+        if check:
+            return check
+        course = self.get_object()
+        flag = request.data.get('flag', 'is_featured')
+        if flag not in ('is_featured', 'is_popular', 'is_new', 'is_recommended'):
+            return Response({'detail': 'invalid_flag'}, status=status.HTTP_400_BAD_REQUEST)
+        setattr(course, flag, bool(request.data.get('value', True)))
+        course.save(update_fields=[flag])
+        return Response(self.get_serializer(course).data)
+
 
 class AdminLessonViewSet(viewsets.ModelViewSet):
     """CRUD completo de aulas para admin"""
@@ -279,6 +322,12 @@ class AdminEnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.status = 'active'
         enrollment.activated_at = timezone.now()
         enrollment.save()
+
+        try:
+            from courses.commerce import activate_enrollment
+            activate_enrollment(enrollment, payment_method='proof_of_payment')
+        except Exception:
+            pass
         
         # Award referral points if user was referred
         try:
@@ -372,6 +421,11 @@ class AdminPaymentProofViewSet(viewsets.ReadOnlyModelViewSet):
         enrollment.status = 'active'
         enrollment.activated_at = timezone.now()
         enrollment.save()
+        try:
+            from courses.commerce import activate_enrollment
+            activate_enrollment(enrollment, payment_method='proof_of_payment')
+        except Exception:
+            pass
         
         # Award referral points if user was referred
         try:

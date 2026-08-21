@@ -384,6 +384,67 @@ def _business_context(user, month: int, year: int, preferred: str) -> dict[str, 
     }
 
 
+def _education_catalog(user) -> dict[str, Any]:
+    """Real published Zenda catalog only. Never invent titles or prices."""
+    try:
+        from courses.models import Course, Enrollment
+        from instructors.models import MentorProfile, TutorProfile
+    except Exception:
+        return {'courses': [], 'mentors': [], 'tutors': [], 'enrolled_course_ids': []}
+
+    enrolled_ids = list(
+        Enrollment.objects.filter(user=user, status='active').values_list('course_id', flat=True)
+    )
+    goals = getattr(user, 'onboarding_goals', None) or []
+    level = getattr(user, 'finance_level', None) or 'beginner'
+    qs = Course.objects.filter(status=Course.STATUS_PUBLISHED, is_active=True).select_related('instructor')
+    if 'learn' in goals or level == 'beginner':
+        qs = qs.filter(level__in=['beginner', 'all', 'intermediate'])
+    courses = []
+    for course in qs.order_by('-is_recommended', '-rating_avg', '-created_at')[:8]:
+        inst = course.instructor
+        courses.append({
+            'id': course.id,
+            'title': course.title,
+            'kind': course.kind,
+            'price': str(course.price),
+            'currency': course.currency,
+            'language': course.language,
+            'level': course.level,
+            'rating_avg': str(course.rating_avg),
+            'instructor': inst.display_name if inst else None,
+            'slug': course.slug,
+        })
+    mentors = [
+        {
+            'id': m.id,
+            'name': m.user.get_full_name() or m.user.email,
+            'headline': m.headline,
+            'subjects': m.subjects,
+            'rating_avg': str(m.rating_avg),
+        }
+        for m in MentorProfile.objects.filter(status='approved').order_by('-rating_avg')[:5]
+    ]
+    tutors = [
+        {
+            'id': t.id,
+            'name': t.user.get_full_name() or t.user.email,
+            'headline': t.headline,
+            'subjects': t.subjects,
+            'hourly_rate': str(t.hourly_rate),
+            'currency': t.currency,
+        }
+        for t in TutorProfile.objects.filter(status='approved').order_by('-rating_avg')[:5]
+    ]
+    return {
+        'enrolled_course_ids': enrolled_ids,
+        'courses': courses,
+        'mentors': mentors,
+        'tutors': tutors,
+        'note': 'Recommend ONLY these catalog items. Never invent a course, mentor, price, or rating.',
+    }
+
+
 def build_user_snapshot(user, locale: str | None = None) -> dict[str, Any]:
     from finance.models import Budget, Debt, Goal, PersonalExpense, PersonalIncome
 
@@ -517,6 +578,7 @@ def build_user_snapshot(user, locale: str | None = None) -> dict[str, Any]:
         'family': _family_context(user, preferred, today),
         'business': _business_context(user, month, year, preferred),
         'missing': missing,
+        'education': _education_catalog(user),
         'days_in_month': monthrange(year, month)[1],
         'analytics': {
             'debt_payoff': analytics.get('debt_payoff') or [],
@@ -795,6 +857,7 @@ def system_prompt(bundle: dict[str, Any]) -> str:
         'family': snap['family'],
         'business': snap['business'],
         'missing': snap['missing'],
+        'education': snap.get('education') or {'courses': [], 'mentors': [], 'tutors': []},
         'fx': bundle.get('fx'),
         'extra_debt_projection': bundle.get('extra_debt_projection'),
         'proposed_action': bundle.get('proposed_action'),
@@ -809,6 +872,7 @@ TONE ({level}): {LEVEL_STYLE[level]}
 ACCURACY — NON-NEGOTIABLE:
 - Use ONLY the FACTS JSON below. Those numbers were calculated by Zenda's backend.
 - Never invent balances, rates, transactions, debts, income, or statistics.
+- Never invent courses, tutors, mentors, prices, or ratings. Education recommendations must use ONLY facts.education catalog IDs.
 - If a field is missing or in "missing", say you need the user to add that data in the app.
 - Never invent exchange rates. If fx is null, do not convert. If fx.error is rate_unavailable, say so.
 - Family facts already exclude private entries the user cannot see. Do not speculate about hidden family data.

@@ -1,6 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import MentorshipPackageViewSet, MentorshipRequestViewSet
+from .views import (
+    MentorshipPackageViewSet, MentorshipRequestViewSet,
+    MentorAvailabilityViewSet, MentorshipSessionViewSet, PublicMentorAvailabilityViewSet,
+)
 from .admin_views import (
     AdminMentorshipPackageViewSet, AdminMentorshipRequestViewSet,
     AdminMentorshipPaymentProofViewSet
@@ -9,6 +12,9 @@ from .admin_views import (
 router = DefaultRouter()
 router.register(r'package', MentorshipPackageViewSet, basename='mentorship-package')
 router.register(r'request', MentorshipRequestViewSet, basename='mentorship-request')
+router.register(r'sessions', MentorshipSessionViewSet, basename='mentorship-sessions')
+router.register(r'availability', MentorAvailabilityViewSet, basename='mentor-availability')
+router.register(r'public-availability', PublicMentorAvailabilityViewSet, basename='public-mentor-availability')
 
 # Admin routes
 admin_router = DefaultRouter()

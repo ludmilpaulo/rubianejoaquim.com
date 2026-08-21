@@ -135,6 +135,11 @@ def _grant_course_access(user, course_id):
         enrollment.status = "active"
         enrollment.activated_at = timezone.now()
         enrollment.save()
+    try:
+        from courses.commerce import activate_enrollment
+        activate_enrollment(enrollment, payment_method='apple_iap')
+    except Exception:
+        pass
     return enrollment
 
 
@@ -156,24 +161,13 @@ def _grant_mentorship_access(user, package_id):
     return request
 
 
-def _grant_subscription_access(user, months=1):
-    """Create or update MobileAppSubscription: set active and extend subscription_ends_at."""
-    from .models import MobileAppSubscription
+def _grant_subscription_access(user, months=1, transaction_id=None):
+    """Create or update MobileAppSubscription via the payment ledger (idempotent)."""
+    from .payments import get_or_create_subscription, record_iap_payment
 
-    sub, created = MobileAppSubscription.objects.get_or_create(
-        user=user,
-        defaults={
-            "status": "active",
-            "subscription_ends_at": timezone.now() + timedelta(days=30 * months),
-        },
-    )
-    if not created:
-        end = sub.subscription_ends_at or timezone.now()
-        if end < timezone.now():
-            end = timezone.now()
-        sub.subscription_ends_at = end + timedelta(days=30 * months)
-        sub.status = "active"
-        sub.save()
+    sub = get_or_create_subscription(user)
+    record_iap_payment(user, sub, transaction_id)
+    sub.refresh_from_db()
     return sub
 
 
@@ -256,7 +250,19 @@ def verify_apple_iap(request):
         }, status=status.HTTP_200_OK)
 
     if product_id in ("zenda_monthly", "zenda_subscription_monthly"):
-        sub = _grant_subscription_access(user, months=1)
+        apple_tx = transaction_id
+        if isinstance(apple_data, dict):
+            apple_tx = (
+                apple_data.get("originalTransactionId")
+                or apple_data.get("transactionId")
+                or apple_data.get("original_transaction_id")
+                or transaction_id
+            )
+            latest = apple_data.get("latest_receipt_info") or apple_data.get("receipt", {}).get("in_app")
+            if not apple_tx and isinstance(latest, list) and latest:
+                last = latest[-1]
+                apple_tx = last.get("original_transaction_id") or last.get("transaction_id")
+        sub = _grant_subscription_access(user, months=1, transaction_id=str(apple_tx) if apple_tx else None)
         return Response({
             "success": True,
             "granted": "subscription",

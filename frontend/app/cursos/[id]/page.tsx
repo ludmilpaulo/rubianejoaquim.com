@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { coursesApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/currency'
+import BankPayeeDetails from '@/components/education/BankPayeeDetails'
 
 interface Lesson {
   id: number
@@ -23,6 +24,9 @@ interface Course {
   description: string
   price: string
   lessons: Lesson[]
+  instructor?: { slug: string; display_name: string; headline: string; rating_avg: string } | null
+  rating_avg?: string
+  rating_count?: number
   enrollment_status: {
     status: string
     enrolled_at: string
@@ -97,6 +101,12 @@ export default function CursoDetailPage() {
       }}
     >
       <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">{course.title}</h1>
+      {course.instructor ? (
+        <p className="text-sm text-zenda-primary mb-4">
+          <a href={`/instructors/${course.instructor.slug}`}>{course.instructor.display_name}</a>
+          {course.rating_avg ? ` · ★ ${Number(course.rating_avg).toFixed(1)}` : ''}
+        </p>
+      ) : null}
       <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8">{course.description}</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -184,14 +194,7 @@ export default function CursoDetailPage() {
                 <div className="bg-zenda-container border border-zenda-border rounded-lg p-3 sm:p-4">
                   <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 text-sm sm:text-base">Informações de Pagamento</h3>
                   <div className="space-y-2 text-xs sm:text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">IBAN:</span>
-                      <p className="text-gray-900 font-mono mt-1 break-all text-xs sm:text-sm">0040 0000 4047.9796.1015.9</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Destinatário:</span>
-                      <p className="text-gray-900 mt-1 break-words">Rubiane Patricia Fernando Joaquim</p>
-                    </div>
+                    <BankPayeeDetails />
                     <div>
                       <span className="font-medium text-gray-700">Valor:</span>
                       <p className="text-gray-900 font-semibold mt-1">{formatCurrency(course.price)}</p>

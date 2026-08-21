@@ -1,16 +1,14 @@
 /**
- * Local push notifications with device vibration for:
- * - Daily tasks (tarefas) not completed on time / overdue
- * - Personal finance goals (metas financeiras pessoais) deadlines
- * 
- * Note: This app uses LOCAL notifications (scheduled notifications) which work fine in Expo Go.
- * The warning about remote push notifications is expected - we don't use remote notifications.
- * Local notifications (scheduleNotificationAsync) work in both Expo Go and development builds.
+ * Local reminders (tasks/goals) plus remote Expo push for subscription renewals.
+ * Remote push requires a development/production build; Expo Go may skip token registration.
  */
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import Constants from 'expo-constants'
 import type { NotificationPrefs } from '../types'
+import { authApi } from '../services/api'
+import { logger } from './logger'
 
 const NOTIFICATIONS_ENABLED_KEY = 'notificationsEnabled'
 const NOTIFICATION_PREFS_KEY = 'ZENDA_NOTIFICATION_PREFS'
@@ -23,6 +21,7 @@ const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   savings_reminders: true,
   monthly_summary: true,
   goal_reminders: true,
+  subscription_reminders: true,
 }
 
 // Ensure notifications are shown when app is in foreground and trigger vibration/sound
@@ -70,8 +69,34 @@ export async function setupNotifications(): Promise<boolean> {
       lightColor: '#E67E22',
       sound: 'default',
     })
+    await Notifications.setNotificationChannelAsync('subscription_reminders', {
+      name: 'Lembretes de subscrição',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      enableVibrate: true,
+      enableLights: true,
+      lightColor: '#3534C9',
+      sound: 'default',
+    })
   }
   return true
+}
+
+export async function registerRemotePushToken(): Promise<void> {
+  try {
+    const granted = await setupNotifications()
+    if (!granted) return
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined
+    if (!projectId) return
+    const push = await Notifications.getExpoPushTokenAsync({ projectId })
+    if (!push?.data) return
+    await authApi.registerPushToken({
+      token: push.data,
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    })
+  } catch (e) {
+    logger.warn('registerRemotePushToken failed', e)
+  }
 }
 
 /**

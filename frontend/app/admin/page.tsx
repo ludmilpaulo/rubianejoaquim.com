@@ -180,6 +180,14 @@ export default function AdminDashboard() {
           </Link>
           
           <Link
+            href="/admin/education"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow ring-2 ring-zenda-primary/20"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Education marketplace</h3>
+            <p className="text-gray-600 text-sm">Instructors, moderation, commissions, payouts</p>
+          </Link>
+
+          <Link
             href="/admin/courses"
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >

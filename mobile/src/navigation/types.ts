@@ -39,4 +39,5 @@ export type ProfileStackParamList = {
   Settings: undefined
   About: undefined
   HelpSupport: undefined
+  InstructorDashboard: undefined
 }

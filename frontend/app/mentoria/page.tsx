@@ -5,6 +5,7 @@ import { mentorshipApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/currency'
 import { useRouter } from 'next/navigation'
+import BankPayeeDetails from '@/components/education/BankPayeeDetails'
 
 interface MentorshipPackage {
   id: number
@@ -94,12 +95,7 @@ export default function MentoriaPage() {
                 <h3 className="font-semibold text-gray-900 mb-3">Informações de Pagamento</h3>
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">IBAN:</span>
-                    <p className="text-gray-900 font-mono mt-1">0040 0000 4047.9796.1015.9</p>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Destinatário:</span>
-                    <p className="text-gray-900 mt-1">Rubiane Patricia Fernando Joaquim</p>
+                    <BankPayeeDetails />
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Valor:</span>

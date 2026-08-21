@@ -177,6 +177,7 @@ class Notification(models.Model):
             ('payment_due', 'Pagamento Vencendo'),
             ('budget_warning', 'Alerta de Orçamento'),
             ('budget_exceeded', 'Orçamento Excedido'),
+            ('subscription_reminder', 'Lembrete de Subscrição'),
             ('system', 'Sistema'),
             ('achievement', 'Conquista'),
             ('reminder', 'Lembrete'),

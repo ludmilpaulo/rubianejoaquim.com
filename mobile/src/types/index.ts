@@ -7,6 +7,7 @@ export interface NotificationPrefs {
   savings_reminders?: boolean
   monthly_summary?: boolean
   goal_reminders?: boolean
+  subscription_reminders?: boolean
 }
 
 export interface User {
@@ -27,6 +28,9 @@ export interface User {
   is_staff: boolean
   is_superuser: boolean
   is_admin: boolean
+  is_instructor?: boolean
+  is_mentor?: boolean
+  is_tutor?: boolean
 }
 
 export interface AuthState {
@@ -166,4 +170,30 @@ export interface SubscriptionPaymentInfo {
   currency: string
   iban: string
   payee_name: string
+}
+
+export interface CheckoutOptions {
+  country: string
+  method: 'proof_of_payment' | 'card' | 'apple_iap'
+  methods: Array<'proof_of_payment' | 'card' | 'apple_iap'>
+  ikhokha_enabled: boolean
+  plan: { amount: string; currency: string; tier?: string }
+  charge: { amount: string; currency: string }
+  estimate: { amount: string; currency: string; is_estimate: boolean } | null
+  proof_of_payment: SubscriptionPaymentInfo | null
+}
+
+export interface SubscriptionPaymentRecord {
+  id: number
+  external_id: string
+  amount: string
+  currency: string
+  plan_amount: string
+  plan_currency: string
+  method_label: string
+  gateway_label: string
+  status: string
+  transaction_id: string
+  receipt_url: string | null
+  created_at: string
 }

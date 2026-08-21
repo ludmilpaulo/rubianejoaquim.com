@@ -3,10 +3,11 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.utils import timezone
-from django.conf import settings
 from datetime import timedelta
 
 from .models import MobileAppSubscription, MobileAppSubscriptionPaymentProof
+from .payments import create_proof_ledger
+from .billing import angola_bank_details
 from .serializers import (
     MobileAppSubscriptionSerializer,
     MobileAppSubscriptionPaymentProofSerializer,
@@ -100,6 +101,7 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             file=serializer.validated_data['file'],
             notes=serializer.validated_data.get('notes', ''),
         )
+        create_proof_ledger(proof)
         return Response(
             MobileAppSubscriptionPaymentProofSerializer(proof).data,
             status=status.HTTP_201_CREATED
@@ -110,9 +112,4 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 @permission_classes([AllowAny])
 def payment_info(_request):
     """Informações de pagamento da subscrição mensal (público para o app mostrar)."""
-    return Response({
-        'monthly_price_kz': getattr(settings, 'SUBSCRIPTION_MONTHLY_PRICE_KZ', 10000),
-        'currency': 'AOA',
-        'iban': getattr(settings, 'SUBSCRIPTION_IBAN', '0040 0000 4047.9796.1015.9'),
-        'payee_name': getattr(settings, 'SUBSCRIPTION_PAYEE_NAME', 'Rubiane Patricia Fernando Joaquim'),
-    })
+    return Response(angola_bank_details())

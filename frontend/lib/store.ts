@@ -24,6 +24,9 @@ interface User {
   is_staff?: boolean
   is_superuser?: boolean
   is_admin?: boolean
+  is_instructor?: boolean
+  is_mentor?: boolean
+  is_tutor?: boolean
 }
 
 interface AuthState {

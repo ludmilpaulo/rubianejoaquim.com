@@ -50,7 +50,7 @@ interface RouteParams {
 }
 
 export default function LessonDetailScreen() {
-  const { t } = useI18n()
+  const { t, tw } = useI18n()
   const feedback = useActionFeedback()
   const route = useRoute()
   const navigation = useNavigation<any>()
@@ -213,7 +213,7 @@ export default function LessonDetailScreen() {
                   textStyle={styles.completedChipText}
                   compact
                 >
-                  Concluída
+                  {t('education.lessonCompletedChip')}
                 </Chip>
               )}
             </View>
@@ -230,7 +230,7 @@ export default function LessonDetailScreen() {
                 <View style={styles.metaItem}>
                   <MaterialCommunityIcons name="clock-outline" size={16} color="#666" />
                   <Text variant="bodySmall" style={styles.metaText}>
-                    {Math.floor(lesson.duration / 60)} minutos
+                    {tw('education.minutesLabel', { count: lesson.duration })}
                   </Text>
                 </View>
               )}
@@ -241,7 +241,7 @@ export default function LessonDetailScreen() {
                   textStyle={styles.freeChipText}
                   compact
                 >
-                  Aula Grátis
+                  {t('education.freeLesson')}
                 </Chip>
               )}
             </View>
@@ -255,7 +255,7 @@ export default function LessonDetailScreen() {
               <View style={styles.videoHeader}>
                 <MaterialCommunityIcons name="play-circle" size={24} color="#3534C9" />
                 <Text variant="titleMedium" style={styles.sectionTitle}>
-                  Vídeo da Aula
+                  {t('education.lessonVideo')}
                 </Text>
               </View>
               
@@ -289,7 +289,7 @@ export default function LessonDetailScreen() {
                   onPress={() => handleOpenVideo(lesson.video_url!)}
                   style={styles.videoButton}
                 >
-                  Assistir Vídeo
+                  {t('education.watchVideo')}
                 </Button>
               )}
             </Card.Content>
@@ -301,7 +301,7 @@ export default function LessonDetailScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Conteúdo da Aula
+                {t('education.lessonContent')}
               </Text>
               <Divider style={styles.divider} />
               <View style={styles.contentContainer}>
@@ -320,7 +320,7 @@ export default function LessonDetailScreen() {
               <View style={styles.attachmentsHeader}>
                 <MaterialCommunityIcons name="file-document" size={24} color="#3534C9" />
                 <Text variant="titleMedium" style={styles.sectionTitle}>
-                  Materiais de Apoio
+                  {t('education.supportMaterials')}
                 </Text>
               </View>
               <Divider style={styles.divider} />
@@ -367,7 +367,7 @@ export default function LessonDetailScreen() {
                   onPress={() => navigation.navigate('LessonQuiz', { lessonId: lesson.id, quizId: quiz.id })}
                   style={styles.completeButton}
                 >
-                  Fazer quiz para concluir
+                  {t('education.takeQuizToComplete')}
                 </Button>
               ) : (
                 <Button
@@ -380,7 +380,7 @@ export default function LessonDetailScreen() {
                 >
                   {feedback.isPending('markComplete')
                     ? t('feedback.processing')
-                    : 'Marcar como Concluída'}
+                    : t('education.markComplete')}
                 </Button>
               )}
             </Card.Content>
@@ -394,7 +394,7 @@ export default function LessonDetailScreen() {
               <View style={styles.completedMessage}>
                 <MaterialCommunityIcons name="check-circle" size={48} color="#4DB83D" />
                 <Text variant="titleLarge" style={styles.completedTitle}>
-                  Aula Concluída!
+                  {t('education.lessonCompletedBanner')}
                 </Text>
                 <Text variant="bodyMedium" style={styles.completedText}>
                   Parabéns! Você completou esta aula em{' '}

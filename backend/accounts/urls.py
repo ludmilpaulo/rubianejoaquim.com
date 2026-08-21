@@ -10,6 +10,7 @@ from .views import (
     send_app_update_notification,
     share_zenda_link,
     track_referral_event,
+    register_push_token,
 )
 from . import social_views
 
@@ -23,6 +24,7 @@ urlpatterns = [
     path('forgot-password/', forgot_password, name='forgot-password'),
     path('password-reset-confirm/', password_reset_confirm, name='password-reset-confirm'),
     path('send-app-update-notification/', send_app_update_notification, name='send-app-update-notification'),
+    path('push-token/', register_push_token, name='push-token'),
     path('share-zenda/', share_zenda_link, name='share-zenda'),
     path('referral/track/', track_referral_event, name='referral-track'),
 

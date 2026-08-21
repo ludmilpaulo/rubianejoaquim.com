@@ -9,7 +9,9 @@ import { logout, checkPaidAccess } from '../store/authSlice'
 import { useNavigation } from '@react-navigation/native'
 import { authApi, accessApi, referralApi } from '../services/api'
 import { shareZendaApp } from '../utils/shareZenda'
-import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
+import type { CheckoutOptions, MobileAppSubscription, SubscriptionPaymentInfo, SubscriptionPaymentRecord } from '../types'
+import { loadCheckoutOptions, startCardCheckoutAndSync, unwrapPaymentList } from '../services/subscriptionPayments'
+import { isIapSupported, purchaseIapProduct, SUBSCRIPTION_PRODUCT_ID } from '../services/iap'
 import { getApiErrorMessage, type UploadFilePayload } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -31,6 +33,8 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>()
   const [subscription, setSubscription] = useState<MobileAppSubscription | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
+  const [checkout, setCheckout] = useState<CheckoutOptions | null>(null)
+  const [payments, setPayments] = useState<SubscriptionPaymentRecord[]>([])
   const [subLoading, setSubLoading] = useState(true)
   const [uploadNotes, setUploadNotes] = useState('')
   const [pointsBalance, setPointsBalance] = useState<number>(0)
@@ -39,13 +43,17 @@ export default function ProfileScreen() {
   const loadSubscription = useCallback(async () => {
     try {
       setSubLoading(true)
-      const [subRes, payRes, pointsRes] = await Promise.all([
+      const [subRes, payRes, pointsRes, checkoutRes, histRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
         referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 })),
+        loadCheckoutOptions().catch(() => null),
+        accessApi.getSubscriptionPayments().catch(() => null),
       ])
       setSubscription(subRes?.subscription ?? subRes ?? null)
       setPaymentInfo(payRes ?? null)
+      setCheckout(checkoutRes)
+      setPayments(unwrapPaymentList(histRes))
       if (pointsRes?.balance !== undefined) {
         setPointsBalance(pointsRes.balance)
         setPointsBalanceKz(pointsRes.balance_kz ?? pointsRes.balance * 1000)
@@ -108,6 +116,46 @@ export default function ProfileScreen() {
     } catch (error: unknown) {
       alert.error(getApiErrorMessage(error, 'profile.uploadFailed'))
     }
+  }
+
+  const showProof = Boolean(
+    paymentInfo && (!checkout || checkout.methods.includes('proof_of_payment')),
+  )
+  const showCard = Boolean(checkout?.methods.includes('card'))
+
+  const handlePayWithCard = async () => {
+    if (isPending('cardPay')) return
+    await run(
+      async () => {
+        const payment = await startCardCheckoutAndSync()
+        await loadSubscription()
+        dispatch(checkPaidAccess())
+        if (payment.status !== 'paid') {
+          throw new Error(t('access.paymentFailedMsg'))
+        }
+      },
+      {
+        pendingKey: 'cardPay',
+        pendingMessage: 'access.cardOpening',
+        onSuccess: () => alert.success(t('access.paymentSuccess')),
+      },
+    )
+  }
+
+  const handleSubscribeWithApple = async () => {
+    if (!isIapSupported() || isPending('iap')) return
+    await run(
+      async () => {
+        await purchaseIapProduct(SUBSCRIPTION_PRODUCT_ID)
+        await loadSubscription()
+        dispatch(checkPaidAccess())
+      },
+      {
+        pendingKey: 'iap',
+        pendingMessage: 'feedback.processingSubscription',
+        onSuccess: () => alert.success(t('access.iapSuccess')),
+      },
+    )
   }
 
   const handleRedeemSubscription = async (usePartial: boolean = false) => {
@@ -422,7 +470,7 @@ export default function ProfileScreen() {
                 </Text>
               )}
 
-              {paymentInfo && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && (
+              {showProof && paymentInfo && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && (
                 <View style={styles.paymentDetails}>
                   <Text variant="labelLarge" style={styles.paymentDetailsTitle}>
                     {t('profile.monthlyPaymentDetails')}
@@ -452,7 +500,35 @@ export default function ProfileScreen() {
                 </View>
               )}
 
-              {subscription && subscription.status !== 'cancelled' && (
+              {showCard && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
+                <Button
+                  mode="contained"
+                  onPress={handlePayWithCard}
+                  {...buttonProps('cardPay')}
+                  style={styles.uploadButton}
+                  buttonColor="#211F78"
+                  contentStyle={styles.uploadButtonContent}
+                  labelStyle={styles.uploadButtonLabel}
+                  icon={() => <MaterialCommunityIcons name="credit-card" size={22} color="#fff" />}
+                >
+                  {actionLabel('access.payWithCard', 'cardPay', 'access.cardOpening')}
+                </Button>
+              )}
+              {isIapSupported() && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
+                <Button
+                  mode="contained"
+                  onPress={handleSubscribeWithApple}
+                  {...buttonProps('iap')}
+                  style={styles.uploadButton}
+                  buttonColor="#111827"
+                  contentStyle={styles.uploadButtonContent}
+                  labelStyle={styles.uploadButtonLabel}
+                  icon={() => <MaterialCommunityIcons name="apple" size={22} color="#fff" />}
+                >
+                  {actionLabel('access.subscribeWithApple', 'iap', 'feedback.processingSubscription')}
+                </Button>
+              )}
+              {subscription && subscription.status !== 'cancelled' && showProof && (
                 <View style={styles.uploadSection}>
                   <TextInput
                     mode="outlined"
@@ -482,6 +558,28 @@ export default function ProfileScreen() {
                 </View>
               )}
             </Card.Content>
+            </View>
+          </Card>
+        )}
+
+        {payments.length > 0 && (
+          <Card style={styles.subscriptionCard}>
+            <View style={styles.subscriptionCardInner}>
+              <Card.Content style={styles.subscriptionContent}>
+                <Text variant="titleMedium" style={styles.subscriptionTitle}>
+                  {t('access.paymentHistory')}
+                </Text>
+                {payments.map((row) => (
+                  <View key={row.id} style={{ marginTop: 12 }}>
+                    <Text variant="labelLarge">Premium Subscription</Text>
+                    <Text variant="bodySmall">
+                      {row.currency} {Number(row.amount).toFixed(2)} · {row.method_label}
+                      {row.gateway_label ? ` · ${row.gateway_label}` : ''}
+                    </Text>
+                    <Text variant="bodySmall">{row.transaction_id} · {row.status}</Text>
+                  </View>
+                ))}
+              </Card.Content>
             </View>
           </Card>
         )}
@@ -522,6 +620,29 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
             <Divider style={styles.divider} />
+            {user?.is_instructor ? (
+              <>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('InstructorDashboard')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.menuItem}>
+                    <View style={styles.menuItemLeft}>
+                      <View style={[styles.menuIconContainer, { backgroundColor: '#f0f4ff' }]}>
+                        <MaterialCommunityIcons name="school" size={24} color="#3534C9" />
+                      </View>
+                      <View style={styles.menuItemText}>
+                        <Text variant="titleMedium" style={styles.menuItemTitle}>
+                          {t('education.instructorDash')}
+                        </Text>
+                      </View>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#9ca3af" />
+                  </View>
+                </TouchableOpacity>
+                <Divider style={styles.divider} />
+              </>
+            ) : null}
             <TouchableOpacity
               onPress={() => navigation.navigate('Settings')}
               activeOpacity={0.7}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, SocialAccount, OAuthState, AppReferralEvent
+from .models import User, SocialAccount, OAuthState, AppReferralEvent, DevicePushToken
 
 
 @admin.register(User)
@@ -12,7 +12,7 @@ class UserAdmin(BaseUserAdmin):
         ('Perfil Zenda', {
             'fields': (
                 'email_verified', 'phone', 'address', 'referral_code', 'referred_by',
-                'preferred_locale', 'preferred_currency', 'profile_photo', 'profile_image_url',
+                'preferred_locale', 'preferred_currency', 'country', 'profile_photo', 'profile_image_url',
                 'onboarding_completed', 'onboarding_goals', 'finance_level', 'dark_mode',
                 'notification_prefs',
             ),
@@ -40,3 +40,11 @@ class AppReferralEventAdmin(admin.ModelAdmin):
     list_display = ['event_type', 'referral_code', 'referrer', 'platform', 'created_user', 'created_at']
     list_filter = ['event_type', 'platform', 'created_at']
     search_fields = ['referral_code', 'referrer__email', 'created_user__email']
+
+
+@admin.register(DevicePushToken)
+class DevicePushTokenAdmin(admin.ModelAdmin):
+    list_display = ['user', 'platform', 'is_active', 'updated_at']
+    list_filter = ['platform', 'is_active']
+    search_fields = ['user__email', 'token']
+    readonly_fields = ['created_at', 'updated_at']

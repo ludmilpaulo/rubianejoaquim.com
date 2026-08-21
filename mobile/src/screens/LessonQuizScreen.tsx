@@ -44,7 +44,7 @@ interface Quiz {
 }
 
 export default function LessonQuizScreen() {
-  const { t } = useI18n()
+  const { t, tw } = useI18n()
   const route = useRoute()
   const navigation = useNavigation<any>()
   const { lessonId, quizId } = (route.params as RouteParams) || {}
@@ -131,7 +131,7 @@ export default function LessonQuizScreen() {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
-          <ZendaLoader message="Carregando quiz..." size="lg" />
+          <ZendaLoader message={t('education.loadingQuiz')} size="lg" />
         </View>
       </SafeAreaView>
     )
@@ -142,9 +142,9 @@ export default function LessonQuizScreen() {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <View style={styles.centered}>
           <MaterialCommunityIcons name="file-question-outline" size={64} color="#9ca3af" />
-          <Text variant="titleMedium" style={styles.errorText}>Quiz não encontrado.</Text>
+          <Text variant="titleMedium" style={styles.errorText}>{t('education.quizNotFound')}</Text>
           <Button mode="contained" onPress={handleBack} style={styles.backButton}>
-            Voltar
+            {t('education.backToLessons')}
           </Button>
         </View>
       </SafeAreaView>
@@ -184,19 +184,19 @@ export default function LessonQuizScreen() {
                 />
               </View>
               <Text variant="headlineSmall" style={styles.resultTitle}>
-                {result.passed ? 'Parabéns! Você passou.' : 'Não atingiu a nota mínima'}
+                {result.passed ? t('education.coursePassed') : t('education.courseInProgress')}
               </Text>
               <Text variant="titleLarge" style={[styles.resultScore, result.passed ? styles.scorePassed : styles.scoreFailed]}>
                 {result.score.toFixed(1)}%
               </Text>
               <Text variant="bodyLarge" style={styles.resultDetail}>
-                {result.correct_answers} de {result.total_questions} respostas corretas
+                {tw('education.correctOfTotal', { correct: result.correct_answers, total: result.total_questions })}
               </Text>
               <Text variant="bodyMedium" style={styles.passingText}>
                 Nota mínima: {quiz.passing_score}%
               </Text>
               <Button mode="contained" onPress={handleBack} style={styles.backButton}>
-                Voltar à aula
+                Voltar
               </Button>
             </Card.Content>
           </Card>
@@ -260,7 +260,7 @@ export default function LessonQuizScreen() {
           disabled={submitting || !allAnswered}
           style={styles.submitButton}
         >
-          {submitting ? 'A enviar...' : 'Enviar respostas'}
+          {submitting ? t('education.sending') : t('education.submitAnswers')}
         </Button>
       </ScrollView>
     </SafeAreaView>

@@ -2,15 +2,7 @@
 
 from typing import Any
 
-SUPPORTED_LOCALES = ('pt', 'en', 'fr', 'es')
-DEFAULT_LOCALE = 'pt'
-
-
-def normalize_locale(lang: str | None) -> str:
-    if not lang:
-        return DEFAULT_LOCALE
-    code = lang.lower().split('-')[0]
-    return code if code in SUPPORTED_LOCALES else DEFAULT_LOCALE
+from config.locales import SUPPORTED_LOCALES, DEFAULT_LOCALE, normalize_locale
 
 
 def get_locale_block(translations: dict[str, Any] | None, lang: str | None) -> dict[str, Any]:

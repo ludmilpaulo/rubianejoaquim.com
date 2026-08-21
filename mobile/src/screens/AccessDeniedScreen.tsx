@@ -15,7 +15,8 @@ import {
   SUBSCRIPTION_PRODUCT_ID,
   type IapListedProduct,
 } from '../services/iap'
-import type { MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
+import type { CheckoutOptions, MobileAppSubscription, SubscriptionPaymentInfo } from '../types'
+import { loadCheckoutOptions, startCardCheckoutAndSync } from '../services/subscriptionPayments'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
@@ -41,6 +42,8 @@ export default function AccessDeniedScreen() {
   const [redeemingSubscription, setRedeemingSubscription] = useState(false)
   const [iapPurchasing, setIapPurchasing] = useState(false)
   const [iapProduct, setIapProduct] = useState<IapListedProduct | null>(null)
+  const [checkout, setCheckout] = useState<CheckoutOptions | null>(null)
+  const [cardPaying, setCardPaying] = useState(false)
 
   useEffect(() => {
     if (!isIapSupported()) return
@@ -91,13 +94,15 @@ export default function AccessDeniedScreen() {
     }
     try {
       setSubLoading(true)
-      const [subRes, payRes, pointsRes] = await Promise.all([
+      const [subRes, payRes, pointsRes, checkoutRes] = await Promise.all([
         accessApi.getMobileSubscription().catch(() => null),
         accessApi.getSubscriptionPaymentInfo().catch(() => null),
         referralApi.getPointsBalance().catch(() => ({ balance: 0, balance_kz: 0 })),
+        loadCheckoutOptions().catch(() => null),
       ])
       setSubscription(subRes?.subscription != null ? subRes.subscription : null)
       setPaymentInfo(payRes ?? null)
+      setCheckout(checkoutRes)
       if (pointsRes?.balance !== undefined) {
         setPointsBalance(pointsRes.balance)
       }
@@ -252,6 +257,11 @@ export default function AccessDeniedScreen() {
     ? tw('access.iapSubscriptionPrice', { price: iapProduct.displayPrice })
     : t('access.iapSubscriptionPriceFallback')
 
+  const showProof = Boolean(
+    paymentInfo && (!checkout || checkout.methods.includes('proof_of_payment')),
+  )
+  const showCard = Boolean(checkout?.methods.includes('card'))
+
   const handleSubscribeWithApple = async () => {
     if (!isIapSupported()) {
       alert.info(t('common.error'), t('access.iapUnavailable'))
@@ -281,6 +291,30 @@ export default function AccessDeniedScreen() {
       },
     )
     setIapPurchasing(false)
+  }
+
+  const handlePayWithCard = async () => {
+    setCardPaying(true)
+    await feedback.run(
+      async () => {
+        const payment = await startCardCheckoutAndSync()
+        const { hasAccess } = await dispatch(checkPaidAccess()).unwrap()
+        if (payment.status === 'paid' || hasAccess) {
+          alert.success(t('access.paymentSuccess'))
+        } else {
+          alert.info(t('common.error'), t('access.paymentFailedMsg'))
+        }
+      },
+      {
+        pendingKey: 'cardPay',
+        pendingMessage: 'access.cardOpening',
+        silentError: true,
+        onError: (error: unknown) => {
+          alert.error(getApiErrorMessage(error, t('access.paymentFailedMsg')))
+        },
+      },
+    )
+    setCardPaying(false)
   }
 
   if (subLoading) {
@@ -339,7 +373,7 @@ export default function AccessDeniedScreen() {
               <Text variant="bodyMedium" style={styles.expiredMessage}>
                 {t('access.trialUsedMsg')}
               </Text>
-              {paymentInfo && (
+              {showProof && paymentInfo && (
                 <View style={styles.paymentDetails}>
                   <Text variant="labelLarge" style={styles.paymentDetailsTitle}>{t('access.paymentDetails')}</Text>
                   <View style={styles.paymentRow}>
@@ -383,6 +417,8 @@ export default function AccessDeniedScreen() {
                     : tw('access.redeemPoints', { points: pointsForSubscription })}
                 </Button>
               )}
+              {showProof && (
+                <>
               <Text variant="bodySmall" style={styles.payOrPointsHint}>
                 {pointsBalance >= pointsForSubscription
                   ? t('access.payOrPoints')
@@ -416,10 +452,32 @@ export default function AccessDeniedScreen() {
               <Text variant="bodySmall" style={styles.uploadHint}>
                 {t('access.proofHint')}
               </Text>
+                </>
+              )}
             </View>
           )}
 
           <View style={styles.buttonContainer}>
+            {showCard && (
+              <Button
+                mode="contained"
+                onPress={handlePayWithCard}
+                loading={cardPaying || feedback.isPending('cardPay')}
+                disabled={cardPaying || feedback.isPending('cardPay') || !checkout?.ikhokha_enabled}
+                style={styles.iapButton}
+                buttonColor="#211F78"
+                contentStyle={styles.buttonContent}
+                labelStyle={styles.buttonLabel}
+                icon={() => <MaterialCommunityIcons name="credit-card" size={22} color="#fff" />}
+              >
+                {(cardPaying || feedback.isPending('cardPay'))
+                  ? t('access.cardOpening')
+                  : t('access.payWithCard')}
+              </Button>
+            )}
+            {showCard && !checkout?.ikhokha_enabled && (
+              <Text variant="bodySmall" style={styles.uploadHint}>{t('access.cardUnavailable')}</Text>
+            )}
             {isIapSupported() && (
               <>
                 <View style={styles.iapDisclosure}>
