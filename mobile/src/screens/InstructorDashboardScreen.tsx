@@ -45,7 +45,7 @@ export default function InstructorDashboardScreen() {
   if (loading && !data) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ZendaLoading message={t('education.loading')} />
+        <ZendaLoading visible message={t('education.loading')} />
       </SafeAreaView>
     )
   }
@@ -81,9 +81,9 @@ export default function InstructorDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg.page },
+  safe: { flex: 1, backgroundColor: colors.background.default },
   title: { margin: 16, color: colors.brand.navy, fontWeight: '700' },
-  error: { marginHorizontal: 16, color: colors.feedback.expense },
+  error: { marginHorizontal: 16, color: colors.semantic.expense },
   grid: { padding: 12, gap: 12 },
   card: { borderRadius: 16 },
 })

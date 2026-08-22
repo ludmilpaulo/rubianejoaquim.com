@@ -112,7 +112,7 @@ export default function LessonQuizScreen() {
         correct_answers: Number(data?.correct_answers ?? 0),
         total_questions: Number(data?.total_questions ?? questions.length),
       })
-      if (passed && lessonId) {
+      if (data?.passed === true && lessonId) {
         await lessonsApi.markCompleted(lessonId)
       }
     } catch (err: unknown) {

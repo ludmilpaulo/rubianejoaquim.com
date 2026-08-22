@@ -757,6 +757,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
+  iapButton: {
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#211F78',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   secondaryButton: {
     borderRadius: 12,
     borderColor: '#3534C9',
