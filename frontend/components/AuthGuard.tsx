@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
+import { safeAuthNext } from '@/lib/auth-next'
 import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
 
 type AuthGuardProps = {
@@ -36,7 +37,8 @@ export default function AuthGuard({ children, requireAdmin = false }: AuthGuardP
     if (isLoading) return
     if (timedOut && !user) return
     if (!allowed) {
-      router.push('/login')
+      const next = safeAuthNext(`${window.location.pathname}${window.location.search}`)
+      router.push(next ? `/login?next=${encodeURIComponent(next)}` : '/login')
     }
   }, [allowed, isLoading, router, timedOut, user])
 

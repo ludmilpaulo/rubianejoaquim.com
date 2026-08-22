@@ -4,11 +4,65 @@ import { useState, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocale } from '@/contexts/LocaleContext'
 import { portfolioApi } from '@/lib/portfolio-api'
-import type { ContactFormData, SiteSettings } from '@/lib/public-types'
+import type { ContactFormData, ContactFormLabels, SiteSettings } from '@/lib/public-types'
+import type { Locale } from '@/lib/i18n/config'
 import SectionHeader from './SectionHeader'
 import Reveal from './Reveal'
 
 const WHATSAPP_BASE = 'https://wa.me/'
+
+const FORM_FALLBACK_PT: ContactFormLabels = {
+  name: 'Nome',
+  email: 'Email',
+  phone: 'Telefone',
+  subject: 'Assunto',
+  message: 'Mensagem',
+  service_interest: 'Serviço de interesse',
+  budget_range: 'Orçamento estimado',
+  project_type: 'Tipo de projeto',
+  submit: 'Enviar mensagem',
+  submitting: 'A enviar…',
+  success: 'Mensagem enviada. Obrigado!',
+  error: 'Erro ao enviar. Tente novamente.',
+  required: 'Obrigatório',
+  whatsapp_label: 'WhatsApp',
+  email_label: 'Email',
+}
+
+const FORM_FALLBACK_EN: ContactFormLabels = {
+  name: 'Name',
+  email: 'Email',
+  phone: 'Phone',
+  subject: 'Subject',
+  message: 'Message',
+  service_interest: 'Service of interest',
+  budget_range: 'Budget range',
+  project_type: 'Project type',
+  submit: 'Send message',
+  submitting: 'Sending…',
+  success: 'Message sent. Thank you!',
+  error: 'Could not send. Please try again.',
+  required: 'Required',
+  whatsapp_label: 'WhatsApp',
+  email_label: 'Email',
+}
+
+function contactFallbacks(locale: Locale) {
+  if (locale === 'pt') {
+    return {
+      label: 'Contacto',
+      title: 'Vamos trabalhar juntos',
+      subtitle: 'Conte-me sobre o seu projeto — respondo em breve.',
+      form: FORM_FALLBACK_PT,
+    }
+  }
+  return {
+    label: 'Contact',
+    title: "Let's work together",
+    subtitle: 'Tell me about your project — I will reply soon.',
+    form: FORM_FALLBACK_EN,
+  }
+}
 
 const SERVICE_OPTIONS = [
   'campaign_videos',
@@ -32,13 +86,14 @@ export default function ContactSection({
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ContactFormData>()
 
+  const fallbacks = contactFallbacks(locale)
   const whatsapp = 'whatsapp_number' in settings ? settings.whatsapp_number : ''
   const email = 'contact_email' in settings ? settings.contact_email : ''
   const phone = 'phone' in settings ? settings.phone : ''
-  const label = settings.contact_label || ''
-  const title = settings.contact_title || ''
-  const subtitle = settings.contact_subtitle || ''
-  const form = settings.contact_form || {}
+  const label = settings.contact_label || fallbacks.label
+  const title = settings.contact_title || fallbacks.title
+  const subtitle = settings.contact_subtitle || fallbacks.subtitle
+  const form = { ...fallbacks.form, ...(settings.contact_form || {}) }
 
   const serviceLabels = useMemo(() => {
     const fromSettings = (settings as SiteSettings).contact_form as Record<string, string> | undefined
@@ -62,8 +117,6 @@ export default function ContactSection({
       setStatus('error')
     }
   }
-
-  if (!title && !label) return null
 
   return (
     <section id="contact" className="py-24 md:py-32 section-dark border-t border-white/5">

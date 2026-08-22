@@ -1,11 +1,24 @@
-/** Allow only same-origin relative paths used after login (family invite, copilot). */
+const ALLOWED_NEXT_PREFIXES = [
+  '/family',
+  '/zenda/copilot',
+  '/instructor',
+  '/subscribe',
+  '/admin',
+  '/area-do-aluno',
+  '/cursos',
+  '/aulas',
+  '/mentoria',
+] as const
+
+/** Allow only same-origin relative paths used after login. */
 export function safeAuthNext(raw: string | null | undefined): string | null {
   if (!raw) return null
   if (!raw.startsWith('/')) return null
   if (raw.includes('://') || raw.includes('\\') || raw.includes('//')) return null
-  if (raw.startsWith('/family/join/')) return raw
-  if (raw === '/family' || raw.startsWith('/family?')) return raw
-  if (raw === '/zenda/copilot' || raw.startsWith('/zenda/copilot?')) return raw
+  if (raw === '/login' || raw.startsWith('/login?')) return null
+  if (ALLOWED_NEXT_PREFIXES.some((prefix) => raw === prefix || raw.startsWith(`${prefix}/`) || raw.startsWith(`${prefix}?`))) {
+    return raw
+  }
   return null
 }
 
