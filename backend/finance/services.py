@@ -22,6 +22,15 @@ def _preferred(user) -> str:
     return (getattr(user, 'preferred_currency', None) or 'AOA').upper()
 
 
+def _monthly_budgets(user, month: int, year: int):
+    """Budget rows for dashboard/health. Defer alert column so missing 0014 does not 500."""
+    return (
+        Budget.objects.filter(user=user, month=month, year=year, period_type='monthly')
+        .select_related('category')
+        .defer('last_budget_alert_level')
+    )
+
+
 def _sum_queryset_amounts(qs, *, amount_field='amount', currency_field='currency', target: str) -> Decimal:
     rows = [
         (getattr(obj, amount_field), getattr(obj, currency_field, None) or target)
@@ -46,7 +55,7 @@ def compute_financial_health(user, month: int | None = None, year: int | None = 
         target=preferred,
     )
 
-    budgets = Budget.objects.filter(user=user, month=month, year=year, period_type='monthly')
+    budgets = _monthly_budgets(user, month, year)
     over_budget_count = 0
     budget_total = Decimal('0')
     budget_spent = Decimal('0')
@@ -61,7 +70,14 @@ def compute_financial_health(user, month: int | None = None, year: int | None = 
         if b.amount > 0 and spent > b.amount:
             over_budget_count += 1
 
-    active_goals = Goal.objects.filter(user=user, status='active')
+    active_goals = Goal.objects.filter(user=user, status='active').defer(
+        'progress_notified_100',
+        'progress_notified_75',
+        'reminder_enabled',
+        'reminder_frequency',
+        'reminder_offsets_minutes',
+        'reminder_time',
+    )
     goals_on_track = 0
     for g in active_goals:
         if g.progress_percentage >= 50:
@@ -176,9 +192,22 @@ def build_dashboard(user) -> dict[str, Any]:
         reverse=True,
     )[:5]
 
-    active_goals = Goal.objects.filter(user=user, status='active').order_by('-updated_at')[:3]
+    active_goals = (
+        Goal.objects.filter(user=user, status='active')
+        .order_by('-updated_at')
+        .only(
+            'id',
+            'title',
+            'current_amount',
+            'target_amount',
+            'target_date',
+            'currency',
+            'status',
+            'updated_at',
+        )[:3]
+    )
     active_debts = Debt.objects.filter(user=user, status='active').order_by('due_date')[:3]
-    budgets = Budget.objects.filter(user=user, month=month, year=year, period_type='monthly')[:5]
+    budgets = _monthly_budgets(user, month, year)[:5]
 
     today_tasks = Task.objects.filter(
         user=user, due_date=today, status__in=['pending', 'in_progress']

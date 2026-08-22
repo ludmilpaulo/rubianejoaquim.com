@@ -297,3 +297,84 @@ class TikTokProviderHelperTests(TestCase):
             'error': {'code': 'ok', 'message': '', 'log_id': 'z'},
         }
         self.assertFalse(_tiktok_payload_is_error(payload, 200))
+
+    def test_token_fields_unwrap_data_envelope(self):
+        from accounts.social_providers import _tiktok_token_fields
+
+        wrapped = {
+            'data': {'access_token': 'act.x', 'open_id': 'oid-1'},
+            'message': 'success',
+        }
+        self.assertEqual(_tiktok_token_fields(wrapped)['open_id'], 'oid-1')
+        flat = {'access_token': 'act.y', 'open_id': 'oid-2'}
+        self.assertEqual(_tiktok_token_fields(flat)['open_id'], 'oid-2')
+
+    @override_settings(TIKTOK_CLIENT_KEY='test_key', TIKTOK_CLIENT_SECRET='test_secret')
+    def test_exchange_completes_when_user_info_says_something_went_wrong(self):
+        from unittest.mock import Mock, patch
+
+        from accounts.social_providers import exchange_tiktok_code
+
+        token_resp = Mock()
+        token_resp.status_code = 200
+        token_resp.json.return_value = {
+            'access_token': 'act.x',
+            'open_id': 'oid-login',
+            'token_type': 'Bearer',
+        }
+        user_resp = Mock()
+        user_resp.status_code = 401
+        user_resp.headers = {}
+        user_resp.json.return_value = {
+            'error': {
+                'code': 'scope_not_authorized',
+                'message': 'Something went wrong',
+                'log_id': 'tt-log-1',
+            }
+        }
+        with patch('accounts.social_providers.requests.post', return_value=token_resp):
+            with patch('accounts.social_providers.requests.get', return_value=user_resp):
+                verified = exchange_tiktok_code(
+                    code='fresh-code',
+                    redirect_uri='https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/',
+                    code_verifier='pkce-verifier',
+                )
+        self.assertEqual(verified.provider, 'tiktok')
+        self.assertEqual(verified.provider_user_id, 'oid-login')
+        self.assertIsNone(verified.email)
+
+    @override_settings(TIKTOK_CLIENT_KEY='test_key', TIKTOK_CLIENT_SECRET='test_secret')
+    def test_exchange_uses_profile_when_user_info_succeeds(self):
+        from unittest.mock import Mock, patch
+
+        from accounts.social_providers import exchange_tiktok_code
+
+        token_resp = Mock()
+        token_resp.status_code = 200
+        token_resp.json.return_value = {
+            'access_token': 'act.x',
+            'open_id': 'oid-login',
+            'token_type': 'Bearer',
+        }
+        user_resp = Mock()
+        user_resp.status_code = 200
+        user_resp.json.return_value = {
+            'data': {
+                'user': {
+                    'open_id': 'oid-login',
+                    'display_name': 'Ada Lovelace',
+                    'avatar_url': 'https://example.com/a.jpg',
+                }
+            },
+            'error': {'code': 'ok', 'message': '', 'log_id': 'ok-1'},
+        }
+        with patch('accounts.social_providers.requests.post', return_value=token_resp):
+            with patch('accounts.social_providers.requests.get', return_value=user_resp):
+                verified = exchange_tiktok_code(
+                    code='fresh-code',
+                    redirect_uri='https://ludmilpaulo.pythonanywhere.com/api/auth/social/tiktok/callback/',
+                    code_verifier='pkce-verifier',
+                )
+        self.assertEqual(verified.full_name, 'Ada Lovelace')
+        self.assertEqual(verified.first_name, 'Ada')
+        self.assertEqual(verified.picture_url, 'https://example.com/a.jpg')

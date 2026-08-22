@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from django.db.models import Sum, Q, Count
 from django.utils import timezone
+from django.db.utils import OperationalError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -744,7 +745,17 @@ class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        return Response(build_dashboard(request.user))
+        try:
+            return Response(build_dashboard(request.user))
+        except OperationalError:
+            logger.exception('Dashboard schema mismatch; run python manage.py migrate on the API host')
+            return Response(
+                {
+                    'detail': 'Dashboard indisponível. Execute as migrações na API e recarregue a aplicação.',
+                    'code': 'schema_mismatch',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
     @action(detail=False, methods=['get'])
     def health_score(self, request):

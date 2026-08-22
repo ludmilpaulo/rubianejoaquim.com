@@ -12,7 +12,7 @@ export interface NotificationPrefs {
 
 export interface User {
   id: number
-  email: string
+  email: string | null
   username: string
   first_name: string
   last_name: string

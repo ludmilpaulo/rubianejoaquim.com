@@ -97,6 +97,15 @@ def _tiktok_payload_is_error(payload: object, status_code: int) -> bool:
     return True
 
 
+def _tiktok_token_fields(payload: object) -> dict:
+    """Token endpoint is flat; some TikTok responses still wrap fields in data."""
+    data = payload if isinstance(payload, dict) else {}
+    nested = data.get('data')
+    if isinstance(nested, dict) and (nested.get('access_token') or nested.get('open_id')):
+        return nested
+    return data
+
+
 class ProviderVerificationError(Exception):
     """Raised when a provider token/code cannot be verified."""
 
@@ -349,13 +358,21 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
         )
         raise ProviderVerificationError()
 
-    access_token = token_payload.get('access_token')
-    open_id = token_payload.get('open_id')
+    token_fields = _tiktok_token_fields(token_payload)
+    access_token = token_fields.get('access_token')
+    open_id = token_fields.get('open_id')
     if not access_token or not open_id:
         log_oauth_failure(provider='tiktok', step='token_exchange', error='missing_token_or_open_id')
         raise ProviderVerificationError()
     log_oauth_step(provider='tiktok', step='token_exchange', status='success')
 
+    # Login Kit identity is open_id. Profile fields are optional — TikTok user/info
+    # often returns "Something went wrong" / scope_not_authorized when Display API
+    # is not approved. Do not abort login for that.
+    display_name = ''
+    picture_url = ''
+    union_id = None
+    user_resp = None
     try:
         user_resp = requests.get(
             'https://open.tiktokapis.com/v2/user/info/',
@@ -364,39 +381,43 @@ def exchange_tiktok_code(*, code: str, redirect_uri: str, code_verifier: str) ->
             timeout=10,
         )
         user_payload = user_resp.json()
+        if _tiktok_payload_is_error(user_payload, user_resp.status_code):
+            err, log_id = _tiktok_error_meta(user_payload, user_resp)
+            log_oauth_failure(
+                provider='tiktok',
+                step='user_info',
+                status_code=user_resp.status_code,
+                error=err or 'user_info_failed',
+                log_id=log_id,
+            )
+        else:
+            user_obj = ((user_payload.get('data') or {}).get('user') or {})
+            if user_obj.get('open_id'):
+                open_id = user_obj.get('open_id')
+            display_name = (user_obj.get('display_name') or '').strip()
+            picture_url = (user_obj.get('avatar_url') or '').strip()
+            union_id = user_obj.get('union_id')
+            log_oauth_step(provider='tiktok', step='user_info', status='success')
     except Exception:
-        log_oauth_failure(provider='tiktok', step='user_info_request')
-        raise ProviderVerificationError() from None
-    finally:
-        # Do not retain provider access tokens
-        access_token = None
-
-    if _tiktok_payload_is_error(user_payload, user_resp.status_code):
-        err, log_id = _tiktok_error_meta(user_payload, user_resp)
         log_oauth_failure(
             provider='tiktok',
-            step='user_info',
-            status_code=user_resp.status_code,
-            error=err or 'user_info_failed',
-            log_id=log_id,
+            step='user_info_request',
+            status_code=getattr(user_resp, 'status_code', None),
         )
-        raise ProviderVerificationError()
+    finally:
+        access_token = None
 
-    user_obj = ((user_payload.get('data') or {}).get('user') or {})
-    provider_user_id = str(user_obj.get('open_id') or open_id)
-    display_name = (user_obj.get('display_name') or '').strip()
     first_name, last_name = _split_name(display_name)
-
     return VerifiedProviderUser(
         provider='tiktok',
-        provider_user_id=provider_user_id,
+        provider_user_id=str(open_id),
         email=None,
         email_verified=False,
         first_name=first_name,
         last_name=last_name,
         full_name=display_name,
-        picture_url=(user_obj.get('avatar_url') or '').strip(),
-        raw={'union_id': user_obj.get('union_id')},
+        picture_url=picture_url,
+        raw={'union_id': union_id},
     )
 
 

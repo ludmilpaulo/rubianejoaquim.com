@@ -9,7 +9,9 @@ class UserSerializer(serializers.ModelSerializer):
     is_instructor = serializers.SerializerMethodField()
     is_mentor = serializers.SerializerMethodField()
     is_tutor = serializers.SerializerMethodField()
-    
+    # TikTok Login Kit has no email; null must serialize instead of 500 on /auth/me/.
+    email = serializers.EmailField(allow_blank=True, allow_null=True, required=False)
+
     class Meta:
         model = User
         fields = [
