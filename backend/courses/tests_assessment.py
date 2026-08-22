@@ -298,8 +298,15 @@ class InstructorPermissionTests(AssessmentHelpersMixin, TestCase):
         self.course_a = self.make_course(instructor=self.inst_a, slug='ca')
         self.course_b = self.make_course(instructor=self.inst_b, slug='cb')
         self.lesson_a = self.make_lesson(self.course_a, slug='la')
+        self.lesson_b = self.make_lesson(self.course_b, slug='lb')
         q = self.make_question(self.course_a, self.lesson_a, 'Owned by A', [('Yes', True), ('No', False)])
         self.question_a = q
+        self.question_b = self.make_question(
+            self.course_b, self.lesson_b, 'Owned by B', [('Yes', True), ('No', False)],
+        )
+        self.choice_a = self.question_a.choices.get(is_correct=True)
+        self.quiz_a = self.attach_quiz(self.lesson_a, [self.question_a])
+        self.quiz_b = self.attach_quiz(self.lesson_b, [self.question_b])
 
     def test_instructor_cannot_see_other_questions(self):
         client = APIClient()
@@ -321,6 +328,129 @@ class InstructorPermissionTests(AssessmentHelpersMixin, TestCase):
         self.assertIn(res.status_code, (403, 404))
         self.question_a.refresh_from_db()
         self.assertEqual(self.question_a.question_text, 'Owned by A')
+
+    def test_instructor_cannot_create_question_on_foreign_lesson(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            '/api/course/admin/questions/',
+            {
+                'lesson': self.lesson_a.id,
+                'question_text': 'Stolen via lesson_id',
+                'question_type': 'single',
+                'points': 1,
+                'choices': [
+                    {'choice_text': 'A', 'is_correct': True, 'order': 0},
+                    {'choice_text': 'B', 'is_correct': False, 'order': 1},
+                ],
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(Question.objects.filter(question_text='Stolen via lesson_id').exists())
+
+    def test_instructor_cannot_create_question_with_own_course_and_foreign_lesson(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            '/api/course/admin/questions/',
+            {
+                'course': self.course_b.id,
+                'lesson': self.lesson_a.id,
+                'question_text': 'Mixed ownership',
+                'question_type': 'single',
+                'points': 1,
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(Question.objects.filter(question_text='Mixed ownership').exists())
+
+    def test_instructor_cannot_see_other_choices(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.get('/api/course/admin/choices/')
+        self.assertEqual(res.status_code, 200)
+        payload = res.data if isinstance(res.data, list) else res.data.get('results', [])
+        ids = [row['id'] for row in payload]
+        self.assertNotIn(self.choice_a.id, ids)
+
+    def test_instructor_cannot_change_other_choices(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.patch(
+            f'/api/course/admin/choices/{self.choice_a.id}/',
+            {'is_correct': False, 'choice_text': 'hacked'},
+            format='json',
+        )
+        self.assertIn(res.status_code, (403, 404))
+        self.choice_a.refresh_from_db()
+        self.assertTrue(self.choice_a.is_correct)
+        self.assertNotEqual(self.choice_a.choice_text, 'hacked')
+
+    def test_instructor_cannot_create_choice_on_foreign_question(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            '/api/course/admin/choices/',
+            {
+                'question': self.question_a.id,
+                'choice_text': 'injected',
+                'is_correct': True,
+                'order': 9,
+            },
+            format='json',
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(Choice.objects.filter(choice_text='injected').exists())
+
+    def test_instructor_cannot_see_other_quizzes(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.get('/api/course/admin/lesson-quizzes/')
+        self.assertEqual(res.status_code, 200)
+        payload = res.data if isinstance(res.data, list) else res.data.get('results', [])
+        ids = [row['id'] for row in payload]
+        self.assertNotIn(self.quiz_a.id, ids)
+        self.assertIn(self.quiz_b.id, ids)
+
+    def test_instructor_cannot_add_question_to_foreign_quiz(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            f'/api/course/admin/lesson-quizzes/{self.quiz_a.id}/add-question/',
+            {'question_id': self.question_b.id},
+            format='json',
+        )
+        self.assertIn(res.status_code, (403, 404))
+        self.assertFalse(
+            LessonQuizQuestion.objects.filter(quiz=self.quiz_a, question=self.question_b).exists()
+        )
+
+    def test_instructor_cannot_attach_foreign_question_to_own_quiz(self):
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            f'/api/course/admin/lesson-quizzes/{self.quiz_b.id}/add-question/',
+            {'question_id': self.question_a.id},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(
+            LessonQuizQuestion.objects.filter(quiz=self.quiz_b, question=self.question_a).exists()
+        )
+
+    def test_instructor_cannot_create_quiz_on_foreign_lesson(self):
+        extra = self.make_lesson(self.course_a, slug='la-extra')
+        client = APIClient()
+        client.force_authenticate(self.teacher_b)
+        res = client.post(
+            '/api/course/admin/lesson-quizzes/',
+            {'lesson': extra.id, 'title': 'Hijacked quiz'},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 403)
+        self.assertFalse(LessonQuiz.objects.filter(lesson=extra).exists())
 
 
 class FinalExamTests(AssessmentHelpersMixin, TestCase):

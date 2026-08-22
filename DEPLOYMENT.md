@@ -33,11 +33,24 @@
      - `CORS_ALLOWED_ORIGINS=https://www.rubianejoaquim.com,https://rubianejoaquim.com`
      - `FRONTEND_URL=https://www.rubianejoaquim.com`
 
-4. **Static files** (if you serve them via Django):
+4. **Static and media files** (PythonAnywhere Web tab → Static files):
+
+   Django does not serve these when `DEBUG=False`. Map them on the web app:
+
+   | URL | Directory |
+   |-----|-----------|
+   | `/static/` | `/home/ludmilpaulo/rubianejoaquim.com/backend/staticfiles` |
+   | `/media/` | `/home/ludmilpaulo/rubianejoaquim.com/backend/media` |
+
+   Then collect static files and create the media upload folder:
+
    ```bash
-   python manage.py collectstatic --noinput
+   cd /home/ludmilpaulo/rubianejoaquim.com/backend
+   mkdir -p media staticfiles
+   /home/ludmilpaulo/myenv/bin/python manage.py collectstatic --noinput
    ```
-   Point the static URL in the web app to your `staticfiles` directory.
+
+   Reload the web app after changing the mappings.
 
 5. **Migrations**:
    ```bash
