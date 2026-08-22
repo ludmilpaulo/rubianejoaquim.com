@@ -23,7 +23,8 @@ def backfill(apps, schema_editor):
         )
         if user is None:
             return
-        slug = slugify(user.get_full_name() or 'rubiane-joaquim') or 'rubiane-joaquim'
+        full_name = f"{getattr(user, 'first_name', '') or ''} {getattr(user, 'last_name', '') or ''}".strip()
+        slug = slugify(full_name or user.username or 'rubiane-joaquim') or 'rubiane-joaquim'
         official = InstructorProfile.objects.create(
             user=user,
             slug=slug,
