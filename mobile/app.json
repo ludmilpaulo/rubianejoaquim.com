@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -26,8 +26,8 @@
         "applinks:rubianejoaquim.com"
       ],
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Este app usa Face ID para autenticação rápida e segura.",
-        "NSCameraUsageDescription": "O Zenda precisa da câmara para digitalizar recibos e extrair valores das despesas.",
+        "NSFaceIDUsageDescription": "Este app usa Face ID para autentica\u00e7\u00e3o r\u00e1pida e segura.",
+        "NSCameraUsageDescription": "O Zenda precisa da c\u00e2mara para digitalizar recibos e extrair valores das despesas.",
         "ITSAppUsesNonExemptEncryption": false,
         "FacebookAppID": "2691305731001778",
         "FacebookDisplayName": "Zenda",
@@ -42,7 +42,7 @@
           }
         ]
       },
-      "buildNumber": "44"
+      "buildNumber": "45"
     },
     "android": {
       "adaptiveIcon": {
@@ -52,7 +52,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 43,
+      "versionCode": 44,
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
       ],
@@ -140,7 +140,7 @@
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Este app usa Face ID para autenticação rápida e segura."
+          "faceIDPermission": "Este app usa Face ID para autentica\u00e7\u00e3o r\u00e1pida e segura."
         }
       ],
       "expo-notifications",
@@ -170,7 +170,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O Zenda precisa da câmara para digitalizar recibos e extrair valores das despesas.",
+          "cameraPermission": "O Zenda precisa da c\u00e2mara para digitalizar recibos e extrair valores das despesas.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -182,7 +182,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.12",
+    "runtimeVersion": "1.0.13",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {
