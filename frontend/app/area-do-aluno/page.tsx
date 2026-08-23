@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
-import { coursesApi, mentorshipApi, authApi } from '@/lib/api'
+import { coursesApi, mentorshipApi, authApi, subscriptionApi } from '@/lib/api'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils/currency'
 import LoginMethodsPanel from '@/components/LoginMethodsPanel'
 import ZendaLoader from '@/components/zenda/ZendaLoader'
 import BankPayeeDetails from '@/components/education/BankPayeeDetails'
+import { getApiErrorMessage } from '@/lib/types/api'
 
 interface Enrollment {
   id: number
@@ -80,6 +81,8 @@ export default function AreaDoAlunoPage() {
     address: '',
   })
   const [savingProfile, setSavingProfile] = useState(false)
+  const [useAngolaProof, setUseAngolaProof] = useState(false)
+  const [cardPayingId, setCardPayingId] = useState<number | null>(null)
 
   useEffect(() => {
     // Only run on client side
@@ -105,7 +108,11 @@ export default function AreaDoAlunoPage() {
           if (currentUser) {
             await Promise.all([
               fetchData(),
-              fetchUserProfile()
+              fetchUserProfile(),
+              subscriptionApi.checkoutOptions('web').then((res) => {
+                const methods = (res.data as { methods?: string[] }).methods || []
+                setUseAngolaProof(methods.includes('proof_of_payment'))
+              }).catch(() => setUseAngolaProof(false)),
             ])
           } else {
             router.push('/login')
@@ -180,6 +187,38 @@ export default function AreaDoAlunoPage() {
       alert(error.response?.data?.error || 'Erro ao atualizar perfil')
     } finally {
       setSavingProfile(false)
+    }
+  }
+
+  const handleCardPayCourse = async (courseId: number) => {
+    setCardPayingId(courseId)
+    try {
+      const res = await subscriptionApi.commerceCreateSession({
+        product_type: 'course',
+        product_id: courseId,
+      })
+      const url = (res.data as { paylink_url?: string }).paylink_url
+      if (!url) throw new Error('Could not start card payment.')
+      window.location.href = url
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, 'Could not start card payment.'))
+      setCardPayingId(null)
+    }
+  }
+
+  const handleCardPayMentorship = async (packageId: number) => {
+    setCardPayingId(packageId)
+    try {
+      const res = await subscriptionApi.commerceCreateSession({
+        product_type: 'mentorship',
+        product_id: packageId,
+      })
+      const url = (res.data as { paylink_url?: string }).paylink_url
+      if (!url) throw new Error('Could not start card payment.')
+      window.location.href = url
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, 'Could not start card payment.'))
+      setCardPayingId(null)
     }
   }
 
@@ -557,11 +596,24 @@ export default function AreaDoAlunoPage() {
                                   </div>
                                 </>
                               ) : enrollment.status === 'pending' && !enrollment.payment_proof ? (
+                                useAngolaProof ? (
                                 <PaymentUploadForm
                                   enrollmentId={enrollment.id}
                                   onUpload={handlePaymentUpload}
                                   uploading={uploading === enrollment.id}
                                 />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCardPayCourse(enrollment.course.id)}
+                                    disabled={cardPayingId === enrollment.course.id}
+                                    className="w-full bg-zenda-primary text-white py-2.5 rounded-xl font-semibold disabled:opacity-50"
+                                  >
+                                    {cardPayingId === enrollment.course.id
+                                      ? 'A abrir pagamento…'
+                                      : 'Pagar com cartão (iKhokha)'}
+                                  </button>
+                                )
                               ) : enrollment.status === 'pending' && enrollment.payment_proof?.status === 'pending' ? (
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                                   <p className="text-sm text-yellow-800">
@@ -628,11 +680,24 @@ export default function AreaDoAlunoPage() {
                         </div>
 
                         {request.status === 'pending' && !request.payment_proof && (
+                          useAngolaProof ? (
                           <MentorshipPaymentUploadForm
                             requestId={request.id}
                             onUpload={handleMentorshipPaymentUpload}
                             uploading={uploading === request.id}
                           />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleCardPayMentorship(request.package.id)}
+                              disabled={cardPayingId === request.package.id}
+                              className="w-full bg-zenda-primary text-white py-2.5 rounded-xl font-semibold disabled:opacity-50"
+                            >
+                              {cardPayingId === request.package.id
+                                ? 'A abrir pagamento…'
+                                : 'Pagar com cartão (iKhokha)'}
+                            </button>
+                          )
                         )}
 
                         {request.status === 'pending' && request.payment_proof?.status === 'pending' && (

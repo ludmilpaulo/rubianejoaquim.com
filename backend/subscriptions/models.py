@@ -460,3 +460,62 @@ class InvalidPaymentTransition(Exception):
         self.target = target
         super().__init__(f'Cannot transition payment from {current} to {target}')
 
+
+class CommercePayment(models.Model):
+    """iKhokha card checkout for courses and mentorship (non-Angola users)."""
+
+    PRODUCT_COURSE = 'course'
+    PRODUCT_MENTORSHIP = 'mentorship'
+    PRODUCT_CHOICES = [
+        (PRODUCT_COURSE, 'Course'),
+        (PRODUCT_MENTORSHIP, 'Mentorship'),
+    ]
+
+    STATUS_PROCESSING = 'processing'
+    STATUS_PAID = 'paid'
+    STATUS_FAILED = 'failed'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_PROCESSING, 'Processing'),
+        (STATUS_PAID, 'Paid'),
+        (STATUS_FAILED, 'Failed'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='commerce_payments',
+    )
+    product_type = models.CharField(max_length=20, choices=PRODUCT_CHOICES)
+    product_id = models.PositiveIntegerField()
+    enrollment_id = models.PositiveIntegerField(null=True, blank=True)
+    mentorship_request_id = models.PositiveIntegerField(null=True, blank=True)
+    country = models.CharField(max_length=2, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=8, default='ZAR')
+    plan_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    plan_currency = models.CharField(max_length=8)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PROCESSING)
+    external_id = models.CharField(max_length=64, unique=True)
+    paylink_id = models.CharField(max_length=128, blank=True, db_index=True)
+    paylink_url = models.URLField(max_length=500, blank=True)
+    provider_status = models.CharField(max_length=64, blank=True)
+    failure_reason = models.CharField(max_length=240, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Pagamento commerce (iKhokha)'
+        verbose_name_plural = 'Pagamentos commerce (iKhokha)'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['product_type', 'product_id']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.external_id} {self.product_type}:{self.product_id} {self.status}'
+

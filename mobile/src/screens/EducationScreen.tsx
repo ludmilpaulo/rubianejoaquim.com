@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native'
 import * as DocumentPicker from 'expo-document-picker'
 import { useAppSelector } from '../hooks/redux'
 import { accessApi, coursesApi, lessonsApi, referralApi } from '../services/api'
+import { startCommerceCardCheckoutAndSync } from '../services/subscriptionPayments'
 import type { SubscriptionPaymentInfo } from '../types'
 import type { PointsBalanceResponse } from '../types/points'
 import { useI18n } from '../contexts/I18nContext'
@@ -613,6 +614,8 @@ export default function EducationScreen() {
                     </View>
                     {!hasProof ? (
                       <View style={styles.paymentInfo}>
+                        {paymentInfo?.iban ? (
+                          <>
                         <Text variant="bodySmall" style={styles.paymentLabel}>
                           {t('education.paymentInstructions')}
                         </Text>
@@ -646,6 +649,44 @@ export default function EducationScreen() {
                         >
                           {isUploading ? t('feedback.uploading') : t('education.uploadProof')}
                         </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Text variant="bodySmall" style={styles.paymentLabel}>
+                              {t('access.cardPriceNote')}
+                            </Text>
+                            <Button
+                              mode="contained"
+                              onPress={async () => {
+                                await feedback.run(
+                                  async () => {
+                                    const payment = await startCommerceCardCheckoutAndSync({
+                                      product_type: 'course',
+                                      product_id: enrollment.course.id,
+                                    })
+                                    if (payment.status === 'paid') {
+                                      alert.success(t('access.paymentSuccess'))
+                                    } else {
+                                      alert.error(t('access.paymentFailedMsg'))
+                                    }
+                                    await loadData()
+                                  },
+                                  {
+                                    pendingKey: `card-${enrollment.id}`,
+                                    pendingMessage: 'access.cardOpening',
+                                    errorFallback: 'access.paymentFailedMsg',
+                                  },
+                                )
+                              }}
+                              loading={feedback.isPending(`card-${enrollment.id}`)}
+                              disabled={feedback.isPending(`card-${enrollment.id}`)}
+                              style={styles.uploadButton}
+                              icon="credit-card"
+                            >
+                              {t('access.payWithCard')}
+                            </Button>
+                          </>
+                        )}
                       </View>
                     ) : proofStatus === 'pending' ? (
                       <View style={styles.pendingStatus}>

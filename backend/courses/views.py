@@ -351,6 +351,13 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        from subscriptions.billing import is_angola_user
+        if not is_angola_user(request.user):
+            return Response(
+                {'detail': 'International users pay by card (iKhokha). Proof of payment is only for Angola.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         file = request.FILES.get('file')
         notes = request.data.get('notes', '')
 

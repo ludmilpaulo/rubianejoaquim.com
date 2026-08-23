@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { mentorshipApi } from '@/lib/api'
+import { mentorshipApi, subscriptionApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
 import { formatCurrency } from '@/lib/utils/currency'
+import { getApiErrorMessage } from '@/lib/types/api'
 import { useRouter } from 'next/navigation'
 import BankPayeeDetails from '@/components/education/BankPayeeDetails'
 
@@ -16,6 +17,13 @@ interface MentorshipPackage {
   price: string
 }
 
+interface CommerceCheckout {
+  methods: string[]
+  ikhokha_enabled: boolean
+  charge: { amount: string; currency: string }
+  estimate: { amount: string; currency: string; is_estimate: boolean } | null
+}
+
 export default function MentoriaPage() {
   const { user } = useAuthStore()
   const router = useRouter()
@@ -23,6 +31,7 @@ export default function MentoriaPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null)
+  const [checkout, setCheckout] = useState<CommerceCheckout | null>(null)
   const [formData, setFormData] = useState({
     objective: '',
     availability: '',
@@ -44,17 +53,41 @@ export default function MentoriaPage() {
     fetchPackages()
   }, [])
 
+  useEffect(() => {
+    if (!user || !selectedPackage) {
+      setCheckout(null)
+      return
+    }
+    subscriptionApi
+      .commerceCheckoutOptions('mentorship', selectedPackage, 'web')
+      .then((res) => setCheckout(res.data as CommerceCheckout))
+      .catch(() => setCheckout(null))
+  }, [user, selectedPackage])
+
+  const useCard = Boolean(checkout?.methods?.includes('card'))
+  const useProof = Boolean(checkout?.methods?.includes('proof_of_payment'))
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) {
       router.push('/login')
       return
     }
-
     if (!selectedPackage) return
 
     setSubmitting(true)
     try {
+      if (useCard) {
+        const res = await subscriptionApi.commerceCreateSession({
+          product_type: 'mentorship',
+          product_id: selectedPackage,
+          ...formData,
+        })
+        const url = (res.data as { paylink_url?: string }).paylink_url
+        if (!url) throw new Error('Could not start card payment.')
+        window.location.href = url
+        return
+      }
       await mentorshipApi.createRequest({
         package_id: selectedPackage,
         ...formData,
@@ -63,8 +96,8 @@ export default function MentoriaPage() {
       setShowForm(false)
       setFormData({ objective: '', availability: '', contact: '' })
       router.push('/area-do-aluno')
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Erro ao enviar pedido')
+    } catch (error: unknown) {
+      alert(getApiErrorMessage(error, 'Erro ao enviar pedido'))
     } finally {
       setSubmitting(false)
     }
@@ -78,6 +111,11 @@ export default function MentoriaPage() {
     )
   }
 
+  const selected = packages.find((p) => p.id === selectedPackage)
+  const chargeLabel = checkout?.charge
+    ? `${checkout.charge.currency} ${Number(checkout.charge.amount).toFixed(2)}`
+    : formatCurrency(selected?.price || '0')
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
       <h1 className="text-4xl font-bold text-gray-900 mb-4">Mentoria Personalizada</h1>
@@ -89,27 +127,35 @@ export default function MentoriaPage() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white border border-gray-200 rounded-lg p-8">
             <h2 className="text-2xl font-semibold mb-6">Pedir Vaga</h2>
-            
+
             {selectedPackage && (
               <div className="bg-zenda-container border border-zenda-border rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">Informações de Pagamento</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
+                {useProof ? (
+                  <div className="space-y-2 text-sm">
                     <BankPayeeDetails />
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Valor:</span>
-                    <p className="text-gray-900 font-semibold mt-1">
-                      {formatCurrency(packages.find(p => p.id === selectedPackage)?.price || '0')}
+                    <div>
+                      <span className="font-medium text-gray-700">Valor:</span>
+                      <p className="text-gray-900 font-semibold mt-1">{chargeLabel}</p>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3">
+                      Após a transferência, faça o upload do comprovativo na sua área do aluno.
                     </p>
                   </div>
-                </div>
-                <p className="text-xs text-gray-600 mt-3">
-                  Após a transferência, faça o upload do comprovativo na sua área do aluno.
-                </p>
+                ) : (
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <p>
+                      Valor: <strong>{chargeLabel}</strong>
+                      {checkout?.estimate
+                        ? ` · ≈ ${checkout.estimate.currency} ${Number(checkout.estimate.amount).toFixed(2)}`
+                        : ''}
+                    </p>
+                    <p>International checkout is charged in ZAR via iKhokha.</p>
+                  </div>
+                )}
               </div>
             )}
-            
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -125,9 +171,7 @@ export default function MentoriaPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Disponibilidade
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Disponibilidade</label>
                 <textarea
                   required
                   value={formData.availability}
@@ -160,10 +204,16 @@ export default function MentoriaPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || (useCard && checkout?.ikhokha_enabled === false)}
                   className="flex-1 bg-zenda-primary text-white py-2 rounded-lg hover:bg-zenda-dark disabled:opacity-50"
                 >
-                  {submitting ? 'A enviar...' : 'Enviar Pedido'}
+                  {submitting
+                    ? useCard
+                      ? 'A abrir pagamento…'
+                      : 'A enviar...'
+                    : useCard
+                      ? 'Pagar com cartão (iKhokha)'
+                      : 'Enviar Pedido'}
                 </button>
               </div>
             </form>
@@ -184,7 +234,12 @@ export default function MentoriaPage() {
                   {formatCurrency(pkg.price)}
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
+                    if (!user) {
+                      router.push('/login')
+                      return
+                    }
                     setSelectedPackage(pkg.id)
                     setShowForm(true)
                   }}

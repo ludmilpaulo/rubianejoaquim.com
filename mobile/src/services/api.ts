@@ -492,6 +492,51 @@ export const accessApi = {
     }
   },
 
+  getCommerceCheckoutOptions: async (
+    productType: 'course' | 'mentorship',
+    productId: number,
+    platform: 'ios' | 'android' | 'web' = 'android',
+  ) => {
+    const response = await api.get('/subscriptions/commerce/checkout-options/', {
+      params: { product_type: productType, product_id: productId, platform },
+    })
+    return response.data as {
+      method: string
+      methods: Array<'proof_of_payment' | 'card' | 'apple_iap'>
+      ikhokha_enabled: boolean
+      charge: { amount: string; currency: string }
+      estimate: { amount: string; currency: string; is_estimate: boolean } | null
+    }
+  },
+
+  createCommerceCardSession: async (payload: {
+    product_type: 'course' | 'mentorship'
+    product_id: number
+    objective?: string
+    availability?: string
+    contact?: string
+  }) => {
+    const response = await api.post('/subscriptions/commerce/create-session/', payload)
+    if (response.status >= 400) {
+      const body = response.data as ApiErrorBody | undefined
+      throw new Error(typeof body?.detail === 'string' ? body.detail : 'Could not start card payment')
+    }
+    return response.data as {
+      id: number
+      external_id: string
+      paylink_url: string
+      amount: string
+      currency: string
+      status: string
+      product_type: string
+    }
+  },
+
+  syncCommercePayment: async (payload: { id?: number; external_id?: string; outcome?: string }) => {
+    const response = await api.post('/subscriptions/commerce/sync/', payload)
+    return response.data
+  },
+
   syncSubscriptionPayment: async (payload: { id?: number; external_id?: string; outcome?: string }) => {
     if (payload.id) {
       const response = await api.post(`/subscriptions/payments/${payload.id}/sync/`, {

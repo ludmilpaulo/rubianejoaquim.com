@@ -60,6 +60,13 @@ class MentorshipRequestViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
+        from subscriptions.billing import is_angola_user
+        if not is_angola_user(request.user):
+            return Response(
+                {'detail': 'International users pay by card (iKhokha). Proof of payment is only for Angola.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Verificar se já existe
         if hasattr(mentorship_request, 'payment_proof'):
             return Response(

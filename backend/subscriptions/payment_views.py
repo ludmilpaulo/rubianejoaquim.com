@@ -231,15 +231,31 @@ def _sync_owned_payment(payment, outcome=''):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def sync_payment(request, pk=None):
+    from .commerce import sync_commerce_payment
+    from .commerce_views import _serialize_commerce
+    from .models import CommercePayment
+
+    external_id = request.data.get('external_id') or request.query_params.get('payment')
     payment = _user_payment(
         request,
         pk=pk,
-        external_id=request.data.get('external_id') or request.query_params.get('payment'),
+        external_id=external_id,
     )
-    if payment is None:
-        return Response({'detail': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
-    payment = _sync_owned_payment(payment, request.data.get('outcome') or '')
-    return Response(SubscriptionPaymentSerializer(payment, context={'request': request}).data)
+    if payment is not None:
+        payment = _sync_owned_payment(payment, request.data.get('outcome') or '')
+        return Response(SubscriptionPaymentSerializer(payment, context={'request': request}).data)
+
+    commerce = None
+    qs = CommercePayment.objects.filter(user=request.user)
+    if pk:
+        commerce = qs.filter(pk=pk).first()
+    elif external_id:
+        commerce = qs.filter(external_id=external_id).first()
+    if commerce is not None:
+        commerce = sync_commerce_payment(commerce, request.data.get('outcome') or '')
+        return Response(_serialize_commerce(commerce))
+
+    return Response({'detail': 'Payment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class SubscriptionPaymentViewSet(viewsets.ReadOnlyModelViewSet):
@@ -282,13 +298,40 @@ class IkhokhaWebhookView(APIView):
         paylink_id = str(payload.get('paylinkID') or payload.get('paylinkId') or '')
         external_id = str(payload.get('externalTransactionID') or '')
         webhook_status = str(payload.get('status') or '')
+
+        from .models import CommercePayment
+        from .commerce import apply_commerce_provider_status
+
         payment = None
+        commerce = None
         if external_id:
             payment = SubscriptionPayment.objects.filter(external_id=external_id).first()
-        if payment is None and paylink_id:
+            if payment is None:
+                commerce = CommercePayment.objects.filter(external_id=external_id).first()
+        if payment is None and commerce is None and paylink_id:
             payment = SubscriptionPayment.objects.filter(paylink_id=paylink_id).first()
-        if payment is None:
+            if payment is None:
+                commerce = CommercePayment.objects.filter(paylink_id=paylink_id).first()
+
+        if payment is None and commerce is None:
             logger.warning('iKhokha webhook for unknown payment')
+            return Response({'ok': True})
+
+        if commerce is not None:
+            if commerce.status == CommercePayment.STATUS_PAID:
+                return Response({'ok': True})
+            try:
+                remote = get_payment_status(
+                    paylink_id=commerce.paylink_id or paylink_id,
+                    external_id=commerce.external_id,
+                )
+                provider_status = remote.get('status') or webhook_status
+            except IkhokhaError:
+                provider_status = webhook_status
+            if paylink_id and not commerce.paylink_id:
+                commerce.paylink_id = paylink_id
+                commerce.save(update_fields=['paylink_id', 'updated_at'])
+            apply_commerce_provider_status(commerce, provider_status)
             return Response({'ok': True})
 
         if payment.status == SubscriptionPayment.STATUS_PAID:

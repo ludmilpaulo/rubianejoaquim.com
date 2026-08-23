@@ -14,6 +14,18 @@ export async function startCardCheckoutAndSync(): Promise<SubscriptionPaymentRec
   return accessApi.syncSubscriptionPayment({ id: session.id }) as Promise<SubscriptionPaymentRecord>
 }
 
+export async function startCommerceCardCheckoutAndSync(payload: {
+  product_type: 'course' | 'mentorship'
+  product_id: number
+  objective?: string
+  availability?: string
+  contact?: string
+}): Promise<{ status: string; product_type?: string }> {
+  const session = await accessApi.createCommerceCardSession(payload)
+  await WebBrowser.openBrowserAsync(session.paylink_url)
+  return accessApi.syncCommercePayment({ id: session.id }) as Promise<{ status: string; product_type?: string }>
+}
+
 export function unwrapPaymentList(data: unknown): SubscriptionPaymentRecord[] {
   if (Array.isArray(data)) return data as SubscriptionPaymentRecord[]
   if (data && typeof data === 'object' && 'results' in data) {

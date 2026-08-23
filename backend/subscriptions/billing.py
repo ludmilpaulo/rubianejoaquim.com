@@ -38,16 +38,33 @@ def angola_bank_details():
 
 
 def user_country(user) -> str:
+    """ISO country for payment routing. Only explicit `user.country` counts as Angola."""
     country = (getattr(user, 'country', None) or '').strip().upper()
-    if country:
-        return country[:2]
-    if (getattr(user, 'preferred_currency', '') or '').upper() == 'AOA':
-        return 'AO'
-    return ''
+    return country[:2] if country else ''
 
 
 def is_angola_user(user) -> bool:
+    """Angola bank/proof only when country is explicitly AO — never infer from currency alone."""
     return user_country(user) == 'AO'
+
+
+def charge_in_zar(amount, currency: str):
+    """Convert catalog amount to ZAR for iKhokha. Raises ValueError if conversion fails."""
+    from decimal import Decimal, ROUND_HALF_UP
+
+    amount = Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    currency = (currency or 'USD').upper()
+    if currency in ('KZ', 'AKZ'):
+        currency = 'AOA'
+    if currency == 'ZAR':
+        return amount
+    converted = estimate_amount(amount, currency, 'ZAR')
+    if converted is not None and converted > 0:
+        return converted
+    if currency == 'USD':
+        # Emergency fallback when FX table is empty: 1 USD ≈ 18 ZAR (admin should keep rates fresh)
+        return (amount * Decimal('18')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    raise ValueError(f'Cannot convert {currency} to ZAR for card checkout')
 
 
 def amount_to_cents(amount: Decimal) -> int:

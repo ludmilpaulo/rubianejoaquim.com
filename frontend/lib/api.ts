@@ -869,6 +869,19 @@ export const subscriptionApi = {
   checkoutOptions: (platform = 'web') =>
     api.get('/subscriptions/checkout-options/', { params: { platform } }),
   createSession: () => api.post('/subscriptions/payments/create-session/', {}),
+  commerceCheckoutOptions: (productType: 'course' | 'mentorship', productId: number, platform = 'web') =>
+    api.get('/subscriptions/commerce/checkout-options/', {
+      params: { product_type: productType, product_id: productId, platform },
+    }),
+  commerceCreateSession: (payload: {
+    product_type: 'course' | 'mentorship'
+    product_id: number
+    objective?: string
+    availability?: string
+    contact?: string
+  }) => api.post('/subscriptions/commerce/create-session/', payload),
+  commerceSync: (payload: { id?: number; external_id?: string; outcome?: string }) =>
+    api.post('/subscriptions/commerce/sync/', payload),
   sync: (payload: { id?: number; external_id?: string; outcome?: string }) => {
     if (payload.id) {
       return api.post(`/subscriptions/payments/${payload.id}/sync/`, {

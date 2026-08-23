@@ -62,7 +62,16 @@ def locales_view(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def official_payee(request):
-    """Bank details for proof-of-payment: official instructor default payout method."""
+    """Bank details for Angola proof-of-payment only."""
+    user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
+    if user is not None:
+        from subscriptions.billing import is_angola_user
+        if not is_angola_user(user):
+            return Response(
+                {'detail': 'Bank transfer details are only available for Angola users.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
     from instructors.models import InstructorProfile, PayoutMethod
     official = InstructorProfile.objects.filter(is_official=True, status='approved').first()
     method = None

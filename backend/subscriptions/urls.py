@@ -15,6 +15,11 @@ from .payment_views import (
     create_payment_session,
     sync_payment,
 )
+from .commerce_views import (
+    commerce_checkout_options_view,
+    commerce_create_session,
+    commerce_sync_payment,
+)
 
 router = DefaultRouter()
 router.register(r'mobile', MobileAppSubscriptionViewSet, basename='mobile-subscription')
@@ -31,6 +36,9 @@ urlpatterns = [
     path('checkout-options/', checkout_options),
     path('payments/create-session/', create_payment_session),
     path('payments/sync/', sync_payment),
+    path('commerce/checkout-options/', commerce_checkout_options_view),
+    path('commerce/create-session/', commerce_create_session),
+    path('commerce/sync/', commerce_sync_payment),
     path('iap/verify-apple/', verify_apple_iap),
     path('ikhokha/webhook/', IkhokhaWebhookView.as_view()),
     path('admin/', include(admin_router.urls)),

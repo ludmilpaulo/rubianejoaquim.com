@@ -6,13 +6,15 @@ import {
   RefreshControl,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native'
 import { Text, Card, Button } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
 import { useAppSelector } from '../hooks/redux'
-import { coursesApi, referralApi } from '../services/api'
+import { coursesApi, referralApi, accessApi } from '../services/api'
+import { startCommerceCardCheckoutAndSync } from '../services/subscriptionPayments'
 import {
   courseProductId,
   isIapSupported,
@@ -109,12 +111,55 @@ export default function CourseListScreen() {
       return
     }
     if (existing?.status === 'pending') {
-      Alert.alert(t('education.pendingEnrollmentTitle'), t('education.pendingEnrollmentMsg'))
+      // Non-Angola: retry card checkout for pending enrollment
+      setEnrollingId(course.id)
+      await feedback.run(
+        async () => {
+          const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'web' ? 'web' : 'android'
+          const options = await accessApi.getCommerceCheckoutOptions('course', course.id, platform)
+          if (options.methods.includes('card') && options.ikhokha_enabled) {
+            const payment = await startCommerceCardCheckoutAndSync({
+              product_type: 'course',
+              product_id: course.id,
+            })
+            if (payment.status === 'paid') {
+              Alert.alert(t('common.success'), t('access.paymentSuccess'))
+            } else {
+              Alert.alert(t('common.error'), t('access.paymentFailedMsg'))
+            }
+            await loadData()
+            return
+          }
+          Alert.alert(t('education.pendingEnrollmentTitle'), t('education.pendingEnrollmentMsg'))
+        },
+        {
+          pendingKey: `enroll-${course.id}`,
+          pendingMessage: 'access.cardOpening',
+          errorFallback: 'education.enrollFailed',
+        },
+      )
+      setEnrollingId(null)
       return
     }
     setEnrollingId(course.id)
     await feedback.run(
       async () => {
+        const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'web' ? 'web' : 'android'
+        const options = await accessApi.getCommerceCheckoutOptions('course', course.id, platform)
+        if (options.methods.includes('card') && options.ikhokha_enabled) {
+          const payment = await startCommerceCardCheckoutAndSync({
+            product_type: 'course',
+            product_id: course.id,
+          })
+          if (payment.status === 'paid') {
+            Alert.alert(t('common.success'), t('access.paymentSuccess'))
+          } else {
+            Alert.alert(t('common.error'), t('access.paymentFailedMsg'))
+          }
+          await loadData()
+          navigation.navigate('EducationMain')
+          return
+        }
         const referralCode = referralCodeFromShare || undefined
         await coursesApi.enroll(course.id, referralCode)
         Alert.alert(t('education.enrollCreatedTitle'), t('education.enrollCreatedMsg'))
@@ -407,7 +452,7 @@ export default function CourseListScreen() {
                         disabled={isEnrolling || isRedeeming || isIapPurchasing}
                         style={styles.btn}
                       >
-                        {isEnrolling ? t('feedback.enrolling') : t('education.payTransfer')}
+                        {isEnrolling ? t('feedback.enrolling') : t('access.payWithCard')}
                       </Button>
                     </View>
                   )}

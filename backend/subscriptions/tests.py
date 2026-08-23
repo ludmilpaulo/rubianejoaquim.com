@@ -225,6 +225,22 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         self.assertIn('card', res.data['methods'])
         self.assertIn('apple_iap', res.data['methods'])
 
+    def test_empty_country_is_not_angola(self):
+        """preferred_currency=AOA alone must not force bank transfer."""
+        bare = get_user_model().objects.create_user(
+            username='bare',
+            email='bare@zenda.test',
+            password='pass12345',
+            preferred_currency='AOA',
+            country='',
+        )
+        token = Token.objects.create(user=bare)
+        self._auth(token)
+        res = self.client.get('/api/subscriptions/checkout-options/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['method'], 'card')
+        self.assertEqual(res.data['charge']['currency'], 'ZAR')
+
     def test_payment_info_angola_only(self):
         self._auth(self.ao_token)
         res = self.client.get('/api/subscriptions/mobile/payment-info/')
@@ -251,6 +267,50 @@ class SubscriptionPaymentWorkflowTests(TestCase):
     def test_angola_cannot_create_card_session(self):
         self._auth(self.ao_token)
         res = self.client.post('/api/subscriptions/payments/create-session/', {}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_commerce_course_session_for_non_angola(self):
+        from unittest.mock import patch
+        from courses.models import Course, Enrollment
+        from subscriptions.models import PaymentGatewayConfig, CommercePayment
+
+        PaymentGatewayConfig.objects.create(
+            provider='ikhokha',
+            environment='production',
+            is_active=True,
+            app_id='IKAPPID',
+            app_secret='test-secret',
+        )
+        course = Course.objects.create(
+            title='Intl Course',
+            slug='intl-course',
+            description='x',
+            price='100.00',
+            currency='USD',
+            is_active=True,
+        )
+        self._auth(self.user_token)
+        with patch(
+            'subscriptions.commerce.create_payment_link',
+            return_value={'paylink_url': 'https://securepay.ikhokha.red/c1', 'paylink_id': 'c1', 'external_id': 'x'},
+        ):
+            res = self.client.post(
+                '/api/subscriptions/commerce/create-session/',
+                {'product_type': 'course', 'product_id': course.id},
+                format='json',
+            )
+        self.assertEqual(res.status_code, 201)
+        self.assertIn('paylink_url', res.data)
+        payment = CommercePayment.objects.get(external_id=res.data['external_id'])
+        self.assertEqual(payment.currency, 'ZAR')
+        self.assertTrue(Enrollment.objects.filter(user=self.user, course=course, status='pending').exists())
+
+        self._auth(self.ao_token)
+        res = self.client.post(
+            '/api/subscriptions/commerce/create-session/',
+            {'product_type': 'course', 'product_id': course.id},
+            format='json',
+        )
         self.assertEqual(res.status_code, 400)
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
