@@ -69,18 +69,27 @@ export default function AdminPaymentSettingsPage() {
     if (ready) load()
   }, [ready])
 
+  const buildIkhokhaPayload = (includeSecrets: boolean) => {
+    const payload: Record<string, unknown> = {
+      environment,
+      is_active: isActive,
+      payment_url: paymentUrl,
+      callback_url: callbackUrl,
+    }
+    const trimmedAppId = appId.trim()
+    if (trimmedAppId) payload.app_id = trimmedAppId
+    if (includeSecrets) {
+      const trimmedSecret = appSecret.trim()
+      if (trimmedSecret && trimmedSecret !== SECRET_PLACEHOLDER) payload.app_secret = trimmedSecret
+    }
+    return payload
+  }
+
   const save = async () => {
     setSaving(true)
     setMessage('')
     try {
-      const ikhokha: Record<string, unknown> = {
-        environment,
-        is_active: isActive,
-        payment_url: paymentUrl,
-        callback_url: callbackUrl,
-      }
-      if (appId.trim()) ikhokha.app_id = appId.trim()
-      if (appSecret.trim() && appSecret !== SECRET_PLACEHOLDER) ikhokha.app_secret = appSecret.trim()
+      const ikhokha = buildIkhokhaPayload(true)
       if (webhookSecret.trim() && webhookSecret !== SECRET_PLACEHOLDER) {
         ikhokha.webhook_secret = webhookSecret.trim()
       }
@@ -105,8 +114,28 @@ export default function AdminPaymentSettingsPage() {
   const testConnection = async () => {
     setTesting(true)
     setTestResult(null)
+    const hasInlineSecret = appSecret.trim() && appSecret !== SECRET_PLACEHOLDER
+    const hasInlineAppId = Boolean(appId.trim())
+    if (!hasInlineSecret && !secretSet) {
+      setTestResult({
+        ok: false,
+        text: 'Enter your Secret Key in the form, then test again.',
+      })
+      setTesting(false)
+      return
+    }
+    if (!hasInlineAppId && !appIdMasked) {
+      setTestResult({
+        ok: false,
+        text: 'Enter your Application ID in the form, then test again.',
+      })
+      setTesting(false)
+      return
+    }
     try {
-      const res = await adminApi.subscriptions.gatewayConfig.testConnection()
+      const res = await adminApi.subscriptions.gatewayConfig.testConnection({
+        ikhokha: buildIkhokhaPayload(true),
+      })
       const data = res.data as {
         ok?: boolean
         message?: string
@@ -114,15 +143,25 @@ export default function AdminPaymentSettingsPage() {
         merchant?: string
         api?: string
         webhook?: string
+        mode?: string
+      }
+      if (!data.ok) {
+        setTestResult({
+          ok: false,
+          text: data.message || 'Connection failed. Please verify your iKhokha credentials.',
+        })
+        return
       }
       setTestResult({
         ok: true,
         text: [
           data.message || 'iKhokha connection successful',
           data.environment ? `Environment: ${data.environment}` : '',
+          data.mode ? `Payment mode: ${data.mode}` : '',
           data.merchant ? `Merchant: ${data.merchant}` : '',
           data.api ? `API: ${data.api}` : '',
           data.webhook ? `Webhook: ${data.webhook}` : '',
+          hasInlineSecret || hasInlineAppId ? 'Test used the values in this form (save to persist).' : '',
         ]
           .filter(Boolean)
           .join('\n'),
@@ -161,9 +200,13 @@ export default function AdminPaymentSettingsPage() {
                 value={environment}
                 onChange={(e) => setEnvironment(e.target.value)}
               >
-                <option value="sandbox">Sandbox</option>
-                <option value="production">Production</option>
+                <option value="sandbox">Sandbox (test mode)</option>
+                <option value="production">Production (live mode)</option>
               </select>
+              <span className="block mt-1 text-xs" style={{ color: 'var(--ops-muted)' }}>
+                Credentials from the iKhokha Merchant Dashboard are usually Production. Sandbox sends{' '}
+                <code>mode=test</code> to iK Pay and will fail with live keys.
+              </span>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />

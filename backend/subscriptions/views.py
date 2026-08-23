@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from .models import MobileAppSubscription, MobileAppSubscriptionPaymentProof
 from .payments import create_proof_ledger
-from .billing import angola_bank_details
+from .billing import angola_bank_details, is_angola_user
 from .serializers import (
     MobileAppSubscriptionSerializer,
     MobileAppSubscriptionPaymentProofSerializer,
@@ -93,6 +93,11 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         subscription = self.get_object()
         if subscription.user != request.user:
             return Response({'error': 'Não autorizado.'}, status=status.HTTP_403_FORBIDDEN)
+        if not is_angola_user(request.user):
+            return Response(
+                {'detail': 'Angola payments use proof of payment. International users pay by card.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = MobileAppSubscriptionPaymentProofUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -109,7 +114,12 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
-def payment_info(_request):
-    """Informações de pagamento da subscrição mensal (público para o app mostrar)."""
+@permission_classes([IsAuthenticated])
+def payment_info(request):
+    """Angola bank transfer details — only for Angola users."""
+    if not is_angola_user(request.user):
+        return Response(
+            {'detail': 'Proof of payment is only available for Angola.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
     return Response(angola_bank_details())

@@ -466,7 +466,8 @@ export const adminApi = {
       get: () => api.get('/subscriptions/admin/gateway-config/'),
       update: (data: Record<string, unknown>) =>
         api.patch('/subscriptions/admin/gateway-config/update/', data),
-      testConnection: () => api.post('/subscriptions/admin/gateway-config/test-connection/'),
+      testConnection: (data?: Record<string, unknown>) =>
+        api.post('/subscriptions/admin/gateway-config/test-connection/', data ?? {}),
     },
   },
 

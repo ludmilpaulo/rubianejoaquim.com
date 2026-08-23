@@ -69,6 +69,59 @@ def compact_json(payload: dict) -> str:
     return json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
 
 
+def _pick_str(override: dict | None, key: str, fallback: str = '') -> str:
+    if not override or key not in override:
+        return fallback
+    return (override.get(key) or '').strip()
+
+
+def resolve_ikhokha_credentials(override: dict | None = None) -> IkhokhaCredentials | None:
+    """Load credentials from DB/env, optionally overridden by unsaved admin form values."""
+    saved = load_ikhokha_credentials()
+    if not override:
+        return saved
+
+    row = get_ikhokha_config_row()
+    app_id = _pick_str(override, 'app_id', saved.app_id if saved else '')
+    app_secret = _pick_str(override, 'app_secret', saved.app_secret if saved else '')
+    environment = _pick_str(override, 'environment', saved.environment if saved else PaymentGatewayConfig.ENV_SANDBOX)
+    api_base = _pick_str(override, 'api_base_url', saved.api_base_url if saved else DEFAULT_API_BASE)
+    payment_url = _pick_str(override, 'payment_url', saved.payment_url if saved else DEFAULT_PAYMENT_URL)
+    callback_url = _pick_str(override, 'callback_url', saved.callback_url if saved else '')
+
+    if environment not in (PaymentGatewayConfig.ENV_SANDBOX, PaymentGatewayConfig.ENV_PRODUCTION):
+        environment = saved.environment if saved else PaymentGatewayConfig.ENV_SANDBOX
+
+    if not app_id and row:
+        app_id = (row.app_id or '').strip()
+    if not app_secret and row:
+        app_secret = (row.get_app_secret() or '').strip()
+
+    if not callback_url:
+        callback_url = (getattr(settings, 'IKHOKHA_CALLBACK_URL', None) or '').strip()
+    if not callback_url:
+        api_public = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
+        if api_public:
+            callback_url = f'{api_public}/api/subscriptions/ikhokha/webhook/'
+
+    if not app_id or not app_secret:
+        return None
+
+    is_active = saved.is_active if saved is not None else bool(row and row.is_active)
+    if 'is_active' in (override or {}):
+        is_active = bool(override.get('is_active'))
+
+    return IkhokhaCredentials(
+        app_id=app_id,
+        app_secret=app_secret,
+        environment=environment,
+        api_base_url=(api_base or DEFAULT_API_BASE).rstrip('/'),
+        payment_url=payment_url or DEFAULT_PAYMENT_URL,
+        callback_url=callback_url,
+        is_active=is_active,
+    )
+
+
 def load_ikhokha_credentials() -> IkhokhaCredentials | None:
     row = get_ikhokha_config_row()
     app_id = ''
@@ -140,6 +193,8 @@ def _request(method: str, url: str, creds: IkhokhaCredentials, payload: dict | N
         raise IkhokhaError('Payment gateway unavailable')
     if response.status_code >= 400:
         logger.warning('iKhokha HTTP %s', response.status_code)
+        if response.status_code in (401, 403):
+            raise IkhokhaError('Invalid iKhokha credentials')
         raise IkhokhaError('Payment gateway request failed')
     try:
         return response.json()
@@ -213,13 +268,13 @@ def get_payment_status(*, paylink_id: str = '', external_id: str = '') -> dict:
     }
 
 
-def test_connection() -> dict:
+def test_connection(override: dict | None = None) -> dict:
     """Verify credentials without exposing secrets or raw provider errors."""
-    creds = load_ikhokha_credentials()
+    creds = resolve_ikhokha_credentials(override)
     if not creds:
         return {
             'ok': False,
-            'message': 'Please verify your iKhokha credentials.',
+            'message': 'Enter your Application ID and Secret Key, then test again.',
         }
     from datetime import date, timedelta
     end = date.today()
@@ -227,14 +282,21 @@ def test_connection() -> dict:
     url = f'{creds.api_base_url}/api/payments/history?startDate={start.isoformat()}&endDate={end.isoformat()}'
     try:
         _request('GET', url, creds, timeout=15)
-    except IkhokhaError:
-        return {'ok': False, 'message': 'Please verify your iKhokha credentials.'}
+    except IkhokhaError as exc:
+        message = str(exc) if str(exc) == 'Invalid iKhokha credentials' else 'Please verify your iKhokha credentials.'
+        if creds.environment == PaymentGatewayConfig.ENV_SANDBOX:
+            message = (
+                f'{message} Merchant Dashboard credentials usually require Environment = Production.'
+            )
+        return {'ok': False, 'message': message}
     return {
         'ok': True,
+        'message': 'iKhokha connection successful',
         'environment': 'Production' if creds.environment == PaymentGatewayConfig.ENV_PRODUCTION else 'Sandbox',
         'merchant': f'****{(creds.app_id or "")[-4:]}' if creds.app_id else '',
         'api': 'Connected',
         'webhook': 'Configured' if creds.callback_url else 'Not set',
+        'mode': creds.mode,
     }
 
 

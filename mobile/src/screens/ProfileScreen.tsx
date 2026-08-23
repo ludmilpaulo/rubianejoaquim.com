@@ -18,6 +18,7 @@ import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoader } from '../components/ui/ZendaLoader'
+import CheckoutPriceSummary from '../components/CheckoutPriceSummary'
 import { colors } from '../theme'
 
 export default function ProfileScreen() {
@@ -118,10 +119,9 @@ export default function ProfileScreen() {
     }
   }
 
-  const showProof = Boolean(
-    paymentInfo && (!checkout || checkout.methods.includes('proof_of_payment')),
-  )
+  const showProof = Boolean(checkout?.methods.includes('proof_of_payment'))
   const showCard = Boolean(checkout?.methods.includes('card'))
+  const showAppleIap = Boolean(checkout?.methods.includes('apple_iap') && isIapSupported())
 
   const handlePayWithCard = async () => {
     if (isPending('cardPay')) return
@@ -501,6 +501,8 @@ export default function ProfileScreen() {
               )}
 
               {showCard && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
+                <>
+                <CheckoutPriceSummary checkout={checkout} />
                 <Button
                   mode="contained"
                   onPress={handlePayWithCard}
@@ -513,8 +515,9 @@ export default function ProfileScreen() {
                 >
                   {actionLabel('access.payWithCard', 'cardPay', 'access.cardOpening')}
                 </Button>
+                </>
               )}
-              {isIapSupported() && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
+              {showAppleIap && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
                 <Button
                   mode="contained"
                   onPress={handleSubscribeWithApple}

@@ -21,6 +21,7 @@ import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useAlert } from '../hooks/useAlert'
 import { useActionFeedback } from '../hooks/useActionFeedback'
+import CheckoutPriceSummary from '../components/CheckoutPriceSummary'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage, isApiError, type UploadFilePayload } from '../types/api'
 import { logger } from '../utils/logger'
@@ -257,10 +258,9 @@ export default function AccessDeniedScreen() {
     ? tw('access.iapSubscriptionPrice', { price: iapProduct.displayPrice })
     : t('access.iapSubscriptionPriceFallback')
 
-  const showProof = Boolean(
-    paymentInfo && (!checkout || checkout.methods.includes('proof_of_payment')),
-  )
+  const showProof = Boolean(checkout?.methods.includes('proof_of_payment'))
   const showCard = Boolean(checkout?.methods.includes('card'))
+  const showAppleIap = Boolean(checkout?.methods.includes('apple_iap') && isIapSupported())
 
   const handleSubscribeWithApple = async () => {
     if (!isIapSupported()) {
@@ -459,6 +459,8 @@ export default function AccessDeniedScreen() {
 
           <View style={styles.buttonContainer}>
             {showCard && (
+              <>
+              <CheckoutPriceSummary checkout={checkout} />
               <Button
                 mode="contained"
                 onPress={handlePayWithCard}
@@ -474,11 +476,12 @@ export default function AccessDeniedScreen() {
                   ? t('access.cardOpening')
                   : t('access.payWithCard')}
               </Button>
+              </>
             )}
             {showCard && !checkout?.ikhokha_enabled && (
               <Text variant="bodySmall" style={styles.uploadHint}>{t('access.cardUnavailable')}</Text>
             )}
-            {isIapSupported() && (
+            {showAppleIap && (
               <>
                 <View style={styles.iapDisclosure}>
                   <Text variant="labelLarge" style={styles.iapDisclosureTitle}>

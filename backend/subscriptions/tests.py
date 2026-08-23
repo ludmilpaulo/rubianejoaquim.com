@@ -220,8 +220,33 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         self._auth(self.user_token)
         res = self.client.get('/api/subscriptions/checkout-options/?platform=ios')
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['method'], 'card')
         self.assertEqual(res.data['charge']['currency'], 'ZAR')
+        self.assertIn('card', res.data['methods'])
         self.assertIn('apple_iap', res.data['methods'])
+
+    def test_payment_info_angola_only(self):
+        self._auth(self.ao_token)
+        res = self.client.get('/api/subscriptions/mobile/payment-info/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['currency'], 'AOA')
+
+        self._auth(self.user_token)
+        res = self.client.get('/api/subscriptions/mobile/payment-info/')
+        self.assertEqual(res.status_code, 404)
+
+    def test_non_angola_cannot_upload_proof(self):
+        from subscriptions.models import MobileAppSubscription
+
+        self._auth(self.user_token)
+        sub = MobileAppSubscription.objects.create(user=self.user, status='expired')
+        proof_file = SimpleUploadedFile('receipt.jpg', b'fake-image', content_type='image/jpeg')
+        res = self.client.post(
+            f'/api/subscriptions/mobile/{sub.id}/upload-proof/',
+            {'file': proof_file},
+            format='multipart',
+        )
+        self.assertEqual(res.status_code, 400)
 
     def test_angola_cannot_create_card_session(self):
         self._auth(self.ao_token)
@@ -299,6 +324,50 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         cfg = PaymentGatewayConfig.objects.get(provider='ikhokha')
         self.assertTrue(cfg.get_app_secret())
         self.assertNotEqual(cfg.get_app_secret(), '')
+
+    def test_ikhokha_test_connection_uses_form_override(self):
+        from unittest.mock import patch
+        from subscriptions.models import PaymentGatewayConfig
+
+        PaymentGatewayConfig.objects.create(
+            provider='ikhokha',
+            environment='sandbox',
+            is_active=True,
+            app_id='OLDAPPID',
+            app_secret='old-secret',
+        )
+        self._auth(self.admin_token)
+        with patch('subscriptions.ikhokha._request') as mock_request:
+            res = self.client.post(
+                '/api/subscriptions/admin/gateway-config/test-connection/',
+                {
+                    'ikhokha': {
+                        'app_id': 'NEWAPPID',
+                        'app_secret': 'new-secret',
+                        'environment': 'production',
+                    },
+                },
+                format='json',
+            )
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(res.data['ok'])
+        self.assertEqual(res.data['environment'], 'Production')
+        self.assertEqual(res.data['mode'], 'live')
+        called_url = mock_request.call_args.args[1]
+        self.assertIn('/api/payments/history', called_url)
+        called_creds = mock_request.call_args.args[2]
+        self.assertEqual(called_creds.app_id, 'NEWAPPID')
+        self.assertEqual(called_creds.app_secret, 'new-secret')
+
+    def test_ikhokha_test_connection_requires_secret(self):
+        self._auth(self.admin_token)
+        res = self.client.post(
+            '/api/subscriptions/admin/gateway-config/test-connection/',
+            {'ikhokha': {'app_id': 'ONLY-ID'}},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.data['ok'])
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
     def test_ikhokha_session_webhook_duplicate_and_failure(self):

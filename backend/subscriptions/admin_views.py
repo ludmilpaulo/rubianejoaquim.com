@@ -639,7 +639,10 @@ class AdminPaymentGatewayConfigViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'], url_path='test-connection')
     def test_connection(self, request):
-        result = ikhokha_test_connection()
+        data = request.data or {}
+        override = data.get('ikhokha') if isinstance(data.get('ikhokha'), dict) else data
+        override = override if isinstance(override, dict) else None
+        result = ikhokha_test_connection(override=override)
         record_admin_action(
             request, 'test_ikhokha_connection',
             result='success' if result.get('ok') else 'failed',
@@ -648,15 +651,16 @@ class AdminPaymentGatewayConfigViewSet(viewsets.ViewSet):
         if result.get('ok'):
             return Response({
                 'ok': True,
-                'message': 'iKhokha connection successful',
+                'message': result.get('message') or 'iKhokha connection successful',
                 'environment': result.get('environment'),
                 'merchant': result.get('merchant'),
                 'api': result.get('api'),
                 'webhook': result.get('webhook'),
+                'mode': result.get('mode'),
             })
         return Response({
             'ok': False,
-            'message': 'Connection failed. Please verify your iKhokha credentials.',
+            'message': result.get('message') or 'Connection failed. Please verify your iKhokha credentials.',
         }, status=status.HTTP_400_BAD_REQUEST)
 
 

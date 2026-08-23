@@ -150,12 +150,15 @@ function SubscribeInner() {
             {uploadMsg && <p>{uploadMsg}</p>}
           </div>
         ) : (
-          <div className="mt-6">
+          <div className="mt-6 space-y-3">
+            <p className="text-sm text-gray-600">
+              International checkout is processed in <strong>ZAR</strong> via iKhokha. Your card may show a converted amount in your bank currency.
+            </p>
             <ZendaButton onClick={payCard} disabled={paying || !options?.ikhokha_enabled}>
               {paying ? 'Opening checkout…' : 'Pay by card (iKhokha)'}
             </ZendaButton>
             {!options?.ikhokha_enabled && (
-              <p className="text-sm text-gray-500 mt-3">Card payments are not configured yet.</p>
+              <p className="text-sm text-gray-500">Card payments are not configured yet.</p>
             )}
           </div>
         )}

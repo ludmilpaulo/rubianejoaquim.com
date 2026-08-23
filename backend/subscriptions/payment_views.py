@@ -73,24 +73,37 @@ def checkout_options(request):
         charge_amount = monthly_price_aoa()
         charge_currency = 'AOA'
     else:
-        methods = []
-        if card_enabled:
-            methods.append('card')
+        methods = ['card']
         if platform == 'ios':
             methods.append('apple_iap')
-        if not methods:
-            methods = ['card']
         charge_amount = monthly_price_zar()
         charge_currency = 'ZAR'
 
     estimate = None
-    converted = estimate_amount(charge_amount, charge_currency, preferred)
-    if converted is not None:
-        estimate = {
-            'amount': str(converted),
-            'currency': preferred,
-            'is_estimate': True,
-        }
+    if angola:
+        converted = estimate_amount(charge_amount, charge_currency, preferred)
+        if converted is not None and preferred != charge_currency:
+            estimate = {
+                'amount': str(converted),
+                'currency': preferred,
+                'is_estimate': True,
+            }
+    else:
+        usd = estimate_amount(charge_amount, charge_currency, 'USD')
+        if usd is not None and charge_currency != 'USD':
+            estimate = {
+                'amount': str(usd),
+                'currency': 'USD',
+                'is_estimate': True,
+            }
+        elif preferred not in ('', charge_currency):
+            converted = estimate_amount(charge_amount, charge_currency, preferred)
+            if converted is not None:
+                estimate = {
+                    'amount': str(converted),
+                    'currency': preferred,
+                    'is_estimate': True,
+                }
 
     payload = {
         'country': country,
