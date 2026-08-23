@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/lib/store'
 import Link from 'next/link'
 import { adminApi, authApi } from '@/lib/api'
+import { getApiErrorMessage } from '@/lib/types/api'
 import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
 
 interface Stats {
@@ -348,8 +349,13 @@ export default function AdminDashboard() {
                             total_users: data.total_users ?? 0,
                             failed_count: data.failed_count ?? 0,
                           })
-                        } catch (err: any) {
-                          alert(err.response?.data?.error || 'Erro ao enviar emails.')
+                        } catch (err: unknown) {
+                          alert(
+                            getApiErrorMessage(
+                              err,
+                              'Erro ao enviar emails. Confirme Admin → Email (SMTP) e tente novamente.',
+                            ),
+                          )
                         } finally {
                           setSendingUpdateEmail(false)
                         }

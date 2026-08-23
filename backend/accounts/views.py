@@ -226,50 +226,145 @@ def request_account_deletion(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def send_app_update_notification(request):
-    """Send app update notification email to all active users (admin only)"""
+    """Send app update notification email to all active users (admin only)."""
+    import logging
+
+    from django.core.mail import get_connection
+
+    from .email_config import resolve_smtp_connection_kwargs, smtp_configured
+
+    logger = logging.getLogger(__name__)
+
     if not (request.user.is_staff or request.user.is_superuser):
         return Response(
             {'error': 'Acesso negado. Apenas administradores.'},
             status=status.HTTP_403_FORBIDDEN
         )
-    
-    app_version = request.data.get('app_version', 'Nova versão')
-    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com')
-    
-    users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email='')
+
+    if not smtp_configured():
+        return Response(
+            {
+                'error': (
+                    'SMTP não configurado. Abra Admin → Email (SMTP), '
+                    'ative a configuração, guarde o utilizador/password e teste o envio.'
+                ),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    raw_version = (request.data.get('app_version') or '').strip()
+    app_version = raw_version or 'Nova versão'
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com').rstrip('/')
+    download_url = f'{frontend_url}/download'
+    ios_url = getattr(settings, 'APP_STORE_URL_IOS', '') or download_url
+    android_url = getattr(settings, 'APP_STORE_URL_ANDROID', '') or download_url
+    from_email = str(
+        resolve_smtp_connection_kwargs().get('from_email')
+        or getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@rubianejoaquim.com')
+    )
+
+    users = (
+        User.objects.filter(is_active=True)
+        .exclude(email__isnull=True)
+        .exclude(email='')
+        .only('id', 'email', 'first_name', 'username')
+    )
     total_users = users.count()
+    if total_users == 0:
+        return Response(
+            {
+                'message': 'Nenhum utilizador ativo com email.',
+                'total_users': 0,
+                'sent_count': 0,
+                'failed_count': 0,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     sent_count = 0
     failed_count = 0
-    
-    subject = f'📱 Nova Atualização do App Zenda Disponível! - Versão {app_version}'
-    
-    for user in users:
+    subject = f'Nova atualização do App Zenda disponível — Versão {app_version}'
+    connection = get_connection(fail_silently=False)
+
+    try:
+        connection.open()
+    except Exception:
+        logger.exception('SMTP connection failed for app update notification')
+        return Response(
+            {
+                'error': (
+                    'Não foi possível ligar ao servidor de email. '
+                    'Confirme as definições em Admin → Email (SMTP) e envie um email de teste '
+                    '(PythonAnywhere: porta 587 + TLS).'
+                ),
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    try:
+        for user in users.iterator(chunk_size=100):
+            display_name = user.first_name or user.username
+            try:
+                html_message = render_to_string(
+                    'emails/app_update_notification.html',
+                    {
+                        'user_name': display_name,
+                        'app_version': app_version,
+                        'frontend_url': frontend_url,
+                        'download_url': download_url,
+                        'ios_store_url': ios_url,
+                        'android_store_url': android_url,
+                    },
+                )
+                email = EmailMultiAlternatives(
+                    subject=subject,
+                    body=(
+                        f'Olá {display_name},\n\n'
+                        f'Uma nova atualização do App Zenda está disponível! Versão {app_version}.\n\n'
+                        f'Atualize agora: {download_url}\n'
+                        f'App Store: {ios_url}\n'
+                        f'Google Play: {android_url}\n\n'
+                        f'Com os melhores cumprimentos,\nRubiane Joaquim'
+                    ),
+                    from_email=from_email,
+                    to=[user.email],
+                    connection=connection,
+                )
+                email.attach_alternative(html_message, 'text/html')
+                email.send()
+                sent_count += 1
+            except Exception:
+                logger.exception('Error sending app update email to %s', user.email)
+                failed_count += 1
+    finally:
         try:
-            html_message = render_to_string('emails/app_update_notification.html', {
-                'user_name': user.first_name or user.username,
-                'app_version': app_version,
-                'frontend_url': frontend_url,
-            })
-            
-            email = EmailMultiAlternatives(
-                subject=subject,
-                body=f'Olá {user.first_name or user.username},\n\nUma nova atualização do App Zenda está disponível! Versão {app_version}.\n\nAtualize agora para aproveitar todas as melhorias e novos recursos.\n\nAcesse a App Store ou Google Play para atualizar.\n\nCom os melhores cumprimentos,\nRubiane Joaquim',
-                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@rubianejoaquim.com'),
-                to=[user.email],
-            )
-            email.attach_alternative(html_message, 'text/html')
-            email.send()
-            sent_count += 1
-        except Exception as e:
-            print(f'Error sending email to {user.email}: {str(e)}')
-            failed_count += 1
-    
-    return Response({
-        'message': 'Notificações enviadas com sucesso!',
-        'total_users': total_users,
-        'sent_count': sent_count,
-        'failed_count': failed_count,
-    }, status=status.HTTP_200_OK)
+            connection.close()
+        except Exception:
+            pass
+
+    if sent_count == 0:
+        return Response(
+            {
+                'error': (
+                    f'Não foi possível enviar emails ({failed_count} falhas). '
+                    'Verifique Admin → Email (SMTP) e o email de teste.'
+                ),
+                'total_users': total_users,
+                'sent_count': 0,
+                'failed_count': failed_count,
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    return Response(
+        {
+            'message': 'Notificações enviadas com sucesso!',
+            'total_users': total_users,
+            'sent_count': sent_count,
+            'failed_count': failed_count,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 DEFAULT_NOTIFICATION_PREFS = {

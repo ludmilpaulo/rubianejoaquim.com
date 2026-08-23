@@ -94,7 +94,12 @@ export const authApi = {
   confirmPasswordReset: (uid: string, token: string, newPassword: string) =>
     api.post('/auth/password-reset-confirm/', { uid, token, new_password: newPassword }),
   sendAppUpdateNotification: (appVersion: string) =>
-    api.post('/auth/send-app-update-notification/', { app_version: appVersion }),
+    // Bulk SMTP can exceed the default 10s axios timeout.
+    api.post(
+      '/auth/send-app-update-notification/',
+      { app_version: appVersion },
+      { timeout: 180000 },
+    ),
   socialConfig: () =>
     api.get<{
       google_client_id: string

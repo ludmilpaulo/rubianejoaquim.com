@@ -66,8 +66,8 @@ Android signing: existing EAS upload keystore **Build Credentials f8tLWzVQWO** (
 
 ## Artifacts (not in git)
 
-- Android: `~/.zenda-build/artifacts/zenda-1.0.13.aab` *(pending / in progress)*
-- iOS: `~/.zenda-build/artifacts/zenda-1.0.13.ipa` *(pending)*
+- Android: `~/.zenda-build/artifacts/zenda-1.0.13.aab` — **101 MB**, built 23 Aug 2026 (local EAS, ~3h20m Gradle)
+- iOS: `~/.zenda-build/artifacts/zenda-1.0.13.ipa` — **local build retry 3** after retry 2 hung on `actool` (DerivedData cleared)
 
 ## Store submission plan
 
@@ -79,11 +79,12 @@ Android signing: existing EAS upload keystore **Build Credentials f8tLWzVQWO** (
 
 ### Android
 
-- [ ] `.aab` build completed
-- [ ] Signing verified (f8tLWzVQWO)
-- [ ] Uploaded to Play Console
+- [x] `.aab` build completed (`versionCode` 44, package `com.rubianejoaquim.zenda`)
+- [x] Signing verified — SHA-1 `6A:39:B3:15:C8:9C:20:FE:22:F4:BA:95:1F:39:D7:42:AD:7A:51:06` (EAS f8tLWzVQWO)
+- [x] JS bundle uses production API only (`ludmilpaulo.pythonanywhere.com`)
+- [x] Play upload — **versionCode 44 already on Play** (EAS submit returned duplicate; prior upload succeeded)
 - [ ] Device smoke (login, API, iKhokha card pay if non-AO)
-- [ ] Track / review status
+- [ ] Confirm track in Play Console (internal → production rollout)
 
 ### iOS
 
