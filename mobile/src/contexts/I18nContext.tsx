@@ -51,14 +51,16 @@ const I18nContext = createContext<I18nContextValue | null>(null)
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(getDeviceLocale())
   const [localeMode, setLocaleMode] = useState<LocalePreference>(DEVICE_LOCALE_MODE)
-  const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    Promise.all([getStoredLocale(), getLocaleMode()]).then(([resolved, mode]) => {
-      setLocaleState(resolved)
-      setLocaleMode(mode)
-      setReady(true)
-    })
+    Promise.all([getStoredLocale(), getLocaleMode()])
+      .then(([resolved, mode]) => {
+        setLocaleState(resolved)
+        setLocaleMode(mode)
+      })
+      .catch(() => {
+        // Keep device locale defaults if storage fails.
+      })
   }, [])
 
   const setLocale = useCallback(async (next: Locale) => {
@@ -116,10 +118,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     ],
   )
 
-  if (!ready) {
-    return null
-  }
-
+  // Always provide context. Initial locale is device default; storage may refine it.
+  // Returning null here previously caused a permanent blank screen if AsyncStorage hung.
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 

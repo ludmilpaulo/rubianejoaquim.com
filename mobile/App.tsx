@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler'
 import React, { useCallback, useEffect, useState } from 'react'
 import { AppState, StyleSheet, View } from 'react-native'
 import { Provider } from 'react-redux'
@@ -15,7 +16,11 @@ import { linking } from './src/navigation/linking'
 import LoadingScreen from './src/screens/LoadingScreen'
 import OnboardingScreen, { isOnboardingComplete } from './src/screens/OnboardingScreen'
 import { setupNotifications, registerRemotePushToken } from './src/utils/notifications'
-import { checkStoreUpdate, checkMandatoryUpdate, type ForceUpdateInfo } from './src/utils/storeUpdate'
+import {
+  checkStoreUpdate,
+  checkMandatoryUpdate,
+  type ForceUpdateInfo,
+} from './src/utils/storeUpdate'
 import ForceUpdateScreen from './src/screens/ForceUpdateScreen'
 import { checkAndApplyUpdates } from './src/utils/appUpdates'
 import { I18nProvider, useI18n } from './src/contexts/I18nContext'
@@ -93,7 +98,6 @@ function AppContent() {
     }
   }, [locale])
 
-  // After login/session restore: honor explicit profile language when set
   useEffect(() => {
     if (!user?.preferred_locale || !isLocale(user.preferred_locale)) return
     setLocale(user.preferred_locale).catch(() => {})
@@ -101,9 +105,11 @@ function AppContent() {
 
   useEffect(() => {
     if (user && hasPaidAccess) {
-      isOnboardingComplete().then((done) => {
-        setShowOnboarding(!done && !user.onboarding_completed)
-      })
+      isOnboardingComplete()
+        .then((done) => {
+          setShowOnboarding(!done && !user.onboarding_completed)
+        })
+        .catch(() => setShowOnboarding(false))
     } else {
       setShowOnboarding(false)
     }
@@ -154,10 +160,10 @@ function AppContent() {
 
   useEffect(() => {
     if (user && hasPaidAccess) {
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         checkStoreUpdate().catch(() => {})
       }, 3000)
-      return () => clearTimeout(t)
+      return () => clearTimeout(timer)
     }
   }, [user, hasPaidAccess])
 
@@ -206,7 +212,14 @@ function AppContent() {
             <Text style={[styles.lockBody, isDarkMode && styles.lockBodyDark]}>
               {t('settings.appLockedBody')}
             </Text>
-            <Button mode="contained" icon="fingerprint" onPress={unlockWithBiometrics} loading={unlocking}>
+            <Button
+              mode="contained"
+              icon="fingerprint"
+              onPress={() => {
+                unlockWithBiometrics().catch(() => {})
+              }}
+              loading={unlocking}
+            >
               {t('settings.unlockApp')}
             </Button>
           </View>
@@ -215,8 +228,7 @@ function AppContent() {
             {user && hasPaidAccess ? (
               <MainNavigator />
             ) : (
-              // Expired / no-access users go to AccessDenied (AuthNavigator), which exposes
-              // Subscribe with Apple + renew/upload. Profile-only hid IAP and blocked App Review.
+              // Expired / no-access users use AuthNavigator (Subscribe / renew).
               <AuthNavigator />
             )}
           </NavigationContainer>
