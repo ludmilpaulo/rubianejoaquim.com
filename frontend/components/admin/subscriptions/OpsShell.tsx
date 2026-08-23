@@ -20,6 +20,7 @@ const NAV = [
   { href: '/admin/analytics', key: 'adminSubs.nav.analytics' },
   { href: '/admin/cms/settings', key: 'adminSubs.nav.settings' },
   { href: '/admin/settings/payments', key: 'adminSubs.nav.paymentSettings' },
+  { href: '/admin/settings/email', key: 'adminSubs.nav.emailSettings' },
 ] as const
 
 export default function OpsShell({

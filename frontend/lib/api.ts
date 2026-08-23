@@ -296,6 +296,12 @@ export const progressApi = {
 
 // Admin APIs
 export const adminApi = {
+  emailConfig: {
+    get: () => api.get('/auth/admin/email-config/'),
+    update: (data: Record<string, unknown>) => api.patch('/auth/admin/email-config/update/', data),
+    test: (data?: Record<string, unknown>) => api.post('/auth/admin/email-config/test/', data ?? {}),
+  },
+
   // Stats
   stats: () => api.get('/course/admin/stats/'),
   

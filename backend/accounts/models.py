@@ -229,3 +229,44 @@ class DevicePushToken(models.Model):
 
     def __str__(self):
         return f'{self.user_id}:{self.platform}:{self.token[:12]}'
+
+
+class EmailServerConfig(models.Model):
+    """Admin-configurable SMTP settings (singleton, pk=1). Password encrypted at rest."""
+
+    is_active = models.BooleanField(default=False)
+    email_host = models.CharField(max_length=255, default='smtpout.secureserver.net')
+    email_host_user = models.EmailField(max_length=254, blank=True, default='')
+    email_host_password = models.TextField(blank=True)
+    default_from_email = models.EmailField(max_length=254, blank=True, default='')
+    email_port = models.PositiveIntegerField(null=True, blank=True)
+    use_tls = models.BooleanField(null=True, blank=True)
+    use_ssl = models.BooleanField(null=True, blank=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_email_server_configs',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração SMTP'
+        verbose_name_plural = 'Configurações SMTP'
+
+    def save(self, *args, **kwargs):
+        from subscriptions.crypto import encrypt_secret
+
+        if self.email_host_password and not self.email_host_password.startswith('gAAAA'):
+            self.email_host_password = encrypt_secret(self.email_host_password)
+        super().save(*args, **kwargs)
+
+    def get_password(self) -> str:
+        from subscriptions.crypto import decrypt_secret
+
+        if not self.email_host_password:
+            return ''
+        if self.email_host_password.startswith('gAAAA'):
+            return decrypt_secret(self.email_host_password)
+        return self.email_host_password

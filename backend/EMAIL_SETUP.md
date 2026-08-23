@@ -10,6 +10,15 @@ Quando um admin aprova um curso ou comprovante de pagamento, um email automátic
 
 ## Configuração
 
+### Admin dashboard (recommended for production)
+
+1. Open **Admin → Email (SMTP)** (`/admin/settings/email`)
+2. Enable **Active**
+3. Set **SMTP username** (e.g. `noreply@rubianejoaquim.com`) and **password** (GoDaddy mailbox password)
+4. **Send test email** → **Save configuration**
+
+Password is stored encrypted in the database. Host defaults to `smtpout.secureserver.net` with **port 587 + TLS** on PythonAnywhere.
+
 ### Desenvolvimento (Console Backend)
 
 Por padrão, em desenvolvimento, os emails são exibidos no console. Não é necessária configuração adicional.

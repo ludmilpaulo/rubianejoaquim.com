@@ -561,6 +561,7 @@
       "analytics": "Analyses",
       "settings": "Paramètres",
       "paymentSettings": "Paramètres de paiement",
+      "emailSettings": "Email (SMTP)",
       "notifications": "Notifications",
       "logout": "Déconnexion",
       "admin": "Admin",

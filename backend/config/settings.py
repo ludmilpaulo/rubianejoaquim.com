@@ -187,15 +187,30 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Email Configuration (SMTP - e.g. GoDaddy Secure Server)
-EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+# Email Configuration (SMTP — GoDaddy Secure Server; admin password in dashboard)
+EMAIL_BACKEND = config(
+    'EMAIL_BACKEND',
+    default='accounts.email_backends.ConfigurableEmailBackend',
+)
 EMAIL_HOST = config('EMAIL_HOST', default='smtpout.secureserver.net')
-EMAIL_PORT = config('EMAIL_PORT', default=465, cast=int)
-EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=True, cast=bool)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=False, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='support@maindodigital.com')
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='support@maindodigital.com')
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
+
+_ON_PYTHONANYWHERE = bool(os.environ.get('PYTHONANYWHERE_DOMAIN'))
+if _ON_PYTHONANYWHERE:
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_SSL = False
+    EMAIL_USE_TLS = True
+else:
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+
+DEFAULT_FROM_EMAIL = config(
+    'DEFAULT_FROM_EMAIL',
+    default='Rubiane Joaquim <noreply@rubianejoaquim.com>',
+)
 
 # Frontend URL for email links (production: https://www.rubianejoaquim.com)
 FRONTEND_URL = config('FRONTEND_URL', default='https://www.rubianejoaquim.com')

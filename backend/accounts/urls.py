@@ -13,6 +13,18 @@ from .views import (
     register_push_token,
 )
 from . import social_views
+from .admin_email_views import AdminEmailConfigViewSet
+
+admin_email_config = AdminEmailConfigViewSet.as_view({
+    'get': 'list',
+})
+admin_email_config_update = AdminEmailConfigViewSet.as_view({
+    'patch': 'update_config',
+    'put': 'update_config',
+})
+admin_email_config_test = AdminEmailConfigViewSet.as_view({
+    'post': 'test_connection',
+})
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -40,4 +52,8 @@ urlpatterns = [
     path('social/tiktok/callback/', social_views.tiktok_callback, name='social-tiktok-callback'),
     path('social/methods/', social_views.login_methods, name='social-methods'),
     path('social/<str:provider>/unlink/', social_views.unlink_provider, name='social-unlink'),
+
+    path('admin/email-config/', admin_email_config, name='admin-email-config'),
+    path('admin/email-config/update/', admin_email_config_update, name='admin-email-config-update'),
+    path('admin/email-config/test/', admin_email_config_test, name='admin-email-config-test'),
 ]
