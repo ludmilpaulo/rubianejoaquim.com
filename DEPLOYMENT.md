@@ -77,7 +77,12 @@
 
 8. **Reload** the PythonAnywhere web app after changes.
 
-9. **Apple In-App Purchases (required for App Store review)** — in `backend/.env`:
+9. **iKhokha (card payments)** — outbound HTTPS from the PA server to `api.ikhokha.com` is required.
+   - **Free PA accounts** only reach [allowlisted APIs](https://help.pythonanywhere.com/pages/RequestingAllowlistAdditions/). Request allowlisting for `api.ikhokha.com` with docs https://developer.ikhokha.com/overview .
+   - **Paid PA accounts** have unrestricted outbound access.
+   - Smoke test on PA Bash: `python manage.py check_ikhokha_connectivity --test-credentials`
+
+10. **Apple In-App Purchases (required for App Store review)** — in `backend/.env`:
    ```env
    APPLE_BUNDLE_ID=com.rubianejoaquim.zenda
    APPLE_SHARED_SECRET=<from App Store Connect → App Information → App-Specific Shared Secret>

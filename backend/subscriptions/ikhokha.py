@@ -171,6 +171,19 @@ def ikhokha_configured() -> bool:
     return bool(creds and creds.is_active)
 
 
+def _network_error_message(exc: requests.RequestException) -> str:
+    detail = str(exc).lower()
+    if any(token in detail for token in ('403', 'proxy', 'tunnel', 'forbidden', 'connection refused', 'nodename')):
+        return (
+            'This server cannot reach api.ikhokha.com. On PythonAnywhere free accounts, '
+            'outbound APIs must be allowlisted — request api.ikhokha.com at '
+            'help.pythonanywhere.com (iK Pay docs: developer.ikhokha.com), or upgrade to a paid plan.'
+        )
+    if 'timeout' in detail or 'timed out' in detail:
+        return 'Payment gateway timed out. Try again or check server outbound network access.'
+    return 'Payment gateway unavailable from this server. Check outbound HTTPS to api.ikhokha.com.'
+
+
 def _request(method: str, url: str, creds: IkhokhaCredentials, payload: dict | None = None, timeout: int = 20):
     body = compact_json(payload) if payload is not None else ''
     signature = sign_payload(url, body, creds.app_secret)
@@ -185,9 +198,9 @@ def _request(method: str, url: str, creds: IkhokhaCredentials, payload: dict | N
             response = requests.get(url, headers=headers, timeout=timeout)
         else:
             response = requests.post(url, headers=headers, data=body.encode('utf-8'), timeout=timeout)
-    except requests.RequestException:
+    except requests.RequestException as exc:
         logger.exception('iKhokha request failed')
-        raise IkhokhaError('Payment gateway unavailable')
+        raise IkhokhaError(_network_error_message(exc))
     if response.status_code >= 400:
         logger.warning('iKhokha HTTP %s', response.status_code)
         if response.status_code in (401, 403):
@@ -301,6 +314,8 @@ def test_connection(override: dict | None = None) -> dict:
         data = _request('POST', creds.payment_url, creds, payload, timeout=20)
     except IkhokhaError as exc:
         message = str(exc)
+        if 'api.ikhokha.com' in message or 'allowlisted' in message or 'timed out' in message:
+            return {'ok': False, 'message': message}
         if message == 'Invalid iKhokha credentials':
             hint = 'Check Application ID and Secret Key from the iKhokha Merchant Dashboard.'
         elif creds.environment == PaymentGatewayConfig.ENV_SANDBOX:

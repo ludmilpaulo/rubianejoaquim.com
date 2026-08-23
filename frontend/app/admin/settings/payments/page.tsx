@@ -262,6 +262,8 @@ export default function AdminPaymentSettingsPage() {
               </p>
               <p className="text-xs" style={{ color: 'var(--ops-muted)' }}>
                 These URLs are set automatically from production settings. You only need Application ID and Secret.
+                If Test Connection says the server cannot reach api.ikhokha.com, PythonAnywhere must allowlist that
+                domain (free accounts) or you need a paid plan.
               </p>
             </div>
             {testResult && (
