@@ -20,7 +20,7 @@ export default function AdminPaymentSettingsPage() {
   const [message, setMessage] = useState('')
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
 
-  const [environment, setEnvironment] = useState('sandbox')
+  const [environment, setEnvironment] = useState('production')
   const [isActive, setIsActive] = useState(false)
   const [appId, setAppId] = useState('')
   const [appSecret, setAppSecret] = useState('')
@@ -73,8 +73,6 @@ export default function AdminPaymentSettingsPage() {
     const payload: Record<string, unknown> = {
       environment,
       is_active: isActive,
-      payment_url: paymentUrl,
-      callback_url: callbackUrl,
     }
     const trimmedAppId = appId.trim()
     if (trimmedAppId) payload.app_id = trimmedAppId
@@ -250,14 +248,22 @@ export default function AdminPaymentSettingsPage() {
                 autoComplete="new-password"
               />
             </label>
-            <label className="block text-sm">
-              <span className="block mb-1" style={{ color: 'var(--ops-muted)' }}>Payment URL</span>
-              <input className="ops-input w-full" value={paymentUrl} onChange={(e) => setPaymentUrl(e.target.value)} />
-            </label>
-            <label className="block text-sm">
-              <span className="block mb-1" style={{ color: 'var(--ops-muted)' }}>Callback URL</span>
-              <input className="ops-input w-full" value={callbackUrl} onChange={(e) => setCallbackUrl(e.target.value)} />
-            </label>
+            <div className="rounded-lg p-3 text-sm space-y-2" style={{ background: 'var(--ops-surface)' }}>
+              <p className="font-medium">Fixed endpoints (server-managed)</p>
+              <p>
+                <span style={{ color: 'var(--ops-muted)' }}>Payment URL</span>
+                <br />
+                <code className="text-xs break-all">{paymentUrl || '—'}</code>
+              </p>
+              <p>
+                <span style={{ color: 'var(--ops-muted)' }}>Callback URL</span>
+                <br />
+                <code className="text-xs break-all">{callbackUrl || '—'}</code>
+              </p>
+              <p className="text-xs" style={{ color: 'var(--ops-muted)' }}>
+                These URLs are set automatically from production settings. You only need Application ID and Secret.
+              </p>
+            </div>
             {testResult && (
               <pre
                 className="text-sm whitespace-pre-wrap rounded-lg p-3"

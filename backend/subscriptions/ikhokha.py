@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_API_BASE = 'https://api.ikhokha.com/public-api/v1'
 DEFAULT_PAYMENT_URL = 'https://api.ikhokha.com/public-api/v1/api/payment'
+DEFAULT_CALLBACK_PATH = '/api/subscriptions/ikhokha/webhook/'
+
+
+def canonical_ikhokha_urls() -> dict[str, str]:
+    """Fixed iK Pay endpoints — not overridden by admin form or DB URL fields."""
+    api_base = (getattr(settings, 'IKHOKHA_API_BASE_URL', None) or '').strip() or DEFAULT_API_BASE
+    payment_url = (getattr(settings, 'IKHOKHA_PAYMENT_URL', None) or '').strip() or DEFAULT_PAYMENT_URL
+    callback_url = (getattr(settings, 'IKHOKHA_CALLBACK_URL', None) or '').strip()
+    if not callback_url:
+        api_public = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
+        if api_public:
+            callback_url = f'{api_public}{DEFAULT_CALLBACK_PATH}'
+    return {
+        'api_base_url': api_base.rstrip('/'),
+        'payment_url': payment_url,
+        'callback_url': callback_url,
+    }
 
 
 class IkhokhaError(Exception):
@@ -78,31 +95,22 @@ def _pick_str(override: dict | None, key: str, fallback: str = '') -> str:
 def resolve_ikhokha_credentials(override: dict | None = None) -> IkhokhaCredentials | None:
     """Load credentials from DB/env, optionally overridden by unsaved admin form values."""
     saved = load_ikhokha_credentials()
+    urls = canonical_ikhokha_urls()
     if not override:
         return saved
 
     row = get_ikhokha_config_row()
     app_id = _pick_str(override, 'app_id', saved.app_id if saved else '')
     app_secret = _pick_str(override, 'app_secret', saved.app_secret if saved else '')
-    environment = _pick_str(override, 'environment', saved.environment if saved else PaymentGatewayConfig.ENV_SANDBOX)
-    api_base = _pick_str(override, 'api_base_url', saved.api_base_url if saved else DEFAULT_API_BASE)
-    payment_url = _pick_str(override, 'payment_url', saved.payment_url if saved else DEFAULT_PAYMENT_URL)
-    callback_url = _pick_str(override, 'callback_url', saved.callback_url if saved else '')
+    environment = _pick_str(override, 'environment', saved.environment if saved else PaymentGatewayConfig.ENV_PRODUCTION)
 
     if environment not in (PaymentGatewayConfig.ENV_SANDBOX, PaymentGatewayConfig.ENV_PRODUCTION):
-        environment = saved.environment if saved else PaymentGatewayConfig.ENV_SANDBOX
+        environment = saved.environment if saved else PaymentGatewayConfig.ENV_PRODUCTION
 
     if not app_id and row:
         app_id = (row.app_id or '').strip()
     if not app_secret and row:
         app_secret = (row.get_app_secret() or '').strip()
-
-    if not callback_url:
-        callback_url = (getattr(settings, 'IKHOKHA_CALLBACK_URL', None) or '').strip()
-    if not callback_url:
-        api_public = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
-        if api_public:
-            callback_url = f'{api_public}/api/subscriptions/ikhokha/webhook/'
 
     if not app_id or not app_secret:
         return None
@@ -115,30 +123,25 @@ def resolve_ikhokha_credentials(override: dict | None = None) -> IkhokhaCredenti
         app_id=app_id,
         app_secret=app_secret,
         environment=environment,
-        api_base_url=(api_base or DEFAULT_API_BASE).rstrip('/'),
-        payment_url=payment_url or DEFAULT_PAYMENT_URL,
-        callback_url=callback_url,
+        api_base_url=urls['api_base_url'],
+        payment_url=urls['payment_url'],
+        callback_url=urls['callback_url'],
         is_active=is_active,
     )
 
 
 def load_ikhokha_credentials() -> IkhokhaCredentials | None:
     row = get_ikhokha_config_row()
+    urls = canonical_ikhokha_urls()
     app_id = ''
     app_secret = ''
-    environment = PaymentGatewayConfig.ENV_SANDBOX
-    api_base = getattr(settings, 'IKHOKHA_API_BASE_URL', '') or DEFAULT_API_BASE
-    payment_url = getattr(settings, 'IKHOKHA_PAYMENT_URL', '') or DEFAULT_PAYMENT_URL
-    callback_url = ''
+    environment = PaymentGatewayConfig.ENV_PRODUCTION
     is_active = False
 
     if row:
         app_id = (row.app_id or '').strip()
         app_secret = (row.get_app_secret() or '').strip()
         environment = row.environment or environment
-        api_base = (row.api_base_url or '').strip() or api_base
-        payment_url = (row.payment_url or '').strip() or payment_url
-        callback_url = (row.callback_url or '').strip()
         is_active = row.is_active
 
     if not app_id:
@@ -148,12 +151,6 @@ def load_ikhokha_credentials() -> IkhokhaCredentials | None:
     env_setting = (getattr(settings, 'IKHOKHA_ENVIRONMENT', None) or '').strip().lower()
     if env_setting in (PaymentGatewayConfig.ENV_SANDBOX, PaymentGatewayConfig.ENV_PRODUCTION) and not row:
         environment = env_setting
-    if not callback_url:
-        callback_url = (getattr(settings, 'IKHOKHA_CALLBACK_URL', None) or '').strip()
-    if not callback_url:
-        api_public = getattr(settings, 'API_PUBLIC_URL', '').rstrip('/')
-        if api_public:
-            callback_url = f'{api_public}/api/subscriptions/ikhokha/webhook/'
 
     if not app_id or not app_secret:
         return None
@@ -162,9 +159,9 @@ def load_ikhokha_credentials() -> IkhokhaCredentials | None:
         app_id=app_id,
         app_secret=app_secret,
         environment=environment,
-        api_base_url=api_base.rstrip('/'),
-        payment_url=payment_url,
-        callback_url=callback_url,
+        api_base_url=urls['api_base_url'],
+        payment_url=urls['payment_url'],
+        callback_url=urls['callback_url'],
         is_active=active,
     )
 
@@ -276,27 +273,59 @@ def test_connection(override: dict | None = None) -> dict:
             'ok': False,
             'message': 'Enter your Application ID and Secret Key, then test again.',
         }
-    from datetime import date, timedelta
-    end = date.today()
-    start = end - timedelta(days=7)
-    url = f'{creds.api_base_url}/api/payments/history?startDate={start.isoformat()}&endDate={end.isoformat()}'
+    if not creds.callback_url:
+        return {
+            'ok': False,
+            'message': 'Callback URL is not configured. Set API_PUBLIC_URL on the server.',
+        }
+
+    import uuid
+    frontend = getattr(settings, 'FRONTEND_URL', 'https://www.rubianejoaquim.com').rstrip('/')
+    test_external = f'TEST-{uuid.uuid4().hex[:12].upper()}'
+    payload = {
+        'entityID': creds.app_id,
+        'amount': 100,
+        'currency': 'ZAR',
+        'requesterUrl': frontend,
+        'mode': creds.mode,
+        'description': 'Zenda connection test',
+        'externalTransactionID': test_external,
+        'urls': {
+            'callbackUrl': creds.callback_url,
+            'successPageUrl': f'{frontend}/payments/ikhokha/success?payment={test_external}',
+            'failurePageUrl': f'{frontend}/payments/ikhokha/failure?payment={test_external}',
+            'cancelUrl': f'{frontend}/payments/ikhokha/cancel?payment={test_external}',
+        },
+    }
     try:
-        _request('GET', url, creds, timeout=15)
+        data = _request('POST', creds.payment_url, creds, payload, timeout=20)
     except IkhokhaError as exc:
-        message = str(exc) if str(exc) == 'Invalid iKhokha credentials' else 'Please verify your iKhokha credentials.'
+        message = str(exc)
+        if message == 'Invalid iKhokha credentials':
+            hint = 'Check Application ID and Secret Key from the iKhokha Merchant Dashboard.'
+        elif creds.environment == PaymentGatewayConfig.ENV_SANDBOX:
+            hint = 'Merchant Dashboard credentials usually require Environment = Production (live mode).'
+        else:
+            hint = 'Please verify your iKhokha credentials and try again.'
+        return {'ok': False, 'message': f'{message}. {hint}' if message != hint else hint}
+
+    response_code = str(data.get('responseCode') or '')
+    paylink_url = data.get('paylinkUrl') or ''
+    if response_code not in ('00', '0', '') or not paylink_url:
+        msg = 'iKhokha rejected the test payment link.'
         if creds.environment == PaymentGatewayConfig.ENV_SANDBOX:
-            message = (
-                f'{message} Merchant Dashboard credentials usually require Environment = Production.'
-            )
-        return {'ok': False, 'message': message}
+            msg += ' Try Environment = Production for live Merchant Dashboard keys.'
+        return {'ok': False, 'message': msg}
+
     return {
         'ok': True,
         'message': 'iKhokha connection successful',
         'environment': 'Production' if creds.environment == PaymentGatewayConfig.ENV_PRODUCTION else 'Sandbox',
         'merchant': f'****{(creds.app_id or "")[-4:]}' if creds.app_id else '',
         'api': 'Connected',
-        'webhook': 'Configured' if creds.callback_url else 'Not set',
+        'webhook': creds.callback_url,
         'mode': creds.mode,
+        'payment_url': creds.payment_url,
     }
 
 

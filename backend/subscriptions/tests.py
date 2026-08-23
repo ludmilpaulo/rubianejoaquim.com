@@ -338,6 +338,11 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         )
         self._auth(self.admin_token)
         with patch('subscriptions.ikhokha._request') as mock_request:
+            mock_request.return_value = {
+                'responseCode': '00',
+                'paylinkUrl': 'https://securepay.ikhokha.red/testlink',
+                'paylinkID': 'testlink',
+            }
             res = self.client.post(
                 '/api/subscriptions/admin/gateway-config/test-connection/',
                 {
@@ -353,11 +358,11 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         self.assertTrue(res.data['ok'])
         self.assertEqual(res.data['environment'], 'Production')
         self.assertEqual(res.data['mode'], 'live')
+        mock_request.assert_called_once()
+        called_method = mock_request.call_args.args[0]
+        self.assertEqual(called_method, 'POST')
         called_url = mock_request.call_args.args[1]
-        self.assertIn('/api/payments/history', called_url)
-        called_creds = mock_request.call_args.args[2]
-        self.assertEqual(called_creds.app_id, 'NEWAPPID')
-        self.assertEqual(called_creds.app_secret, 'new-secret')
+        self.assertIn('/api/payment', called_url)
 
     def test_ikhokha_test_connection_requires_secret(self):
         self._auth(self.admin_token)

@@ -257,7 +257,7 @@ class PaymentGatewayConfig(models.Model):
     ]
 
     provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, unique=True, default=PROVIDER_IKHOKHA)
-    environment = models.CharField(max_length=16, choices=ENV_CHOICES, default=ENV_SANDBOX)
+    environment = models.CharField(max_length=16, choices=ENV_CHOICES, default=ENV_PRODUCTION)
     is_active = models.BooleanField(default=False)
     app_id = models.CharField(max_length=128, blank=True)
     app_secret = models.TextField(blank=True)

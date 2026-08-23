@@ -533,33 +533,39 @@ def _xml_escape(value):
 
 
 def _gateway_public_payload(row: PaymentGatewayConfig | None) -> dict:
-    from .ikhokha import load_ikhokha_credentials
+    from .ikhokha import canonical_ikhokha_urls, load_ikhokha_credentials
+
+    urls = canonical_ikhokha_urls()
     creds = load_ikhokha_credentials()
+    base = {
+        'provider': PaymentGatewayConfig.PROVIDER_IKHOKHA,
+        'environment': PaymentGatewayConfig.ENV_PRODUCTION,
+        'is_active': bool(creds and creds.is_active),
+        'app_id_masked': '',
+        'app_id_set': False,
+        'app_secret_set': False,
+        'webhook_secret_set': False,
+        'api_base_url': urls['api_base_url'],
+        'payment_url': urls['payment_url'],
+        'callback_url': urls['callback_url'],
+        'urls_readonly': True,
+        'updated_at': None,
+    }
     if row is None:
-        return {
-            'provider': PaymentGatewayConfig.PROVIDER_IKHOKHA,
-            'environment': PaymentGatewayConfig.ENV_SANDBOX,
-            'is_active': bool(creds and creds.is_active),
-            'app_id_masked': f'****{creds.app_id[-4:]}' if creds and creds.app_id else '',
-            'app_id_set': bool(creds and creds.app_id),
-            'app_secret_set': bool(creds and creds.app_secret),
-            'webhook_secret_set': False,
-            'api_base_url': (creds.api_base_url if creds else '') or '',
-            'payment_url': (creds.payment_url if creds else '') or '',
-            'callback_url': (creds.callback_url if creds else '') or '',
-            'updated_at': None,
-        }
+        if creds:
+            base['environment'] = creds.environment
+            base['app_id_masked'] = f'****{creds.app_id[-4:]}' if creds.app_id else ''
+            base['app_id_set'] = bool(creds.app_id)
+            base['app_secret_set'] = bool(creds.app_secret)
+        return base
     return {
-        'provider': row.provider,
+        **base,
         'environment': row.environment,
         'is_active': row.is_active,
         'app_id_masked': row.app_id_masked(),
         'app_id_set': bool(row.app_id),
-        'app_secret_set': bool(row.app_secret),
-        'webhook_secret_set': bool(row.webhook_secret),
-        'api_base_url': row.api_base_url,
-        'payment_url': row.payment_url,
-        'callback_url': row.callback_url,
+        'app_secret_set': bool(row.get_app_secret()),
+        'webhook_secret_set': bool(row.get_webhook_secret()),
         'updated_at': row.updated_at,
     }
 
@@ -602,12 +608,6 @@ class AdminPaymentGatewayConfigViewSet(viewsets.ViewSet):
             row.app_secret = validated['app_secret']
         if validated.get('webhook_secret'):
             row.webhook_secret = validated['webhook_secret']
-        if 'api_base_url' in validated:
-            row.api_base_url = validated['api_base_url']
-        if 'payment_url' in validated:
-            row.payment_url = validated['payment_url']
-        if 'callback_url' in validated:
-            row.callback_url = validated['callback_url']
         row.updated_by = request.user
         row.save()
 
