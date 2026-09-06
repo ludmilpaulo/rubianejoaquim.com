@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import AuthGuard from '@/components/AuthGuard'
 
 export const metadata: Metadata = {
-  title: 'Dashboard Admin | Rubiane Joaquim Educação Financeira',
-  description: 'Painel de administração para gerir cursos, matrículas e mentoria.',
+  title: 'Painel Admin | Rubiane Joaquim',
+  description: 'Consola profissional para gerir cursos, matrículas, CMS, pagamentos e a app Zenda.',
   robots: {
     index: false,
     follow: false,

@@ -8,7 +8,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher'
 export default function Footer() {
   const pathname = usePathname() || '/'
   const { settings, navigation } = useSiteData()
-  if (pathname.startsWith('/admin/subscriptions')) {
+  if (pathname.startsWith('/admin')) {
     return null
   }
   const navLinks = navByPlacement(navigation, 'footer')

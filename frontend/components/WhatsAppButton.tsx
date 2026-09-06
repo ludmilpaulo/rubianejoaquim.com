@@ -8,7 +8,7 @@ const WHATSAPP_MESSAGE = 'Olá! Gostaria de mais informações sobre os cursos e
 
 export default function WhatsAppButton() {
   const pathname = usePathname() || '/'
-  if (pathname.startsWith('/admin/subscriptions')) {
+  if (pathname.startsWith('/admin')) {
     return null
   }
   return (
