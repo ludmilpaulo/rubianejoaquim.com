@@ -234,6 +234,27 @@ def build_analytics(revenue_range='6m'):
         for row in proofs.values('status').annotate(c=Count('id'))
     }
 
+    country_rows = (
+        subs.values('user__country')
+        .annotate(
+            users=Count('id'),
+            active=Count('id', filter=Q(status='active')),
+            trial=Count('id', filter=Q(status='trial')),
+        )
+        .order_by('-users')
+    )
+    users_by_country = []
+    for row in country_rows:
+        code = (row['user__country'] or '').strip().upper()[:2]
+        users = row['users']
+        users_by_country.append({
+            'country': code or 'unknown',
+            'users': users,
+            'active': row['active'],
+            'trial': row['trial'],
+            'pct': round(users * 100 / (total_users or 1), 1),
+        })
+
     return {
         'kpis': {
             'total_users': {
@@ -266,6 +287,7 @@ def build_analytics(revenue_range='6m'):
         },
         'revenue_series': revenue_series,
         'plan_performance': plan_performance,
+        'users_by_country': users_by_country,
         'proofs': {
             'pending': proof_counts.get('pending', 0),
             'approved': proof_counts.get('approved', 0),

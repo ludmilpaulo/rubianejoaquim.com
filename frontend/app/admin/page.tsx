@@ -55,6 +55,13 @@ interface SubAnalytics {
   monthlyRevenue: number
   expiringSoon: number
   currency: string
+  usersByCountry: Array<{
+    country: string
+    users: number
+    active: number
+    trial: number
+    pct: number
+  }>
 }
 
 type ActionItem = {
@@ -436,6 +443,13 @@ export default function AdminDashboard() {
               expiring_soon?: { value?: number }
             }
             pricing?: { currency?: string }
+            users_by_country?: Array<{
+              country?: string
+              users?: number
+              active?: number
+              trial?: number
+              pct?: number
+            }>
           }
           const kpis = payload.kpis
           setSubAnalytics({
@@ -444,6 +458,15 @@ export default function AdminDashboard() {
             monthlyRevenue: kpis?.monthly_revenue?.value ?? 0,
             expiringSoon: kpis?.expiring_soon?.value ?? 0,
             currency: kpis?.monthly_revenue?.currency ?? payload.pricing?.currency ?? 'AOA',
+            usersByCountry: Array.isArray(payload.users_by_country)
+              ? payload.users_by_country.map((row) => ({
+                  country: (row.country || 'unknown').toUpperCase(),
+                  users: row.users ?? 0,
+                  active: row.active ?? 0,
+                  trial: row.trial ?? 0,
+                  pct: row.pct ?? 0,
+                }))
+              : [],
           })
         }
       } catch (error: unknown) {
@@ -831,50 +854,98 @@ export default function AdminDashboard() {
               </div>
 
               {subAnalytics ? (
-                <div className="rounded-2xl border border-zenda-border bg-gradient-to-br from-zenda-navy to-[#1e1b4b] p-5 sm:p-6 text-white">
-                  <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">
-                        App Zenda
-                      </p>
-                      <h3 className="mt-1 font-display text-xl font-semibold">Subscrições mobile</h3>
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-zenda-border bg-gradient-to-br from-zenda-navy to-[#1e1b4b] p-5 sm:p-6 text-white">
+                    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/60">
+                          App Zenda
+                        </p>
+                        <h3 className="mt-1 font-display text-xl font-semibold">Subscrições mobile</h3>
+                      </div>
+                      <Link
+                        href="/admin/subscriptions"
+                        className="text-sm font-semibold text-white/90 underline-offset-2 hover:underline"
+                      >
+                        Gerir subscrições
+                      </Link>
                     </div>
-                    <Link
-                      href="/admin/subscriptions"
-                      className="text-sm font-semibold text-white/90 underline-offset-2 hover:underline"
-                    >
-                      Gerir subscrições
-                    </Link>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                      <div>
+                        <p className="text-xs text-white/55">Utilizadores app</p>
+                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                          {subAnalytics.totalUsers}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/55">Activas</p>
+                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                          {subAnalytics.active}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/55">Receita do mês</p>
+                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                          {Math.round(subAnalytics.monthlyRevenue).toLocaleString('pt-PT')}
+                          <span className="ml-1 text-sm font-medium text-white/60">
+                            {subAnalytics.currency}
+                          </span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/55">A expirar (7 dias)</p>
+                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                          {subAnalytics.expiringSoon}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <div>
-                      <p className="text-xs text-white/55">Utilizadores app</p>
-                      <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                        {subAnalytics.totalUsers}
-                      </p>
+
+                  {subAnalytics.usersByCountry.length > 0 ? (
+                    <div className="rounded-2xl border border-zenda-border bg-white p-5 sm:p-6">
+                      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-zenda-navy">
+                            Utilizadores da app por país
+                          </h3>
+                          <p className="mt-1 text-xs text-zenda-textSecondary">
+                            Distribuição com base no país do perfil do utilizador.
+                          </p>
+                        </div>
+                        <Link
+                          href="/admin/subscriptions"
+                          className="text-xs font-semibold text-zenda-primary hover:underline"
+                        >
+                          Ver detalhe
+                        </Link>
+                      </div>
+                      <div className="space-y-4">
+                        {subAnalytics.usersByCountry.map((row) => {
+                          const code = row.country
+                          let label = 'Desconhecido'
+                          if (code && code !== 'UNKNOWN') {
+                            try {
+                              label =
+                                new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
+                            } catch {
+                              label = code
+                            }
+                          }
+                          return (
+                            <AnalyticsBar
+                              key={code || 'unknown'}
+                              label={
+                                code && code !== 'UNKNOWN' ? `${label} (${code})` : label
+                              }
+                              value={row.users}
+                              total={subAnalytics.totalUsers || 1}
+                              color="bg-zenda-primary"
+                            />
+                          )
+                        })}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-white/55">Activas</p>
-                      <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                        {subAnalytics.active}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-white/55">Receita do mês</p>
-                      <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                        {Math.round(subAnalytics.monthlyRevenue).toLocaleString('pt-PT')}
-                        <span className="ml-1 text-sm font-medium text-white/60">
-                          {subAnalytics.currency}
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-white/55">A expirar (7 dias)</p>
-                      <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                        {subAnalytics.expiringSoon}
-                      </p>
-                    </div>
-                  </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

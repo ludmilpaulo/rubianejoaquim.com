@@ -453,6 +453,56 @@ export default function AdminAnalyticsPage() {
             </div>
           </Panel>
         ) : null}
+
+        {subAnalytics?.users_by_country?.length ? (
+          <div className="mt-8">
+            <Panel
+              title="Utilizadores da app por país"
+              action={
+                <Link
+                  href="/admin/subscriptions"
+                  className="text-xs font-semibold text-zenda-primary hover:underline"
+                >
+                  Ver subscrições
+                </Link>
+              }
+            >
+              <div className="space-y-4">
+                {subAnalytics.users_by_country.map((row) => {
+                  const code = (row.country || '').toUpperCase()
+                  const label =
+                    !code || code === 'UNKNOWN'
+                      ? 'Desconhecido'
+                      : new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
+                  return (
+                    <div key={code || 'unknown'}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+                        <span className="text-zenda-textSecondary">
+                          {label}
+                          {code && code !== 'UNKNOWN' ? (
+                            <span className="ml-1.5 text-xs text-zenda-textSecondary/80">{code}</span>
+                          ) : null}
+                        </span>
+                        <span className="font-semibold tabular-nums text-zenda-navy">
+                          {row.users}
+                          <span className="ml-1.5 text-xs font-medium text-zenda-textSecondary">
+                            {row.pct}% · {row.active} activos
+                          </span>
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-zenda-bg">
+                        <div
+                          className="h-full rounded-full bg-zenda-primary"
+                          style={{ width: `${row.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </Panel>
+          </div>
+        ) : null}
       </div>
     </div>
   )

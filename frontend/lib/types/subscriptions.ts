@@ -28,6 +28,13 @@ export interface SubscriptionAnalytics {
   }
   revenue_series: Array<{ period: string; label: string; amount: number; count: number }>
   plan_performance: Array<{ plan: PlanTier; users: number; pct: number }>
+  users_by_country: Array<{
+    country: string
+    users: number
+    active: number
+    trial: number
+    pct: number
+  }>
   proofs: Record<ProofStatus, number>
   alerts: {
     expiring_7_days: number
@@ -46,6 +53,7 @@ export interface AdminSubscription {
   user_email: string
   user_name: string
   user_phone: string
+  user_country?: string
   status: Exclude<SubscriptionStatus, 'payment_failed'>
   display_status: SubscriptionStatus
   plan_tier: PlanTier

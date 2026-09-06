@@ -38,12 +38,24 @@ export function formatOpsDateTime(value: string | null | undefined, locale: stri
   }).format(date)
 }
 
-export function formatMoney(amount: number, currency: string, locale: string): string {
+export function formatMoney(amount: number | null | undefined, currency: string, locale: string): string {
+  const safeAmount = typeof amount === 'number' && Number.isFinite(amount) ? amount : 0
   const formatted = new Intl.NumberFormat(localeTags[locale] || 'pt-PT', {
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(safeAmount)
   if (currency === 'AOA') return `${formatted} Kz`
-  return `${formatted} ${currency}`
+  return `${formatted} ${currency || ''}`.trim()
+}
+
+export function countryDisplayName(code: string, locale: string): string {
+  const normalized = (code || '').trim().toUpperCase()
+  if (!normalized || normalized === 'UNKNOWN') return ''
+  try {
+    const display = new Intl.DisplayNames([localeTags[locale] || 'pt-PT'], { type: 'region' })
+    return display.of(normalized) || normalized
+  } catch {
+    return normalized
+  }
 }
 
 export function downloadBlob(blob: Blob, filename: string) {

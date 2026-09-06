@@ -60,12 +60,74 @@ class SubscriptionAdminApiTests(TestCase):
         self.assertEqual(row['currency'], 'AOA')
 
     def test_analytics_from_backend(self):
+        self.user.country = 'AO'
+        self.user.save(update_fields=['country'])
+        User.objects.create_user(
+            username='za_user',
+            email='za@zenda.test',
+            password='pass12345',
+            country='ZA',
+        )
+        MobileAppSubscription.objects.create(
+            user=User.objects.get(email='za@zenda.test'),
+            status='trial',
+            plan_tier='premium',
+        )
         res = self.client.get('/api/subscriptions/admin/subscriptions/analytics/')
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['kpis']['total_users']['value'], 1)
+        self.assertEqual(res.data['kpis']['total_users']['value'], 2)
         self.assertEqual(res.data['kpis']['active_subscriptions']['value'], 1)
         self.assertEqual(res.data['pricing']['currency'], 'AOA')
         self.assertTrue(len(res.data['plan_performance']) >= 1)
+        countries = {row['country']: row for row in res.data['users_by_country']}
+        self.assertIn('AO', countries)
+        self.assertIn('ZA', countries)
+        self.assertEqual(countries['AO']['users'], 1)
+        self.assertEqual(countries['ZA']['trial'], 1)
+
+    def test_retrieve_subscription_detail(self):
+        res = self.client.get(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['id'], self.sub.id)
+        self.assertIn('payment_proofs', res.data)
+        self.assertIn('audit_logs', res.data)
+        self.assertIn('user_country', res.data)
+
+    def test_retrieve_subscription_detail_blank_email_and_phone(self):
+        blank_user = User.objects.create_user(
+            username='blank_email_user',
+            email='',
+            password='pass12345',
+            country='NA',
+        )
+        blank_user.phone = ''
+        blank_user.save(update_fields=['phone'])
+        sub = MobileAppSubscription.objects.create(
+            user=blank_user,
+            status='active',
+            plan_tier='premium',
+        )
+        res = self.client.get(f'/api/subscriptions/admin/subscriptions/{sub.id}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['id'], sub.id)
+        self.assertEqual(res.data['user_country'], 'NA')
+        self.assertIn('payment_proofs', res.data)
+
+    def test_retrieve_subscription_detail_missing_media_file(self):
+        proof = MobileAppSubscriptionPaymentProof.objects.create(
+            subscription=self.sub,
+            status='pending',
+            file=SimpleUploadedFile('receipt.jpg', b'fake-image', content_type='image/jpeg'),
+            notes='missing media later',
+        )
+        storage = proof.file.storage
+        name = proof.file.name
+        if storage.exists(name):
+            storage.delete(name)
+        res = self.client.get(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data['payment_proofs']), 1)
+        self.assertIsNone(res.data['payment_proofs'][0]['file_url'])
 
     def test_pause_and_audit(self):
         res = self.client.post(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/pause/')

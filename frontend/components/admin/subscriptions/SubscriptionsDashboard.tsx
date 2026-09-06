@@ -7,6 +7,7 @@ import { adminApi, getFullUrl } from '@/lib/api'
 import { logger } from '@/lib/logger'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import {
+  countryDisplayName,
   downloadBlob,
   formatMoney,
   formatOpsDate,
@@ -393,6 +394,51 @@ export default function SubscriptionsDashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="ops-card p-5 mb-8">
+        <h2 className="text-lg font-semibold mb-4">{t('adminSubs.countriesTitle')}</h2>
+        {analyticsLoading || !analytics ? (
+          <Skeleton className="h-40" />
+        ) : (Array.isArray(analytics.users_by_country) ? analytics.users_by_country : []).length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--ops-muted)' }}>{t('adminSubs.countriesEmpty')}</p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(analytics.users_by_country || []).map((row) => {
+              const code = (row.country || '').toUpperCase()
+              const label =
+                !code || code === 'UNKNOWN'
+                  ? t('adminSubs.countryUnknown')
+                  : countryDisplayName(code, locale) || code
+              return (
+                <div key={code || 'unknown'} className="rounded-xl border p-4" style={{ borderColor: 'var(--ops-border)' }}>
+                  <div className="flex items-baseline justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-semibold">{label}</p>
+                      {code && code !== 'UNKNOWN' ? (
+                        <p className="text-xs" style={{ color: 'var(--ops-muted)' }}>{code}</p>
+                      ) : null}
+                    </div>
+                    <p className="text-xl font-bold tabular-nums">{row.users}</p>
+                  </div>
+                  <div className="h-2 rounded-full mb-2" style={{ background: 'var(--ops-soft)' }}>
+                    <div
+                      className="h-2 rounded-full"
+                      style={{ width: `${row.pct}%`, background: 'var(--ops-primary)' }}
+                    />
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--ops-muted)' }}>
+                    {interpolate(t('adminSubs.countryActiveHint'), {
+                      active: row.active,
+                      trial: row.trial,
+                    })}{' '}
+                    · {row.pct}%
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <PaymentsLedger />
