@@ -223,6 +223,10 @@ class AdminMobileAppSubscriptionPaymentProofSerializer(serializers.ModelSerializ
         try:
             if not obj.file or not getattr(obj.file, 'name', None):
                 return None
+            name = obj.file.name
+            storage = getattr(obj.file, 'storage', None)
+            if storage is not None and hasattr(storage, 'exists') and not storage.exists(name):
+                return None
             url = obj.file.url
             request = self.context.get('request')
             if request:
