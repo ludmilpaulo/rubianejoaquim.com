@@ -29,6 +29,7 @@ export default function SubscriptionDetailPage() {
   const [error, setError] = useState(false)
   const [errorDetail, setErrorDetail] = useState('')
   const [acting, setActing] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [confirm, setConfirm] = useState<'cancel' | 'pause' | 'refund' | null>(null)
   const [plan, setPlan] = useState<PlanTier>('premium')
 
@@ -75,10 +76,12 @@ export default function SubscriptionDetailPage() {
   const run = async (fn: () => Promise<unknown>) => {
     try {
       setActing(true)
+      setActionError('')
       await fn()
       await load()
     } catch (err) {
       logger.error('Subscription detail action failed', err)
+      setActionError(getApiErrorMessage(err, t('adminSubs.actionFailed')))
     } finally {
       setActing(false)
       setConfirm(null)
@@ -215,6 +218,9 @@ export default function SubscriptionDetailPage() {
 
           <div className="ops-card p-6">
             <h2 className="font-semibold mb-4">{t('adminSubs.actions')}</h2>
+            {actionError ? (
+              <p className="text-sm mb-3" style={{ color: 'var(--ops-danger)' }}>{actionError}</p>
+            ) : null}
             <div className="flex flex-wrap gap-2 mb-4">
               <select
                 className="ops-select"
@@ -244,7 +250,7 @@ export default function SubscriptionDetailPage() {
               >
                 {t('adminSubs.extendDays')}
               </button>
-              {sub.status === 'paused' ? (
+              {sub.status === 'paused' || sub.status === 'expired' || sub.status === 'cancelled' ? (
                 <button
                   type="button"
                   className="ops-btn ops-btn-ghost"

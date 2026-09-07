@@ -470,12 +470,20 @@ export default function AdminAnalyticsPage() {
               <div className="space-y-4">
                 {subAnalytics.users_by_country.map((row) => {
                   const code = (row.country || '').toUpperCase()
-                  const label =
-                    !code || code === 'UNKNOWN'
-                      ? 'Desconhecido'
-                      : new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
+                  let label = 'Desconhecido'
+                  if (code && code !== 'UNKNOWN') {
+                    try {
+                      label = new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
+                    } catch {
+                      label = code
+                    }
+                  }
                   return (
-                    <div key={code || 'unknown'}>
+                    <Link
+                      key={code || 'unknown'}
+                      href={`/admin/subscriptions?country=${encodeURIComponent(code || 'UNKNOWN')}`}
+                      className="block rounded-xl p-1 -mx-1 transition hover:bg-zenda-bg"
+                    >
                       <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
                         <span className="text-zenda-textSecondary">
                           {label}
@@ -496,7 +504,7 @@ export default function AdminAnalyticsPage() {
                           style={{ width: `${row.pct}%` }}
                         />
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

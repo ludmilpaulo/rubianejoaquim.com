@@ -78,6 +78,13 @@ def apply_subscription_filters(qs, params):
             Q(payment_proofs__currency__iexact=currency) | Q(payment_proofs__isnull=True)
         ).distinct()
 
+    country = (params.get('country') or '').strip().upper()
+    if country:
+        if country in ('UNKNOWN', 'NONE', '--'):
+            qs = qs.filter(Q(user__country='') | Q(user__country__isnull=True))
+        else:
+            qs = qs.filter(user__country__iexact=country)
+
     search = (params.get('q') or params.get('search') or '').strip()
     if search:
         q_filter = (
@@ -243,15 +250,21 @@ def build_analytics(revenue_range='6m'):
         )
         .order_by('-users')
     )
-    users_by_country = []
+    country_totals = {}
     for row in country_rows:
-        code = (row['user__country'] or '').strip().upper()[:2]
-        users = row['users']
+        code = (row['user__country'] or '').strip().upper()[:2] or 'unknown'
+        bucket = country_totals.setdefault(code, {'users': 0, 'active': 0, 'trial': 0})
+        bucket['users'] += row['users']
+        bucket['active'] += row['active']
+        bucket['trial'] += row['trial']
+    users_by_country = []
+    for code, bucket in sorted(country_totals.items(), key=lambda item: item[1]['users'], reverse=True):
+        users = bucket['users']
         users_by_country.append({
-            'country': code or 'unknown',
+            'country': code,
             'users': users,
-            'active': row['active'],
-            'trial': row['trial'],
+            'active': bucket['active'],
+            'trial': bucket['trial'],
             'pct': round(users * 100 / (total_users or 1), 1),
         })
 

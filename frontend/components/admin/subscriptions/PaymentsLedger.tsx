@@ -3,13 +3,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { adminApi } from '@/lib/api'
 import { logger } from '@/lib/logger'
-import { formatMoney, formatOpsDateTime } from '@/lib/admin-subs-format'
+import { formatMoney, formatOpsDateTime, countryDisplayName } from '@/lib/admin-subs-format'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import type { PaymentSummary, SubscriptionPaymentRecord } from '@/lib/types/subscriptions'
 import { unwrapList } from '@/lib/types/subscriptions'
 import { EmptyState, ErrorState, Skeleton, StatusBadge } from './OpsUi'
 
-export default function PaymentsLedger() {
+export default function PaymentsLedger({
+  countryOptions = [],
+}: {
+  countryOptions?: Array<{ country: string }>
+}) {
   const t = useTranslations()
   const { locale } = useLocale()
   const [summary, setSummary] = useState<PaymentSummary | null>(null)
@@ -17,6 +21,7 @@ export default function PaymentsLedger() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [status, setStatus] = useState('')
+  const [country, setCountry] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -24,7 +29,11 @@ export default function PaymentsLedger() {
       setError(false)
       const [sumRes, listRes] = await Promise.all([
         adminApi.subscriptions.payments.summary(),
-        adminApi.subscriptions.payments.list({ status: status || undefined, page_size: 25 }),
+        adminApi.subscriptions.payments.list({
+          status: status || undefined,
+          country: country || undefined,
+          page_size: 25,
+        }),
       ])
       setSummary(sumRes.data as PaymentSummary)
       const { results } = unwrapList<SubscriptionPaymentRecord>(listRes.data)
@@ -35,7 +44,7 @@ export default function PaymentsLedger() {
     } finally {
       setLoading(false)
     }
-  }, [status])
+  }, [status, country])
 
   useEffect(() => {
     void load()
@@ -66,6 +75,23 @@ export default function PaymentsLedger() {
               <div className="text-xl font-bold">{summary?.[kpi.key] ?? 0}</div>
             </button>
           ))}
+        </div>
+        <div className="mt-4 max-w-xs">
+          <select className="ops-select w-full" value={country} onChange={(e) => setCountry(e.target.value)}>
+            <option value="">{t('adminSubs.allCountries')}</option>
+            {countryOptions.map((row) => {
+              const code = (row.country || '').toUpperCase()
+              const label =
+                !code || code === 'UNKNOWN'
+                  ? t('adminSubs.countryUnknown')
+                  : `${countryDisplayName(code, locale) || code} (${code})`
+              return (
+                <option key={code || 'unknown'} value={code === 'UNKNOWN' ? 'unknown' : code}>
+                  {label}
+                </option>
+              )
+            })}
+          </select>
         </div>
       </div>
       {loading ? (
@@ -107,7 +133,11 @@ export default function PaymentsLedger() {
                     <div className="font-medium">{row.user_name}</div>
                     <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>{row.user_email}</div>
                   </td>
-                  <td className="px-5 py-3">{row.country || '—'}</td>
+                  <td className="px-5 py-3">
+                    {row.country
+                      ? `${countryDisplayName(row.country, locale) || row.country.toUpperCase()} (${row.country.toUpperCase()})`
+                      : '—'}
+                  </td>
                   <td className="px-5 py-3">{formatMoney(Number(row.amount), row.currency, locale)}</td>
                   <td className="px-5 py-3">{row.method_label}</td>
                   <td className="px-5 py-3">{row.gateway_label || '—'}</td>

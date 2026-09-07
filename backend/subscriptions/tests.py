@@ -139,6 +139,108 @@ class SubscriptionAdminApiTests(TestCase):
             SubscriptionAdminAuditLog.objects.filter(action='pause_subscription', subscription=self.sub).exists()
         )
 
+    def test_create_subscription_for_new_user(self):
+        newbie = User.objects.create_user(
+            username='newsub',
+            email='newsub@zenda.test',
+            password='pass12345',
+        )
+        res = self.client.post(
+            '/api/subscriptions/admin/subscriptions/create-subscription/',
+            {'user_id': newbie.id, 'plan_tier': 'premium', 'start_trial': True},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['status'], 'trial')
+        self.assertTrue(
+            MobileAppSubscription.objects.filter(user=newbie, status='trial').exists()
+        )
+
+    def test_create_reactivates_cancelled_subscription(self):
+        self.sub.status = 'cancelled'
+        self.sub.subscription_ends_at = timezone.now() - timedelta(days=2)
+        self.sub.trial_ends_at = timezone.now() - timedelta(days=20)
+        self.sub.save(update_fields=['status', 'subscription_ends_at', 'trial_ends_at', 'updated_at'])
+        res = self.client.post(
+            '/api/subscriptions/admin/subscriptions/create-subscription/',
+            {'user_id': self.user.id, 'plan_tier': 'business', 'start_trial': False},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 200)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, 'active')
+        self.assertEqual(self.sub.plan_tier, 'business')
+        self.assertIsNotNone(self.sub.subscription_ends_at)
+        self.assertGreater(self.sub.subscription_ends_at, timezone.now())
+
+    def test_create_rejects_active_subscription(self):
+        res = self.client.post(
+            '/api/subscriptions/admin/subscriptions/create-subscription/',
+            {'user_id': self.user.id, 'plan_tier': 'premium', 'start_trial': False},
+            format='json',
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_resume_expired_restores_access(self):
+        self.sub.status = 'expired'
+        self.sub.subscription_ends_at = timezone.now() - timedelta(days=5)
+        self.sub.trial_ends_at = timezone.now() - timedelta(days=20)
+        self.sub.save(update_fields=['status', 'subscription_ends_at', 'trial_ends_at', 'updated_at'])
+        res = self.client.post(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/resume/')
+        self.assertEqual(res.status_code, 200)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, 'active')
+        self.assertTrue(self.sub.has_access)
+        self.assertGreater(self.sub.subscription_ends_at, timezone.now())
+
+    def test_resume_paused_keeps_remaining_time(self):
+        ends = timezone.now() + timedelta(days=10)
+        self.sub.status = 'paused'
+        self.sub.paused_at = timezone.now()
+        self.sub.subscription_ends_at = ends
+        self.sub.save(update_fields=['status', 'paused_at', 'subscription_ends_at', 'updated_at'])
+        res = self.client.post(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/resume/')
+        self.assertEqual(res.status_code, 200)
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, 'active')
+        self.assertIsNone(self.sub.paused_at)
+        self.assertAlmostEqual(
+            self.sub.subscription_ends_at.timestamp(),
+            ends.timestamp(),
+            delta=2,
+        )
+
+    def test_list_filters_by_country(self):
+        self.user.country = 'AO'
+        self.user.save(update_fields=['country'])
+        za_user = User.objects.create_user(
+            username='za_filter',
+            email='za_filter@zenda.test',
+            password='pass12345',
+            country='ZA',
+        )
+        MobileAppSubscription.objects.create(user=za_user, status='trial', plan_tier='premium')
+        ao = self.client.get('/api/subscriptions/admin/subscriptions/', {'country': 'AO'})
+        za = self.client.get('/api/subscriptions/admin/subscriptions/', {'country': 'ZA'})
+        unknown = self.client.get('/api/subscriptions/admin/subscriptions/', {'country': 'unknown'})
+        self.assertEqual(ao.status_code, 200)
+        self.assertEqual(ao.data['count'], 1)
+        self.assertEqual(ao.data['results'][0]['user_email'], 'jane@zenda.test')
+        self.assertEqual(za.data['count'], 1)
+        self.assertEqual(za.data['results'][0]['user_email'], 'za_filter@zenda.test')
+        self.assertEqual(unknown.data['count'], 0)
+
+    def test_search_users_includes_subscription_status(self):
+        res = self.client.get(
+            '/api/subscriptions/admin/subscriptions/search-users/',
+            {'q': 'jane'},
+        )
+        self.assertEqual(res.status_code, 200)
+        row = res.data['results'][0]
+        self.assertTrue(row['has_subscription'])
+        self.assertEqual(row['subscription_id'], self.sub.id)
+        self.assertEqual(row['subscription_status'], 'active')
+
     def test_change_plan(self):
         res = self.client.post(
             f'/api/subscriptions/admin/subscriptions/{self.sub.id}/change-plan/',

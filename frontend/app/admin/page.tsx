@@ -932,15 +932,20 @@ export default function AdminDashboard() {
                             }
                           }
                           return (
-                            <AnalyticsBar
+                            <Link
                               key={code || 'unknown'}
-                              label={
-                                code && code !== 'UNKNOWN' ? `${label} (${code})` : label
-                              }
-                              value={row.users}
-                              total={subAnalytics.totalUsers || 1}
-                              color="bg-zenda-primary"
-                            />
+                              href={`/admin/subscriptions?country=${encodeURIComponent(code || 'UNKNOWN')}`}
+                              className="block rounded-xl p-1 -mx-1 transition hover:bg-zenda-bg"
+                            >
+                              <AnalyticsBar
+                                label={
+                                  code && code !== 'UNKNOWN' ? `${label} (${code})` : label
+                                }
+                                value={row.users}
+                                total={subAnalytics.totalUsers || 1}
+                                color="bg-zenda-primary"
+                              />
+                            </Link>
                           )
                         })}
                       </div>

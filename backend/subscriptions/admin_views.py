@@ -66,6 +66,14 @@ class AdminPagePagination(PageNumberPagination):
     max_page_size = 100
 
 
+def _clear_reminders(sub):
+    sub.paused_at = None
+    sub.expiry_reminder_sent_at = None
+    sub.reminder_7d_sent_at = None
+    sub.reminder_3d_sent_at = None
+    sub.reminder_1d_sent_at = None
+
+
 def _extend_subscription(sub, days=30):
     now = timezone.now()
     if sub.subscription_ends_at and sub.subscription_ends_at > now:
@@ -73,13 +81,35 @@ def _extend_subscription(sub, days=30):
     else:
         sub.subscription_ends_at = now + timedelta(days=days)
     sub.status = 'active'
-    sub.paused_at = None
-    sub.expiry_reminder_sent_at = None
-    sub.reminder_7d_sent_at = None
-    sub.reminder_3d_sent_at = None
-    sub.reminder_1d_sent_at = None
+    _clear_reminders(sub)
     sub.save()
     return sub
+
+
+def _reactivate_subscription(sub, *, plan_tier=None, start_trial=False, days=30):
+    """Restore app access for paused, expired, or cancelled subscriptions."""
+    now = timezone.now()
+    if plan_tier:
+        sub.plan_tier = plan_tier
+    if start_trial:
+        sub.status = 'trial'
+        sub.trial_ends_at = now + timedelta(days=7)
+        _clear_reminders(sub)
+        sub.save()
+        return sub
+    remaining_paid = sub.subscription_ends_at and sub.subscription_ends_at > now
+    remaining_trial = sub.trial_ends_at and sub.trial_ends_at > now
+    if remaining_paid:
+        sub.status = 'active'
+        _clear_reminders(sub)
+        sub.save()
+        return sub
+    if remaining_trial and sub.status == 'paused':
+        sub.status = 'trial'
+        _clear_reminders(sub)
+        sub.save()
+        return sub
+    return _extend_subscription(sub, days=days)
 
 
 def _send_customer_email(user, subject, body):
@@ -138,14 +168,21 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                 | Q(username__icontains=q)
             )
         users = []
-        for user in qs[:20]:
-            has_sub = MobileAppSubscription.objects.filter(user=user).exists()
+        matched = list(qs[:20])
+        existing = {
+            row.user_id: row
+            for row in MobileAppSubscription.objects.filter(user_id__in=[user.id for user in matched])
+        }
+        for user in matched:
+            sub = existing.get(user.id)
             users.append({
                 'id': user.id,
                 'email': user.email,
                 'name': f"{user.first_name or ''} {user.last_name or ''}".strip() or user.username,
                 'phone': user.phone or '',
-                'has_subscription': has_sub,
+                'has_subscription': sub is not None,
+                'subscription_id': sub.id if sub else None,
+                'subscription_status': sub.status if sub else '',
             })
         return Response({'results': users})
 
@@ -160,11 +197,22 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             user = User.objects.get(pk=user_id)
         except (User.DoesNotExist, TypeError, ValueError):
             return Response({'detail': 'Utilizador não encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
-        if MobileAppSubscription.objects.filter(user=user).exists():
-            return Response(
-                {'detail': 'Este utilizador já tem uma subscrição.'},
-                status=status.HTTP_400_BAD_REQUEST,
+        existing = MobileAppSubscription.objects.filter(user=user).first()
+        if existing:
+            if existing.status in ('active', 'trial'):
+                return Response(
+                    {'detail': 'Este utilizador já tem uma subscrição activa.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            sub = _reactivate_subscription(
+                existing, plan_tier=plan_tier, start_trial=start_trial,
             )
+            record_admin_action(
+                request, 'resume_subscription', subscription=sub,
+                details={'plan_tier': plan_tier, 'status': sub.status, 'via': 'create'},
+            )
+            serializer = AdminMobileAppSubscriptionDetailSerializer(sub, context={'request': request})
+            return Response(serializer.data, status=status.HTTP_200_OK)
         now = timezone.now()
         sub = MobileAppSubscription.objects.create(
             user=user,
@@ -198,6 +246,7 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                 'customer': f"{sub.user.first_name or ''} {sub.user.last_name or ''}".strip() or sub.user.username,
                 'email': sub.user.email,
                 'phone': sub.user.phone or '',
+                'country': (getattr(sub.user, 'country', None) or '').upper(),
                 'plan': sub.plan_tier,
                 'status': sub.display_status(latest),
                 'amount': float(effective_amount(latest)),
@@ -245,15 +294,16 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'], url_path='resume')
     def resume(self, request, pk=None):
         sub = self.get_object()
-        now = timezone.now()
-        if sub.subscription_ends_at and sub.subscription_ends_at > now:
-            sub.status = 'active'
-        elif sub.trial_ends_at and sub.trial_ends_at > now:
-            sub.status = 'trial'
-        else:
-            sub.status = 'expired'
-        sub.paused_at = None
-        sub.save(update_fields=['status', 'paused_at', 'updated_at'])
+        if sub.status in ('active', 'trial'):
+            return Response(
+                {'detail': 'Esta subscrição já está activa.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        start_trial = bool(request.data.get('start_trial', False))
+        plan_tier = request.data.get('plan_tier')
+        if plan_tier and plan_tier not in PLAN_TIERS:
+            return Response({'detail': 'Plano inválido.'}, status=status.HTTP_400_BAD_REQUEST)
+        sub = _reactivate_subscription(sub, plan_tier=plan_tier, start_trial=start_trial)
         record_admin_action(request, 'resume_subscription', subscription=sub, details={'status': sub.status})
         return Response(self.get_serializer(sub).data)
 
@@ -467,7 +517,7 @@ def _csv_response(rows):
     buffer = io.StringIO()
     buffer.write('\ufeff')
     fieldnames = list(rows[0].keys()) if rows else [
-        'id', 'transaction_id', 'customer', 'email', 'phone', 'plan',
+        'id', 'transaction_id', 'customer', 'email', 'phone', 'country', 'plan',
         'status', 'amount', 'currency', 'start_date', 'renewal_date', 'payment_method',
     ]
     writer = csv.DictWriter(buffer, fieldnames=fieldnames)
@@ -685,9 +735,13 @@ class AdminSubscriptionPaymentViewSet(viewsets.ReadOnlyModelViewSet):
         gateway = params.get('gateway')
         if gateway:
             queryset = queryset.filter(gateway=gateway)
-        country = params.get('country')
+        country = (params.get('country') or '').strip().upper()
         if country:
-            queryset = queryset.filter(country__iexact=country)
+            from django.db.models import Q
+            if country in ('UNKNOWN', 'NONE', '--'):
+                queryset = queryset.filter(Q(country='') | Q(country__isnull=True))
+            else:
+                queryset = queryset.filter(country__iexact=country)
         search = (params.get('q') or params.get('search') or '').strip()
         if search:
             from django.db.models import Q

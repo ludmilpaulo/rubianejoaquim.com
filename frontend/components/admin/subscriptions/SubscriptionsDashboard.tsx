@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { adminApi, getFullUrl } from '@/lib/api'
 import { logger } from '@/lib/logger'
+import { getApiErrorMessage } from '@/lib/types/api'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import {
   countryDisplayName,
@@ -32,10 +33,19 @@ import { ConfirmModal, EmptyState, ErrorState, Skeleton, Sparkline, StatusBadge 
 
 type ConfirmKind = 'cancel' | 'reject' | 'refund' | 'pause'
 
+function canResumeStatus(status: string) {
+  return status === 'paused' || status === 'expired' || status === 'cancelled'
+}
+
+function hasActiveLikeSubscription(user: AdminUserSearchResult) {
+  return user.subscription_status === 'active' || user.subscription_status === 'trial'
+}
+
 export default function SubscriptionsDashboard() {
   const t = useTranslations()
   const { locale } = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const [analytics, setAnalytics] = useState<SubscriptionAnalytics | null>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
@@ -59,6 +69,8 @@ export default function SubscriptionsDashboard() {
   const [dateField, setDateField] = useState<'created' | 'renewal' | 'payment'>('created')
   const [expiring, setExpiring] = useState('')
   const [failedToday, setFailedToday] = useState('')
+  const [country, setCountry] = useState(() => (searchParams.get('country') || '').trim().toUpperCase())
+  const [actionError, setActionError] = useState('')
 
   const [proofs, setProofs] = useState<AdminPaymentProof[]>([])
   const [proofsLoading, setProofsLoading] = useState(true)
@@ -93,8 +105,9 @@ export default function SubscriptionsDashboard() {
       page_size: pageSize,
       expiring: expiring || undefined,
       failed_today: failedToday || undefined,
+      country: country || undefined,
     }),
-    [debouncedQ, status, plan, paymentStatus, currency, dateFrom, dateTo, dateField, page, pageSize, expiring, failedToday],
+    [debouncedQ, status, plan, paymentStatus, currency, dateFrom, dateTo, dateField, page, pageSize, expiring, failedToday, country],
   )
 
   const loadAnalytics = useCallback(async () => {
@@ -175,16 +188,19 @@ export default function SubscriptionsDashboard() {
     setDateField('created')
     setExpiring('')
     setFailedToday('')
+    setCountry('')
     setPage(1)
   }
 
   const runAction = async (id: number, fn: () => Promise<unknown>) => {
     try {
       setActingId(id)
+      setActionError('')
       await fn()
       refreshAll()
     } catch (err) {
       logger.error('Subscription admin action failed', err)
+      setActionError(getApiErrorMessage(err, t('adminSubs.actionFailed')))
     } finally {
       setActingId(null)
       setOpenMenu(null)
@@ -229,6 +245,13 @@ export default function SubscriptionsDashboard() {
   const activeSubs = kpis?.active_subscriptions
   const monthlyRevenue = kpis?.monthly_revenue
   const expiringSoon = kpis?.expiring_soon
+  const countryOptions = Array.isArray(analytics?.users_by_country) ? analytics.users_by_country : []
+
+  const applyCountryFilter = (code: string) => {
+    const next = (code || '').trim().toUpperCase()
+    setCountry(next === country ? '' : next)
+    setPage(1)
+  }
 
   return (
     <OpsShell notificationCount={notificationCount}>
@@ -246,6 +269,12 @@ export default function SubscriptionsDashboard() {
           + {t('adminSubs.create')}
         </button>
       </div>
+
+      {actionError ? (
+        <div className="mb-6 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'var(--ops-danger)', color: 'var(--ops-danger)' }}>
+          {actionError}
+        </div>
+      ) : null}
 
       {analyticsError && (
         <div className="mb-6">
@@ -406,12 +435,22 @@ export default function SubscriptionsDashboard() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {(analytics.users_by_country || []).map((row) => {
               const code = (row.country || '').toUpperCase()
+              const selected = country === code
               const label =
                 !code || code === 'UNKNOWN'
                   ? t('adminSubs.countryUnknown')
                   : countryDisplayName(code, locale) || code
               return (
-                <div key={code || 'unknown'} className="rounded-xl border p-4" style={{ borderColor: 'var(--ops-border)' }}>
+                <button
+                  key={code || 'unknown'}
+                  type="button"
+                  onClick={() => applyCountryFilter(code)}
+                  className="rounded-xl border p-4 text-left"
+                  style={{
+                    borderColor: selected ? 'var(--ops-primary)' : 'var(--ops-border)',
+                    background: selected ? 'var(--ops-soft)' : 'transparent',
+                  }}
+                >
                   <div className="flex items-baseline justify-between gap-2 mb-2">
                     <div>
                       <p className="font-semibold">{label}</p>
@@ -434,14 +473,14 @@ export default function SubscriptionsDashboard() {
                     })}{' '}
                     · {row.pct}%
                   </p>
-                </div>
+                </button>
               )
             })}
           </div>
         )}
       </div>
 
-      <PaymentsLedger />
+      <PaymentsLedger countryOptions={countryOptions} />
 
       <section id="verification" className="ops-card overflow-hidden mb-8">
         <div className="px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--ops-border)' }}>
@@ -558,7 +597,7 @@ export default function SubscriptionsDashboard() {
               )}
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2">
             <select className="ops-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1) }}>
               <option value="">{t('adminSubs.allStatuses')}</option>
               <option value="active">{t('adminSubs.statusActive')}</option>
@@ -580,6 +619,21 @@ export default function SubscriptionsDashboard() {
               <option value="pending">{t('adminSubs.pending')}</option>
               <option value="failed">{t('adminSubs.failed')}</option>
               <option value="none">{t('adminSubs.none')}</option>
+            </select>
+            <select className="ops-select" value={country} onChange={(e) => { setCountry(e.target.value); setPage(1) }}>
+              <option value="">{t('adminSubs.allCountries')}</option>
+              {countryOptions.map((row) => {
+                const code = (row.country || '').toUpperCase()
+                const label =
+                  !code || code === 'UNKNOWN'
+                    ? t('adminSubs.countryUnknown')
+                    : `${countryDisplayName(code, locale) || code} (${code})`
+                return (
+                  <option key={code || 'unknown'} value={code}>
+                    {label}
+                  </option>
+                )
+              })}
             </select>
             <select className="ops-select" value={currency} onChange={(e) => { setCurrency(e.target.value); setPage(1) }}>
               <option value="">{t('adminSubs.allCurrencies')}</option>
@@ -628,6 +682,7 @@ export default function SubscriptionsDashboard() {
                 <thead style={{ background: 'var(--ops-soft)' }}>
                   <tr className="text-left text-xs uppercase tracking-wider" style={{ color: 'var(--ops-muted)' }}>
                     <th className="px-5 py-3">{t('adminSubs.customer')}</th>
+                    <th className="px-5 py-3">{t('adminSubs.country')}</th>
                     <th className="px-5 py-3">{t('adminSubs.plan')}</th>
                     <th className="px-5 py-3">{t('adminSubs.amount')}</th>
                     <th className="px-5 py-3">{t('adminSubs.startDate')}</th>
@@ -643,6 +698,11 @@ export default function SubscriptionsDashboard() {
                       <td className="px-5 py-4">
                         <Link href={`/admin/subscriptions/${sub.id}`} className="font-medium hover:underline">{sub.user_name}</Link>
                         <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>{sub.user_email}</div>
+                      </td>
+                      <td className="px-5 py-4">
+                        {(sub.user_country || '').trim()
+                          ? `${countryDisplayName(sub.user_country || '', locale) || (sub.user_country || '').toUpperCase()} (${(sub.user_country || '').toUpperCase()})`
+                          : t('adminSubs.countryUnknown')}
                       </td>
                       <td className="px-5 py-4">{t(PLAN_LABEL_KEYS[sub.plan_tier])}</td>
                       <td className="px-5 py-4">{formatMoney(sub.amount, sub.currency, locale)}</td>
@@ -685,6 +745,11 @@ export default function SubscriptionsDashboard() {
                   </div>
                   <div className="mt-3 text-sm">
                     <div>{t(PLAN_LABEL_KEYS[sub.plan_tier])}</div>
+                    <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>
+                      {t('adminSubs.country')}: {(sub.user_country || '').trim()
+                        ? countryDisplayName(sub.user_country || '', locale) || (sub.user_country || '').toUpperCase()
+                        : t('adminSubs.countryUnknown')}
+                    </div>
                     <div className="font-semibold">{formatMoney(sub.amount, sub.currency, locale)} / {t('adminSubs.monthly').toLowerCase()}</div>
                     <div className="text-xs mt-1" style={{ color: 'var(--ops-muted)' }}>
                       {t('adminSubs.renewal')}: {formatOpsDate(sub.renewal_date, locale)}
@@ -901,7 +966,7 @@ function ActionMenu({
         </button>
       ))}
       <MenuItem onClick={onExtend}>{t('adminSubs.extend')}</MenuItem>
-      {sub.status === 'paused' ? (
+      {canResumeStatus(sub.status) ? (
         <MenuItem onClick={onResume}>{t('adminSubs.resume')}</MenuItem>
       ) : (
         <MenuItem onClick={onPause}>{t('adminSubs.pause')}</MenuItem>
@@ -1010,31 +1075,35 @@ function CreateModal({
   const [plan, setPlan] = useState<PlanTier>('premium')
   const [trial, setTrial] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const timer = window.setTimeout(async () => {
-      if (!q.trim()) {
-        setUsers([])
-        return
-      }
       try {
         const res = await adminApi.subscriptions.searchUsers(q.trim())
         setUsers((res.data as { results: AdminUserSearchResult[] }).results || [])
       } catch (err) {
         logger.error('User search failed', err)
+        setError(getApiErrorMessage(err, t('adminSubs.actionFailed')))
       }
-    }, 250)
+    }, q.trim() ? 250 : 0)
     return () => window.clearTimeout(timer)
-  }, [q])
+  }, [q, t])
 
   const submit = async () => {
     if (!selected) return
+    if (hasActiveLikeSubscription(selected)) {
+      setError(t('adminSubs.alreadyActive'))
+      return
+    }
     try {
       setSaving(true)
+      setError('')
       await adminApi.subscriptions.create({ user_id: selected.id, plan_tier: plan, start_trial: trial })
       onCreated()
     } catch (err) {
       logger.error('Create subscription failed', err)
+      setError(getApiErrorMessage(err, t('adminSubs.createFailed')))
     } finally {
       setSaving(false)
     }
@@ -1046,20 +1115,32 @@ function CreateModal({
         <h3 className="text-lg font-bold mb-4">{t('adminSubs.create')}</h3>
         <input className="ops-input w-full mb-3" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('adminSubs.selectUser')} />
         <div className="max-h-40 overflow-y-auto mb-3 space-y-1">
-          {users.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              className="w-full text-left px-3 py-2 rounded-lg text-sm"
-              style={{ background: selected?.id === u.id ? 'var(--ops-soft)' : 'transparent' }}
-              onClick={() => setSelected(u)}
-              disabled={u.has_subscription}
-            >
-              <div className="font-medium">{u.name}</div>
-              <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>{u.email}{u.has_subscription ? ' · ✓' : ''}</div>
-            </button>
-          ))}
+          {users.map((u) => {
+            const active = hasActiveLikeSubscription(u)
+            return (
+              <button
+                key={u.id}
+                type="button"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm"
+                style={{ background: selected?.id === u.id ? 'var(--ops-soft)' : 'transparent' }}
+                onClick={() => {
+                  setSelected(u)
+                  setTrial(!u.has_subscription)
+                  setError(active ? t('adminSubs.alreadyActive') : '')
+                }}
+              >
+                <div className="font-medium">{u.name}</div>
+                <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>
+                  {u.email}
+                  {active ? ` · ${t('adminSubs.alreadyActive')}` : u.has_subscription ? ` · ${t('adminSubs.existingInactive')}` : ''}
+                </div>
+              </button>
+            )
+          })}
         </div>
+        {error ? (
+          <p className="text-sm mb-3" style={{ color: 'var(--ops-danger)' }}>{error}</p>
+        ) : null}
         <select className="ops-select w-full mb-3" value={plan} onChange={(e) => setPlan(e.target.value as PlanTier)}>
           {(['free', 'premium', 'business', 'family'] as PlanTier[]).map((p) => (
             <option key={p} value={p}>{t(PLAN_LABEL_KEYS[p])}</option>
@@ -1071,8 +1152,8 @@ function CreateModal({
         </label>
         <div className="flex justify-end gap-2">
           <button type="button" className="ops-btn ops-btn-ghost" onClick={onClose}>{t('adminSubs.close')}</button>
-          <button type="button" className="ops-btn ops-btn-primary" disabled={!selected || saving} onClick={submit}>
-            {t('adminSubs.create')}
+          <button type="button" className="ops-btn ops-btn-primary" disabled={!selected || saving || hasActiveLikeSubscription(selected)} onClick={submit}>
+            {selected?.has_subscription && !hasActiveLikeSubscription(selected) ? t('adminSubs.resume') : t('adminSubs.create')}
           </button>
         </div>
       </div>

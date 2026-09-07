@@ -139,6 +139,7 @@ export interface SubscriptionListParams {
   page_size?: number
   expiring?: string
   failed_today?: string
+  country?: string
 }
 
 export interface ProofListParams {
@@ -154,6 +155,8 @@ export interface AdminUserSearchResult {
   name: string
   phone: string
   has_subscription: boolean
+  subscription_id?: number | null
+  subscription_status?: string
 }
 
 export type LedgerPaymentStatus =
