@@ -63,6 +63,14 @@ interface SubAnalytics {
     trial: number
     pct: number
   }>
+  topFeatures: Array<{
+    key: string
+    label: string
+    users: number
+    events: number
+    adoption_pct: number
+  }>
+  activeLogins: number
 }
 
 type ActionItem = {
@@ -391,10 +399,14 @@ export default function AdminDashboard() {
     const fetchStats = async () => {
       try {
         setStatsError(false)
-        const [statsRes, subRes] = await Promise.all([
+        const [statsRes, subRes, usageRes] = await Promise.all([
           adminApi.stats(),
           adminApi.subscriptions.analytics('30d').catch((error: unknown) => {
             logger.error('Error fetching subscription analytics:', error)
+            return null
+          }),
+          adminApi.subscriptions.appUsage('30d').catch((error: unknown) => {
+            logger.error('Error fetching app usage analytics:', error)
             return null
           }),
         ])
@@ -435,8 +447,8 @@ export default function AdminDashboard() {
           recentPayments: data.recent_payments ?? [],
         })
 
-        if (subRes?.data) {
-          const payload = subRes.data as {
+        if (subRes?.data || usageRes?.data) {
+          const payload = (subRes?.data || {}) as {
             kpis?: {
               total_users?: { value?: number }
               active_subscriptions?: { value?: number }
@@ -450,6 +462,16 @@ export default function AdminDashboard() {
               active?: number
               trial?: number
               pct?: number
+            }>
+          }
+          const usage = (usageRes?.data || {}) as {
+            reach?: { active_logins?: number }
+            features?: Array<{
+              key?: string
+              label?: string
+              users?: number
+              events?: number
+              adoption_pct?: number
             }>
           }
           const kpis = payload.kpis
@@ -468,6 +490,16 @@ export default function AdminDashboard() {
                   pct: row.pct ?? 0,
                 }))
               : [],
+            topFeatures: Array.isArray(usage.features)
+              ? usage.features.slice(0, 5).map((f) => ({
+                  key: f.key || '',
+                  label: f.label || '',
+                  users: f.users ?? 0,
+                  events: f.events ?? 0,
+                  adoption_pct: f.adoption_pct ?? 0,
+                }))
+              : [],
+            activeLogins: usage.reach?.active_logins ?? 0,
           })
         }
       } catch (error: unknown) {
@@ -879,6 +911,12 @@ export default function AdminDashboard() {
                         </p>
                       </div>
                       <div>
+                        <p className="text-xs text-white/55">Logins (30d)</p>
+                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                          {subAnalytics.activeLogins}
+                        </p>
+                      </div>
+                      <div>
                         <p className="text-xs text-white/55">Activas</p>
                         <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
                           {subAnalytics.active}
@@ -893,14 +931,40 @@ export default function AdminDashboard() {
                           </span>
                         </p>
                       </div>
-                      <div>
-                        <p className="text-xs text-white/55">A expirar (7 dias)</p>
-                        <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
-                          {subAnalytics.expiringSoon}
-                        </p>
-                      </div>
                     </div>
                   </div>
+
+                  {subAnalytics.topFeatures.length > 0 ? (
+                    <div className="rounded-2xl border border-zenda-border bg-white p-5 sm:p-6">
+                      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-zenda-navy">
+                            Funcionalidades mais usadas
+                          </h3>
+                          <p className="mt-1 text-xs text-zenda-textSecondary">
+                            Ranking por utilizadores activos nos últimos 30 dias.
+                          </p>
+                        </div>
+                        <Link
+                          href="/admin/analytics"
+                          className="text-xs font-semibold text-zenda-primary hover:underline"
+                        >
+                          Ver analytics completo
+                        </Link>
+                      </div>
+                      <div className="space-y-4">
+                        {subAnalytics.topFeatures.map((feature) => (
+                          <AnalyticsBar
+                            key={feature.key}
+                            label={`${feature.label} · ${feature.events} acções`}
+                            value={feature.users}
+                            total={subAnalytics.totalUsers || 1}
+                            color="bg-zenda-primary"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {subAnalytics.usersByCountry.length > 0 ? (
                     <div className="rounded-2xl border border-zenda-border bg-white p-5 sm:p-6">

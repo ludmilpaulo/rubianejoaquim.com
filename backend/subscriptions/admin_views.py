@@ -187,6 +187,14 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         revenue_range = request.query_params.get('range') or '6m'
         return Response(build_analytics(revenue_range))
 
+    @action(detail=False, methods=['get'], url_path='app-usage')
+    def app_usage(self, request):
+        """Mobile app reach + feature adoption from existing domain activity."""
+        from .app_usage import build_app_usage_analytics
+
+        revenue_range = request.query_params.get('range') or '30d'
+        return Response(build_app_usage_analytics(revenue_range))
+
     @action(detail=False, methods=['get'], url_path='search-users')
     def search_users(self, request):
         q = (request.query_params.get('q') or '').strip()

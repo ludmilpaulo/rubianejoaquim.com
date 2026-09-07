@@ -85,6 +85,27 @@ class SubscriptionAdminApiTests(TestCase):
         self.assertEqual(countries['AO']['users'], 1)
         self.assertEqual(countries['ZA']['trial'], 1)
 
+    def test_app_usage_analytics(self):
+        from finance.models import PersonalExpense
+
+        PersonalExpense.objects.create(
+            user=self.user,
+            amount=Decimal('1000'),
+            currency='AOA',
+            description='Test expense',
+            date=timezone.now().date(),
+        )
+        res = self.client.get('/api/subscriptions/admin/subscriptions/app-usage/', {'range': '30d'})
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('reach', res.data)
+        self.assertIn('features', res.data)
+        self.assertGreaterEqual(res.data['reach']['total_users'], 2)
+        keys = {row['key'] for row in res.data['features']}
+        self.assertIn('personal_finance', keys)
+        personal = next(row for row in res.data['features'] if row['key'] == 'personal_finance')
+        self.assertGreaterEqual(personal['users'], 1)
+        self.assertGreaterEqual(personal['events'], 1)
+
     def test_retrieve_subscription_detail(self):
         res = self.client.get(f'/api/subscriptions/admin/subscriptions/{self.sub.id}/')
         self.assertEqual(res.status_code, 200)

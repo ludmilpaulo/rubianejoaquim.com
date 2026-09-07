@@ -7,7 +7,7 @@ import { useAuthStore } from '@/lib/store'
 import { adminApi } from '@/lib/api'
 import { logger } from '@/lib/logger'
 import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
-import type { SubscriptionAnalytics } from '@/lib/types/subscriptions'
+import type { AppUsageAnalytics, SubscriptionAnalytics } from '@/lib/types/subscriptions'
 import { formatCountryWithFlag } from '@/lib/admin-subs-format'
 
 interface CourseStats {
@@ -125,9 +125,11 @@ export default function AdminAnalyticsPage() {
   const [mounted, setMounted] = useState(false)
   const [stats, setStats] = useState<CourseStats | null>(null)
   const [subAnalytics, setSubAnalytics] = useState<SubscriptionAnalytics | null>(null)
+  const [appUsage, setAppUsage] = useState<AppUsageAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [range, setRange] = useState('6m')
+  const [usageRange, setUsageRange] = useState('30d')
 
   useEffect(() => {
     setMounted(true)
@@ -142,22 +144,27 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     if (!mounted || !isAdminUser(user)) return
     void fetchAll()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when range changes
-  }, [mounted, user, range])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when ranges change
+  }, [mounted, user, range, usageRange])
 
   const fetchAll = async () => {
     try {
       setLoading(true)
       setLoadError(false)
-      const [statsRes, subRes] = await Promise.all([
+      const [statsRes, subRes, usageRes] = await Promise.all([
         adminApi.stats(),
         adminApi.subscriptions.analytics(range).catch((error: unknown) => {
           logger.error('Error fetching subscription analytics:', error)
           return null
         }),
+        adminApi.subscriptions.appUsage(usageRange).catch((error: unknown) => {
+          logger.error('Error fetching app usage analytics:', error)
+          return null
+        }),
       ])
       setStats(statsRes.data as CourseStats)
       setSubAnalytics(subRes?.data ? (subRes.data as SubscriptionAnalytics) : null)
+      setAppUsage(usageRes?.data ? (usageRes.data as AppUsageAnalytics) : null)
     } catch (error: unknown) {
       logger.error('Error fetching analytics:', error)
       setLoadError(true)
@@ -221,7 +228,7 @@ export default function AdminAnalyticsPage() {
             Analytics
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-white/70 sm:text-base">
-            Visão completa de cursos, matrículas, pagamentos e subscrições da app Zenda.
+            Uso da app Zenda, funcionalidades mais activas, cursos e subscrições.
           </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {[
@@ -243,6 +250,120 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zenda-primary">
+                App Zenda
+              </p>
+              <h2 className="mt-1 font-display text-2xl font-semibold text-zenda-navy">
+                Como os utilizadores usam a app
+              </h2>
+              <p className="mt-1 text-sm text-zenda-textSecondary">
+                Adoção por funcionalidade com base na actividade real na API (sem dados inventados).
+              </p>
+            </div>
+            <select
+              value={usageRange}
+              onChange={(e) => setUsageRange(e.target.value)}
+              className="rounded-lg border border-zenda-border bg-white px-2.5 py-1.5 text-xs font-medium text-zenda-navy"
+              aria-label="Intervalo de uso da app"
+            >
+              <option value="7d">7 dias</option>
+              <option value="30d">30 dias</option>
+              <option value="90d">90 dias</option>
+              <option value="6m">6 meses</option>
+            </select>
+          </div>
+
+          {appUsage ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+                <MetricCard label="Logins activos" value={appUsage.reach.active_logins} hint="Com last_login no período" tone="growth" />
+                <MetricCard label="Novos utilizadores" value={appUsage.reach.new_users} />
+                <MetricCard
+                  label="Onboarding"
+                  value={`${appUsage.reach.onboarding_pct}%`}
+                  hint={`${appUsage.reach.onboarding_completed} concluíram`}
+                />
+                <MetricCard
+                  label="Dispositivos push"
+                  value={appUsage.reach.push_devices}
+                  hint={Object.entries(appUsage.reach.push_by_platform || {})
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(' · ') || 'Sem tokens'}
+                />
+                <MetricCard
+                  label="Subs activas"
+                  value={appUsage.reach.subscriptions_active}
+                  hint={`${appUsage.reach.subscriptions_trial} em trial`}
+                  tone="growth"
+                />
+                <MetricCard label="Total contas" value={appUsage.reach.total_users} />
+              </div>
+
+              <Panel title="Funcionalidades mais usadas">
+                {appUsage.features.length === 0 ? (
+                  <p className="text-sm text-zenda-textSecondary">Sem actividade neste período.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {appUsage.features.map((feature) => (
+                      <div key={feature.key}>
+                        <div className="mb-1.5 flex flex-wrap items-end justify-between gap-2 text-sm">
+                          <div>
+                            <p className="font-semibold text-zenda-navy">{feature.label}</p>
+                            <p className="text-xs text-zenda-textSecondary">{feature.description}</p>
+                          </div>
+                          <p className="font-semibold tabular-nums text-zenda-navy">
+                            {feature.users} utilizadores
+                            <span className="ml-2 text-xs font-medium text-zenda-textSecondary">
+                              {feature.events} acções · {feature.adoption_pct}%
+                            </span>
+                          </p>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-zenda-bg">
+                          <div
+                            className="h-full rounded-full bg-zenda-primary"
+                            style={{ width: `${Math.min(100, feature.adoption_pct)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+
+              {appUsage.login_series.some((d) => d.users > 0) ? (
+                <Panel title="Utilizadores activos por dia (login)">
+                  <div className="flex h-28 items-end gap-0.5">
+                    {(() => {
+                      const maxUsers = Math.max(1, ...appUsage.login_series.map((d) => d.users))
+                      return appUsage.login_series.map((point) => (
+                        <div
+                          key={point.period}
+                          className="group relative flex min-w-0 flex-1 flex-col items-center justify-end"
+                          title={`${point.label}: ${point.users}`}
+                        >
+                          <div
+                            className="w-full max-w-[20px] rounded-t-sm bg-emerald-500/80"
+                            style={{ height: `${Math.max(2, (point.users / maxUsers) * 100)}%` }}
+                          />
+                        </div>
+                      ))
+                    })()}
+                  </div>
+                </Panel>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-zenda-border bg-white p-6 text-sm text-zenda-textSecondary">
+              Não foi possível carregar o uso da app. Confirme que a API está actualizada (
+              <code className="text-xs">/subscriptions/admin/subscriptions/app-usage/</code>
+              ).
+            </div>
+          )}
+        </div>
+
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Utilizadores"

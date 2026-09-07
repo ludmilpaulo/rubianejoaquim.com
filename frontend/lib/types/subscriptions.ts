@@ -47,6 +47,35 @@ export interface SubscriptionAnalytics {
   }
 }
 
+export interface AppUsageFeature {
+  key: string
+  label: string
+  description: string
+  events: number
+  users: number
+  adoption_pct: number
+}
+
+export interface AppUsageAnalytics {
+  range: string
+  generated_at: string
+  reach: {
+    total_users: number
+    active_logins: number
+    new_users: number
+    onboarding_completed: number
+    onboarding_pct: number
+    push_devices: number
+    push_by_platform: Record<string, number>
+    subscriptions_total: number
+    subscriptions_active: number
+    subscriptions_trial: number
+  }
+  features: AppUsageFeature[]
+  login_series: Array<{ period: string; label: string; users: number }>
+  active_users_by_country: Array<{ country: string; users: number }>
+}
+
 export interface AdminSubscription {
   id: number
   user: number

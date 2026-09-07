@@ -435,6 +435,8 @@ export const adminApi = {
     get: (id: number) => api.get(`/subscriptions/admin/subscriptions/${id}/`),
     analytics: (range?: string) =>
       api.get('/subscriptions/admin/subscriptions/analytics/', { params: { range } }),
+    appUsage: (range?: string) =>
+      api.get('/subscriptions/admin/subscriptions/app-usage/', { params: { range } }),
     searchUsers: (q: string) =>
       api.get('/subscriptions/admin/subscriptions/search-users/', { params: { q } }),
     create: (data: { user_id: number; plan_tier: string; start_trial?: boolean }) =>
