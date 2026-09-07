@@ -149,6 +149,39 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         context['request'] = self.request
         return context
 
+    def retrieve(self, request, *args, **kwargs):
+        """Never let nested proof/audit serialization take down the detail page."""
+        try:
+            instance = self.get_object()
+        except Exception:
+            return Response({'detail': 'Subscrição não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        except Exception:
+            logger.exception('Failed to serialize subscription detail id=%s', getattr(instance, 'pk', None))
+            # Minimal fallback so the admin UI can still open the record.
+            fallback = AdminMobileAppSubscriptionSerializer(instance, context={'request': request})
+            try:
+                data = dict(fallback.data)
+            except Exception:
+                logger.exception('Fallback subscription serialization also failed id=%s', instance.pk)
+                return Response(
+                    {'detail': 'Não foi possível carregar esta subscrição.'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            data['payment_proofs'] = []
+            data['audit_logs'] = []
+            data['billing_cycle'] = 'monthly'
+            try:
+                data['monthly_price'] = {
+                    'amount': float(monthly_price()),
+                    'currency': default_currency(),
+                }
+            except Exception:
+                data['monthly_price'] = {'amount': 0.0, 'currency': 'AOA'}
+            return Response(data)
+
     @action(detail=False, methods=['get'], url_path='analytics')
     def analytics(self, request):
         revenue_range = request.query_params.get('range') or '6m'

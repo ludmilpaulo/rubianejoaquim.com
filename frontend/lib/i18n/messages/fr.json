@@ -662,6 +662,7 @@
     "emptyProofs": "Aucun justificatif dans cet état.",
     "errorTitle": "Une erreur s'est produite",
     "errorBody": "Impossible de charger les abonnements pour le moment. Veuillez réessayer.",
+    "errorDetailBody": "Impossible de charger cet abonnement. Réessayez ou mettez à jour l'API.",
     "errorNotFound": "Cet abonnement est introuvable.",
     "tryAgain": "Réessayer",
     "confirmCancel": "Annuler cet abonnement ? Le client perdra l'accès à l'app.",

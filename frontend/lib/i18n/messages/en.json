@@ -661,6 +661,7 @@
     "emptyProofs": "No receipts in this status.",
     "errorTitle": "Something went wrong",
     "errorBody": "We couldn't load the subscriptions right now. Please try again.",
+    "errorDetailBody": "We couldn't load this subscription. Please try again or update the API.",
     "errorNotFound": "This subscription was not found.",
     "tryAgain": "Try again",
     "confirmCancel": "Cancel this subscription? The customer will lose app access.",

@@ -189,20 +189,32 @@ class AdminMobileAppSubscriptionPaymentProofSerializer(serializers.ModelSerializ
         read_only_fields = ['status', 'created_at', 'reviewed_at', 'reviewed_by']
 
     def get_user_name(self, obj):
-        u = obj.subscription.user
-        return f"{u.first_name or ''} {u.last_name or ''}".strip() or u.username
+        try:
+            u = obj.subscription.user
+            return f"{u.first_name or ''} {u.last_name or ''}".strip() or (u.username or '')
+        except Exception:
+            return ''
 
     def get_reviewed_by_email(self, obj):
-        return obj.reviewed_by.email if obj.reviewed_by else None
+        try:
+            return obj.reviewed_by.email if obj.reviewed_by else None
+        except Exception:
+            return None
 
     def get_reviewed_by_name(self, obj):
-        if not obj.reviewed_by:
+        try:
+            if not obj.reviewed_by:
+                return None
+            u = obj.reviewed_by
+            return f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email
+        except Exception:
             return None
-        u = obj.reviewed_by
-        return f"{u.first_name or ''} {u.last_name or ''}".strip() or u.email
 
     def get_transaction_id(self, obj):
-        return obj.transaction_id
+        try:
+            return obj.transaction_id
+        except Exception:
+            return f'ZND-{getattr(obj, "id", 0):06d}'
 
     def get_amount(self, obj):
         try:
@@ -221,13 +233,21 @@ class AdminMobileAppSubscriptionPaymentProofSerializer(serializers.ModelSerializ
 
     def get_file_url(self, obj):
         try:
-            if not obj.file or not getattr(obj.file, 'name', None):
+            file_field = getattr(obj, 'file', None)
+            if not file_field:
                 return None
-            name = obj.file.name
-            storage = getattr(obj.file, 'storage', None)
-            if storage is not None and hasattr(storage, 'exists') and not storage.exists(name):
+            name = getattr(file_field, 'name', None)
+            if not name:
                 return None
-            url = obj.file.url
+            storage = getattr(file_field, 'storage', None)
+            if storage is not None and hasattr(storage, 'exists'):
+                try:
+                    if not storage.exists(name):
+                        return None
+                except Exception:
+                    # Missing media or remote storage glitches must not 500 the detail page.
+                    return None
+            url = file_field.url
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(url)
@@ -277,22 +297,36 @@ class AdminMobileAppSubscriptionDetailSerializer(AdminMobileAppSubscriptionSeria
         ]
 
     def get_payment_proofs(self, obj):
+        rows = []
         try:
             proofs = obj.payment_proofs.select_related(
                 'subscription__user', 'reviewed_by'
             ).order_by('-created_at')
-            return AdminMobileAppSubscriptionPaymentProofSerializer(
-                proofs, many=True, context=self.context
-            ).data
+            for proof in proofs:
+                try:
+                    rows.append(
+                        AdminMobileAppSubscriptionPaymentProofSerializer(
+                            proof, context=self.context
+                        ).data
+                    )
+                except Exception:
+                    continue
         except Exception:
             return []
+        return rows
 
     def get_audit_logs(self, obj):
+        rows = []
         try:
             logs = obj.audit_logs.select_related('admin').all()[:30]
-            return AdminAuditLogSerializer(logs, many=True).data
+            for log in logs:
+                try:
+                    rows.append(AdminAuditLogSerializer(log).data)
+                except Exception:
+                    continue
         except Exception:
             return []
+        return rows
 
     def get_billing_cycle(self, obj):
         return 'monthly'

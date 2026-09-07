@@ -21,7 +21,12 @@ import { ConfirmModal, ErrorState, Skeleton, StatusBadge } from '@/components/ad
 export default function SubscriptionDetailPage() {
   const params = useParams<{ id: string }>()
   const rawId = params?.id
-  const id = typeof rawId === 'string' ? Number(rawId) : Number.NaN
+  const id =
+    typeof rawId === 'string'
+      ? Number(rawId)
+      : Array.isArray(rawId)
+        ? Number(rawId[0])
+        : Number.NaN
   const t = useTranslations()
   const { locale } = useLocale()
   const [sub, setSub] = useState<AdminSubscriptionDetail | null>(null)
@@ -62,7 +67,7 @@ export default function SubscriptionDetailPage() {
     } catch (err) {
       logger.error('Failed to load subscription detail', err)
       setError(true)
-      setErrorDetail(getApiErrorMessage(err, t('adminSubs.errorBody')))
+      setErrorDetail(getApiErrorMessage(err, t('adminSubs.errorDetailBody')))
       setSub(null)
     } finally {
       setLoading(false)

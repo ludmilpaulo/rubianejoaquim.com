@@ -662,6 +662,7 @@
     "emptyProofs": "No hay comprobantes en este estado.",
     "errorTitle": "Algo salió mal",
     "errorBody": "No pudimos cargar las suscripciones ahora. Inténtalo de nuevo.",
+    "errorDetailBody": "No pudimos cargar esta suscripción. Inténtalo de nuevo o actualiza la API.",
     "errorNotFound": "No se encontró esta suscripción.",
     "tryAgain": "Reintentar",
     "confirmCancel": "¿Cancelar esta suscripción? El cliente perderá el acceso a la app.",
