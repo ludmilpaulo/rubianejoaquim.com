@@ -58,6 +58,28 @@ export function countryDisplayName(code: string, locale: string): string {
   }
 }
 
+/** ISO-3166 alpha-2 → regional-indicator flag emoji (e.g. AO → 🇦🇴). */
+export function countryFlagEmoji(code: string): string {
+  const normalized = (code || '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(normalized) || normalized === 'UNKNOWN') return '🌐'
+  const A = 0x1f1e6
+  const chars = [...normalized].map((ch) => String.fromCodePoint(A + (ch.charCodeAt(0) - 65)))
+  return chars.join('')
+}
+
+export function formatCountryWithFlag(
+  code: string | null | undefined,
+  locale: string,
+  unknownLabel = 'Unknown',
+): string {
+  const normalized = (code || '').trim().toUpperCase()
+  if (!normalized || normalized === 'UNKNOWN') {
+    return `🌐 ${unknownLabel}`
+  }
+  const name = countryDisplayName(normalized, locale) || normalized
+  return `${countryFlagEmoji(normalized)} ${name}`
+}
+
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

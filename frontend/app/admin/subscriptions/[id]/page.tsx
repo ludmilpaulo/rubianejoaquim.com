@@ -8,7 +8,7 @@ import { logger } from '@/lib/logger'
 import { getApiErrorMessage } from '@/lib/types/api'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import {
-  countryDisplayName,
+  formatCountryWithFlag,
   formatMoney,
   formatOpsDate,
   METHOD_LABEL_KEYS,
@@ -90,9 +90,7 @@ export default function SubscriptionDetailPage() {
 
   const planLabel = t(PLAN_LABEL_KEYS[sub?.plan_tier || plan] || 'adminSubs.planPremium')
   const countryCode = (sub?.user_country || '').trim().toUpperCase()
-  const countryLabel = countryCode
-    ? countryDisplayName(countryCode, locale) || countryCode
-    : t('adminSubs.countryUnknown')
+  const countryLabel = formatCountryWithFlag(countryCode, locale, t('adminSubs.countryUnknown'))
   const proofs = sub?.payment_proofs ?? []
   const auditLogs = sub?.audit_logs ?? []
 

@@ -8,6 +8,7 @@ import { adminApi } from '@/lib/api'
 import { logger } from '@/lib/logger'
 import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
 import type { SubscriptionAnalytics } from '@/lib/types/subscriptions'
+import { formatCountryWithFlag } from '@/lib/admin-subs-format'
 
 interface CourseStats {
   total_courses: number
@@ -470,14 +471,7 @@ export default function AdminAnalyticsPage() {
               <div className="space-y-4">
                 {subAnalytics.users_by_country.map((row) => {
                   const code = (row.country || '').toUpperCase()
-                  let label = 'Desconhecido'
-                  if (code && code !== 'UNKNOWN') {
-                    try {
-                      label = new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
-                    } catch {
-                      label = code
-                    }
-                  }
+                  const label = formatCountryWithFlag(code, 'pt', 'Desconhecido')
                   return (
                     <Link
                       key={code || 'unknown'}

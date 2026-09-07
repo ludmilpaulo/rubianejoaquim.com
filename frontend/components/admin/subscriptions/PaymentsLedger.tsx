@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { adminApi } from '@/lib/api'
 import { logger } from '@/lib/logger'
-import { formatMoney, formatOpsDateTime, countryDisplayName } from '@/lib/admin-subs-format'
+import { formatMoney, formatOpsDateTime, formatCountryWithFlag } from '@/lib/admin-subs-format'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import type { PaymentSummary, SubscriptionPaymentRecord } from '@/lib/types/subscriptions'
 import { unwrapList } from '@/lib/types/subscriptions'
@@ -81,13 +81,11 @@ export default function PaymentsLedger({
             <option value="">{t('adminSubs.allCountries')}</option>
             {countryOptions.map((row) => {
               const code = (row.country || '').toUpperCase()
-              const label =
-                !code || code === 'UNKNOWN'
-                  ? t('adminSubs.countryUnknown')
-                  : `${countryDisplayName(code, locale) || code} (${code})`
+              const label = formatCountryWithFlag(code, locale, t('adminSubs.countryUnknown'))
               return (
                 <option key={code || 'unknown'} value={code === 'UNKNOWN' ? 'unknown' : code}>
                   {label}
+                  {code && code !== 'UNKNOWN' ? ` (${code})` : ''}
                 </option>
               )
             })}
@@ -134,9 +132,12 @@ export default function PaymentsLedger({
                     <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>{row.user_email}</div>
                   </td>
                   <td className="px-5 py-3">
-                    {row.country
-                      ? `${countryDisplayName(row.country, locale) || row.country.toUpperCase()} (${row.country.toUpperCase()})`
-                      : '—'}
+                    {formatCountryWithFlag(row.country, locale, '—')}
+                    {row.country ? (
+                      <span className="ml-1 text-xs" style={{ color: 'var(--ops-muted)' }}>
+                        ({row.country.toUpperCase()})
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-5 py-3">{formatMoney(Number(row.amount), row.currency, locale)}</td>
                   <td className="px-5 py-3">{row.method_label}</td>

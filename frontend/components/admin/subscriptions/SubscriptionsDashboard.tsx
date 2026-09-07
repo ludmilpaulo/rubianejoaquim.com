@@ -9,6 +9,8 @@ import { getApiErrorMessage } from '@/lib/types/api'
 import { useLocale, useTranslations } from '@/contexts/LocaleContext'
 import {
   countryDisplayName,
+  countryFlagEmoji,
+  formatCountryWithFlag,
   downloadBlob,
   formatMoney,
   formatOpsDate,
@@ -440,6 +442,7 @@ export default function SubscriptionsDashboard() {
                 !code || code === 'UNKNOWN'
                   ? t('adminSubs.countryUnknown')
                   : countryDisplayName(code, locale) || code
+              const flag = countryFlagEmoji(code)
               return (
                 <button
                   key={code || 'unknown'}
@@ -453,7 +456,12 @@ export default function SubscriptionsDashboard() {
                 >
                   <div className="flex items-baseline justify-between gap-2 mb-2">
                     <div>
-                      <p className="font-semibold">{label}</p>
+                      <p className="font-semibold">
+                        <span className="mr-1.5" aria-hidden>
+                          {flag}
+                        </span>
+                        {label}
+                      </p>
                       {code && code !== 'UNKNOWN' ? (
                         <p className="text-xs" style={{ color: 'var(--ops-muted)' }}>{code}</p>
                       ) : null}
@@ -624,13 +632,11 @@ export default function SubscriptionsDashboard() {
               <option value="">{t('adminSubs.allCountries')}</option>
               {countryOptions.map((row) => {
                 const code = (row.country || '').toUpperCase()
-                const label =
-                  !code || code === 'UNKNOWN'
-                    ? t('adminSubs.countryUnknown')
-                    : `${countryDisplayName(code, locale) || code} (${code})`
+                const label = formatCountryWithFlag(code, locale, t('adminSubs.countryUnknown'))
                 return (
                   <option key={code || 'unknown'} value={code}>
                     {label}
+                    {code && code !== 'UNKNOWN' ? ` (${code})` : ''}
                   </option>
                 )
               })}
@@ -700,9 +706,16 @@ export default function SubscriptionsDashboard() {
                         <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>{sub.user_email}</div>
                       </td>
                       <td className="px-5 py-4">
-                        {(sub.user_country || '').trim()
-                          ? `${countryDisplayName(sub.user_country || '', locale) || (sub.user_country || '').toUpperCase()} (${(sub.user_country || '').toUpperCase()})`
-                          : t('adminSubs.countryUnknown')}
+                        {formatCountryWithFlag(
+                          sub.user_country,
+                          locale,
+                          t('adminSubs.countryUnknown'),
+                        )}
+                        {(sub.user_country || '').trim() ? (
+                          <span className="ml-1 text-xs" style={{ color: 'var(--ops-muted)' }}>
+                            ({(sub.user_country || '').toUpperCase()})
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-5 py-4">{t(PLAN_LABEL_KEYS[sub.plan_tier])}</td>
                       <td className="px-5 py-4">{formatMoney(sub.amount, sub.currency, locale)}</td>
@@ -746,9 +759,8 @@ export default function SubscriptionsDashboard() {
                   <div className="mt-3 text-sm">
                     <div>{t(PLAN_LABEL_KEYS[sub.plan_tier])}</div>
                     <div className="text-xs" style={{ color: 'var(--ops-muted)' }}>
-                      {t('adminSubs.country')}: {(sub.user_country || '').trim()
-                        ? countryDisplayName(sub.user_country || '', locale) || (sub.user_country || '').toUpperCase()
-                        : t('adminSubs.countryUnknown')}
+                      {t('adminSubs.country')}:{' '}
+                      {formatCountryWithFlag(sub.user_country, locale, t('adminSubs.countryUnknown'))}
                     </div>
                     <div className="font-semibold">{formatMoney(sub.amount, sub.currency, locale)} / {t('adminSubs.monthly').toLowerCase()}</div>
                     <div className="text-xs mt-1" style={{ color: 'var(--ops-muted)' }}>

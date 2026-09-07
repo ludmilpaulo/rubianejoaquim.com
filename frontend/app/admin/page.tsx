@@ -8,6 +8,7 @@ import { adminApi, authApi } from '@/lib/api'
 import { getApiErrorMessage } from '@/lib/types/api'
 import { logger } from '@/lib/logger'
 import ZendaPageLoading from '@/components/zenda/ZendaPageLoading'
+import { formatCountryWithFlag } from '@/lib/admin-subs-format'
 
 interface RecentUser {
   first_name?: string
@@ -922,15 +923,7 @@ export default function AdminDashboard() {
                       <div className="space-y-4">
                         {subAnalytics.usersByCountry.map((row) => {
                           const code = row.country
-                          let label = 'Desconhecido'
-                          if (code && code !== 'UNKNOWN') {
-                            try {
-                              label =
-                                new Intl.DisplayNames(['pt-PT'], { type: 'region' }).of(code) || code
-                            } catch {
-                              label = code
-                            }
-                          }
+                          const label = formatCountryWithFlag(code, 'pt', 'Desconhecido')
                           return (
                             <Link
                               key={code || 'unknown'}
