@@ -72,6 +72,9 @@ export default function FamilyFinanceScreen() {
   const [pendingBanner, setPendingBanner] = useState<FamilyPreview | null>(null)
 
   const [dashboard, setDashboard] = useState<FamilyDashboard | null>(null)
+  const [contribGoalId, setContribGoalId] = useState<number | null>(null)
+  const [contribAmount, setContribAmount] = useState('')
+  const [contribSaving, setContribSaving] = useState(false)
   const [dashLoading, setDashLoading] = useState(false)
   const [entries, setEntries] = useState<FamilyEntry[]>([])
   const [suggestions, setSuggestions] = useState<FamilySettleSuggestion[]>([])
@@ -335,6 +338,22 @@ export default function FamilyFinanceScreen() {
     }
   }
 
+  const saveContribution = async (goalId: number) => {
+    if (!contribAmount || Number(contribAmount) <= 0 || contribSaving) return
+    setContribSaving(true)
+    try {
+      await financeSpaceApi.addContribution(goalId, Number(contribAmount))
+      setContribAmount('')
+      setContribGoalId(null)
+      if (selected) await loadDetail(selected)
+      alert.success(t('premium.contributionSaved'))
+    } catch (err) {
+      alert.error(getApiErrorMessage(err, 'family.addGoalFailed'))
+    } finally {
+      setContribSaving(false)
+    }
+  }
+
   const saveBudget = async () => {
     if (!selected || !budgetName.trim() || !budgetAmount || savingBudget) return
     setSavingBudget(true)
@@ -555,6 +574,27 @@ export default function FamilyFinanceScreen() {
                 <View style={[styles.barFill, { width: `${Math.min(100, pct)}%` }]} />
               </View>
               <Text style={styles.meta}>{pct}%</Text>
+              {canWrite ? (
+                <>
+                  <Button compact mode="text" onPress={() => setContribGoalId(contribGoalId === g.id ? null : g.id)}>
+                    {t('premium.contribute')}
+                  </Button>
+                  {contribGoalId === g.id ? (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        value={contribAmount}
+                        onChangeText={setContribAmount}
+                        placeholder={t('common.amount')}
+                        keyboardType="decimal-pad"
+                      />
+                      <Button mode="contained" loading={contribSaving} onPress={() => { void saveContribution(g.id) }}>
+                        {t('common.save')}
+                      </Button>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
             </ZendaCard>
           )
         })}

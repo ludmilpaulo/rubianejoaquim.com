@@ -12,7 +12,8 @@ from .models import (
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ['id', 'name', 'icon', 'color', 'is_personal', 'is_business', 'created_at']
+        fields = ['id', 'name', 'icon', 'color', 'is_personal', 'is_business', 'user', 'created_at']
+        read_only_fields = ['user', 'created_at']
 
 
 # ==================== PERSONAL FINANCE ====================

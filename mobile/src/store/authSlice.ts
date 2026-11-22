@@ -16,7 +16,7 @@ const initialState: AuthState = {
   hasPaidAccess: false,
   hasExpiredSubscription: false,
   accessChecked: false,
-  planTier: 'premium',
+  planTier: 'free',
   features: [],
 }
 
@@ -86,7 +86,7 @@ export const checkAuth = createAsyncThunk('auth/checkAuth', async () => {
       token,
       hasPaidAccess: access.hasAccess,
       hasExpiredSubscription: access.hasExpiredSubscription,
-      planTier: access.planTier || 'premium',
+      planTier: access.planTier || 'free',
       features: access.features || [],
     }
   } catch (error) {
@@ -149,6 +149,8 @@ const authSlice = createSlice({
         state.hasPaidAccess = false
         state.hasExpiredSubscription = false
         state.accessChecked = false
+        state.planTier = 'free'
+        state.features = []
       })
       .addCase(socialSession.fulfilled, (state, action) => {
         state.user = action.payload.user
@@ -157,6 +159,8 @@ const authSlice = createSlice({
         state.hasPaidAccess = false
         state.hasExpiredSubscription = false
         state.accessChecked = false
+        state.planTier = 'free'
+        state.features = []
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false
@@ -172,6 +176,8 @@ const authSlice = createSlice({
         state.hasPaidAccess = false
         state.hasExpiredSubscription = false
         state.accessChecked = false
+        state.planTier = 'free'
+        state.features = []
       })
       .addCase(register.rejected, (state) => {
         state.isLoading = false
@@ -184,7 +190,7 @@ const authSlice = createSlice({
         state.token = action.payload.token
         state.hasPaidAccess = action.payload.hasPaidAccess
         state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
-        state.planTier = action.payload.planTier || 'premium'
+        state.planTier = action.payload.planTier || 'free'
         state.features = action.payload.features || []
         state.isLoading = false
         state.accessChecked = true
@@ -204,7 +210,7 @@ const authSlice = createSlice({
       .addCase(checkPaidAccess.fulfilled, (state, action) => {
         state.hasPaidAccess = action.payload.hasAccess
         state.hasExpiredSubscription = action.payload.hasExpiredSubscription ?? false
-        state.planTier = action.payload.planTier || 'premium'
+        state.planTier = action.payload.planTier || 'free'
         state.features = action.payload.features || []
         state.accessChecked = true
       })
@@ -214,6 +220,8 @@ const authSlice = createSlice({
         state.hasPaidAccess = false
         state.hasExpiredSubscription = false
         state.accessChecked = false
+        state.planTier = 'free'
+        state.features = []
       })
   },
 })

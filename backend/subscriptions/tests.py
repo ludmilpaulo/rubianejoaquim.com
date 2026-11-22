@@ -409,6 +409,13 @@ class SubscriptionPaymentWorkflowTests(TestCase):
         self.assertEqual(res.data['charge']['currency'], 'ZAR')
         self.assertIn('card', res.data['methods'])
         self.assertIn('apple_iap', res.data['methods'])
+        # Offer + cart must not surface a second currency (Play subscriptions policy).
+        self.assertIsNone(res.data.get('estimate'))
+
+        self._auth(self.ao_token)
+        res = self.client.get('/api/subscriptions/checkout-options/?platform=android')
+        self.assertEqual(res.status_code, 200)
+        self.assertIsNone(res.data.get('estimate'))
 
     def test_empty_country_is_not_angola(self):
         """preferred_currency=AOA alone must not force bank transfer."""

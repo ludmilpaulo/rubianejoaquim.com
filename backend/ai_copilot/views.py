@@ -4,10 +4,8 @@ from decimal import Decimal
 from django.conf import settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from subscriptions.models import MobileAppSubscription
-from subscriptions.tiers import effective_tier, has_feature
+from subscriptions.permissions import require_feature
 
 from .actions import execute_action
 from .facts import run_calculations, system_prompt, template_reply
@@ -29,20 +27,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 
-class HasAICopilot(IsAuthenticated):
-    def has_permission(self, request, view):
-        if not super().has_permission(request, view):
-            return False
-        user = request.user
-        if user.is_staff or user.is_superuser:
-            return True
-        try:
-            sub = user.mobile_app_subscription
-        except MobileAppSubscription.DoesNotExist:
-            return True
-        if not sub.has_access:
-            return False
-        return has_feature(effective_tier(sub), 'ai_copilot') or sub.has_access
+HasAICopilot = require_feature('ai_copilot')
 
 
 def _public_facts(bundle: dict) -> dict:
@@ -65,6 +50,13 @@ def _public_facts(bundle: dict) -> dict:
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
     permission_classes = [HasAICopilot]
+
+    def get_permissions(self):
+        if self.action in ('monthly_report', 'savings_plan', 'debt_strategy', 'goal_coach'):
+            return [require_feature('monthly_ai_report')()]
+        if self.action == 'financial_health':
+            return [require_feature('health_score')()]
+        return [HasAICopilot()]
 
     def get_queryset(self):
         return Conversation.objects.filter(user=self.request.user)

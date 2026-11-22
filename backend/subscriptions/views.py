@@ -68,23 +68,40 @@ class MobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='me')
     def me(self, request):
         """Estado da subscrição do utilizador (para o app verificar acesso)."""
+        from .billing import resolve_user_access
+
         try:
             sub = MobileAppSubscription.objects.get(user=request.user)
         except MobileAppSubscription.DoesNotExist:
+            sub = None
+
+        access = resolve_user_access(request.user, subscription=sub)
+        if sub is None and not access['has_access']:
             return Response({
                 'has_access': False,
                 'subscription': None,
+                'effective_tier': 'free',
+                'plan_tier': 'free',
+                'features': [],
+                'complimentary_active': False,
                 'message': 'Não tem subscrição do app. Use subscribe para começar a semana grátis.'
             })
-        serializer = self.get_serializer(sub)
-        from .tiers import effective_tier, tier_features
-        tier = effective_tier(sub)
+
+        serializer = self.get_serializer(sub) if sub is not None else None
         return Response({
-            'has_access': sub.has_access,
-            'plan_tier': sub.plan_tier,
-            'effective_tier': tier,
-            'features': tier_features(tier),
-            'subscription': serializer.data,
+            'has_access': access['has_access'],
+            'plan_tier': access['plan_tier'],
+            'effective_tier': access['effective_tier'],
+            'features': access['features'],
+            'complimentary': access['complimentary'],
+            'complimentary_active': access['complimentary_active'],
+            'complimentary_until': access['complimentary_until'],
+            'subscription': serializer.data if serializer else None,
+            'message': (
+                'Complimentary platform access is active.'
+                if access['complimentary']
+                else None
+            ),
         })
 
     @action(detail=True, methods=['post'], url_path='upload-proof')

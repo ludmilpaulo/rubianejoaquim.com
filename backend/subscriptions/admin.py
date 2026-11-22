@@ -137,5 +137,11 @@ class PaymentGatewayConfigAdmin(admin.ModelAdmin):
 
 @admin.register(SubscriptionBillingSettings)
 class SubscriptionBillingSettingsAdmin(admin.ModelAdmin):
-    list_display = ['monthly_price_aoa', 'monthly_price_zar', 'updated_at']
+    list_display = [
+        'monthly_price_aoa',
+        'monthly_price_zar',
+        'complimentary_access_until',
+        'complimentary_plan_tier',
+        'updated_at',
+    ]
 

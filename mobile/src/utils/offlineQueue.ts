@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import axios from 'axios'
 import { personalFinanceApi } from '../services/api'
 import type { ExpensePayload } from '../types/api'
 
@@ -18,6 +19,10 @@ export async function getOfflineQueue(): Promise<QueuedExpense[]> {
   } catch {
     return []
   }
+}
+
+export function isOfflineError(error: unknown): boolean {
+  return axios.isAxiosError(error) && !error.response
 }
 
 export async function queueExpense(payload: ExpensePayload): Promise<void> {

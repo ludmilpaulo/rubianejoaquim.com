@@ -72,7 +72,9 @@ export default function ReviewReceiptScreen() {
       setReceipt(r)
       setCategories(unwrapList(cats))
       setBudgets(unwrapList(buds))
-      setAmount(r.amount != null ? String(r.amount) : '')
+      const nextAmount = r.amount != null ? String(r.amount) : ''
+      setAmount(nextAmount)
+      if (!nextAmount || Number(nextAmount) <= 0) setEditing(true)
       setCurrency(r.currency || 'AOA')
       setMerchant(r.merchant || '')
       setDescription(r.merchant || '')
@@ -151,9 +153,11 @@ export default function ReviewReceiptScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{t('receipt.detectedTitle')}</Text>
-        {isLowConfidence ? (
+        {isLowConfidence || !amount ? (
           <ZendaCard style={styles.warning}>
-            <Text style={styles.warningText}>{t('receipt.lowConfidence')}</Text>
+            <Text style={styles.warningText}>
+              {!amount ? t('premium.ocrManual') : t('receipt.lowConfidence')}
+            </Text>
           </ZendaCard>
         ) : null}
 

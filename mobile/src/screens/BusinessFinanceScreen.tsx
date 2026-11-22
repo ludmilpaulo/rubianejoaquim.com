@@ -62,6 +62,7 @@ interface Category {
   name: string
   icon: string
   color: string
+  user?: number | null
 }
 
 export default function BusinessFinanceScreen() {
@@ -247,6 +248,24 @@ export default function BusinessFinanceScreen() {
         errorFallback: 'business.saveCategoryFailed',
       },
     )
+  }
+
+  const confirmDelete = (titleKey: string, bodyKey: string, action: () => Promise<void>) => {
+    Alert.alert(t(titleKey), t(bodyKey), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: () => {
+          void feedback.run(action, {
+            pendingKey: 'deleteRecord',
+            pendingMessage: 'feedback.deleting',
+            successMessage: 'feedback.successDeleted',
+            errorFallback: 'feedback.tryAgain',
+          })
+        },
+      },
+    ])
   }
 
   const resetSaleForm = () => setSaleForm({
@@ -563,6 +582,12 @@ export default function BusinessFinanceScreen() {
                       {sale.invoice_number && (
                         <Chip icon="receipt" compact>#{sale.invoice_number}</Chip>
                       )}
+                      <Button mode="text" compact textColor={colors.danger} onPress={() => confirmDelete('premium.deleteSaleTitle', 'premium.deleteSaleConfirm', async () => {
+                        await businessFinanceApi.deleteSale(sale.id)
+                        await loadData()
+                      })}>
+                        {t('common.delete')}
+                      </Button>
                     </View>
                   </Card.Content>
                 </Card>
@@ -626,6 +651,12 @@ export default function BusinessFinanceScreen() {
                       {expense.is_tax_deductible && (
                         <Chip icon="receipt" compact style={styles.taxChip}>{t('business.deductible')}</Chip>
                       )}
+                      <Button mode="text" compact textColor={colors.danger} onPress={() => confirmDelete('premium.deleteBusinessExpenseTitle', 'premium.deleteBusinessExpenseConfirm', async () => {
+                        await businessFinanceApi.deleteExpense(expense.id)
+                        await loadData()
+                      })}>
+                        {t('common.delete')}
+                      </Button>
                     </View>
                   </Card.Content>
                 </Card>
@@ -825,8 +856,24 @@ export default function BusinessFinanceScreen() {
         >
           <ScrollView>
             <Text variant="headlineSmall" style={styles.modalTitle}>
-              Nova Categoria
+              {t('personal.newCategory')}
             </Text>
+            {categories.some((category) => category.user) ? (
+              <View>
+                <Text variant="bodySmall" style={styles.label}>{t('premium.yourCategories')}</Text>
+                {categories.filter((category) => category.user).map((category) => (
+                  <View key={category.id} style={styles.saleHeader}>
+                    <Text variant="bodyMedium">{category.name}</Text>
+                    <Button mode="text" compact textColor={colors.danger} onPress={() => confirmDelete('premium.deleteCategoryTitle', 'premium.deleteCategoryConfirm', async () => {
+                      await businessFinanceApi.deleteCategory(category.id)
+                      await loadData()
+                    })}>
+                      {t('common.delete')}
+                    </Button>
+                  </View>
+                ))}
+              </View>
+            ) : null}
             <TextInput
               label="Nome da Categoria"
               value={categoryForm.name}

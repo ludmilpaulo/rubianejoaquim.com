@@ -9,6 +9,11 @@ type Props = {
   checkout: CheckoutOptions | null
 }
 
+/**
+ * Subscription payment cart — only the charge currency (same as the offer).
+ * Secondary FX estimates are omitted to satisfy Google Play subscriptions policy
+ * ("Currency differences with prominent display price").
+ */
 export default function CheckoutPriceSummary({ checkout }: Props) {
   const { formatOriginal } = useCurrency()
   const { t, tw } = useI18n()
@@ -16,7 +21,7 @@ export default function CheckoutPriceSummary({ checkout }: Props) {
   if (!checkout?.charge) return null
 
   const { amount, currency } = checkout.charge
-  const estimate = checkout.estimate
+  const priceLabel = formatOriginal(Number(amount), currency)
 
   return (
     <View style={styles.wrap}>
@@ -24,18 +29,11 @@ export default function CheckoutPriceSummary({ checkout }: Props) {
         {t('access.cardPriceTitle')}
       </Text>
       <Text variant="headlineSmall" style={styles.charge}>
-        {formatOriginal(Number(amount), currency)}
+        {priceLabel}
         {t('access.perMonth')}
       </Text>
-      {estimate ? (
-        <Text variant="bodySmall" style={styles.estimate}>
-          {tw('access.cardPriceEstimate', {
-            amount: formatOriginal(Number(estimate.amount), estimate.currency),
-          })}
-        </Text>
-      ) : null}
       <Text variant="bodySmall" style={styles.note}>
-        {t('access.cardPriceNote')}
+        {tw('access.cardPriceNote', { currency, price: priceLabel })}
       </Text>
     </View>
   )
@@ -55,10 +53,6 @@ const styles = StyleSheet.create({
   charge: {
     color: '#111827',
     fontWeight: '700',
-  },
-  estimate: {
-    color: '#4b5563',
-    marginTop: 4,
   },
   note: {
     color: '#6b7280',

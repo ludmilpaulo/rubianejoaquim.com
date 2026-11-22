@@ -253,6 +253,14 @@ export interface PaymentSummary {
   rejected: number
 }
 
+export interface ComplimentaryAccess {
+  active: boolean
+  until: string | null
+  plan_tier: PlanTier | null
+  features: string[]
+  set_at: string | null
+}
+
 export interface GatewayConfigResponse {
   ikhokha: {
     provider: string
@@ -273,6 +281,7 @@ export interface GatewayConfigResponse {
     iban: string
     payee_name: string
   }
+  complimentary_access?: ComplimentaryAccess
 }
 
 export function unwrapList<T>(data: Paginated<T> | T[] | unknown): { results: T[]; count: number } {

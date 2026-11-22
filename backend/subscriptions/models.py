@@ -225,6 +225,25 @@ class SubscriptionBillingSettings(models.Model):
     monthly_price_zar = models.DecimalField(max_digits=12, decimal_places=2, default=180)
     iban = models.CharField(max_length=64, blank=True)
     payee_name = models.CharField(max_length=200, blank=True)
+    complimentary_access_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When set in the future, every authenticated user gets free app access until this time.',
+    )
+    complimentary_plan_tier = models.CharField(
+        max_length=20,
+        choices=MobileAppSubscription.PLAN_TIER_CHOICES,
+        default='premium',
+        help_text='Plan features granted during the complimentary access window.',
+    )
+    complimentary_set_at = models.DateTimeField(null=True, blank=True)
+    complimentary_set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='set_complimentary_access',
+    )
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

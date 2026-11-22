@@ -14,7 +14,6 @@ from rest_framework.views import APIView
 
 from .billing import (
     angola_bank_details,
-    estimate_amount,
     is_angola_user,
     monthly_price_aoa,
     monthly_price_zar,
@@ -65,7 +64,6 @@ def checkout_options(request):
     country = user_country(user)
     angola = is_angola_user(user)
     platform = (request.query_params.get('platform') or 'web').lower()
-    preferred = (user.preferred_currency or 'USD').upper()
     card_enabled = ikhokha_configured()
 
     if angola:
@@ -79,32 +77,9 @@ def checkout_options(request):
         charge_amount = monthly_price_zar()
         charge_currency = 'ZAR'
 
-    estimate = None
-    if angola:
-        converted = estimate_amount(charge_amount, charge_currency, preferred)
-        if converted is not None and preferred != charge_currency:
-            estimate = {
-                'amount': str(converted),
-                'currency': preferred,
-                'is_estimate': True,
-            }
-    else:
-        usd = estimate_amount(charge_amount, charge_currency, 'USD')
-        if usd is not None and charge_currency != 'USD':
-            estimate = {
-                'amount': str(usd),
-                'currency': 'USD',
-                'is_estimate': True,
-            }
-        elif preferred not in ('', charge_currency):
-            converted = estimate_amount(charge_amount, charge_currency, preferred)
-            if converted is not None:
-                estimate = {
-                    'amount': str(converted),
-                    'currency': preferred,
-                    'is_estimate': True,
-                }
-
+    # Do not return a secondary currency estimate on the subscription checkout
+    # payload. Google Play requires the offer price and payment cart to show the
+    # same charge currency (no ZAR headline + USD estimate, etc.).
     payload = {
         'country': country,
         'method': methods[0],
@@ -119,7 +94,7 @@ def checkout_options(request):
             'amount': str(charge_amount),
             'currency': charge_currency,
         },
-        'estimate': estimate,
+        'estimate': None,
         'proof_of_payment': angola_bank_details() if angola else None,
     }
     serializer = CheckoutOptionsSerializer(payload)

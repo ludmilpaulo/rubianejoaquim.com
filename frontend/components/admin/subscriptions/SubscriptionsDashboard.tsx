@@ -23,6 +23,7 @@ import type {
   AdminPaymentProof,
   AdminSubscription,
   AdminUserSearchResult,
+  ComplimentaryAccess,
   PlanTier,
   ProofStatus,
   SubscriptionAnalytics,
@@ -33,7 +34,9 @@ import OpsShell from './OpsShell'
 import PaymentsLedger from './PaymentsLedger'
 import { ConfirmModal, EmptyState, ErrorState, Skeleton, Sparkline, StatusBadge } from './OpsUi'
 
-type ConfirmKind = 'cancel' | 'reject' | 'refund' | 'pause'
+type ConfirmKind = 'cancel' | 'reject' | 'refund' | 'pause' | 'complimentaryGrant' | 'complimentaryClear'
+
+const COMPLIMENTARY_MONTHS = [1, 2, 3, 4, 5, 6] as const
 
 function canResumeStatus(status: string) {
   return status === 'paused' || status === 'expired' || status === 'cancelled'
@@ -87,6 +90,11 @@ export default function SubscriptionsDashboard() {
     kind: null,
     id: null,
   })
+  const [complimentary, setComplimentary] = useState<ComplimentaryAccess | null>(null)
+  const [complimentaryMonths, setComplimentaryMonths] = useState<number>(1)
+  const [complimentaryPlan, setComplimentaryPlan] = useState<PlanTier>('premium')
+  const [complimentaryBusy, setComplimentaryBusy] = useState(false)
+  const [complimentaryMessage, setComplimentaryMessage] = useState('')
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(q), 280)
@@ -160,6 +168,15 @@ export default function SubscriptionsDashboard() {
     }
   }, [proofStatus])
 
+  const loadComplimentary = useCallback(async () => {
+    try {
+      const res = await adminApi.subscriptions.complimentaryAccess.get()
+      setComplimentary(res.data as ComplimentaryAccess)
+    } catch (err) {
+      logger.error('Failed to load complimentary access', err)
+    }
+  }, [])
+
   useEffect(() => {
     void loadAnalytics()
   }, [loadAnalytics])
@@ -172,10 +189,52 @@ export default function SubscriptionsDashboard() {
     void loadProofs()
   }, [loadProofs])
 
+  useEffect(() => {
+    void loadComplimentary()
+  }, [loadComplimentary])
+
   const refreshAll = () => {
     void loadAnalytics()
     void loadSubs()
     void loadProofs()
+    void loadComplimentary()
+  }
+
+  const applyComplimentaryGrant = async () => {
+    try {
+      setComplimentaryBusy(true)
+      setComplimentaryMessage('')
+      setActionError('')
+      const res = await adminApi.subscriptions.complimentaryAccess.grant({
+        months: complimentaryMonths,
+        plan_tier: complimentaryPlan,
+      })
+      setComplimentary(res.data as ComplimentaryAccess)
+      setComplimentaryMessage(t('adminSubs.complimentaryGranted'))
+    } catch (err) {
+      logger.error('Failed to grant complimentary access', err)
+      setActionError(getApiErrorMessage(err, t('adminSubs.actionFailed')))
+    } finally {
+      setComplimentaryBusy(false)
+      setConfirm({ kind: null, id: null })
+    }
+  }
+
+  const applyComplimentaryClear = async () => {
+    try {
+      setComplimentaryBusy(true)
+      setComplimentaryMessage('')
+      setActionError('')
+      const res = await adminApi.subscriptions.complimentaryAccess.clear()
+      setComplimentary(res.data as ComplimentaryAccess)
+      setComplimentaryMessage(t('adminSubs.complimentaryCleared'))
+    } catch (err) {
+      logger.error('Failed to clear complimentary access', err)
+      setActionError(getApiErrorMessage(err, t('adminSubs.actionFailed')))
+    } finally {
+      setComplimentaryBusy(false)
+      setConfirm({ kind: null, id: null })
+    }
   }
 
   const clearFilters = () => {
@@ -209,17 +268,31 @@ export default function SubscriptionsDashboard() {
     }
   }
 
-  const confirmCopy = {
+  const confirmCopy: Record<ConfirmKind, string> = {
     cancel: t('adminSubs.confirmCancel'),
     reject: t('adminSubs.confirmReject'),
     refund: t('adminSubs.confirmRefund'),
     pause: t('adminSubs.confirmPause'),
+    complimentaryGrant: interpolate(t('adminSubs.complimentaryConfirmGrant'), {
+      months: String(complimentaryMonths),
+      plan: t(PLAN_LABEL_KEYS[complimentaryPlan]),
+    }),
+    complimentaryClear: t('adminSubs.complimentaryConfirmClear'),
   }
 
   const onConfirm = async () => {
-    if (!confirm.kind || !confirm.id) return
+    if (!confirm.kind) return
     const id = confirm.id
     const kind = confirm.kind
+    if (kind === 'complimentaryGrant') {
+      await applyComplimentaryGrant()
+      return
+    }
+    if (kind === 'complimentaryClear') {
+      await applyComplimentaryClear()
+      return
+    }
+    if (!id) return
     setConfirm({ kind: null, id: null })
     if (kind === 'cancel') await runAction(id, () => adminApi.subscriptions.deactivate(id))
     if (kind === 'pause') await runAction(id, () => adminApi.subscriptions.pause(id))
@@ -329,6 +402,78 @@ export default function SubscriptionsDashboard() {
           </>
         )}
       </div>
+
+      <section className="ops-card p-5 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="max-w-2xl">
+            <h2 className="text-lg font-bold">{t('adminSubs.complimentaryTitle')}</h2>
+            <p className="mt-1 text-sm" style={{ color: 'var(--ops-muted)' }}>
+              {t('adminSubs.complimentaryBody')}
+            </p>
+            <p className="mt-3 text-sm font-medium">
+              {complimentary?.active
+                ? interpolate(t('adminSubs.complimentaryActive'), {
+                    date: formatOpsDateTime(complimentary.until, locale),
+                    plan: t(PLAN_LABEL_KEYS[(complimentary.plan_tier || 'premium') as PlanTier]),
+                  })
+                : t('adminSubs.complimentaryInactive')}
+            </p>
+            {complimentaryMessage ? (
+              <p className="mt-2 text-sm" style={{ color: 'var(--ops-success, #2f9e44)' }}>
+                {complimentaryMessage}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <label className="text-sm">
+              <span className="block mb-1" style={{ color: 'var(--ops-muted)' }}>{t('adminSubs.complimentaryMonths')}</span>
+              <select
+                className="ops-select"
+                value={complimentaryMonths}
+                onChange={(e) => setComplimentaryMonths(Number(e.target.value))}
+                disabled={complimentaryBusy}
+              >
+                {COMPLIMENTARY_MONTHS.map((months) => (
+                  <option key={months} value={months}>
+                    {months === 1
+                      ? t('adminSubs.complimentaryMonthOne')
+                      : interpolate(t('adminSubs.complimentaryMonthOption'), { count: String(months) })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="block mb-1" style={{ color: 'var(--ops-muted)' }}>{t('adminSubs.complimentaryPlan')}</span>
+              <select
+                className="ops-select"
+                value={complimentaryPlan}
+                onChange={(e) => setComplimentaryPlan(e.target.value as PlanTier)}
+                disabled={complimentaryBusy}
+              >
+                {(['premium', 'business', 'family'] as PlanTier[]).map((tier) => (
+                  <option key={tier} value={tier}>{t(PLAN_LABEL_KEYS[tier])}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="ops-btn ops-btn-primary"
+              disabled={complimentaryBusy}
+              onClick={() => setConfirm({ kind: 'complimentaryGrant', id: 0 })}
+            >
+              {t('adminSubs.complimentaryGrant')}
+            </button>
+            <button
+              type="button"
+              className="ops-btn ops-btn-ghost"
+              disabled={complimentaryBusy || !complimentary?.active}
+              onClick={() => setConfirm({ kind: 'complimentaryClear', id: 0 })}
+            >
+              {t('adminSubs.complimentaryClear')}
+            </button>
+          </div>
+        </div>
+      </section>
 
       {analytics?.alerts && ((analytics.alerts.expiring_7_days ?? 0) > 0 || (analytics.alerts.failed_payments_today ?? 0) > 0 || (analytics.alerts.expired ?? 0) > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
@@ -800,7 +945,7 @@ export default function SubscriptionsDashboard() {
         body={confirm.kind ? confirmCopy[confirm.kind] : ''}
         confirmLabel={t('adminSubs.confirmAction')}
         cancelLabel={t('adminSubs.close')}
-        danger={confirm.kind === 'cancel' || confirm.kind === 'reject'}
+        danger={confirm.kind === 'cancel' || confirm.kind === 'reject' || confirm.kind === 'complimentaryClear'}
         onClose={() => setConfirm({ kind: null, id: null })}
         onConfirm={onConfirm}
       />

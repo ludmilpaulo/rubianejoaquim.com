@@ -6,7 +6,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'
 import { convertAmount, type ConvertResult } from '../services/exchangeRates'
-import { personalFinanceApi } from '../services/api'
+import { aiCopilotApi, personalFinanceApi } from '../services/api'
+import { isOfflineError, queueExpense } from '../utils/offlineQueue'
+import { useHasFeature } from '../hooks/useFeatureAccess'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { formatDate } from '../i18n/format'
 import DatePicker from '../components/DatePicker'
@@ -113,11 +115,14 @@ interface Category {
   name: string
   icon: string
   color: string
+  user?: number | null
 }
 
 export default function PersonalFinanceScreen() {
   const { t, tw, resolve, locale } = useI18n()
   const { currency: preferredCurrency, format, formatDual } = useCurrency()
+  const canQueueOffline = useHasFeature('offline_mode')
+  const canUseReports = useHasFeature('monthly_ai_report')
 
   const fmtDate = (dateStr: string, options?: Intl.DateTimeFormatOptions) =>
     formatDate(locale, new Date(dateStr), options)
@@ -144,6 +149,9 @@ export default function PersonalFinanceScreen() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
+  const [goalCoach, setGoalCoach] = useState<Record<number, string>>({})
+  const [debtCoach, setDebtCoach] = useState<Record<string, string>>({})
+  const [reportNote, setReportNote] = useState('')
   const [periodState, setPeriodState] = useState<PeriodState>(() => {
     const now = new Date()
     return { period: 'monthly', month: now.getMonth() + 1, year: now.getFullYear(), dateFrom: null, dateTo: null, dailyDate: null }
@@ -309,7 +317,7 @@ export default function PersonalFinanceScreen() {
   }
 
   const handleSaveExpense = async () => {
-    await feedback.run(
+    const outcome = await feedback.run(
       async () => {
         const expenseData: ExpensePayload = {
           amount: expenseForm.amount,
@@ -323,29 +331,47 @@ export default function PersonalFinanceScreen() {
           expenseData.category = parseInt(expenseForm.category, 10)
         }
 
+        let queued = false
         if (editingItem && 'payment_method' in editingItem) {
           const updated = await personalFinanceApi.updateExpense(editingItem.id, expenseData)
           await handleBudgetAlerts((updated as ExpenseCreateResponse).budget_alerts)
         } else {
-          const created = await personalFinanceApi.createExpense(expenseData)
-          await handleBudgetAlerts((created as ExpenseCreateResponse).budget_alerts)
+          try {
+            const created = await personalFinanceApi.createExpense(expenseData)
+            await handleBudgetAlerts((created as ExpenseCreateResponse).budget_alerts)
+          } catch (error: unknown) {
+            if (canQueueOffline && isOfflineError(error)) {
+              await queueExpense(expenseData)
+              queued = true
+            } else {
+              throw error
+            }
+          }
         }
         setShowExpenseModal(false)
         setEditingItem(null)
         resetExpenseForm()
-        await loadData()
-        if (showBudgetExpensesModal && selectedBudget) {
-          await loadBudgetExpenses(selectedBudget.id)
+        if (!queued) {
+          await loadData()
+          if (showBudgetExpensesModal && selectedBudget) {
+            await loadBudgetExpenses(selectedBudget.id)
+          }
         }
+        return queued ? 'queued' as const : 'saved' as const
       },
       {
         pendingKey: 'saveExpense',
         pendingMessage: 'feedback.savingExpense',
-        successMessage: 'feedback.successSaved',
+        silentSuccess: true,
         errorFallback: 'personal.saveExpenseFailed',
         onError: (error) => logger.error('Error saving expense:', error),
       },
     )
+    if (outcome === 'queued') {
+      alert.info(t('common.success'), 'premium.expenseQueued')
+    } else if (outcome === 'saved') {
+      alert.success('feedback.successSaved')
+    }
   }
 
   const handleDeleteExpense = async (expenseId: number) => {
@@ -650,6 +676,100 @@ export default function PersonalFinanceScreen() {
       },
     )
   }
+
+  const confirmDelete = (titleKey: string, bodyKey: string, action: () => Promise<void>) => {
+    Alert.alert(t(titleKey), t(bodyKey), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: () => {
+          void feedback.run(action, {
+            pendingKey: 'deleteRecord',
+            pendingMessage: 'feedback.deleting',
+            successMessage: 'feedback.successDeleted',
+            errorFallback: 'feedback.tryAgain',
+          })
+        },
+      },
+    ])
+  }
+
+  const handleDeleteBudget = (budgetId: number) => {
+    confirmDelete('premium.deleteBudgetTitle', 'premium.deleteBudgetConfirm', async () => {
+      await personalFinanceApi.deleteBudget(budgetId)
+      await loadData()
+    })
+  }
+
+  const handleDeleteDebt = (debtId: number) => {
+    confirmDelete('premium.deleteDebtTitle', 'premium.deleteDebtConfirm', async () => {
+      await personalFinanceApi.deleteDebt(debtId)
+      await loadData()
+    })
+  }
+
+  const handleDeleteCategory = (categoryId: number) => {
+    confirmDelete('premium.deleteCategoryTitle', 'premium.deleteCategoryConfirm', async () => {
+      await personalFinanceApi.deleteCategory(categoryId)
+      await loadData()
+    })
+  }
+
+  const loadGoalCoach = async (goalId: number) => {
+    try {
+      const data = await aiCopilotApi.getGoalCoach(goalId) as {
+        required_monthly?: string
+        required_weekly?: string
+        currency?: string
+      }
+      setGoalCoach((prev) => ({
+        ...prev,
+        [goalId]: tw('premium.goalCoachBody', {
+          monthly: data.required_monthly || '0',
+          weekly: data.required_weekly || '0',
+          currency: data.currency || preferredCurrency,
+        }),
+      }))
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'common.error'))
+    }
+  }
+
+  const loadDebtStrategy = async (creditor: string) => {
+    try {
+      const data = await aiCopilotApi.getDebtStrategy() as {
+        strategies?: Array<{ creditor?: string; message?: string }>
+      }
+      const match = (data.strategies || []).find((row) => row.creditor === creditor)
+      setDebtCoach((prev) => ({
+        ...prev,
+        [creditor]: match?.message || t('premium.debtStrategyEmpty'),
+      }))
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'common.error'))
+    }
+  }
+
+  const loadSavingsPlan = async () => {
+    try {
+      const data = await aiCopilotApi.getSavingsPlan() as { plans?: Array<{ message?: string }> }
+      const lines = (data.plans || []).map((plan) => plan.message).filter(Boolean)
+      setReportNote(lines.join('\n') || t('analytics.noSavingsProjection'))
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'common.error'))
+    }
+  }
+
+  const loadMonthlyReport = async () => {
+    try {
+      const data = await aiCopilotApi.getMonthlyReport() as { report?: string }
+      setReportNote(data.report || '')
+    } catch (error: unknown) {
+      alert.error(getApiErrorMessage(error, 'common.error'))
+    }
+  }
+
   const resetDebtForm = () => setDebtForm({ creditor: '', total_amount: '', paid_amount: '0', interest_rate: '0', due_date: null, description: '', currency: preferredCurrency })
 
   const handlePayDebt = async () => {
@@ -1302,6 +1422,14 @@ export default function PersonalFinanceScreen() {
                       >
                         {t('personal.addSpend')}
                       </Button>
+                      <Button
+                        mode="text"
+                        compact
+                        textColor={colors.danger}
+                        onPress={() => handleDeleteBudget(budget.id)}
+                      >
+                        {t('common.delete')}
+                      </Button>
                     </View>
                   </Card.Content>
                 </Card>
@@ -1312,6 +1440,19 @@ export default function PersonalFinanceScreen() {
 
         {activeTab === 'goals' && (
           <View style={styles.content}>
+            {canUseReports ? (
+              <View style={styles.budgetActions}>
+                <Button mode="outlined" compact onPress={() => { void loadMonthlyReport() }}>{t('premium.monthlyReport')}</Button>
+                <Button mode="outlined" compact onPress={() => { void loadSavingsPlan() }}>{t('premium.savingsPlan')}</Button>
+              </View>
+            ) : null}
+            {reportNote ? (
+              <Card style={styles.card}>
+                <Card.Content>
+                  <Text variant="bodyMedium">{reportNote}</Text>
+                </Card.Content>
+              </Card>
+            ) : null}
             {goals.length === 0 ? (
               <Card style={styles.card}>
                 <Card.Content style={styles.emptyContent}>
@@ -1374,6 +1515,14 @@ export default function PersonalFinanceScreen() {
                         {t('personal.addMoney')}
                       </Button>
                     )}
+                    {canUseReports ? (
+                      <Button mode="outlined" onPress={() => { void loadGoalCoach(goal.id) }} icon="robot-outline">
+                        {t('premium.goalCoach')}
+                      </Button>
+                    ) : null}
+                    {goalCoach[goal.id] ? (
+                      <Text variant="bodySmall" style={styles.goalDescription}>{goalCoach[goal.id]}</Text>
+                    ) : null}
                   </Card.Content>
                 </Card>
               ))
@@ -1479,6 +1628,19 @@ export default function PersonalFinanceScreen() {
                         {t('personal.payDebt')}
                       </Button>
                     )}
+                    <View style={styles.budgetActions}>
+                      {canUseReports ? (
+                        <Button mode="outlined" compact onPress={() => { void loadDebtStrategy(debt.creditor) }}>
+                          {t('premium.debtStrategy')}
+                        </Button>
+                      ) : null}
+                      <Button mode="text" compact textColor={colors.danger} onPress={() => handleDeleteDebt(debt.id)}>
+                        {t('common.delete')}
+                      </Button>
+                    </View>
+                    {debtCoach[debt.creditor] ? (
+                      <Text variant="bodySmall" style={styles.goalDescription}>{debtCoach[debt.creditor]}</Text>
+                    ) : null}
                     {debt.payments && debt.payments.length > 0 && (
                       <View style={styles.paymentHistory}>
                         <Text variant="labelMedium" style={styles.paymentHistoryTitle}>
@@ -1693,6 +1855,19 @@ export default function PersonalFinanceScreen() {
           <Text variant="headlineSmall" style={styles.modalTitle}>
             {t('personal.newCategory')}
           </Text>
+          {categories.some((category) => category.user) ? (
+            <View style={styles.dropdownContainer}>
+              <Text variant="bodySmall" style={styles.label}>{t('premium.yourCategories')}</Text>
+              {categories.filter((category) => category.user).map((category) => (
+                <View key={category.id} style={styles.budgetHeader}>
+                  <Text variant="bodyMedium">{category.name}</Text>
+                  <Button mode="text" compact textColor={colors.danger} onPress={() => handleDeleteCategory(category.id)}>
+                    {t('common.delete')}
+                  </Button>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <TextInput
             label={t('personal.categoryName')}
             value={categoryForm.name}

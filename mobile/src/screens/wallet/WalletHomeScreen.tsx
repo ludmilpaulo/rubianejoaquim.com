@@ -15,16 +15,25 @@ export default function WalletHomeScreen() {
   const [status, setStatus] = useState<{ live_enabled?: boolean; message?: string } | null>(null)
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [transactions, setTransactions] = useState<Array<{ id: number; amount?: string; currency?: string; transaction_type?: string; status?: string }>>([])
 
   const load = useCallback(async () => {
     try {
-      const [w, s] = await Promise.all([walletApi.getWallet(), walletApi.getStatus()])
+      const [w, s, tx] = await Promise.all([
+        walletApi.getWallet(),
+        walletApi.getStatus(),
+        walletApi.getTransactions().catch(() => ({ results: [] })),
+      ])
       setWallet(w)
       setStatus(s)
+      const rows = Array.isArray(tx) ? tx : (tx.results || [])
+      setTransactions(rows)
     } catch {
       Alert.alert(t('common.error'))
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }, [t])
 
@@ -56,7 +65,10 @@ export default function WalletHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView refreshControl={<RefreshControl refreshing={false} onRefresh={load} />} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load() }} />}
+        contentContainerStyle={styles.scroll}
+      >
         <Text style={styles.title}>{t('wallet.title')}</Text>
         {status?.live_enabled === false ? (
           <ZendaCard style={styles.banner}>
@@ -75,7 +87,26 @@ export default function WalletHomeScreen() {
         <Button mode="contained" loading={busy} onPress={sandboxDeposit} style={styles.btn}>
           {t('wallet.addFunds')}
         </Button>
-        <Text style={styles.kyc}>{t('wallet.kyc')}: {wallet?.kyc_status || 'none'}</Text>
+        <Text style={styles.section}>{t('premium.transactions')}</Text>
+        {transactions.length === 0 ? (
+          <Text style={styles.kyc}>{t('premium.noTransactions')}</Text>
+        ) : (
+          transactions.map((tx) => (
+            <ZendaCard key={tx.id} style={styles.card}>
+              <Text style={styles.kyc}>
+                {tx.transaction_type || t('premium.transactions')} · {tx.amount} {tx.currency} · {tx.status || ''}
+              </Text>
+            </ZendaCard>
+          ))
+        )}
+        <Text style={styles.kyc}>
+          {t('wallet.kyc')}: {t(
+            wallet?.kyc_status === 'pending' ? 'premium.kycPending'
+              : wallet?.kyc_status === 'verified' ? 'premium.kycVerified'
+                : wallet?.kyc_status === 'rejected' ? 'premium.kycRejected'
+                  : 'premium.kycNone',
+          )}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   )

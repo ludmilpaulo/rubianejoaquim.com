@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
-import { Text } from 'react-native-paper'
+import { Button, Text } from 'react-native-paper'
+import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { aiCopilotApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
@@ -30,6 +31,7 @@ interface Pattern {
 export default function FinancialHealthScreen() {
   const { t } = useI18n()
   const { format } = useCurrency()
+  const navigation = useNavigation<{ navigate: (name: string) => void }>()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(false)
@@ -99,6 +101,12 @@ export default function FinancialHealthScreen() {
 
         {narrative ? <Text style={styles.disclaimer}>{narrative}</Text> : null}
         <Text style={styles.disclaimer}>{summary?.disclaimer}</Text>
+        <Button mode="contained" onPress={() => navigation.navigate('HealthHistory')} style={styles.linkBtn}>
+          {t('premium.viewHistory')}
+        </Button>
+        <Button mode="outlined" onPress={() => navigation.navigate('Analytics')} style={styles.linkBtn}>
+          {t('analytics.title')}
+        </Button>
       </ScrollView>
     </SafeAreaView>
   )
@@ -127,4 +135,5 @@ const styles = StyleSheet.create({
   patternCard: { marginBottom: spacing.sm },
   patternText: { ...typography.body },
   disclaimer: { ...typography.caption, color: colors.text.secondary, marginTop: spacing.md },
+  linkBtn: { marginTop: spacing.sm },
 })

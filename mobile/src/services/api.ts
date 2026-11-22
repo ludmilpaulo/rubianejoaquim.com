@@ -417,8 +417,11 @@ export const accessApi = {
         })
       }
       
-      const planTier = subscriptionRes.data?.effective_tier || subscription?.plan_tier || 'premium'
-      const features: string[] = subscriptionRes.data?.features || []
+      const planTier = subscriptionRes.data?.effective_tier
+        || (hasMobileSubscription ? (subscription?.plan_tier || 'premium') : 'free')
+      const features: string[] = Array.isArray(subscriptionRes.data?.features)
+        ? subscriptionRes.data.features
+        : []
 
       return { hasAccess, hasExpiredSubscription, planTier, features }
     } catch (error) {

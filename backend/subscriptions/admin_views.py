@@ -49,7 +49,13 @@ from .services import (
     subscription_queryset,
 )
 from .tiers import PLAN_TIERS
-from .billing import get_billing_settings, get_ikhokha_config_row
+from .billing import (
+    clear_complimentary_access,
+    complimentary_access_info,
+    get_billing_settings,
+    get_ikhokha_config_row,
+    set_complimentary_access,
+)
 from .ikhokha import test_connection as ikhokha_test_connection
 from .payments import (
     create_proof_ledger,
@@ -268,6 +274,38 @@ class AdminMobileAppSubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         )
         serializer = AdminMobileAppSubscriptionDetailSerializer(sub, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get', 'post'], url_path='complimentary-access')
+    def complimentary_access(self, request):
+        """
+        Platform-wide free app access for 1–6 months.
+        GET — current window. POST { months: 1-6, plan_tier?, clear?: true }.
+        """
+        if request.method == 'GET':
+            return Response(complimentary_access_info())
+
+        if bool(request.data.get('clear')):
+            info = clear_complimentary_access(admin=request.user)
+            record_admin_action(request, 'clear_complimentary_access', details=info)
+            return Response(info)
+
+        months = request.data.get('months')
+        plan_tier = request.data.get('plan_tier') or 'premium'
+        try:
+            info = set_complimentary_access(
+                months=months,
+                plan_tier=plan_tier,
+                admin=request.user,
+            )
+        except (TypeError, ValueError) as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        record_admin_action(
+            request,
+            'grant_complimentary_access',
+            details={'months': int(months), 'plan_tier': info.get('plan_tier'), 'until': info.get('until')},
+        )
+        return Response(info)
 
     @action(detail=False, methods=['get'], url_path='export')
     def export(self, request):
@@ -675,6 +713,7 @@ class AdminPaymentGatewayConfigViewSet(viewsets.ViewSet):
                 'iban': billing.iban,
                 'payee_name': billing.payee_name,
             }).data,
+            'complimentary_access': complimentary_access_info(),
         })
 
     def partial_update(self, request, pk=None):
@@ -722,6 +761,7 @@ class AdminPaymentGatewayConfigViewSet(viewsets.ViewSet):
                 'iban': billing.iban,
                 'payee_name': billing.payee_name,
             }).data,
+            'complimentary_access': complimentary_access_info(),
         })
 
     @action(detail=False, methods=['patch', 'put'], url_path='update')

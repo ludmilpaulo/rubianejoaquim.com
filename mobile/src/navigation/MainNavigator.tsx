@@ -36,6 +36,17 @@ import ReviewReceiptScreen from '../screens/ReviewReceiptScreen'
 import TransactionHistoryScreen from '../screens/TransactionHistoryScreen'
 import FinancialHealthScreen from '../screens/FinancialHealthScreen'
 import WalletHomeScreen from '../screens/wallet/WalletHomeScreen'
+import { withFeature } from '../components/FeatureGate'
+
+const GatedAICopilot = withFeature('ai_copilot', AICopilotScreen)
+const GatedHealthHistory = withFeature('health_history', HealthHistoryScreen)
+const GatedFinancialHealth = withFeature('health_score', FinancialHealthScreen)
+const GatedAnalytics = withFeature('advanced_analytics', AnalyticsScreen)
+const GatedFamily = withFeature('shared_finance', FamilyFinanceScreen)
+const GatedReceipts = withFeature('receipt_scanner', ReceiptScannerScreen)
+const GatedScanReceipt = withFeature('receipt_scanner', ScanReceiptScreen)
+const GatedReviewReceipt = withFeature('receipt_scanner', ReviewReceiptScreen)
+const GatedBusiness = withFeature('business_finance', BusinessFinanceScreen)
 
 const Tab = createBottomTabNavigator()
 const HomeStackNav = createStackNavigator<HomeStackParamList>()
@@ -68,7 +79,7 @@ function HomeStack() {
       />
       <HomeStackNav.Screen 
         name="AICopilot" 
-        component={AICopilotScreen}
+        component={GatedAICopilot}
         options={{ title: t('navigation.aiCopilot'), headerStyle, headerTintColor: '#fff' }}
       />
       <HomeStackNav.Screen 
@@ -76,13 +87,13 @@ function HomeStack() {
         component={MarketScreen}
         options={{ title: t('navigation.market'), headerStyle, headerTintColor: '#fff' }}
       />
-      <HomeStackNav.Screen name="HealthHistory" component={HealthHistoryScreen} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="FinancialHealth" component={FinancialHealthScreen} options={{ title: t('navigation.financialHealth'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="Analytics" component={AnalyticsScreen} options={{ title: t('navigation.analytics'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="FamilyFinance" component={FamilyFinanceScreen} options={{ title: t('navigation.family'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="ReceiptScanner" component={ReceiptScannerScreen} options={{ title: t('navigation.receipts'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="ScanReceipt" component={ScanReceiptScreen} options={{ title: t('receipt.scanCamera'), headerStyle, headerTintColor: '#fff' }} />
-      <HomeStackNav.Screen name="ReviewReceipt" component={ReviewReceiptScreen} options={{ title: t('receipt.reviewTitle'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="HealthHistory" component={GatedHealthHistory} options={{ title: t('navigation.healthHistory'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="FinancialHealth" component={GatedFinancialHealth} options={{ title: t('navigation.financialHealth'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="Analytics" component={GatedAnalytics} options={{ title: t('navigation.analytics'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="FamilyFinance" component={GatedFamily} options={{ title: t('navigation.family'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ReceiptScanner" component={GatedReceipts} options={{ title: t('navigation.receipts'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ScanReceipt" component={GatedScanReceipt} options={{ title: t('receipt.scanCamera'), headerStyle, headerTintColor: '#fff' }} />
+      <HomeStackNav.Screen name="ReviewReceipt" component={GatedReviewReceipt} options={{ title: t('receipt.reviewTitle'), headerStyle, headerTintColor: '#fff' }} />
       <HomeStackNav.Screen name="TransactionHistory" component={TransactionHistoryScreen} options={{ title: t('navigation.transactionHistory'), headerStyle, headerTintColor: '#fff' }} />
       <HomeStackNav.Screen name="WalletHome" component={WalletHomeScreen} options={{ title: t('navigation.wallet'), headerStyle, headerTintColor: '#fff' }} />
     </HomeStackNav.Navigator>
@@ -258,7 +269,7 @@ export default function MainNavigator() {
       />
       <Tab.Screen 
         name="Business" 
-        component={BusinessFinanceScreen}
+        component={GatedBusiness}
         options={{ title: t('tabs.business'), tabBarButtonTestID: 'tab-business' }}
       />
       <Tab.Screen 

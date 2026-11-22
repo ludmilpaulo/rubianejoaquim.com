@@ -7,8 +7,9 @@ from django.utils import timezone
 from django.db.utils import OperationalError
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from subscriptions.permissions import require_feature
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,6 @@ def get_period_dates(request):
         end = datetime(now.year, now.month + 1, 1).date() - timedelta(days=1)
     return start, end
 
-
-from rest_framework.permissions import AllowAny
 
 from .models import (
     Category, PersonalExpense, PersonalIncome, Budget, Goal, GoalContribution,
@@ -636,7 +635,7 @@ class DebtViewSet(viewsets.ModelViewSet):
 class SaleViewSet(viewsets.ModelViewSet):
     """ViewSet para vendas"""
     serializer_class = SaleSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_feature('business_finance')]
 
     def get_queryset(self):
         user = self.request.user
@@ -676,7 +675,7 @@ class SaleViewSet(viewsets.ModelViewSet):
 class BusinessExpenseViewSet(viewsets.ModelViewSet):
     """ViewSet para despesas do negócio"""
     serializer_class = BusinessExpenseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_feature('business_finance')]
 
     def get_queryset(self):
         user = self.request.user
@@ -721,7 +720,7 @@ class BusinessExpenseViewSet(viewsets.ModelViewSet):
 
 class BusinessMetricsViewSet(viewsets.ViewSet):
     """ViewSet para métricas do negócio"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_feature('business_finance')]
 
     @action(detail=False, methods=['get'])
     def overview(self, request):
@@ -743,6 +742,15 @@ class BusinessMetricsViewSet(viewsets.ViewSet):
 
 class DashboardViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'health_score':
+            return [require_feature('health_score')()]
+        if self.action == 'health_history':
+            return [require_feature('health_history')()]
+        if self.action == 'analytics':
+            return [require_feature('advanced_analytics')()]
+        return [IsAuthenticated()]
 
     def list(self, request):
         try:
@@ -781,7 +789,7 @@ class DashboardViewSet(viewsets.ViewSet):
 
 class ReceiptViewSet(viewsets.ModelViewSet):
     serializer_class = ReceiptSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [require_feature('receipt_scanner')]
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()

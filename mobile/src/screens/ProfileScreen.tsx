@@ -40,6 +40,8 @@ export default function ProfileScreen() {
   const [uploadNotes, setUploadNotes] = useState('')
   const [pointsBalance, setPointsBalance] = useState<number>(0)
   const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
+  const [pointsHistory, setPointsHistory] = useState<Array<{ id: number; description?: string; points?: number | string; created_at?: string }>>([])
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const loadSubscription = useCallback(async () => {
     try {
@@ -350,6 +352,34 @@ export default function ProfileScreen() {
             <Text variant="bodySmall" style={styles.pointsHint}>
               {t('profile.pointsEarnHint')}
             </Text>
+            <Button
+              mode="text"
+              onPress={() => {
+                void (async () => {
+                  try {
+                    const data = await referralApi.getPointsHistory() as { results?: Array<{ id: number; description?: string; points?: number | string; created_at?: string }> } | Array<{ id: number; description?: string; points?: number | string; created_at?: string }>
+                    const rows = Array.isArray(data) ? data : (data.results || [])
+                    setPointsHistory(rows)
+                    setHistoryOpen(true)
+                  } catch (error) {
+                    alert.error(getApiErrorMessage(error, 'common.error'))
+                  }
+                })()
+              }}
+            >
+              {t('premium.pointsHistory')}
+            </Button>
+            {historyOpen ? (
+              pointsHistory.length === 0 ? (
+                <Text variant="bodySmall">{t('premium.pointsHistoryEmpty')}</Text>
+              ) : (
+                pointsHistory.slice(0, 8).map((row) => (
+                  <Text key={row.id} variant="bodySmall" style={styles.pointsHint}>
+                    {row.points} · {row.description || row.created_at || ''}
+                  </Text>
+                ))
+              )
+            ) : null}
             {(subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled') && pointsBalance > 0 && (
               <>
                 {pointsBalance >= 10 ? (
@@ -478,10 +508,12 @@ export default function ProfileScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>{t('profile.labelAmount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {formatOriginal(
-                        paymentInfo.monthly_price_kz,
-                        paymentInfo.currency || 'AOA',
-                      )}
+                      {checkout?.charge
+                        ? formatOriginal(Number(checkout.charge.amount), checkout.charge.currency)
+                        : formatOriginal(
+                            paymentInfo.monthly_price_kz,
+                            paymentInfo.currency || 'AOA',
+                          )}
                       {t('access.perMonth')}
                     </Text>
                   </View>

@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { personalFinanceApi } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import ZendaCard from '../components/ui/ZendaCard'
 import { colors, radius, spacing, typography } from '../theme'
 import type { AnalyticsPayload } from '../types/api'
@@ -23,6 +24,7 @@ function EmptySection({ icon, text }: { icon: keyof typeof MaterialCommunityIcon
 
 export default function AnalyticsScreen() {
   const { t } = useI18n()
+  const { format } = useCurrency()
   const navigation = useNavigation<Navigation>()
   const [data, setData] = useState<AnalyticsPayload | null>(null)
   const [loading, setLoading] = useState(true)
@@ -123,7 +125,7 @@ export default function AnalyticsScreen() {
                 <ZendaCard key={debt.id || index} accentColor={colors.brand.danger}>
                   <Text style={styles.cardTitle}>{debt.creditor || t('analytics.debtPayoff')}</Text>
                   <Text style={styles.meta}>
-                    {t('analytics.remaining')}: {debt.remaining || 0} - {debt.months_to_payoff || 0} {t('analytics.months')}
+                    {t('analytics.remaining')}: {format(Number(debt.remaining || 0))} · {debt.months_to_payoff || 0} {t('analytics.months')}
                   </Text>
                   {debt.message ? <Text style={styles.message}>{debt.message}</Text> : null}
                 </ZendaCard>
@@ -141,7 +143,7 @@ export default function AnalyticsScreen() {
                 <ZendaCard key={goal.id || index} accentColor={colors.brand.secondary}>
                   <Text style={styles.cardTitle}>{goal.title || goal.goal_title || t('analytics.savingsProjection')}</Text>
                   <Text style={styles.meta}>
-                    {t('analytics.suggestedMonthly')}: {goal.suggested_monthly || 0}
+                    {t('analytics.suggestedMonthly')}: {format(Number(goal.suggested_monthly || 0))}
                   </Text>
                   {goal.projected_date ? <Text style={styles.message}>{goal.projected_date}</Text> : null}
                   {goal.message ? <Text style={styles.message}>{goal.message}</Text> : null}
@@ -166,7 +168,7 @@ export default function AnalyticsScreen() {
                       {forecast.message ? <Text style={styles.message}>{forecast.message}</Text> : null}
                     </View>
                     <Text style={styles.forecastVal}>
-                      {forecast.projected_expenses || forecast.forecast_amount || 0}
+                      {format(Number(forecast.projected_expenses || forecast.forecast_amount || 0))}
                     </Text>
                   </View>
                 </ZendaCard>

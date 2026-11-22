@@ -441,6 +441,13 @@ export const adminApi = {
       api.get('/subscriptions/admin/subscriptions/search-users/', { params: { q } }),
     create: (data: { user_id: number; plan_tier: string; start_trial?: boolean }) =>
       api.post('/subscriptions/admin/subscriptions/create-subscription/', data),
+    complimentaryAccess: {
+      get: () => api.get('/subscriptions/admin/subscriptions/complimentary-access/'),
+      grant: (data: { months: number; plan_tier?: string }) =>
+        api.post('/subscriptions/admin/subscriptions/complimentary-access/', data),
+      clear: () =>
+        api.post('/subscriptions/admin/subscriptions/complimentary-access/', { clear: true }),
+    },
     export: (params: SubscriptionListParams & { export_format: 'csv' | 'xlsx' | 'pdf' }) =>
       api.get('/subscriptions/admin/subscriptions/export/', {
         params,

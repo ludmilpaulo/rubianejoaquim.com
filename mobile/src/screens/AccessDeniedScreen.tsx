@@ -171,8 +171,21 @@ export default function AccessDeniedScreen() {
     }
   }
 
-  const monthlyPriceKz = paymentInfo?.monthly_price_kz ?? 10000
-  const pointsForSubscription = monthlyPriceKz / 1000
+  const chargeAmount = checkout?.charge
+    ? Number(checkout.charge.amount)
+    : paymentInfo?.monthly_price_kz != null
+      ? Number(paymentInfo.monthly_price_kz)
+      : null
+  const chargeCurrency =
+    checkout?.charge?.currency || paymentInfo?.currency || null
+  /** Single prominent price for offer copy + payment cart (Play currency policy). */
+  const offerPriceLabel = iapProduct?.displayPrice
+    ? iapProduct.displayPrice
+    : chargeAmount != null && chargeCurrency
+      ? formatOriginal(chargeAmount, chargeCurrency)
+      : null
+  const monthlyPriceKz = chargeAmount ?? paymentInfo?.monthly_price_kz ?? 10000
+  const pointsForSubscription = Number(monthlyPriceKz) / 1000
 
   const handleRedeemSubscriptionWithPoints = async () => {
     if (pointsBalance < pointsForSubscription) {
@@ -349,12 +362,18 @@ export default function AccessDeniedScreen() {
             {t('access.message')}
           </Text>
           <Text variant="bodyMedium" style={styles.submessage}>
-            {t('access.submessage')}
+            {offerPriceLabel
+              ? tw('access.submessageWithPrice', { price: offerPriceLabel })
+              : t('access.submessage')}
           </Text>
           {!subLoading && !subscription && (
             <View style={styles.termsBlock}>
               <Text variant="labelMedium" style={styles.termsTitle}>{t('access.termsTitle')}</Text>
-              <Text variant="bodySmall" style={styles.termsText}>{t('access.termsText')}</Text>
+              <Text variant="bodySmall" style={styles.termsText}>
+                {offerPriceLabel
+                  ? tw('access.termsTextWithPrice', { price: offerPriceLabel })
+                  : t('access.termsText')}
+              </Text>
             </View>
           )}
           {!subLoading && !subscription && (
@@ -379,10 +398,11 @@ export default function AccessDeniedScreen() {
                   <View style={styles.paymentRow}>
                     <Text variant="bodySmall" style={styles.paymentLabel}>{t('access.amount')}</Text>
                     <Text variant="bodyLarge" style={styles.paymentValue}>
-                      {formatOriginal(
-                        paymentInfo.monthly_price_kz,
-                        paymentInfo.currency || 'AOA',
-                      )}
+                      {offerPriceLabel ||
+                        formatOriginal(
+                          paymentInfo.monthly_price_kz,
+                          paymentInfo.currency || chargeCurrency || 'AOA',
+                        )}
                       {t('access.perMonth')}
                     </Text>
                   </View>

@@ -23,6 +23,14 @@ export async function getCached<T>(key: string): Promise<T | null> {
   }
 }
 
+export async function clearApiCache(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys()
+  const cacheKeys = keys.filter((key) => key.startsWith(PREFIX))
+  if (cacheKeys.length > 0) {
+    await AsyncStorage.multiRemove(cacheKeys)
+  }
+}
+
 export async function setCached<T>(key: string, data: T, ttlMs = DEFAULT_TTL_MS): Promise<void> {
   const entry: CacheEntry<T> = { data, expires: Date.now() + ttlMs }
   await AsyncStorage.setItem(PREFIX + key, JSON.stringify(entry))

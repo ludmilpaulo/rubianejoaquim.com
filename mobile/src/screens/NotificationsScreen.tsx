@@ -4,7 +4,9 @@ import { Text, Card, Button, Chip, Badge, IconButton } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { tasksApi } from '../services/api'
+import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native'
 import { useI18n } from '../contexts/I18nContext'
+import { openNotificationTarget } from '../navigation/notificationRoutes'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import { getApiErrorMessage } from '../types/api'
@@ -28,6 +30,7 @@ interface Notification {
 export default function NotificationsScreen() {
   const { t, tw, locale } = useI18n()
   const feedback = useActionFeedback()
+  const navigation = useNavigation<NavigationProp<ParamListBase>>()
   const dateLoc =
     locale === 'pt' ? 'pt-AO' : locale === 'fr' ? 'fr-FR' : locale === 'es' ? 'es-ES' : 'en-US'
   const [refreshing, setRefreshing] = useState(false)
@@ -79,6 +82,12 @@ export default function NotificationsScreen() {
     setRefreshing(true)
     await loadData()
     setRefreshing(false)
+  }
+
+  const handleOpenNotification = (notification: Notification) => {
+    openNotificationTarget(navigation, notification)
+    if (notification.is_read || feedback.isPending(`read-${notification.id}`)) return
+    handleMarkAsRead(notification)
   }
 
   const handleMarkAsRead = (notification: Notification) => {
@@ -262,7 +271,7 @@ export default function NotificationsScreen() {
               return (
                 <TouchableOpacity
                   key={notification.id}
-                  onPress={() => handleMarkAsRead(notification)}
+                  onPress={() => handleOpenNotification(notification)}
                   activeOpacity={0.7}
                 >
                   <Card

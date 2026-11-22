@@ -316,7 +316,7 @@ export default function HomeScreen() {
               <>
             <FinancialHealthCard
               health={dashboard.health}
-              onPress={() => navigation.navigate('HealthHistory')}
+              onPress={() => navigation.navigate('FinancialHealth')}
             />
 
             <Text variant="labelLarge" style={styles.sectionTitle}>
@@ -550,6 +550,15 @@ export default function HomeScreen() {
               <View style={styles.hubRow}>
                 <MaterialCommunityIcons name="receipt" size={28} color={colors.brand.secondary} />
                 <Text variant="titleMedium" style={styles.hubTitle}>{t('receipt.title')}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
+              </View>
+            </ZendaCard>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('WalletHome')} activeOpacity={0.8}>
+            <ZendaCard accentColor={colors.brand.navy}>
+              <View style={styles.hubRow}>
+                <MaterialCommunityIcons name="wallet-outline" size={28} color={colors.brand.primary} />
+                <Text variant="titleMedium" style={styles.hubTitle}>{t('premium.viewWallet')}</Text>
                 <MaterialCommunityIcons name="chevron-right" size={24} color={colors.text.muted} />
               </View>
             </ZendaCard>

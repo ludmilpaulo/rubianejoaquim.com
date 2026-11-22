@@ -80,7 +80,7 @@ export const commonScreens: Record<
       deleteAccountFailed: 'Erro ao solicitar exclusão de conta.',
       trialStartedTitle: 'Semana grátis ativada',
       trialStartedMsg:
-        'Tem 7 dias de acesso gratuito. Depois pode subscrever por 10.000 AOA/mês e enviar comprovativo.',
+        'Tem 7 dias de acesso gratuito. Depois pode subscrever pelo preço mensal mostrado na app.',
       trialUsedTitle: 'Período de teste terminado',
       trialUsedMsg:
         'O período de teste já foi utilizado. Efetue o pagamento mensal e envie o comprovativo.',
@@ -147,10 +147,14 @@ export const commonScreens: Record<
       message:
         'Para usar a app, precisa de estar inscrito num curso, ter mentoria aprovada ou ter subscrição do app.',
       submessage:
-        'Não tem curso? Comece com 1 semana grátis, depois subscreva por 10.000 AOA/mês. O pagamento é ativado após envio do comprovativo.',
+        'Não tem curso? Comece com 1 semana grátis e depois subscreva pelo preço mensal mostrado abaixo.',
+      submessageWithPrice:
+        'Não tem curso? Comece com 1 semana grátis, depois subscreva por {{price}}/mês.',
       termsTitle: 'Termos da oferta de teste',
       termsText:
-        '• O período de teste dura 7 dias.\n• Após o teste, a subscrição custa 10.000 AOA/mês.\n• Pode cancelar durante o teste sem pagamento automático.\n• Para subscrever, envie o comprovativo na app.',
+        '• O período de teste dura 7 dias.\n• Após o teste, aplica-se a subscrição mensal pelo preço mostrado nesta página.\n• Pode cancelar durante o teste sem pagamento automático.\n• O valor e a moeda do pagamento são os mesmos em toda a compra.',
+      termsTextWithPrice:
+        '• O período de teste dura 7 dias.\n• Após o teste, a subscrição custa {{price}}/mês.\n• Pode cancelar durante o teste sem pagamento automático.\n• O preço e a moeda são os mesmos em toda a compra.',
       ctaHint: 'Toque no botão abaixo para ativar a sua semana grátis.',
       trialButtonHint: 'Toque para ativar o acesso à app',
       browseCourses: 'Ver cursos e inscrever-se',
@@ -186,7 +190,7 @@ export const commonScreens: Record<
       cardUnavailable: 'Pagamentos com cartão ainda não estão disponíveis.',
       cardPriceTitle: 'Subscrição mensal (cartão)',
       cardPriceEstimate: '≈ {{amount}} (estimativa)',
-      cardPriceNote: 'Cobrança em ZAR via iKhokha. Valor em USD é estimativa do servidor.',
+      cardPriceNote: 'Será cobrado {{price}} ({{currency}}) nesta compra. Sem conversão secundária no ecrã.',
       paymentHistory: 'Histórico de pagamentos',
       paymentSuccess: 'Pagamento confirmado. A sua subscrição está activa.',
       paymentFailedMsg: 'Não foi possível confirmar o pagamento. Tente novamente.',
@@ -801,7 +805,7 @@ export const commonScreens: Record<
       deleteAccountFailed: 'Could not request account deletion.',
       trialStartedTitle: 'Free week activated',
       trialStartedMsg:
-        'You have 7 days of free access. Then subscribe for 10,000 AOA/month and upload payment proof.',
+        'You have 7 days of free access. Then subscribe at the monthly price shown in the app.',
       trialUsedTitle: 'Trial ended',
       trialUsedMsg:
         'Your free trial was already used. Pay the monthly fee and upload proof to continue.',
@@ -864,10 +868,14 @@ export const commonScreens: Record<
       message:
         'To use the app you need a course enrollment, approved mentorship, or an app subscription.',
       submessage:
-        'No course yet? Start with a 1-week free trial, then subscribe for 10,000 AOA/month with payment proof.',
+        'No course yet? Start with a 1-week free trial, then subscribe at the monthly price shown below.',
+      submessageWithPrice:
+        'No course yet? Start with a 1-week free trial, then subscribe for {{price}}/month.',
       termsTitle: 'Trial offer terms',
       termsText:
-        '• Trial lasts 7 days.\n• After trial, subscription is 10,000 AOA/month.\n• Cancel during trial with no auto charge.\n• Upload proof in the app to subscribe.',
+        '• Trial lasts 7 days.\n• After trial, the monthly subscription price shown on this page applies.\n• Cancel during trial with no auto charge.\n• The charge amount and currency stay the same through checkout.',
+      termsTextWithPrice:
+        '• Trial lasts 7 days.\n• After trial, subscription is {{price}}/month.\n• Cancel during trial with no auto charge.\n• The same price and currency are used throughout purchase.',
       ctaHint: 'Tap the button below to activate your free week.',
       trialButtonHint: 'Tap to activate app access',
       browseCourses: 'Browse courses & enroll',
@@ -903,7 +911,7 @@ export const commonScreens: Record<
       cardUnavailable: 'Card payments are not available yet.',
       cardPriceTitle: 'Monthly subscription (card)',
       cardPriceEstimate: '≈ {{amount}} (estimate)',
-      cardPriceNote: 'Charged in ZAR via iKhokha. USD amount is a server-side estimate.',
+      cardPriceNote: 'You will be charged {{price}} ({{currency}}) for this purchase. No secondary currency is shown.',
       paymentHistory: 'Payment history',
       paymentSuccess: 'Payment confirmed. Your subscription is active.',
       paymentFailedMsg: "We couldn't confirm your payment. Please try again.",
@@ -1511,7 +1519,7 @@ export const commonScreens: Record<
       redeemConfirmMsg: 'Utiliser {{points}} points pour l\'abonnement mensuel ?',
       redeemSuccess: 'Abonnement activé avec des points !',
       trialStartedTitle: 'Semaine gratuite activée',
-      trialStartedMsg: '7 jours d\'accès gratuit, puis 10 000 AOA/mois avec preuve de paiement.',
+      trialStartedMsg: '7 jours d\'accès gratuit, puis abonnement au prix mensuel affiché dans l\'app.',
       trialUsedTitle: 'Essai terminé',
       trialUsedMsg: 'L\'essai gratuit a déjà été utilisé. Payez et envoyez une preuve.',
       accessPending: 'Abonnement créé mais accès pas encore mis à jour. Appuyez sur « Vérifier ».',
@@ -1574,9 +1582,14 @@ export const commonScreens: Record<
     access: {
       title: 'Accès requis',
       message: 'Abonnement actif ou cours requis pour utiliser Zenda.',
-      submessage: 'Essai gratuit d\'une semaine ou inscription sur le site.',
+      submessage: 'Essai gratuit d\'une semaine, puis abonnement au prix mensuel affiché ci-dessous.',
+      submessageWithPrice:
+        'Essai gratuit d\'une semaine, puis abonnement à {{price}}/mois.',
       termsTitle: 'Conditions de l\'essai',
-      termsText: 'Une semaine gratuite par compte. Ensuite 10 000 AOA/mois avec preuve.',
+      termsText:
+        '• Une semaine gratuite par compte.\n• Ensuite, le prix mensuel affiché sur cette page s\'applique.\n• Même montant et même devise tout au long de l\'achat.',
+      termsTextWithPrice:
+        '• Une semaine gratuite par compte.\n• Ensuite, abonnement à {{price}}/mois.\n• Même prix et même devise tout au long de l\'achat.',
       startTrial: 'Commencer ma semaine gratuite',
       browseCourses: 'Voir les cours sur le site',
       verifyAgain: 'Vérifier à nouveau',
@@ -1613,7 +1626,7 @@ export const commonScreens: Record<
       cardUnavailable: 'Les paiements par carte ne sont pas encore disponibles.',
       cardPriceTitle: 'Abonnement mensuel (carte)',
       cardPriceEstimate: '≈ {{amount}} (estimation)',
-      cardPriceNote: 'Facturation en ZAR via iKhokha. Le montant USD est une estimation serveur.',
+      cardPriceNote: 'Vous serez facturé {{price}} ({{currency}}) pour cet achat. Aucune autre devise n\'est affichée.',
       paymentHistory: 'Historique des paiements',
       paymentSuccess: 'Paiement confirmé. Votre abonnement est actif.',
       paymentFailedMsg: 'Nous n\'avons pas pu confirmer le paiement. Réessayez.',
@@ -2216,7 +2229,7 @@ export const commonScreens: Record<
       redeemConfirmMsg: '¿Usar {{points}} puntos para la suscripción mensual?',
       redeemSuccess: '¡Suscripción activada con puntos!',
       trialStartedTitle: 'Semana gratis activada',
-      trialStartedMsg: '7 días gratis, luego 10.000 AOA/mes con comprobante.',
+      trialStartedMsg: '7 días gratis, luego el precio mensual mostrado en la app.',
       trialUsedTitle: 'Prueba terminada',
       trialUsedMsg: 'La prueba gratis ya se usó. Pague y envíe comprobante.',
       accessPending: 'Suscripción creada pero acceso pendiente. Pulse «Verificar».',
@@ -2279,9 +2292,14 @@ export const commonScreens: Record<
     access: {
       title: 'Acceso requerido',
       message: 'Necesita suscripción activa o curso para usar Zenda.',
-      submessage: 'Prueba gratis de 1 semana o inscríbase en la web.',
+      submessage: 'Prueba gratis de 1 semana y luego suscripción al precio mensual mostrado abajo.',
+      submessageWithPrice:
+        'Prueba gratis de 1 semana y luego suscripción por {{price}}/mes.',
       termsTitle: 'Términos de la prueba',
-      termsText: 'Una semana gratis por cuenta. Luego 10.000 AOA/mes con comprobante.',
+      termsText:
+        '• Una semana gratis por cuenta.\n• Después se aplica el precio mensual mostrado en esta página.\n• El mismo importe y moneda en toda la compra.',
+      termsTextWithPrice:
+        '• Una semana gratis por cuenta.\n• Luego la suscripción cuesta {{price}}/mes.\n• El mismo precio y moneda en toda la compra.',
       startTrial: 'Empezar mi semana gratis',
       browseCourses: 'Ver cursos en la web',
       verifyAgain: 'Verificar de nuevo',
@@ -2318,7 +2336,7 @@ export const commonScreens: Record<
       cardUnavailable: 'Los pagos con tarjeta aún no están disponibles.',
       cardPriceTitle: 'Suscripción mensual (tarjeta)',
       cardPriceEstimate: '≈ {{amount}} (estimación)',
-      cardPriceNote: 'Cobro en ZAR vía iKhokha. El importe en USD es una estimación del servidor.',
+      cardPriceNote: 'Se cobrará {{price}} ({{currency}}) en esta compra. No se muestra otra moneda.',
       paymentHistory: 'Historial de pagos',
       paymentSuccess: 'Pago confirmado. Tu suscripción está activa.',
       paymentFailedMsg: 'No pudimos confirmar el pago. Inténtalo de nuevo.',

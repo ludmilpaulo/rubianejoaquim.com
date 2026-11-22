@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, StyleSheet, ScrollView, Switch, Alert } from 'react-native'
+import { View, StyleSheet, ScrollView, Switch, Alert, Share } from 'react-native'
 import { Text, Card, List, Divider } from 'react-native-paper'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useAppSelector } from '../hooks/redux'
@@ -15,7 +15,8 @@ import { useAlert } from '../hooks/useAlert'
 import { useActionFeedback } from '../hooks/useActionFeedback'
 import { ZendaLoading } from '../components/ui/ZendaLoader'
 import type { Locale } from '../i18n'
-import { authApi } from '../services/api'
+import { authApi, personalFinanceApi } from '../services/api'
+import { clearApiCache } from '../utils/apiCache'
 import { getInstalledAppVersion } from '../utils/storeUpdate'
 import type { SocialLoginMethods } from '../types/api'
 import {
@@ -112,13 +113,33 @@ export default function SettingsScreen() {
     alert.confirm(
       t('settings.clearCache'),
       t('settings.clearCacheConfirm'),
-      () => alert.success(t('settings.clearCacheDone')),
+      () => {
+        void clearApiCache().then(() => alert.success('settings.clearCacheDone'))
+      },
       { confirmLabel: t('settings.clearCache') },
     )
   }
 
   const handleExportData = () => {
-    alert.info(t('settings.exportData'), t('settings.exportSoon'))
+    void (async () => {
+      try {
+        const dash = await personalFinanceApi.getDashboard() as {
+          summary?: { income?: number | string; expenses?: number | string; balance?: number | string }
+          health?: { score?: number }
+        }
+        const summary = dash.summary
+        const message = [
+          t('premium.exportTitle'),
+          `${t('home.income')}: ${summary?.income ?? '—'}`,
+          `${t('home.expenses')}: ${summary?.expenses ?? '—'}`,
+          `${t('home.balance')}: ${summary?.balance ?? '—'}`,
+          `${t('home.healthScore')}: ${dash.health?.score ?? '—'}/100`,
+        ].join('\n')
+        await Share.share({ message })
+      } catch {
+        alert.error('premium.exportFailed')
+      }
+    })()
   }
 
   const handleBiometricToggle = async (value: boolean) => {
