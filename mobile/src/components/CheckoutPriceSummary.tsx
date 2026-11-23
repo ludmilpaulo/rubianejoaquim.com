@@ -1,5 +1,5 @@
 import React from 'react'
-import { StyleSheet, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
 import { Text } from 'react-native-paper'
 import type { CheckoutOptions } from '../types'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -7,17 +7,38 @@ import { useI18n } from '../contexts/I18nContext'
 
 type Props = {
   checkout: CheckoutOptions | null
+  /** Store-localized price (Play/App Store). Prefer this over backend charge currency. */
+  storeDisplayPrice?: string | null
 }
 
 /**
- * Subscription payment cart — only the charge currency (same as the offer).
- * Secondary FX estimates are omitted to satisfy Google Play subscriptions policy
- * ("Currency differences with prominent display price").
+ * Subscription payment cart — one currency only (same as the offer).
+ * On Android, prefer Play Billing displayPrice so the offer and cart match.
  */
-export default function CheckoutPriceSummary({ checkout }: Props) {
+export default function CheckoutPriceSummary({ checkout, storeDisplayPrice }: Props) {
   const { formatOriginal } = useCurrency()
   const { t, tw } = useI18n()
 
+  const storePrice = storeDisplayPrice?.trim() || null
+  if (storePrice) {
+    return (
+      <View style={styles.wrap}>
+        <Text variant="labelLarge" style={styles.title}>
+          {t('access.cardPriceTitle')}
+        </Text>
+        <Text variant="headlineSmall" style={styles.charge}>
+          {storePrice}
+          {t('access.perMonth')}
+        </Text>
+        <Text variant="bodySmall" style={styles.note}>
+          {tw('access.cardPriceNote', { currency: storePrice, price: storePrice })}
+        </Text>
+      </View>
+    )
+  }
+
+  // Android without a store price: omit numeric cart to avoid ZAR/AOA vs Play mismatch.
+  if (Platform.OS === 'android') return null
   if (!checkout?.charge) return null
 
   const { amount, currency } = checkout.charge

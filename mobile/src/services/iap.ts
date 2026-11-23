@@ -44,8 +44,22 @@ export function mentorshipProductId(packageId: number): string {
   return `mentorship_${packageId}`
 }
 
+/** Native store billing available for purchases (Apple today; Play purchases need server verify). */
 export function isIapSupported(): boolean {
   return Platform.OS === 'ios' && !isExpoGo() && loadNative() !== null
+}
+
+/**
+ * Store product catalog (localized displayPrice) for iOS + Android.
+ * Android must show Play Billing prices on offer screens to satisfy
+ * Google Play "Currency differences with prominent display price".
+ */
+export function isIapCatalogSupported(): boolean {
+  return (
+    (Platform.OS === 'ios' || Platform.OS === 'android') &&
+    !isExpoGo() &&
+    loadNative() !== null
+  )
 }
 
 export async function getIapProducts(productIds: string[]): Promise<IapListedProduct[]> {
@@ -55,7 +69,7 @@ export async function getIapProducts(productIds: string[]): Promise<IapListedPro
 }
 
 export async function warmupIap(): Promise<void> {
-  if (!isIapSupported()) return
+  if (!isIapCatalogSupported()) return
   await loadNative()?.warmupIap()
 }
 

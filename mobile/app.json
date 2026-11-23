@@ -52,7 +52,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.rubianejoaquim.zenda",
-      "versionCode": 46,
+      "versionCode": 47,
       "blockedPermissions": [
         "com.google.android.gms.permission.AD_ID"
       ],

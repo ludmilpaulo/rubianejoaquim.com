@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { View, StyleSheet, Linking, Alert, ScrollView, Pressable } from 'react-native'
+import { View, StyleSheet, Linking, Alert, ScrollView, Pressable, Platform } from 'react-native'
 import { Text, Button, Card, TextInput } from 'react-native-paper'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
@@ -8,6 +8,7 @@ import { checkPaidAccess } from '../store/authSlice'
 import { accessApi, referralApi } from '../services/api'
 import {
   isIapSupported,
+  isIapCatalogSupported,
   purchaseIapProduct,
   getIapProducts,
   PRIVACY_POLICY_URL,
@@ -47,7 +48,7 @@ export default function AccessDeniedScreen() {
   const [cardPaying, setCardPaying] = useState(false)
 
   useEffect(() => {
-    if (!isIapSupported()) return
+    if (!isIapCatalogSupported()) return
     getIapProducts([SUBSCRIPTION_PRODUCT_ID])
       .then((products) => {
         const match = products.find((p) => p.id === SUBSCRIPTION_PRODUCT_ID)
@@ -178,12 +179,19 @@ export default function AccessDeniedScreen() {
       : null
   const chargeCurrency =
     checkout?.charge?.currency || paymentInfo?.currency || null
-  /** Single prominent price for offer copy + payment cart (Play currency policy). */
+  /**
+   * Prominent offer price (Play subscriptions policy):
+   * - Prefer store-localized Billing price when available.
+   * - On Android, never fall back to backend ZAR/AOA — that mismatches Play's cart.
+   * - Use price-free copy until a store price is ready.
+   */
   const offerPriceLabel = iapProduct?.displayPrice
     ? iapProduct.displayPrice
-    : chargeAmount != null && chargeCurrency
-      ? formatOriginal(chargeAmount, chargeCurrency)
-      : null
+    : Platform.OS === 'android'
+      ? null
+      : chargeAmount != null && chargeCurrency
+        ? formatOriginal(chargeAmount, chargeCurrency)
+        : null
   const monthlyPriceKz = chargeAmount ?? paymentInfo?.monthly_price_kz ?? 10000
   const pointsForSubscription = Number(monthlyPriceKz) / 1000
 
@@ -480,7 +488,10 @@ export default function AccessDeniedScreen() {
           <View style={styles.buttonContainer}>
             {showCard && (
               <>
-              <CheckoutPriceSummary checkout={checkout} />
+              <CheckoutPriceSummary
+                checkout={checkout}
+                storeDisplayPrice={iapProduct?.displayPrice}
+              />
               <Button
                 mode="contained"
                 onPress={handlePayWithCard}

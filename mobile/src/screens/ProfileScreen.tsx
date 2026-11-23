@@ -11,7 +11,15 @@ import { authApi, accessApi, referralApi } from '../services/api'
 import { shareZendaApp } from '../utils/shareZenda'
 import type { CheckoutOptions, MobileAppSubscription, SubscriptionPaymentInfo, SubscriptionPaymentRecord } from '../types'
 import { loadCheckoutOptions, startCardCheckoutAndSync, unwrapPaymentList } from '../services/subscriptionPayments'
-import { isIapSupported, purchaseIapProduct, SUBSCRIPTION_PRODUCT_ID } from '../services/iap'
+import {
+  isIapSupported,
+  isIapCatalogSupported,
+  getIapProducts,
+  purchaseIapProduct,
+  SUBSCRIPTION_PRODUCT_ID,
+  type IapListedProduct,
+} from '../services/iap'
+import { logger } from '../utils/logger'
 import { getApiErrorMessage, type UploadFilePayload } from '../types/api'
 import { useI18n } from '../contexts/I18nContext'
 import { useCurrency } from '../contexts/CurrencyContext'
@@ -35,6 +43,7 @@ export default function ProfileScreen() {
   const [subscription, setSubscription] = useState<MobileAppSubscription | null>(null)
   const [paymentInfo, setPaymentInfo] = useState<SubscriptionPaymentInfo | null>(null)
   const [checkout, setCheckout] = useState<CheckoutOptions | null>(null)
+  const [iapProduct, setIapProduct] = useState<IapListedProduct | null>(null)
   const [payments, setPayments] = useState<SubscriptionPaymentRecord[]>([])
   const [subLoading, setSubLoading] = useState(true)
   const [uploadNotes, setUploadNotes] = useState('')
@@ -42,6 +51,16 @@ export default function ProfileScreen() {
   const [pointsBalanceKz, setPointsBalanceKz] = useState<number>(0)
   const [pointsHistory, setPointsHistory] = useState<Array<{ id: number; description?: string; points?: number | string; created_at?: string }>>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+
+  useEffect(() => {
+    if (!isIapCatalogSupported()) return
+    getIapProducts([SUBSCRIPTION_PRODUCT_ID])
+      .then((products) => {
+        const match = products.find((p) => p.id === SUBSCRIPTION_PRODUCT_ID)
+        if (match) setIapProduct(match)
+      })
+      .catch((error) => logger.warn('IAP product prefetch failed:', error))
+  }, [])
 
   const loadSubscription = useCallback(async () => {
     try {
@@ -534,7 +553,10 @@ export default function ProfileScreen() {
 
               {showCard && (subscription?.status === 'trial' || subscription?.status === 'expired' || subscription?.status === 'cancelled' || !subscription) && (
                 <>
-                <CheckoutPriceSummary checkout={checkout} />
+                <CheckoutPriceSummary
+                  checkout={checkout}
+                  storeDisplayPrice={iapProduct?.displayPrice}
+                />
                 <Button
                   mode="contained"
                   onPress={handlePayWithCard}
