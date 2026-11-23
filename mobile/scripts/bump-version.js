@@ -11,6 +11,8 @@ const ROOT = path.resolve(__dirname, '..')
 const APP_JSON = path.join(ROOT, 'app.json')
 const PACKAGE_JSON = path.join(ROOT, 'package.json')
 const EXPO_PLIST = path.join(ROOT, 'ios', 'Zenda', 'Supporting', 'Expo.plist')
+const IOS_INFO_PLIST = path.join(ROOT, 'ios', 'Zenda', 'Info.plist')
+const IOS_PBXPROJ = path.join(ROOT, 'ios', 'Zenda.xcodeproj', 'project.pbxproj')
 const ANDROID_STRINGS = path.join(ROOT, 'android', 'app', 'src', 'main', 'res', 'values', 'strings.xml')
 const ANDROID_GRADLE = path.join(ROOT, 'android', 'app', 'build.gradle')
 
@@ -74,6 +76,24 @@ replaceFile(EXPO_PLIST, (text) =>
   ),
 )
 
+replaceFile(IOS_INFO_PLIST, (text) =>
+  text
+    .replace(
+      /(<key>CFBundleShortVersionString<\/key>\s*<string>)[^<]+(<\/string>)/,
+      `$1${newVersion}$2`,
+    )
+    .replace(
+      /(<key>CFBundleVersion<\/key>\s*<string>)[^<]+(<\/string>)/,
+      `$1${app.expo.ios.buildNumber}$2`,
+    ),
+)
+
+replaceFile(IOS_PBXPROJ, (text) =>
+  text
+    .replace(/CURRENT_PROJECT_VERSION = \d+;/g, `CURRENT_PROJECT_VERSION = ${app.expo.ios.buildNumber};`)
+    .replace(/MARKETING_VERSION = [^;]+;/g, `MARKETING_VERSION = ${newVersion};`),
+)
+
 replaceFile(ANDROID_STRINGS, (text) =>
   text.replace(
     /(<string name="expo_runtime_version">)[^<]+(<\/string>)/,
@@ -90,4 +110,4 @@ replaceFile(ANDROID_GRADLE, (text) =>
 console.log(`Version bumped: ${currentVersion} → ${newVersion}`)
 console.log(`Android versionCode: ${currentVersionCode} → ${app.expo.android.versionCode}`)
 console.log(`iOS buildNumber: ${currentBuildNumber} → ${app.expo.ios.buildNumber}`)
-console.log('Synced Expo.plist + Android runtime/versionName. Rebuild native binaries before store submit.')
+console.log('Synced Expo.plist, Info.plist, Xcode project, and Android runtime/versionName. Rebuild native binaries before store submit.')
