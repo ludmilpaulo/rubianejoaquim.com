@@ -6,7 +6,7 @@
       "zenda",
       "fb2691305731001778"
     ],
-    "version": "1.0.14",
+    "version": "1.1.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -42,7 +42,7 @@
           }
         ]
       },
-      "buildNumber": "46"
+      "buildNumber": "47"
     },
     "android": {
       "adaptiveIcon": {
@@ -182,7 +182,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "1.0.14",
+    "runtimeVersion": "1.1.2",
     "extra": {
       "apiUrl": "https://ludmilpaulo.pythonanywhere.com/api",
       "eas": {
